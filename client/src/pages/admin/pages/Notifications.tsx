@@ -112,45 +112,50 @@ const Notifications = () => {
   const getTypeColor = (type: string) => {
     switch (type) {
       case "warning":
-        return "border-yellow-200 bg-yellow-50";
+        return "border-yellow-200 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900";
       case "error":
-        return "border-red-200 bg-red-50";
+        return "border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900";
       case "success":
-        return "border-green-200 bg-green-50";
+        return "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900";
       default:
-        return "border-blue-200 bg-blue-50";
+        return "border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900";
     }
   };
 
   const getTypeBadge = (type: string) => {
     switch (type) {
       case "warning":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "error":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       case "success":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       default:
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white p-6">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-950 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="hover:bg-green-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="hover:bg-green-100 dark:hover:bg-gray-800"
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 rounded-full">
-                <Bell className="h-6 w-6 text-green-600" />
+              <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
+                <Bell className="h-6 w-6 text-green-600 dark:text-green-300" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">All Notifications</h1>
-                <p className="text-gray-600">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">All Notifications</h1>
+                <p className="text-gray-600 dark:text-gray-400">
                   {unreadCount} unread of {notifications.length} total notifications
                 </p>
               </div>
@@ -165,9 +170,9 @@ const Notifications = () => {
         </div>
 
         {/* Filters */}
-        <Card className="border-green-200">
+        <Card className="border-green-200 dark:border-green-700 dark:bg-gray-800">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-600">
+            <CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-300">
               <Filter className="h-5 w-5" />
               Filters
             </CardTitle>
@@ -175,7 +180,7 @@ const Notifications = () => {
           <CardContent>
             <div className="flex gap-4">
               <div className="flex-1">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Status</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Status</label>
                 <Select value={filter} onValueChange={setFilter}>
                   <SelectTrigger>
                     <SelectValue />
@@ -188,7 +193,7 @@ const Notifications = () => {
                 </Select>
               </div>
               <div className="flex-1">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Type</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Type</label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
                   <SelectTrigger>
                     <SelectValue />
@@ -209,12 +214,14 @@ const Notifications = () => {
         {/* Notifications List */}
         <div className="space-y-4">
           {filteredNotifications.length === 0 ? (
-            <Card className="border-green-200">
+            <Card className="border-green-200 dark:border-green-700 dark:bg-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center py-8">
                   <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications found</h3>
-                  <p className="text-gray-500">Try adjusting your filters to see more notifications.</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No notifications found</h3>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Try adjusting your filters to see more notifications.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -223,26 +230,32 @@ const Notifications = () => {
               <Card
                 key={notification.id}
                 className={`${getTypeColor(notification.type)} ${
-                  !notification.read ? "ring-2 ring-green-200" : ""
+                  !notification.read ? "ring-2 ring-green-200 dark:ring-green-600" : ""
                 } transition-all hover:shadow-md`}
               >
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-gray-900">{notification.title}</h3>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
                         <Badge className={getTypeBadge(notification.type)}>{notification.type}</Badge>
-                        {!notification.read && <Badge className="bg-green-100 text-green-800">New</Badge>}
+                        {!notification.read && (
+                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            New
+                          </Badge>
+                        )}
                       </div>
-                      <p className="text-gray-700 mb-3">{notification.message}</p>
-                      <p className="text-sm text-gray-500">{new Date(notification.timestamp).toLocaleString()}</p>
+                      <p className="text-gray-700 dark:text-gray-300 mb-3">{notification.message}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {new Date(notification.timestamp).toLocaleString()}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       {!notification.read && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-green-600 hover:text-green-700 hover:bg-green-100"
+                          className="text-green-600 hover:text-green-700 hover:bg-green-100 dark:text-green-300 dark:hover:bg-green-800"
                           onClick={() => markAsRead(notification.id)}
                         >
                           <Check className="h-4 w-4 mr-1" />
@@ -252,7 +265,7 @@ const Notifications = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-100"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900"
                         onClick={() => deleteNotification(notification.id)}
                       >
                         <Trash className="h-4 w-4 mr-1" />

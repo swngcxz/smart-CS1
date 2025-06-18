@@ -30,8 +30,8 @@ export function MapSection() {
           Bin Locations - Naga City, Cebu
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-0 h-80 rounded-b-lg overflow-hidden">
-        <MapContainer center={center} zoom={15} className="h-full w-full">
+      <CardContent className="p-0 h-80 rounded-b-lg overflow-hidden relative z-0">
+        <MapContainer center={center} zoom={15} className="h-full w-full z-0">
           <TileLayer
             attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

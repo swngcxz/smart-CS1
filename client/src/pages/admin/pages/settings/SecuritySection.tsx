@@ -6,13 +6,21 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Eye, EyeOff, Key, Shield, Smartphone, LogOut, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, Key, Shield, Smartphone, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export const SecuritySection = () => {
-  const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
-  const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [passwords, setPasswords] = useState({
+    current: "",
+    new: "",
+    confirm: "",
+  });
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [recoveryDialogOpen, setRecoveryDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -50,7 +58,11 @@ export const SecuritySection = () => {
       });
     }
 
-    toast({ title: "Password updated", description: "Your password has been successfully changed." });
+    toast({
+      title: "Password updated",
+      description: "Your password has been successfully changed.",
+    });
+
     setPasswords({ current: "", new: "", confirm: "" });
   };
 
@@ -71,16 +83,16 @@ export const SecuritySection = () => {
   return (
     <div className="space-y-6">
       {/* Password Section */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm dark:bg-slate-900">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
             <Key className="w-5 h-5" />
             Change Password
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            {["current", "new", "confirm"].map((field, i) => (
+            {["current", "new", "confirm"].map((field) => (
               <div key={field} className="space-y-2">
                 <Label htmlFor={`${field}-password`}>
                   {field === "current" ? "Current Password" : field === "new" ? "New Password" : "Confirm New Password"}
@@ -113,7 +125,7 @@ export const SecuritySection = () => {
             {/* Password Strength Meter */}
             {passwords.new && (
               <div className="w-full">
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-300 ${
                       ["bg-red-500", "bg-orange-400", "bg-yellow-400", "bg-green-500", "bg-emerald-600"][
@@ -123,7 +135,7 @@ export const SecuritySection = () => {
                     style={{ width: `${(getPasswordStrength().score + 1) * 20}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
                   {["Very Weak", "Weak", "Fair", "Strong", "Very Strong"][getPasswordStrength().score]}
                 </p>
               </div>
@@ -140,9 +152,9 @@ export const SecuritySection = () => {
       </Card>
 
       {/* Two-Factor Auth */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm dark:bg-slate-900">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
             <Shield className="w-5 h-5" />
             Two-Factor Authentication
           </CardTitle>
@@ -153,23 +165,25 @@ export const SecuritySection = () => {
               <div className="flex items-center gap-2">
                 <Label className="text-sm font-medium">Enable 2FA</Label>
                 {twoFactorEnabled && (
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-800 dark:text-white">
                     Active
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-slate-600">Add an extra layer of security to your account</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Add an extra layer of security to your account
+              </p>
             </div>
             <Switch checked={twoFactorEnabled} onCheckedChange={handleTwoFactorToggle} />
           </div>
 
           {twoFactorEnabled && (
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="p-4 bg-green-50 dark:bg-green-900 rounded-lg border border-green-200 dark:border-green-800">
               <div className="flex items-center gap-2 mb-2">
-                <Smartphone className="w-4 h-4 text-green-600" />
-                <span className="text-sm font-medium text-green-800">2FA is enabled</span>
+                <Smartphone className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <span className="text-sm font-medium text-green-800 dark:text-green-200">2FA is enabled</span>
               </div>
-              <p className="text-sm text-green-700">
+              <p className="text-sm text-green-700 dark:text-green-300">
                 Your account is protected with two-factor authentication using your authenticator app.
               </p>
               <Dialog open={recoveryDialogOpen} onOpenChange={setRecoveryDialogOpen}>
@@ -186,7 +200,7 @@ export const SecuritySection = () => {
                     <p>Here are your backup codes. Keep them safe:</p>
                     <ul className="grid grid-cols-2 gap-2 font-mono text-xs mt-2">
                       {Array.from({ length: 6 }).map((_, i) => (
-                        <li key={i} className="bg-gray-100 px-2 py-1 rounded">
+                        <li key={i} className="bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded">
                           {Math.random().toString(36).substring(2, 10).toUpperCase()}
                         </li>
                       ))}
@@ -200,9 +214,9 @@ export const SecuritySection = () => {
       </Card>
 
       {/* Active Sessions */}
-      <Card className="shadow-sm">
+      <Card className="shadow-sm dark:bg-slate-900">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Active Sessions</CardTitle>
+          <CardTitle className="text-slate-800 dark:text-slate-100">Active Sessions</CardTitle>
           <Button
             size="icon"
             variant="ghost"
@@ -212,24 +226,23 @@ export const SecuritySection = () => {
             <LogOut className="w-5 h-5" />
           </Button>
         </CardHeader>
-
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
             <div>
               <p className="font-medium text-sm">Current Session</p>
-              <p className="text-xs text-slate-600">Chrome on Windows • San Francisco, CA</p>
-              <p className="text-xs text-slate-500">Last active: Now</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Chrome on Windows • San Francisco, CA</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500">Last active: Now</p>
             </div>
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
+            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-800 dark:text-white">
               Current
             </Badge>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
             <div>
               <p className="font-medium text-sm">Mobile App</p>
-              <p className="text-xs text-slate-600">iOS App • San Francisco, CA</p>
-              <p className="text-xs text-slate-500">Last active: 2 hours ago</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">iOS App • San Francisco, CA</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500">Last active: 2 hours ago</p>
             </div>
             <Button variant="outline" size="sm">
               Revoke

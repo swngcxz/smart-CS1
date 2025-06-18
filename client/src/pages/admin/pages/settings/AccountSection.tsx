@@ -19,8 +19,6 @@ import {
 import { Trash2, Save, Pencil, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-// ...import statements remain the same
-
 export const AccountSection = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [accountInfo, setAccountInfo] = useState({
@@ -62,7 +60,7 @@ export const AccountSection = () => {
     const [tempValue, setTempValue] = useState(value);
     return (
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-slate-700">{label}</Label>
+        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</Label>
         {isEditing === field ? (
           <div className="flex items-center gap-2">
             <Input value={tempValue} onChange={(e) => setTempValue(e.target.value)} className="flex-1" />
@@ -75,7 +73,9 @@ export const AccountSection = () => {
           </div>
         ) : (
           <div className="flex items-center gap-2 group">
-            <span className="flex-1 p-2 bg-slate-50 rounded-md">{value}</span>
+            <span className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
+              {value}
+            </span>
             <Button
               size="sm"
               variant="ghost"
@@ -92,7 +92,6 @@ export const AccountSection = () => {
 
   return (
     <div className="space-y-6">
-      {/* Account Info */}
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle>Account Information</CardTitle>
@@ -101,35 +100,40 @@ export const AccountSection = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <EditableField field="username" value={accountInfo.username} label="Username" />
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-slate-700">Account Type</Label>
-              <div className="p-2 bg-slate-50 rounded-md text-slate-900">{accountInfo.accountType}</div>
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Account Type</Label>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
+                {accountInfo.accountType}
+              </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-slate-700">Member Since</Label>
-              <div className="p-2 bg-slate-50 rounded-md text-slate-900">{accountInfo.memberSince}</div>
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Member Since</Label>
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
+                {accountInfo.memberSince}
+              </div>
             </div>
             <EditableField field="timezone" value={accountInfo.timezone} label="Timezone" />
           </div>
         </CardContent>
       </Card>
 
-      {/* Security Options */}
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle>Security Options</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Deactivate */}
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border">
+          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
             <div>
-              <h4 className="font-semibold text-slate-900">Deactivate Account</h4>
-              <p className="text-sm text-slate-600">
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100">Deactivate Account</h4>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Temporarily deactivate your account. You can reactivate at any time by logging back in.
               </p>
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" className="text-slate-700 border-slate-300">
+                <Button
+                  variant="outline"
+                  className="text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600"
+                >
                   Deactivate
                 </Button>
               </AlertDialogTrigger>
@@ -150,11 +154,10 @@ export const AccountSection = () => {
             </AlertDialog>
           </div>
 
-          {/* Delete */}
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border">
+          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
             <div>
-              <h4 className="font-semibold text-slate-900">Delete Account</h4>
-              <p className="text-sm text-slate-600">
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100">Delete Account</h4>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Permanently delete your account and all associated data. This action cannot be undone.
               </p>
             </div>

@@ -19,8 +19,6 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <ThemeProvider>
-        {" "}
-        {/* ⬅️ wrap your app here */}
         <Toaster />
         <Sonner />
         <BrowserRouter>

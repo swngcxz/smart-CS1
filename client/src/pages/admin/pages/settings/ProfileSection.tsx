@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Pencil, Camera, Save, X } from "lucide-react";
-import { Mail, Github, Facebook, Link as LinkIcon } from "lucide-react";
+import { Pencil, Camera, Save, X, Mail, Github, Facebook } from "lucide-react";
+
 export const ProfileSection = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [profile, setProfile] = useState({
@@ -23,33 +23,32 @@ export const ProfileSection = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleEdit = (field: string) => setIsEditing(field);
-
   const handleSave = (field: string, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
     setIsEditing(null);
   };
-
   const handleCancel = () => setIsEditing(null);
-
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => setImageUrl(reader.result as string);
       reader.readAsDataURL(file);
-      // Here you can also send `file` to your server for saving
     }
   };
-
-  const triggerFileSelect = () => {
-    fileInputRef.current?.click();
-  };
+  const triggerFileSelect = () => fileInputRef.current?.click();
 
   const connectedAccounts = [
     { name: "Google", icon: <Mail className="w-4 h-4 text-red-500" />, linked: true, value: "john.doe@gmail.com" },
-    { name: "GitHub", icon: <Github className="w-4 h-4 text-gray-700" />, linked: true, value: "johndoe" },
+    {
+      name: "GitHub",
+      icon: <Github className="w-4 h-4 text-gray-700 dark:text-white" />,
+      linked: true,
+      value: "johndoe",
+    },
     { name: "Facebook", icon: <Facebook className="w-4 h-4 text-blue-600" />, linked: false, value: "" },
   ];
+
   const EditableField = ({
     field,
     value,
@@ -62,10 +61,9 @@ export const ProfileSection = () => {
     type?: string;
   }) => {
     const [tempValue, setTempValue] = useState(value);
-
     return (
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-slate-700">{label}</Label>
+        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</Label>
         {isEditing === field ? (
           <div className="flex items-center gap-2">
             <Input type={type} value={tempValue} onChange={(e) => setTempValue(e.target.value)} className="flex-1" />
@@ -78,7 +76,9 @@ export const ProfileSection = () => {
           </div>
         ) : (
           <div className="flex items-center gap-2 group">
-            <span className="flex-1 p-2 bg-slate-50 rounded-md">{value}</span>
+            <span className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
+              {value}
+            </span>
             <Button
               size="sm"
               variant="ghost"
@@ -118,8 +118,11 @@ export const ProfileSection = () => {
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">{profile.name}</h3>
-              <Badge variant="secondary" className="bg-green-100 text-green-800 mt-1">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{profile.name}</h3>
+              <Badge
+                variant="secondary"
+                className="bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100 mt-1"
+              >
                 Admin
               </Badge>
             </div>
@@ -139,30 +142,31 @@ export const ProfileSection = () => {
             </div>
           </div>
 
+          {/* Connected Accounts */}
           <div className="space-y-3 pt-4">
-            <Label className="text-sm font-semibold text-slate-700">Connected Accounts</Label>
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Connected Accounts</Label>
             <div className="space-y-2">
               {connectedAccounts.map((acc) => (
                 <div
                   key={acc.name}
-                  className="flex items-center justify-between px-4 py-2 bg-slate-50 rounded-md border border-slate-200"
+                  className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md"
                 >
                   <div className="flex items-center gap-2">
                     {acc.icon}
-                    <span className="font-medium">{acc.name}</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{acc.name}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     {acc.linked ? (
-                      <span className="text-sm text-slate-600">{acc.value}</span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{acc.value}</span>
                     ) : (
-                      <span className="text-sm text-slate-400 italic">Not linked</span>
+                      <span className="text-sm text-slate-400 dark:text-slate-500 italic">Not linked</span>
                     )}
                     <Button
                       size="sm"
                       variant={acc.linked ? "outline" : "secondary"}
                       className={
                         acc.linked
-                          ? "text-red-600 border-red-300 hover:bg-red-50"
+                          ? "text-red-600 border-red-300 dark:border-red-500 hover:bg-red-50 dark:hover:bg-red-900"
                           : "bg-green-600 text-white hover:bg-green-700"
                       }
                     >

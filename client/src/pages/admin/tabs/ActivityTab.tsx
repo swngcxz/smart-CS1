@@ -1,4 +1,3 @@
-
 import { ActivityLogs } from "../pages/ActivityLogs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,18 +22,18 @@ export function ActivityTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Activity & History</h2>
-        <p className="text-gray-600">Track all system activities and historical data.</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Activity & History</h2>
+        <p className="text-gray-600 dark:text-gray-400">Track all system activities and historical data.</p>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {todayStats.map((stat, index) => (
-          <Card key={index}>
+          <Card key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">{stat.label}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
                 </div>
                 <span className="text-2xl">{stat.icon}</span>
               </div>
@@ -42,29 +41,35 @@ export function ActivityTab() {
           </Card>
         ))}
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <ActivityLogs />
         </div>
-        
+
         <div className="space-y-4">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <Calendar className="w-5 h-5 text-green-600" />
                 Today's Summary
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {recentActivities.slice(0, 5).map((activity, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
                   <div className="flex-1">
-                    <p className="text-xs font-medium">{activity.time}</p>
-                    <p className="text-sm text-gray-700">{activity.activity}</p>
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{activity.time}</p>
+                    <p className="text-sm text-gray-800 dark:text-white">{activity.activity}</p>
                   </div>
-                  <Badge 
-                    variant={activity.priority === 'high' ? 'destructive' : activity.priority === 'medium' ? 'secondary' : 'outline'}
+                  <Badge
+                    variant={
+                      activity.priority === "high"
+                        ? "destructive"
+                        : activity.priority === "medium"
+                        ? "secondary"
+                        : "outline"
+                    }
                     className="text-xs"
                   >
                     {activity.type}
@@ -73,18 +78,18 @@ export function ActivityTab() {
               ))}
             </CardContent>
           </Card>
-          
-          <Card>
+
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <Filter className="w-5 h-5 text-blue-600" />
                 Activity Filters
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Activity Type</label>
-                <select className="w-full p-2 border rounded-md text-sm">
+                <label className="text-sm font-medium text-gray-900 dark:text-white">Activity Type</label>
+                <select className="w-full p-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white rounded-md">
                   <option>All Activities</option>
                   <option>Collections</option>
                   <option>Alerts</option>
@@ -93,15 +98,15 @@ export function ActivityTab() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Date Range</label>
-                <select className="w-full p-2 border rounded-md text-sm">
+                <label className="text-sm font-medium text-gray-900 dark:text-white">Date Range</label>
+                <select className="w-full p-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white rounded-md">
                   <option>Today</option>
                   <option>This Week</option>
                   <option>This Month</option>
                   <option>Custom Range</option>
                 </select>
               </div>
-              <button className="w-full p-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+              <button className="w-full p-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors">
                 Apply Filters
               </button>
             </CardContent>

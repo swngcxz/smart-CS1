@@ -20,23 +20,21 @@ export function StaffTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Staff Management</h2>
-        <p className="text-gray-600">Monitor and manage your waste collection team.</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Staff Management</h2>
+        <p className="text-gray-600 dark:text-gray-400">Monitor and manage your waste collection team.</p>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {staffStats.map((stat, index) => (
-          <Card key={index}>
+          <Card key={index} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">{stat.label}</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">{stat.label}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <span className="text-2xl font-bold">{stat.value}</span>
                 {stat.change && (
-                  <span className={`text-xs ${
-                    stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <span className={`text-xs ${stat.changeType === "positive" ? "text-green-600" : "text-red-600"}`}>
                     {stat.change}
                   </span>
                 )}
@@ -45,28 +43,28 @@ export function StaffTab() {
           </Card>
         ))}
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <StaffTable />
         </div>
-        
+
         <div className="space-y-4">
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <Clock className="w-5 h-5 text-blue-600" />
                 Shift Schedule
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {shiftSchedule.map((schedule, index) => (
-                <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium text-sm">{schedule.shift}</span>
+                    <span className="font-medium text-sm text-gray-900 dark:text-white">{schedule.shift}</span>
                     <Badge variant="outline">{schedule.staff} staff</Badge>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                     <MapPin className="w-3 h-3" />
                     <span>{schedule.zones.join(", ")}</span>
                   </div>
@@ -74,26 +72,26 @@ export function StaffTab() {
               ))}
             </CardContent>
           </Card>
-          
-          <Card>
+
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <Users className="w-5 h-5 text-purple-600" />
                 Quick Actions
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <button className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-                <div className="font-medium text-sm">Assign Emergency Task</div>
-                <div className="text-xs text-gray-600">Quickly assign urgent collection</div>
+              <button className="w-full text-left p-3 bg-blue-50 dark:bg-blue-900 hover:bg-blue-100 dark:hover:bg-blue-800 rounded-lg transition-colors">
+                <div className="font-medium text-sm text-gray-900 dark:text-white">Assign Emergency Task</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Quickly assign urgent collection</div>
               </button>
-              <button className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
-                <div className="font-medium text-sm">Schedule Break</div>
-                <div className="text-xs text-gray-600">Manage staff break times</div>
+              <button className="w-full text-left p-3 bg-green-50 dark:bg-green-900 hover:bg-green-100 dark:hover:bg-green-800 rounded-lg transition-colors">
+                <div className="font-medium text-sm text-gray-900 dark:text-white">Schedule Break</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Manage staff break times</div>
               </button>
-              <button className="w-full text-left p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors">
-                <div className="font-medium text-sm">Update Location</div>
-                <div className="text-xs text-gray-600">Track staff locations</div>
+              <button className="w-full text-left p-3 bg-yellow-50 dark:bg-yellow-900 hover:bg-yellow-100 dark:hover:bg-yellow-800 rounded-lg transition-colors">
+                <div className="font-medium text-sm text-gray-900 dark:text-white">Update Location</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400">Track staff locations</div>
               </button>
             </CardContent>
           </Card>

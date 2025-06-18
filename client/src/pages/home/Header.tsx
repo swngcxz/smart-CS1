@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import Login from "../auth/Login";
 import Register from "../auth/Register";
+
 const Header = () => {
   const navigate = useNavigate();
 
@@ -12,30 +13,50 @@ const Header = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-green-100">
+      <header className="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-green-100 dark:border-slate-700">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
                 <Recycle className="h-6 w-6 text-white" />
               </div>
-              <span className="text-2xl font-bold text-gray-900">EcoSmart</span>
+              <span className="text-2xl font-bold text-gray-900 dark:text-white">EcoSmart</span>
             </div>
             <nav className="hidden md:flex space-x-8">
-              <a href="#features" className="text-gray-700 hover:text-green-600 transition-colors">Features</a>
-              <a href="#benefits" className="text-gray-700 hover:text-green-600 transition-colors">Benefits</a>
-              <a href="#feedback" className="text-gray-700 hover:text-green-600 transition-colors">Feedback</a>
-              <a href="#contact" className="text-gray-700 hover:text-green-600 transition-colors">Contact</a>
+              <a
+                href="#features"
+                className="text-gray-700 hover:text-green-600 dark:text-gray-300 dark:hover:text-green-400 transition-colors"
+              >
+                Features
+              </a>
+              <a
+                href="#benefits"
+                className="text-gray-700 hover:text-green-600 dark:text-gray-300 dark:hover:text-green-400 transition-colors"
+              >
+                Benefits
+              </a>
+              <a
+                href="#feedback"
+                className="text-gray-700 hover:text-green-600 dark:text-gray-300 dark:hover:text-green-400 transition-colors"
+              >
+                Feedback
+              </a>
+              <a
+                href="#contact"
+                className="text-gray-700 hover:text-green-600 dark:text-gray-300 dark:hover:text-green-400 transition-colors"
+              >
+                Contact
+              </a>
             </nav>
             <div className="flex items-center space-x-4">
               <Button
-                className="bg-white text-green-600 border border-green-600 hover:bg-green-50 px-5 py-2"
+                className="bg-white text-green-600 border border-green-600 hover:bg-green-50 dark:bg-slate-800 dark:text-green-400 dark:border-green-500 dark:hover:bg-slate-700 px-5 py-2"
                 onClick={() => setShowLogin(true)}
               >
                 Login
               </Button>
               <Button
-                className="bg-green-600 hover:bg-green-700 text-white px-5 py-2"
+                className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-800 px-5 py-2"
                 onClick={() => setShowRegister(true)}
               >
                 Register
@@ -47,7 +68,7 @@ const Header = () => {
 
       {showLogin && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-          <div className="relative w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
+          <div className="relative w-full max-w-md bg-white0 p-6 rounded-lg shadow-lg">
             <Login
               onOpenRegister={() => {
                 setShowLogin(false);
@@ -61,14 +82,14 @@ const Header = () => {
 
       {showRegister && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-          <div className="relative w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
-            <button
-              onClick={() => setShowRegister(false)}
-              className="absolute top-2 right-2 text-2xl font-bold text-gray-600 hover:text-black"
-            >
-              ×
-            </button>
-            <Register />
+          <div className="relative w-full max-w-md   p-6 rounded-lg shadow-lg">
+            <Register
+              onOpenLogin={() => {
+                setShowRegister(false);
+                setShowLogin(true);
+              }}
+              onClose={() => setShowRegister(false)}
+            />
           </div>
         </div>
       )}
