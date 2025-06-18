@@ -1,5 +1,6 @@
 
 import { Badge } from "@/components/ui/badge";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { 
   BarChart3, 
   CheckCircle,
@@ -9,6 +10,8 @@ import {
 } from "lucide-react";
 
 const BenefitsSection = () => {
+  const { ref, isVisible } = useScrollAnimation();
+
   const benefits = [
     { icon: <TrendingUp className="h-6 w-6" />, text: "40% reduction in operational costs" },
     { icon: <Leaf className="h-6 w-6" />, text: "60% decrease in carbon emissions" },
@@ -17,10 +20,12 @@ const BenefitsSection = () => {
   ];
 
   return (
-    <section id="benefits" className="py-20 bg-green-50">
+    <section id="benefits" ref={ref} className="py-20 bg-green-50">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
+          <div className={`transition-all duration-700 ${
+            isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
+          }`}>
             <Badge className="mb-4 bg-green-100 text-green-800">Benefits</Badge>
             <h2 className="text-4xl font-bold text-gray-900 mb-6">
               Measurable Impact on Your Community
@@ -32,7 +37,13 @@ const BenefitsSection = () => {
             
             <div className="space-y-4">
               {benefits.map((benefit, index) => (
-                <div key={index} className="flex items-center space-x-3">
+                <div 
+                  key={index} 
+                  className={`flex items-center space-x-3 transition-all duration-500 ${
+                    isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-5'
+                  }`}
+                  style={{ transitionDelay: `${index * 150 + 400}ms` }}
+                >
                   <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                     <div className="text-green-600">{benefit.icon}</div>
                   </div>
@@ -42,7 +53,9 @@ const BenefitsSection = () => {
             </div>
           </div>
           
-          <div className="relative">
+          <div className={`relative transition-all duration-700 delay-300 ${
+            isVisible ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-10 scale-95'
+          }`}>
             <div className="bg-white rounded-2xl p-8 shadow-xl">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">

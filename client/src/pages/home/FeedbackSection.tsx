@@ -1,13 +1,16 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { Star } from "lucide-react"
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { Star } from "lucide-react";
 
 const FeedbackSection = () => {
   const [feedback, setFeedback] = useState("");
+  const { ref, isVisible } = useScrollAnimation();
 
   const handleFeedbackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,9 +43,11 @@ const FeedbackSection = () => {
   ];
 
   return (
-    <section id="feedback" className="py-20 bg-white">
+    <section id="feedback" ref={ref} className="py-20 bg-white">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
+        <div className={`text-center mb-16 transition-all duration-700 ${
+          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+        }`}>
           <Badge className="mb-4 bg-green-100 text-green-800">Testimonials</Badge>
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
             What Our Clients Say
@@ -54,7 +59,13 @@ const FeedbackSection = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {testimonials.map((testimonial, index) => (
-            <Card key={index} className="border-green-100 hover:shadow-lg transition-shadow duration-300">
+            <Card 
+              key={index} 
+              className={`border-green-100 hover:shadow-lg transition-all duration-700 ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+              }`}
+              style={{ transitionDelay: `${index * 200 + 300}ms` }}
+            >
               <CardHeader>
                 <div className="flex items-center space-x-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
@@ -76,7 +87,9 @@ const FeedbackSection = () => {
         </div>
 
         {/* Feedback Form */}
-        <div className="max-w-2xl mx-auto">
+        <div className={`max-w-2xl mx-auto transition-all duration-700 delay-600 ${
+          isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-95'
+        }`}>
           <Card className="border-green-200">
             <CardHeader>
               <CardTitle className="text-2xl text-center text-gray-900">Share Your Feedback</CardTitle>

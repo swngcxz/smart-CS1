@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { Mail, Phone, MapPin } from "lucide-react";
 
 const ContactSection = () => {
@@ -14,6 +15,7 @@ const ContactSection = () => {
     email: "",
     message: ""
   });
+  const { ref, isVisible } = useScrollAnimation();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -29,9 +31,11 @@ const ContactSection = () => {
   };
 
   return (
-    <section id="contact" className="py-20 bg-gradient-to-br from-green-50 to-white">
+    <section id="contact" ref={ref} className="py-20 bg-gradient-to-br from-green-50 to-white">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
+        <div className={`text-center mb-16 transition-all duration-700 ${
+          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+        }`}>
           <Badge className="mb-4 bg-green-100 text-green-800">Contact Us</Badge>
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
             Ready to Get Started?
@@ -43,7 +47,9 @@ const ContactSection = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Contact Info */}
-          <div>
+          <div className={`transition-all duration-700 delay-300 ${
+            isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'
+          }`}>
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Get in Touch</h3>
             <div className="space-y-6">
               <div className="flex items-center space-x-4">
@@ -79,7 +85,9 @@ const ContactSection = () => {
           </div>
 
           {/* Contact Form */}
-          <Card className="border-green-200">
+          <Card className={`border-green-200 transition-all duration-700 delay-500 ${
+            isVisible ? 'opacity-100 translate-x-0 scale-100' : 'opacity-0 translate-x-10 scale-95'
+          }`}>
             <CardHeader>
               <CardTitle className="text-2xl text-gray-900">Send us a Message</CardTitle>
               <CardDescription>

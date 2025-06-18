@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { 
   Trash, 
   Recycle, 
@@ -11,6 +12,8 @@ import {
 } from "lucide-react";
 
 const FeaturesSection = () => {
+  const { ref, isVisible } = useScrollAnimation();
+
   const features = [
     {
       icon: <Trash className="h-8 w-8 text-green-600" />,
@@ -45,9 +48,11 @@ const FeaturesSection = () => {
   ];
 
   return (
-    <section id="features" className="py-20 bg-white">
+    <section id="features" ref={ref} className="py-20 bg-white">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
+        <div className={`text-center mb-16 transition-all duration-700 ${
+          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+        }`}>
           <Badge className="mb-4 bg-green-100 text-green-800">Features</Badge>
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
             Cutting-Edge Technology for Modern Cities
@@ -59,7 +64,13 @@ const FeaturesSection = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <Card key={index} className="border-green-100 hover:border-green-300 transition-all duration-300 hover:shadow-lg group">
+            <Card 
+              key={index} 
+              className={`border-green-100 hover:border-green-300 transition-all duration-700 hover:shadow-lg group ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+              }`}
+              style={{ transitionDelay: `${index * 100 + 300}ms` }}
+            >
               <CardHeader>
                 <div className="mb-4 group-hover:scale-110 transition-transform duration-300">
                   {feature.icon}
