@@ -1,19 +1,13 @@
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Recycle } from "lucide-react";
-
+import { useNavigate } from "react-router-dom";
 type LoginProps = {
   onOpenRegister?: () => void;
   onClose?: () => void;
@@ -22,7 +16,7 @@ type LoginProps = {
 const Login = ({ onOpenRegister, onClose }: LoginProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+  const navigate = useNavigate();
   const handleGoogleSignIn = () => {
     console.log("Google Sign In clicked");
     alert("Google Sign In clicked - Demo only");
@@ -56,6 +50,7 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
     });
 
     console.log("Email login submitted", { email, password });
+    navigate("/admin");
   };
 
   return (
@@ -73,12 +68,8 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
             <Recycle className="w-8 h-8 text-green-600" />
             <span className="text-xl font-bold text-green-800">ECOBIN</span>
           </div>
-          <CardTitle className="text-2xl font-bold text-gray-900">
-            Welcome Back
-          </CardTitle>
-          <CardDescription>
-            Sign in to access your waste monitoring dashboard
-          </CardDescription>
+          <CardTitle className="text-2xl font-bold text-gray-900">Welcome Back</CardTitle>
+          <CardDescription>Sign in to access your waste monitoring dashboard</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -113,9 +104,7 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
               <Separator className="w-full" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-muted-foreground">
-                Or continue with
-              </span>
+              <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
             </div>
           </div>
 
@@ -140,10 +129,7 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
+            <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" onClick={() => navigate("/admin")}>
               Sign In
             </Button>
           </form>
@@ -156,10 +142,7 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
 
           <div className="text-center text-sm">
             Don’t have an account?{" "}
-            <button
-              onClick={onOpenRegister}
-              className="text-green-600 hover:underline"
-            >
+            <button onClick={onOpenRegister} className="text-green-600 hover:underline">
               Sign up
             </button>
           </div>

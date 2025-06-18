@@ -6,8 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
 
 export const PreferencesSection = () => {
+  const { theme, setTheme } = useTheme();
   const [preferences, setPreferences] = useState({
     notifications: {
       email: true,
@@ -197,7 +199,16 @@ export const PreferencesSection = () => {
 
             <div className="space-y-2">
               <Label className="text-sm font-medium">Theme</Label>
-              <Select value={preferences.general.theme} onValueChange={(value) => handleGeneralChange("theme", value)}>
+              <Select
+                value={theme}
+                onValueChange={(value) => {
+                  setTheme(value);
+                  toast({
+                    title: "Theme updated",
+                    description: `Theme has been set to ${value}`,
+                  });
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

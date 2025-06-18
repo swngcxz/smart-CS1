@@ -1,4 +1,3 @@
-
 import { Home, BarChart3, Users, MapPin, Activity, Settings, Recycle, History } from "lucide-react";
 import {
   Sidebar,
@@ -84,4 +83,3 @@ export function AdminSidebar({ currentTab, onTabChange }: AdminSidebarProps) {
     </Sidebar>
   );
 }
-

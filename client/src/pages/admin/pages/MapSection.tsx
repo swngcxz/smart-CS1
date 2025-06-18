@@ -17,21 +17,20 @@ const center: LatLngTuple = [10.2108, 123.7575]; // Naga City, Cebu
 // Define bin locations with type annotations
 const locations: { id: number; name: string; position: LatLngTuple }[] = [
   { id: 1, name: "Bin A", position: [10.2135, 123.7592] },
-  { id: 2, name: "Bin B", position: [10.2150, 123.7550] },
-  { id: 3, name: "Bin C", position: [10.2090, 123.7580] },
+  { id: 2, name: "Bin B", position: [10.215, 123.755] },
+  { id: 3, name: "Bin C", position: [10.209, 123.758] },
 ];
 
 export function MapSection() {
   return (
-    <Card className="h-96">
+    <Card className="h-96 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
           <MapPin className="w-5 h-5 text-green-600" />
           Bin Locations - Naga City, Cebu
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0 h-80 rounded-b-lg overflow-hidden">
-        {/* Use TailwindCSS classes for full height and width */}
         <MapContainer center={center} zoom={15} className="h-full w-full">
           <TileLayer
             attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
