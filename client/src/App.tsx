@@ -9,7 +9,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import NotFound from "./pages/NotFound";
-
+import AdminDashboard from "./pages/AdminDashboard";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -23,7 +23,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-        
+         <Route path="/admin" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
