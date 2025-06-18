@@ -1,7 +1,7 @@
 
-import { WasteLevelCards } from "./WasteLevelCards";
-import { DataAnalytics } from "./DataAnalytics";
-import { MapSection } from "./MapSection";
+import { WasteLevelCards } from "../admin/pages/WasteLevelCards";
+import { DataAnalytics } from "../admin/pages/DataAnalytics";
+import { MapSection } from "../admin/pages/MapSection";
 export function DashboardOverview() {
   return (
     <div className="space-y-6">

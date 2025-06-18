@@ -1,4 +1,4 @@
-import { WasteLevelCards } from "./WasteLevelCards";
+import { WasteLevelCards } from "../pages/WasteLevelCards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Recycle, AlertTriangle, CheckCircle, Clock } from "lucide-react";

@@ -1,4 +1,4 @@
-import { StaffTable } from "./StaffTable";
+import { StaffTable } from "../pages/StaffTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Clock, MapPin } from "lucide-react";

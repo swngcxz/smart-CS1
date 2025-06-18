@@ -1,5 +1,5 @@
 
-import { ActivityLogs } from "./ActivityLogs";
+import { ActivityLogs } from "../pages/ActivityLogs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Calendar, Filter } from "lucide-react";

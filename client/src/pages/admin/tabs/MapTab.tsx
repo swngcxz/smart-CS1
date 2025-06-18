@@ -1,4 +1,4 @@
-import { MapSection } from "./MapSection";
+import { MapSection } from "../pages/MapSection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Navigation, Route } from "lucide-react";

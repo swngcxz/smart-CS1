@@ -1,4 +1,4 @@
-import { DataAnalytics } from "./DataAnalytics";
+import { DataAnalytics } from "../pages/DataAnalytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { BarChart3, TrendingUp, TrendingDown, DollarSign } from "lucide-react";

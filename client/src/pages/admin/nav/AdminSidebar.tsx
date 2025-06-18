@@ -12,19 +12,23 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
+type AdminSidebarProps = {
+  currentTab: string;
+  onTabChange: (value: string) => void;
+};
 
 const menuItems = [
-  { title: "Dashboard", url: "#", icon: Home },
-  { title: "Waste Levels", url: "#", icon: Recycle },
-  { title: "Map View", url: "#", icon: MapPin },
-  { title: "Analytics", url: "#", icon: BarChart3 },
-  { title: "Staff", url: "#", icon: Users },
-  { title: "Activity", url: "#", icon: Activity },
-  { title: "History", url: "#", icon: History },
-  { title: "Settings", url: "#", icon: Settings },
+  { title: "Dashboard", tab: "overview", icon: Home },
+  { title: "Waste Levels", tab: "waste-levels", icon: Recycle },
+  { title: "Map View", tab: "map", icon: MapPin },
+  { title: "Analytics", tab: "analytics", icon: BarChart3 },
+  { title: "Staff", tab: "staff", icon: Users },
+  { title: "Activity", tab: "activity", icon: Activity },
+  { title: "History Logs", tab: "history", icon: History },
+  { title: "Settings", tab: "settings", icon: Settings },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ currentTab, onTabChange }: AdminSidebarProps) {
   return (
     <Sidebar className="border-r border-gray-200">
       <SidebarHeader className="p-4 border-b border-gray-200">
@@ -38,7 +42,7 @@ export function AdminSidebar() {
           </div>
         </div>
       </SidebarHeader>
-      
+
       <SidebarContent className="p-2">
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -47,12 +51,17 @@ export function AdminSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="hover:bg-green-50 hover:text-green-700">
-                    <a href={item.url} className="flex items-center gap-3 px-3 py-2 rounded-md">
+                <SidebarMenuItem key={item.tab}>
+                  <SidebarMenuButton
+                    onClick={() => onTabChange(item.tab)}
+                    className={`hover:bg-green-50 hover:text-green-700 w-full ${
+                      currentTab === item.tab ? "bg-green-100 text-green-700" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-md">
                       <item.icon className="w-4 h-4" />
                       <span>{item.title}</span>
-                    </a>
+                    </div>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -60,7 +69,7 @@ export function AdminSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      
+
       <SidebarFooter className="p-4 border-t border-gray-200">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
@@ -75,3 +84,4 @@ export function AdminSidebar() {
     </Sidebar>
   );
 }
+
