@@ -1,23 +1,52 @@
-
+import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
   const handleGoogleSignIn = () => {
-    // Sample function - would connect to actual Google Auth
     console.log("Google Sign In clicked");
     alert("Google Sign In clicked - Demo only");
   };
 
-  const handleEmailLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Email login submitted");
-    alert("Email login submitted - Demo only");
-  };
+const handleEmailLogin = (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!email || !password) {
+    toast({
+      title: "Missing fields",
+      description: "Please enter both email and password.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    toast({
+      title: "Invalid Email",
+      description: "Please enter a valid email address.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  toast({
+    title: "Login Successful",
+    description: "Welcome back!",
+    variant: "success",
+  });
+
+  console.log("Email login submitted", { email, password });
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center p-4">
@@ -40,7 +69,7 @@ const Login = () => {
             </svg>
             Continue with Google
           </Button>
-          
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <Separator className="w-full" />
@@ -53,11 +82,25 @@ const Login = () => {
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="Enter your email" required />
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="Enter your password" required />
+              <Input
+                id="password"
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+               
+              />
             </div>
             <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
               Sign In
@@ -71,7 +114,7 @@ const Login = () => {
           </div>
 
           <div className="text-center text-sm">
-            Don't have an account?{" "}
+            Don’t have an account?{" "}
             <Link to="/register" className="text-green-600 hover:underline">
               Sign up
             </Link>

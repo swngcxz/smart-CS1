@@ -5,19 +5,77 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
-
+import React, { useState } from "react";
+import { toast } from "@/components/ui/use-toast"
 const Register = () => {
+    const [name, setName] = useState("");
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const [confirmPassword, setConfirmPassword] = useState("");
+
   const handleGoogleSignUp = () => {
     // Sample function - would connect to actual Google Auth
     console.log("Google Sign Up clicked");
     alert("Google Sign Up clicked - Demo only");
   };
 
-  const handleEmailRegister = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Email registration submitted");
-    alert("Email registration submitted - Demo only");
-  };
+const handleEmailRegister = (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!name || !email || !password || !confirmPassword) {
+    toast({
+      title: "Missing fields",
+      description: "Please fill in all required fields.",
+      variant: "destructive",
+    });
+    return;
+  }
+const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)+$/;
+if (!nameRegex.test(name)) {
+  toast({
+    title: "Invalid Name",
+    description: "Full name must contain only letters and at least two words.",
+    variant: "destructive",
+  });
+  return;
+}
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    toast({
+      title: "Invalid Email",
+      description: "Please enter a valid email address.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (password.length < 6) {
+    toast({
+      title: "Weak Password",
+      description: "Password must be at least 6 characters long.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    toast({
+      title: "Password Mismatch",
+      description: "Passwords do not match.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  toast({
+    title: "Registration Successful",
+    description: "Your account has been created (demo only).",
+    variant: "success",
+  });
+
+  console.log("Registration submitted", { name, email, password });
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50 flex items-center justify-center p-4">
@@ -50,27 +108,56 @@ const Register = () => {
             </div>
           </div>
 
-          <form onSubmit={handleEmailRegister} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" type="text" placeholder="Enter your full name" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="Enter your email" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="Create a password" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input id="confirmPassword" type="password" placeholder="Confirm your password" required />
-            </div>
-            <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
-              Create Account
-            </Button>
-          </form>
+      <form onSubmit={handleEmailRegister} className="space-y-4">
+  <div className="space-y-2">
+    <Label htmlFor="name">Full Name</Label>
+    <Input
+      id="name"
+      type="text"
+      placeholder="Enter your full name"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      
+    />
+  </div>
+  <div className="space-y-2">
+    <Label htmlFor="email">Email</Label>
+    <Input
+      id="email"
+      type="email"
+      placeholder="Enter your email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+    
+    />
+  </div>
+  <div className="space-y-2">
+    <Label htmlFor="password">Password</Label>
+    <Input
+      id="password"
+      type="password"
+      placeholder="Create a password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+    
+    />
+  </div>
+  <div className="space-y-2">
+    <Label htmlFor="confirmPassword">Confirm Password</Label>
+    <Input
+      id="confirmPassword"
+      type="password"
+      placeholder="Confirm your password"
+      value={confirmPassword}
+      onChange={(e) => setConfirmPassword(e.target.value)}
+    
+    />
+  </div>
+  <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
+    Create Account
+  </Button>
+</form>
+
 
           <div className="text-center text-sm">
             Already have an account?{" "}

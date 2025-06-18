@@ -8,9 +8,7 @@ const HeroSection = () => {
   const { ref, isVisible } = useScrollAnimation();
   const navigate = useNavigate();
 
-  const handleScheduleDemo = () => {
-    navigate("/register");
-  };
+
 
   const handleLearnMore = () => {
     // Scroll to features section
@@ -52,7 +50,7 @@ const HeroSection = () => {
             <Button 
               size="lg" 
               className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
-              onClick={handleScheduleDemo}
+              
             >
               Schedule Demo
             </Button>

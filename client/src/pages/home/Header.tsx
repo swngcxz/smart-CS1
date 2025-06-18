@@ -1,7 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Recycle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
+    const navigate = useNavigate();
+
+
+
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-green-100">
       <div className="container mx-auto px-4 py-4">
@@ -18,9 +23,21 @@ const Header = () => {
             <a href="#feedback" className="text-gray-700 hover:text-green-600 transition-colors">Feedback</a>
             <a href="#contact" className="text-gray-700 hover:text-green-600 transition-colors">Contact</a>
           </nav>
-          <Button className="bg-green-600 hover:bg-green-700 text-white">
-            Get Started
-          </Button>
+            <div className="flex items-center space-x-4">
+  <Button
+    className="bg-white text-green-600 border border-green-600 hover:bg-green-50 px-5 py-2"
+    onClick={() => navigate("/login")}
+  >
+    Login
+  </Button>
+  <Button
+    className="bg-green-600 hover:bg-green-700 text-white px-5 py-2"
+   onClick={() => navigate("/register")}
+  >
+    Register
+  </Button>
+</div>
+
         </div>
       </div>
     </header>
