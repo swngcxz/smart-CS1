@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import Feedback from "./pages/users/Feedback";
 import Notifications from "./pages/admin/pages/Notifications";
+import StaffDashboard from "./pages/StaffDashboard";
 
 const queryClient = new QueryClient();
 
@@ -28,8 +29,10 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/staff" element={<StaffDashboard />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/notifications" element={<Notifications />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
