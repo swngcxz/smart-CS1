@@ -1,0 +1,27 @@
+# Node modules
+node_modules/
+
+# Logs
+*.log
+logs/
+
+.env
+# NPM package lock file (optional - you might want to keep it, but ignoring it can help avoid conflicts in some cases)
+package-lock.json
+
+# Debug folder
+.vscode/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Optional: Ignore test/coverage folder (if you're using tools like Jest or Mocha)
+coverage/
+
+# Ignore the build or dist folder if you're using any build tool (e.g., Webpack)
+dist/
+
+# Temporary files and folders
+*.tmp
+*.swp
