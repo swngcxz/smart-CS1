@@ -25,3 +25,4 @@ dist/
 # Temporary files and folders
 *.tmp
 *.swp
+.env

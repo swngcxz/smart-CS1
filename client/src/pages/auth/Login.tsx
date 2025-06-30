@@ -8,6 +8,8 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Recycle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import api from '@/lib/api';
+
 type LoginProps = {
   onOpenRegister?: () => void;
   onClose?: () => void;
@@ -18,11 +20,10 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const handleGoogleSignIn = () => {
-    console.log("Google Sign In clicked");
-    alert("Google Sign In clicked - Demo only");
+    window.location.href = 'http://localhost:8000/auth/google';
   };
 
-  const handleEmailLogin = (e: React.FormEvent) => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email || !password) {
@@ -44,13 +45,20 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
       return;
     }
 
-    toast({
-      title: "Login Successful",
-      description: "Welcome back!",
-    });
-
-    console.log("Email login submitted", { email, password });
-    navigate("/admin");
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
+      navigate("/admin");
+    } catch (err: any) {
+      toast({
+        title: "Login Failed",
+        description: err?.response?.data?.message || 'Invalid credentials',
+        variant: "destructive",
+      });
+    }
   };
 
   return (

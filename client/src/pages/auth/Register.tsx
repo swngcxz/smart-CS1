@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import React, { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { Recycle } from "lucide-react";
+import api from '@/lib/api';
 
 type RegisterProps = {
   onOpenLogin?: () => void;
@@ -19,11 +20,10 @@ const Register = ({ onClose, onOpenLogin }: RegisterProps) => {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const handleGoogleSignUp = () => {
-    console.log("Google Sign Up clicked");
-    alert("Google Sign Up clicked - Demo only");
+    window.location.href = 'http://localhost:8000/auth/google';
   };
 
-  const handleEmailRegister = (e: React.FormEvent) => {
+  const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name || !email || !password || !confirmPassword) {
@@ -73,13 +73,21 @@ const Register = ({ onClose, onOpenLogin }: RegisterProps) => {
       return;
     }
 
-    toast({
-      title: "Registration Successful",
-      description: "Your account has been created (demo only).",
-      variant: "success",
-    });
-
-    console.log("Registration submitted", { name, email, password });
+    try {
+      const res = await api.post('/auth/signup', { name, email, password });
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created.",
+        variant: "success",
+      });
+      if (onOpenLogin) onOpenLogin();
+    } catch (err: any) {
+      toast({
+        title: "Registration Failed",
+        description: err?.response?.data?.message || 'Registration error',
+        variant: "destructive",
+      });
+    }
   };
 
   return (
