@@ -5,13 +5,13 @@ const { db } = require('../models/sample');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
+const JWT_SECRET = process.env.TOKEN_SECRET || 'your_jwt_secret';
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',   
+  service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
+    pass: process.env.NODE_CODE_SENDING_EMAIL_PASSWORD,
   },
 });
 
