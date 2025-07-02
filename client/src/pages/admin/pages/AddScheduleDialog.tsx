@@ -65,9 +65,6 @@ export function AddScheduleDialog({ open, onOpenChange, onAddSchedule }: AddSche
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Schedule</DialogTitle>
-          <DialogDescription>
-            Create a new waste collection schedule for a specific location and date.
-          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">

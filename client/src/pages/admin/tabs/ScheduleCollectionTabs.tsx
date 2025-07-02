@@ -156,26 +156,21 @@ export function ScheduleCollectionTabs() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Add Button */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold">Collection Schedule</h3>
-          <p className="text-sm text-gray-600">Click on dates to view schedules. Dates with schedules are highlighted.</p>
-        </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Add Schedule
-        </Button>
-      </div>
+     
+
 
       {/* Large Calendar Section */}
       <Card className="w-full">
         <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Schedule Calendar</CardTitle>
-          <CardDescription>
-            View all collection schedules. Click on highlighted dates to see details.
-          </CardDescription>
+         <CardTitle className="text-2xl">Collection Schedule</CardTitle>
+            <div className="flex justify-end">
+        <Button onClick={() => setIsAddDialogOpen(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add Schedule
+        </Button>
+    </div>
         </CardHeader>
+        
         <CardContent className="p-6">
           <Calendar
             mode="single"
