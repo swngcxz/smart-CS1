@@ -6,6 +6,8 @@ import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
 import React, { useState } from "react";
 import { toast } from "@/components/ui/use-toast";
+import { Eye, EyeOff } from "lucide-react";
+
 import { Recycle } from "lucide-react";
 import api from '@/lib/api';
 
@@ -18,6 +20,9 @@ const Register = ({ onClose, onOpenLogin }: RegisterProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleGoogleSignUp = () => {
     window.location.href = 'http://localhost:8000/auth/google';
@@ -174,32 +179,48 @@ const Register = ({ onClose, onOpenLogin }: RegisterProps) => {
               className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder-gray-400 dark:placeholder-gray-500"
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password" className="dark:text-gray-300">
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Create a password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder-gray-400 dark:placeholder-gray-500"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="dark:text-gray-300">
-              Confirm Password
-            </Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="Confirm your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder-gray-400 dark:placeholder-gray-500"
-            />
-          </div>
+     <div className="space-y-2 relative">
+  <Label htmlFor="password" className="dark:text-gray-300">
+    Password
+  </Label>
+  <Input
+    id="password"
+    type={showPassword ? "text" : "password"}
+    placeholder="Create a password"
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 pr-10"
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword(!showPassword)}
+    className="absolute right-3 top-9 text-gray-500 dark:text-gray-300 hover:text-gray-700"
+  >
+    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+  </button>
+</div>
+
+<div className="space-y-2 relative">
+  <Label htmlFor="confirmPassword" className="dark:text-gray-300">
+    Confirm Password
+  </Label>
+  <Input
+    id="confirmPassword"
+    type={showConfirmPassword ? "text" : "password"}
+    placeholder="Confirm your password"
+    value={confirmPassword}
+    onChange={(e) => setConfirmPassword(e.target.value)}
+    className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 pr-10"
+  />
+  <button
+    type="button"
+    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+    className="absolute right-3 top-9 text-gray-500 dark:text-gray-300 hover:text-gray-700"
+  >
+    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+  </button>
+</div>
+
           <Button
             type="submit"
             className="w-full bg-green-600 hover:bg-green-700 text-white dark:bg-green-500 dark:hover:bg-green-600"
