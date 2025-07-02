@@ -7,6 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Recycle } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+
 import { useNavigate } from "react-router-dom";
 import api from '@/lib/api';
 
@@ -18,6 +20,8 @@ type LoginProps = {
 const Login = ({ onOpenRegister, onClose }: LoginProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
   const navigate = useNavigate();
   const handleGoogleSignIn = () => {
     window.location.href = 'http://localhost:8000/auth/google';
@@ -134,19 +138,28 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password" className="dark:text-gray-300">
-              Password
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Enter your password"
-              className="dark:bg-slate-800 dark:text-white dark:border-gray-600"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+<div className="space-y-2 relative">
+  <Label htmlFor="password" className="dark:text-gray-300">
+    Password
+  </Label>
+  <Input
+    id="password"
+    type={showPassword ? "text" : "password"}
+    placeholder="Enter your password"
+    className="dark:bg-slate-800 dark:text-white dark:border-gray-600 pr-10"
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword(!showPassword)}
+    className="absolute right-3 top-9 text-gray-500 dark:text-gray-300 hover:text-gray-700"
+  >
+    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+  </button>
+</div>
+
+
           <Button
             type="submit"
             className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"

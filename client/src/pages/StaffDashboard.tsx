@@ -13,6 +13,7 @@ import { SettingsTab } from "./admin/tabs/SettingsTab";
 import { StaffSidebar } from "./staff/nav/StaffSidebar";
 import { StaffDashboardHeader } from "./staff/nav/StaffDashboardHeader";
 import { StaffActivityTab } from "./staff/tabs/StaffActivityTab";
+import { ScheduleCollectionTabs } from "./admin/tabs/ScheduleCollectionTabs";
 
 const StaffDashboard = () => {
   const [activePage, setActivePage] = useState("overview");
@@ -24,7 +25,9 @@ const StaffDashboard = () => {
       case "waste-levels":
         return <WasteLevelsTab />;
       case "map":
-        return <MapTab />;
+      return <MapTab />;
+      case "schedule":
+      return <ScheduleCollectionTabs/>;
       case "activity":
         return <StaffActivityTab />;
       case "staff":

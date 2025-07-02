@@ -10,6 +10,7 @@ import { StaffTab } from "./admin/tabs/StaffTab";
 import { ActivityTab } from "./admin/tabs/ActivityTab";
 import { HistoryLogsTab } from "./admin/tabs/HistoryLogsTab";
 import { SettingsTab } from "./admin/tabs/SettingsTab";
+import { ScheduleCollectionTabs } from "./admin/tabs/ScheduleCollectionTabs";
 
 const AdminDashboard = () => {
   const [activePage, setActivePage] = useState("overview");
@@ -26,6 +27,8 @@ const AdminDashboard = () => {
         return <AnalyticsTab />;
       case "staff":
         return <StaffTab />;
+        case "schedule":
+        return <ScheduleCollectionTabs />;
       case "activity":
         return <ActivityTab />;
       case "history":
