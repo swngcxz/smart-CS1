@@ -4,9 +4,13 @@ dotenv.config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const authRouter = require('./routers/authRouter');
+const staffRouter = require('./routers/staffRoutes');
 const passport = require('./utils/googleAuth');
 const session = require('express-session');
-const { saveData } = require('./models/sample');
+const { saveData } = require('./models/firebase.js');
+const scheduleRouter = require("./routers/scheduleRouter");
+const truckScheduleRoutes = require("./routers/truckScheduleRoutes");
+const binsRoutes = require("./routers/binsRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -14,25 +18,26 @@ const PORT = process.env.PORT || 8000;
 app.use(express.json());
 app.use(cookieParser());
 
-// Add session middleware (required for Passport)
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || "defaultsecret",
   resave: false,
   saveUninitialized: false,
 }));
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Mount authentication routes
 app.use('/auth', authRouter);
+app.use('/api/staff', staffRouter);  
+app.use("/api/schedules", scheduleRouter);
+app.use("/api/truck-schedules", truckScheduleRoutes);
+// app.use("/api/bins", binsRoutes);
 
 app.get('/', (req, res) => {
-  res.send('API is running'); 
+  res.send('API is running');
 });
 
 // Google OAuth routes
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/auth/login' }),
   (req, res) => {

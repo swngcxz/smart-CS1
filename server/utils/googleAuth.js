@@ -7,8 +7,6 @@ passport.use(new GoogleStrategy({
   callbackURL: process.env.GOOGLE_CALLBACK_URL,
 },
 function(accessToken, refreshToken, profile, done) {
-  // Here, you would find or create a user in your DB
-  // For now, just return the profile
   return done(null, profile);
 }
 ));
