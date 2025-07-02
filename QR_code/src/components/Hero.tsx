@@ -62,7 +62,7 @@ const Hero = () => {
             size="lg"
             className="border-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white px-8 py-4 text-lg font-medium rounded-full transition-all duration-300"
           >
-            Contact Us
+            Feedback
           </Button>
         </div>
 
