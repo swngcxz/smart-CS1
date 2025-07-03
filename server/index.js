@@ -10,7 +10,9 @@ const session = require('express-session');
 const { saveData } = require('./models/firebase.js');
 const scheduleRouter = require("./routers/scheduleRouter");
 const truckScheduleRoutes = require("./routers/truckScheduleRoutes");
-const binsRoutes = require("./routers/binsRoutes");
+const binRoutes = require("./routers/binRoutes");
+const errorHandler = require("./middlewares/errorHandler");
+const activityRoutes = require("./routers/activityRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -30,7 +32,10 @@ app.use('/auth', authRouter);
 app.use('/api/staff', staffRouter);  
 app.use("/api/schedules", scheduleRouter);
 app.use("/api/truck-schedules", truckScheduleRoutes);
-// app.use("/api/bins", binsRoutes);
+app.use("/api", binRoutes);
+app.use("/api", activityRoutes);
+
+app.use(errorHandler);
 
 app.get('/', (req, res) => {
   res.send('API is running');

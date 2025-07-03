@@ -8,7 +8,8 @@ const {
   updateDoc, 
   deleteDoc, 
   query,          // ADD THIS
-  where           // ADD THIS
+  where,  
+  getDoc          // ADD THIS
 } = require('firebase/firestore');
 
 // your Firebase config
@@ -45,5 +46,6 @@ module.exports = {
   deleteDoc, 
   query,     // export
   where,     // export
-  saveData 
+  saveData,
+  getDoc 
 };
