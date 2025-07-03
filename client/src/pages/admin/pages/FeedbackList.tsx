@@ -52,7 +52,6 @@ const FeedbackList = ({ feedbacks, filter, stats, onFilterChange, onArchive, onD
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
             Active Feedback
           </CardTitle>
           <div className="flex gap-2">
@@ -90,7 +89,6 @@ const FeedbackList = ({ feedbacks, filter, stats, onFilterChange, onArchive, onD
                     <span>{feedback.name}</span>
                     <span>{feedback.email}</span>
                     <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
                       {feedback.date}
                     </div>
                     <div className="flex items-center gap-1">

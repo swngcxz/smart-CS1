@@ -50,7 +50,6 @@ export function ActivityLogs() {
     <Card className="bg-white dark:bg-gray-800 border-0 shadow-lg">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-          <Activity className="w-5 h-5 text-blue-600" />
           Recent Activity
         </CardTitle>
       </CardHeader>

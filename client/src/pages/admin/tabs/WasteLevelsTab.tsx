@@ -51,7 +51,6 @@ export function WasteLevelsTab() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Levels Management</h2>
-        <p className="text-gray-600 dark:text-gray-400">Monitor and manage waste levels across all locations.</p>
       </div>
 
       <WasteLevelCards />
@@ -59,7 +58,6 @@ export function WasteLevelsTab() {
       <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-            <Recycle className="w-5 h-5 text-green-600" />
             Detailed Waste Information
           </CardTitle>
         </CardHeader>

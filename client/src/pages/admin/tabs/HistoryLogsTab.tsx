@@ -182,7 +182,6 @@ export const HistoryLogsTab = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{completedCollections}</div>
-            <p className="text-xs text-green-600 flex items-center mt-1">↗ +20% from yesterday</p>
           </CardContent>
         </Card>
 
@@ -193,7 +192,6 @@ export const HistoryLogsTab = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{averageWasteLevel}%</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Across all collections</p>
           </CardContent>
         </Card>
 
@@ -204,7 +202,6 @@ export const HistoryLogsTab = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalWeight} kg</div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total completed</p>
           </CardContent>
         </Card>
       </div>
@@ -213,10 +210,8 @@ export const HistoryLogsTab = () => {
       <Card className=" dark:bg-gray-900 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Logs className="h-5 w-5 text-green-600" />
-            Collection History Logs
+            History Logs
           </CardTitle>
-          <CardDescription>Detailed logs of waste collection activities with real-time filtering</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4  dark:bg-gray-900 dark:border-gray-700">
           {/* Filter Controls */}

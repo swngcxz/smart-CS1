@@ -60,7 +60,6 @@ const ArchivedView = ({ archivedFeedbacks, onBack, onUnarchive, onDelete }: Arch
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Archive className="w-5 h-5" />
             Feedback Archived ({archivedFeedbacks.length})
           </CardTitle>
         </CardHeader>
@@ -111,7 +110,6 @@ const ArchivedView = ({ archivedFeedbacks, onBack, onUnarchive, onDelete }: Arch
                       className="flex items-center gap-1 text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="w-4 h-4" />
-                      Delete
                     </Button>
                   </div>
                 </div>

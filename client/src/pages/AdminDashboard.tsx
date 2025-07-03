@@ -18,8 +18,6 @@ const AdminDashboard = () => {
   const renderContent = () => {
     switch (activePage) {
       case "overview":
-        return <DashboardOverview />;
-      case "waste-levels":
         return <WasteLevelsTab />;
       case "map":
         return <MapTab />;

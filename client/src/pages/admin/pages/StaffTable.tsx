@@ -28,7 +28,7 @@ export const staffData = [
     id: 4,
     name: "Sarah Wilson",
     role: "Maintenance",
-    zone: "All Routes",
+    zone: "Route D",
     status: "active",
     lastActivity: "1 hour ago",
   },
@@ -73,7 +73,7 @@ export function StaffTable() {
               <SelectItem value="Route A">Route A</SelectItem>
               <SelectItem value="Route B">Route B</SelectItem>
               <SelectItem value="Route C">Route C</SelectItem>
-              <SelectItem value="All Routes">All Routes</SelectItem>
+              <SelectItem value="Route D">Route D</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -90,8 +90,7 @@ export function StaffTable() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-purple-600" />
-            Staff Management
+            Staff Information
           </CardTitle>
         </CardHeader>
         <CardContent>

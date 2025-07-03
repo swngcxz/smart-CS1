@@ -22,8 +22,7 @@ export function StaffDashboardHeader() {
         <div className="flex items-center gap-4">
           <SidebarTrigger />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, Staff</p>
+            <p className="text-sm text-Black-800 dark:text-gray-400">Welcome back, Staff</p>
           </div>
         </div>
 

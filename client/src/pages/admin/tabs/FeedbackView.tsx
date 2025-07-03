@@ -131,7 +131,7 @@ const Feedback = () => {
           onClick={() => setShowArchived(true)}
           className="text-blue-600 hover:text-red-800"
         >
-          View Archived Feedback ({stats.archived})
+          View Archived({stats.archived})
         </button>
       </div>
 

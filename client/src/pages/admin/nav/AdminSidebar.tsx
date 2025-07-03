@@ -20,7 +20,6 @@ type AdminSidebarProps = {
 
 const menuItems = [
   { title: "Dashboard", tab: "overview", icon: Home },
-  { title: "Waste Levels", tab: "waste-levels", icon: Recycle },
   { title: "Map View", tab: "map", icon: MapPin },
   { title: "Analytics", tab: "analytics", icon: BarChart3 },
   { title: "Schedule", tab: "schedule", icon: Calendar },
@@ -34,22 +33,14 @@ export function AdminSidebar({ currentTab, onTabChange }: AdminSidebarProps) {
   return (
     <Sidebar className="border-r border-gray-200 dark:border-slate-700 bg-background dark:bg-gray-900 text-gray-900 dark:text-white">
       <SidebarHeader className="p-4 border-b border-gray-200 bg-background dark:bg-gray-900 text-gray-900 dark:text-white">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-            <Recycle className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white">Smart Waste</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Management System</p>
-          </div>
+        <div className="flex items-center justify-center gap-1">
+          <img src="../public/logo-final2.png" alt="EcoBin Logo" className="w-8 h-8" />
+         <h2 className="text-xl font-bold  text-Black-900 dark:text-white">ECOBIN</h2>
         </div>
       </SidebarHeader>
 
       <SidebarContent className="p-2 bg-background dark:bg-gray-900 text-gray-900 dark:text-white">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            Main Menu
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
@@ -80,7 +71,7 @@ export function AdminSidebar({ currentTab, onTabChange }: AdminSidebarProps) {
             <Users className="w-4 h-4 text-gray-600 dark:text-gray-300" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">Admin User</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">Admin</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">admin@smartwaste.com</p>
           </div>
         </div>

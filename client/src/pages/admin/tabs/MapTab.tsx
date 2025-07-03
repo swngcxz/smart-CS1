@@ -15,9 +15,6 @@ export function MapTab() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Map View</h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          View all waste bin locations and their current status on the map.
-        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -29,7 +26,6 @@ export function MapTab() {
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                <Navigation className="w-5 h-5 text-blue-600" />
                 Location List
               </CardTitle>
             </CardHeader>
@@ -74,23 +70,26 @@ export function MapTab() {
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                <Route className="w-5 h-5 text-purple-600" />
-                Route Optimization
+                Routes 
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3 text-gray-600 dark:text-gray-300">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">Optimal Route Length</span>
-                  <span className="font-medium">12.5 km</span>
+                  <span className="text-sm">Route A</span>
+                  <span className="font-medium">5 Mins</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">Estimated Time</span>
-                  <span className="font-medium">2h 15m</span>
+                  <span className="text-sm">Route B</span>
+                  <span className="font-medium">7 Mins</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">Fuel Cost</span>
-                  <span className="font-medium">$18.50</span>
+                  <span className="text-sm">Route C</span>
+                  <span className="font-medium">10 Mins</span>
+                </div>
+                 <div className="flex justify-between items-center">
+                  <span className="text-sm">Route D</span>
+                  <span className="font-medium">9 Mins</span>
                 </div>
               </div>
             </CardContent>

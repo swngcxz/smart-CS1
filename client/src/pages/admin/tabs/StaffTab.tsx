@@ -20,8 +20,7 @@ export function StaffTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Staff Management</h2>
-        <p className="text-gray-600 dark:text-gray-400">Monitor and manage your waste collection team.</p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Staff Information</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

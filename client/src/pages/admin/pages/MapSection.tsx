@@ -72,10 +72,9 @@ export function MapSection() {
   return (
     <Card className="h-96 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between text-gray-900 dark:text-white">
+        <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
           <div className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-green-600" />
-            Bin Locations - Naga City, Cebu
+          BayWalk Naga City, Cebu
           </div>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1">
