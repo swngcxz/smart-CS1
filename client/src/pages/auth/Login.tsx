@@ -76,13 +76,10 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
 
       <CardHeader className="text-center">
         <div className="flex items-center justify-center gap-2 mb-4">
-          <Recycle className="w-8 h-8 text-green-600" />
+          <img src="../public/logo-final2.png" alt="EcoBin Logo" className="w-8 h-8 align-middle" />
           <span className="text-xl font-bold text-green-800 dark:text-green-400">ECOBIN</span>
         </div>
         <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Welcome Back</CardTitle>
-        <CardDescription className="dark:text-gray-400">
-          Sign in to access your waste monitoring dashboard
-        </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">

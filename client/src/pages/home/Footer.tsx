@@ -7,10 +7,8 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                <Recycle className="h-6 w-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold">EcoSmart</span>
+              <img src="../public/logo-final2.png" alt="EcoBin Logo" className="w-8 h-8 align-middle" />
+              <span className="text-2xl font-bold">Ecobin</span>
             </div>
             <p className="text-gray-400">
               Leading the future of smart waste management with innovative technology and sustainable solutions.
@@ -49,7 +47,7 @@ const Footer = () => {
         </div>
         
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; 2024 EcoSmart. All rights reserved. Building a sustainable future together.</p>
+          <p>&copy; 2024 Ecobin. All rights reserved. Building a sustainable future together.</p>
         </div>
       </div>
     </footer>

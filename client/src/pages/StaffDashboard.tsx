@@ -14,6 +14,8 @@ import { StaffSidebar } from "./staff/nav/StaffSidebar";
 import { StaffDashboardHeader } from "./staff/nav/StaffDashboardHeader";
 import { StaffActivityTab } from "./staff/tabs/StaffActivityTab";
 import { ScheduleCollectionTabs } from "./admin/tabs/ScheduleCollectionTabs";
+import Feedback from "./admin/tabs/FeedbackView";
+
 
 const StaffDashboard = () => {
   const [activePage, setActivePage] = useState("overview");
@@ -32,6 +34,8 @@ const StaffDashboard = () => {
         return <StaffActivityTab />;
       case "staff":
         return <StaffTab />;
+      case "feedback":
+        return <Feedback />;
       case "settings":
         return <SettingsTab />;
       default:

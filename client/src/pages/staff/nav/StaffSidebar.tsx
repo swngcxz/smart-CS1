@@ -25,6 +25,7 @@ const menuItems = [
   { title: "Schedule", tab: "schedule", icon: Calendar },
   { title: "Staff", tab: "staff", icon: Users },
   { title: "Activity", tab: "activity", icon: Activity },
+  { title: "Feedback", tab: "feedback", icon: Activity },
   { title: "Settings", tab: "settings", icon: Settings },
 ];
 

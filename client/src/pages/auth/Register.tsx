@@ -100,18 +100,19 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       <CardHeader className="relative text-center">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-xl font-bold text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white"
+          className="absolute top-4 right-4 text-2xl font-bold text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white"
         >
           ×
         </button>
 
         <div className="flex items-center justify-center gap-2 mb-4">
-          <Recycle className="w-8 h-8 text-green-600 dark:text-green-400" />
+          <img src="../public/logo-final2.png" alt="EcoBin Logo" className="w-8 h-8 align-middle" />
           <span className="text-xl font-bold text-green-800 dark:text-green-400">ECOBIN</span>
         </div>
 
-        <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Create Account</CardTitle>
-        <CardDescription className="dark:text-gray-400">Sign up to get started</CardDescription>
+       <CardTitle className="pt-4 text-2xl font-bold text-gray-900 dark:text-white">
+Create Account</CardTitle>
+
       </CardHeader>
 
       <CardContent className="space-y-4">
