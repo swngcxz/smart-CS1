@@ -21,7 +21,6 @@ type AdminSidebarProps = {
 const menuItems = [
   { title: "Dashboard", tab: "overview", icon: Home },
   { title: "Map View", tab: "map", icon: MapPin },
-  { title: "Analytics", tab: "analytics", icon: BarChart3 },
   { title: "Schedule", tab: "schedule", icon: Calendar },
   { title: "Staff", tab: "staff", icon: Users },
   { title: "Activity Logs", tab: "activity", icon: Activity },

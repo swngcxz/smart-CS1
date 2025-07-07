@@ -106,16 +106,12 @@ export function AnalyticsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Anga City Waste Analytics & Reports</h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Monitor waste collection data, bin levels, and route efficiency across Anga city.
-        </p>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Analytics & Reports</h2>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="flex items-center gap-2">
-          <CalendarDays className="w-4 h-4 text-gray-500" />
           <Select value={timeFilter} onValueChange={(value: "week" | "month") => setTimeFilter(value)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Select period" />
@@ -123,6 +119,7 @@ export function AnalyticsTab() {
             <SelectContent>
               <SelectItem value="week">This Week</SelectItem>
               <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="year">This Year</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -201,8 +198,7 @@ export function AnalyticsTab() {
       <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-            <BarChart3 className="w-5 h-5 text-blue-600" />
-            Bin Status Overview
+            Bin Overview
           </CardTitle>
         </CardHeader>
         <CardContent>

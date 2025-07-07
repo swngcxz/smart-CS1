@@ -18,11 +18,9 @@ const AdminDashboard = () => {
   const renderContent = () => {
     switch (activePage) {
       case "overview":
-        return <WasteLevelsTab />;
+        return <AnalyticsTab />;
       case "map":
         return <MapTab />;
-      case "analytics":
-        return <AnalyticsTab />;
       case "staff":
         return <StaffTab />;
         case "schedule":

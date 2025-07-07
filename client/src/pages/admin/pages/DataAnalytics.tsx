@@ -6,7 +6,6 @@ export function DataAnalytics() {
     <Card className="h-96 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-          <BarChart3 className="w-5 h-5 text-blue-600" />
           Waste Analytics
         </CardTitle>
       </CardHeader>

@@ -13,7 +13,6 @@ export const SettingsTab = () => {
       <div className="w-full">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Settings</h1>
-          <p className="text-slate-600 dark:text-slate-400">Manage your account settings and preferences</p>
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
