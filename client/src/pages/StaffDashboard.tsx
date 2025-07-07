@@ -6,14 +6,14 @@ import { AnalyticsTab } from "./admin/tabs/AnalyticsTab";
 import { DashboardOverview } from "./admin/tabs/DashboardOverview";
 import { WasteLevelsTab } from "./admin/tabs/WasteLevelsTab";
 import { MapTab } from "./admin/tabs/MapTab";
-import { StaffTab } from "./admin/tabs/StaffTab";
+import { StaffTab } from "./staff/tabs/StaffTabb";
 import { ActivityTab } from "./admin/tabs/ActivityTab";
 import { HistoryLogsTab } from "./admin/tabs/HistoryLogsTab";
 import { SettingsTab } from "./admin/tabs/SettingsTab";
 import { StaffSidebar } from "./staff/nav/StaffSidebar";
 import { StaffDashboardHeader } from "./staff/nav/StaffDashboardHeader";
 import { StaffActivityTab } from "./staff/tabs/StaffActivityTab";
-import { ScheduleCollectionTabs } from "./admin/tabs/ScheduleCollectionTabs";
+import { ScheduleCollectionTabs } from "./staff/tabs/SchedulecollectionTabs";
 import Feedback from "./admin/tabs/FeedbackView";
 
 
@@ -27,11 +27,11 @@ const StaffDashboard = () => {
       case "map":
       return <MapTab />;
       case "schedule":
-      return <ScheduleCollectionTabs/>;
+      return <ScheduleCollectionTabs/>
       case "activity":
         return <StaffActivityTab />;
       case "staff":
-        return <StaffTab />;
+        return <StaffTab/>;
       case "feedback":
         return <Feedback />;
       case "settings":

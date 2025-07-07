@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Recycle, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock } from "lucide-react";
 
 const wasteData = [
   {
@@ -10,8 +10,6 @@ const wasteData = [
     status: "critical",
     lastCollected: "2 hours ago",
     icon: AlertTriangle,
-    color: "text-red-600",
-    bgColor: "bg-red-50",
   },
   {
     id: 2,
@@ -20,8 +18,6 @@ const wasteData = [
     status: "normal",
     lastCollected: "1 day ago",
     icon: CheckCircle,
-    color: "text-green-600",
-    bgColor: "bg-green-50",
   },
   {
     id: 3,
@@ -30,8 +26,6 @@ const wasteData = [
     status: "warning",
     lastCollected: "4 hours ago",
     icon: Clock,
-    color: "text-yellow-600",
-    bgColor: "bg-yellow-50",
   },
   {
     id: 4,
@@ -40,12 +34,14 @@ const wasteData = [
     status: "normal",
     lastCollected: "6 hours ago",
     icon: CheckCircle,
-    color: "text-green-600",
-    bgColor: "bg-green-50",
   },
 ];
 
-export function WasteLevelCards() {
+export function WasteLevelCards({
+  onCardClick,
+}: {
+  onCardClick: (location: string) => void;
+}) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {wasteData.map((bin) => {
@@ -53,11 +49,14 @@ export function WasteLevelCards() {
         return (
           <Card
             key={bin.id}
-            className="hover:shadow-md transition-shadow bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
+            onClick={() => onCardClick(bin.location)}
+            className="hover:shadow-md transition-shadow bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 cursor-pointer"
           >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">{bin.location}</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                  {bin.location}
+                </CardTitle>
                 <div
                   className={`p-2 rounded-full ${
                     bin.status === "critical"
@@ -82,7 +81,9 @@ export function WasteLevelCards() {
             <CardContent>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">{bin.level}%</span>
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {bin.level}%
+                  </span>
                   <span
                     className={`text-xs font-medium px-2 py-1 rounded-full ${
                       bin.status === "critical"

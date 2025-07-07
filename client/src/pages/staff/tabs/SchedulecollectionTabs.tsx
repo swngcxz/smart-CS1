@@ -164,6 +164,10 @@ export function ScheduleCollectionTabs() {
         <CardHeader className="pb-4">
          <CardTitle className="text-2xl">Collection Schedule</CardTitle>
             <div className="flex justify-end">
+        <Button onClick={() => setIsAddDialogOpen(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add Schedule
+        </Button>
     </div>
         </CardHeader>
         

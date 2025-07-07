@@ -94,8 +94,7 @@ export function StaffActivityTab() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Staff Activity Overview</h2>
-        <p className="text-gray-600 dark:text-gray-400">Monitor staff tasks, shifts, and recent actions.</p>
+        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Activity Overview</h2>
       </div>
 
       {/* Stats Cards - Top Section */}
@@ -129,9 +128,6 @@ export function StaffActivityTab() {
         <Card className="bg-green-50 dark:bg-gray-900 border border-green-200 dark:border-gray-800">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
-              <div className="w-8 h-8 flex items-center justify-center">
-                <Filter className="w-5 h-5 text-green-600 dark:text-green-400" />
-              </div>
               Activity Filters
             </CardTitle>
           </CardHeader>
@@ -179,11 +175,7 @@ export function StaffActivityTab() {
         <div className="lg:col-span-2">
           <Card className="bg-white dark:bg-gray-900 border border-green-200 dark:border-green-800">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
-                <div className="w-8 h-8 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-green-600 dark:text-green-400" />
-                </div>
-                Quick Activity Summary
+              <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">Activity Summary
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -229,8 +221,7 @@ export function StaffActivityTab() {
       </div>
 
       {/* Full Activity Table - Bottom Section */}
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">Complete Activity Log</h3>
+      <div className="space-y-0">
         <StaffActivityLogs />
       </div>
     </div>

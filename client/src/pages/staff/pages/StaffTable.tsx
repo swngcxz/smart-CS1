@@ -77,6 +77,13 @@ export function StaffTable() {
             </SelectContent>
           </Select>
         </div>
+
+        <button
+          onClick={() => setAddModalOpen(true)}
+          className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition"
+        >
+          + Add Staff
+        </button>
       </div>
 
       {/* Staff Table */}
@@ -130,6 +137,9 @@ export function StaffTable() {
   </CardContent>
 </Card>
 
+
+      <StaffManagementModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} staff={selectedStaff} />
+      <AddStaffModal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} onAdd={handleAddStaff} />
     </>
   );
 }
