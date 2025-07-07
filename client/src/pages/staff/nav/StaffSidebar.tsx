@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Calendar } from "lucide-react";
+import { Calendar, MessageCircle } from "lucide-react";
 
 type StaffSidebarProps = {
   currentTab: string;
@@ -23,8 +23,8 @@ const menuItems = [
   { title: "Map View", tab: "map", icon: MapPin },
   { title: "Schedule", tab: "schedule", icon: Calendar },
   { title: "Staff", tab: "staff", icon: Users },
-  { title: "Activity", tab: "activity", icon: Activity },
-  { title: "Feedback", tab: "feedback", icon: Activity },
+  { title: "Activity Logs", tab: "activity", icon: Activity },
+  { title: "Feedback", tab: "feedback", icon: MessageCircle },
   { title: "Settings", tab: "settings", icon: Settings },
 ];
 
