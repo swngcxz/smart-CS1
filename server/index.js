@@ -13,6 +13,8 @@ const truckScheduleRoutes = require("./routers/truckScheduleRoutes");
 const binRoutes = require("./routers/binRoutes");
 const errorHandler = require("./middlewares/errorHandler");
 const activityRoutes = require("./routers/activityRoutes");
+const analyticsRoutes = require("./routers/analyticsRoutes");
+const wasteRoutes = require("./routers/wasteRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -32,6 +34,8 @@ app.use('/auth', authRouter);
 app.use('/api/staff', staffRouter);  
 app.use("/api/schedules", scheduleRouter);
 app.use("/api/truck-schedules", truckScheduleRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/waste", wasteRoutes);
 app.use("/api", binRoutes);
 app.use("/api", activityRoutes);
 
