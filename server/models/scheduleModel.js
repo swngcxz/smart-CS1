@@ -40,5 +40,5 @@ module.exports = {
   createSchedule,
   getSchedules,
   updateScheduleStatus,
-  findScheduleByStaffAndDate, // ✅ export it
+  findScheduleByStaffAndDate, 
 };

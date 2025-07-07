@@ -57,7 +57,55 @@ const getUserActivityLogs = async (req, res, next) => {
   }
 };
 
+
+const getDailyActivitySummary = async (req, res, next) => {
+  try {
+    const today = new Date();
+    today.setHours(0,0,0,0); // midnight start
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const activityRef = collection(db, "activity_logs");
+    const q = query(
+      activityRef,
+      where("timestamp", ">=", today),
+      where("timestamp", "<", tomorrow)
+    );
+
+    const snapshot = await getDocs(q);
+
+    const activities = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // categorize
+    const summary = {
+      shifts: [],
+      task: [],
+      onboarding: [],
+      reports: [],
+      update: []
+    };
+
+    activities.forEach(act => {
+      if (summary[act.type]) {
+        summary[act.type].push(act);
+      }
+    });
+
+    res.status(200).json({
+      date: today.toISOString().slice(0,10),
+      summary
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   saveActivityLog,
-  getUserActivityLogs
+  getUserActivityLogs,
+  getDailyActivitySummary
 };

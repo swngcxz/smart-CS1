@@ -1,7 +1,15 @@
 // models/staffModel.js
 
-const { getFirestore, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, getDoc } = require("firebase/firestore");
-
+const {
+  db,
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  addDoc,
+  getDoc
+} = require("./firebase");
 
 const STAFF_COLLECTION = "staff";
 
@@ -34,14 +42,13 @@ const StaffModel = {
 
   // Get a staff member by ID
   async getStaffById(id) {
-  const db = getFirestore();
-  const staffDocRef = doc(db, "staff", id);
-  const staffSnapshot = await getDoc(staffDocRef);
-  if (staffSnapshot.exists()) {
-    return { id: staffSnapshot.id, ...staffSnapshot.data() };
-  }
-  return null;
-},
+    const staffDocRef = doc(db, STAFF_COLLECTION, id);
+    const staffSnapshot = await getDoc(staffDocRef);
+    if (staffSnapshot.exists()) {
+      return { id: staffSnapshot.id, ...staffSnapshot.data() };
+    }
+    return null;
+  },
 };
 
 module.exports = StaffModel;

@@ -16,6 +16,7 @@ const activityRoutes = require("./routers/activityRoutes");
 const analyticsRoutes = require("./routers/analyticsRoutes");
 const wasteRoutes = require("./routers/wasteRoutes");
 
+
 const app = express();
 const PORT = process.env.PORT || 8000;
 
