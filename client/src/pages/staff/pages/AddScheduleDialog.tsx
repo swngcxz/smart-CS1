@@ -133,20 +133,6 @@ export function AddScheduleDialog({ open, onOpenChange, onAddSchedule }: AddSche
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="capacity">Expected Capacity (%)</Label>
-            <Input
-              id="capacity"
-              type="number"
-              min="0"
-              max="100"
-              placeholder="Enter capacity percentage"
-              value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
-              required
-            />
-          </div>
-
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

@@ -125,7 +125,7 @@ export function StaffActivityTab() {
       {/* Filters and Recent Activity Summary - Middle Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Activity Filters */}
-        <Card className="bg-green-50 dark:bg-gray-900 border border-green-200 dark:border-gray-800">
+        <Card className=" dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
               Activity Filters
@@ -135,7 +135,7 @@ export function StaffActivityTab() {
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-900 dark:text-white">Activity Type</label>
               <Select value={activityTypeFilter} onValueChange={setActivityTypeFilter}>
-                <SelectTrigger className="w-full bg-white dark:bg-gray-800 border-green-200 dark:border-gray-700 focus:ring-gray-500">
+                <SelectTrigger className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-green-700 focus:ring-gray-500">
                   <SelectValue placeholder="Select activity type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -173,7 +173,7 @@ export function StaffActivityTab() {
 
         {/* Recent Activity Summary */}
         <div className="lg:col-span-2">
-          <Card className="bg-white dark:bg-gray-900 border border-green-200 dark:border-green-800">
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">Activity Summary
               </CardTitle>
@@ -182,11 +182,11 @@ export function StaffActivityTab() {
               {filteredActivities.slice(0, 3).map((activity, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-4 bg-green-50 dark:bg-gray-800 rounded-lg border border-green-100 dark:border-green-800 hover:bg-green-100 dark:hover:bg-gray-700 transition-all duration-200"
+                  className="flex items-center justify-between p-4 bg-white-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 px-2 py-1 rounded border border-green-200 dark:border-green-700">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-green-700">
                         {activity.time}
                       </span>
                       <div
