@@ -164,7 +164,7 @@ export function StaffActivityTab() {
             </div>
             <Button
               onClick={handleApplyFilters}
-              className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600 text-white"
+              className="w-full bg-green-600 bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition"
             >
               Apply Filters
             </Button>

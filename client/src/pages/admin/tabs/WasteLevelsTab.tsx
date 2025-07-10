@@ -223,6 +223,7 @@ const handleAssignTask = () => {
     : [];
 
   return (
+    <>
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Level</h2>
@@ -289,9 +290,11 @@ const handleAssignTask = () => {
         </CardContent>
       </Card>
 
-    {isModalOpen && selectedBin && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-xl p-6 space-y-6 relative">
+
+    </div>
+ {isModalOpen && selectedBin && (
+    <div className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center bg-gray-800 bg-opacity-50 ">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-xl p-8 space-y-6 relative">
       {/* Modal Header */}
       <div className="flex justify-between items-center border-b pb-3">
         <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -299,7 +302,7 @@ const handleAssignTask = () => {
         </h3>
         <button
           onClick={() => setIsModalOpen(false)}
-          className="text-gray-500 hover:text-red-600 text-lg font-bold"
+          className="text-gray-500 hover:text-gray-600 text-lg font-bold"
         >
           ✕
         </button>
@@ -324,7 +327,7 @@ const handleAssignTask = () => {
           Math.round(parseInt(selectedBin.capacity) * (selectedBin.level / 100))
         }L</div>
         <div><strong>Last Collected:</strong> {selectedBin.lastCollected}</div>
-        <div><strong>Next Collection:</strong> {selectedBin.nextCollection}</div>
+  
       </div>
 
       {/* Suggested Action */}
@@ -373,12 +376,6 @@ const handleAssignTask = () => {
       {/* Buttons */}
       <div className="flex justify-end gap-2">
         <Button
-          onClick={() => setTaskNote("")}
-          className="bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-400 dark:hover:bg-gray-600"
-        >
-          Clear
-        </Button>
-        <Button
           onClick={handleAssignTask}
           className="bg-green-600 text-white hover:bg-green-700"
         >
@@ -413,7 +410,6 @@ const handleAssignTask = () => {
   </div>
 )}
 
-
-    </div>
+    </>
   );
 }

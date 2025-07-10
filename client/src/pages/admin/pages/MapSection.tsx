@@ -177,7 +177,7 @@ export function MapSection() {
       <CardContent className="p-0 h-full rounded-b-lg overflow-hidden relative z-0">
        <MapContainer
           center={center}
-          zoom={20}
+          zoom={21}
           scrollWheelZoom={true}
           zoomControl={true}
           className="h-full w-full z-0"
