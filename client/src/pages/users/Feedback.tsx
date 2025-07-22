@@ -76,12 +76,7 @@ const Feedback = () => {
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white p-6">
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 bg-green-100 rounded-full">
-              <MessageSquare className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
+        <div className="text-center mb-8 mt-10">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">User Feedback</h1>
           <p className="text-gray-600">Help us improve our smart waste management system</p>
         </div>
@@ -93,12 +88,6 @@ const Feedback = () => {
               <QrCode className="h-12 w-12 text-green-600" />
               <div>
                 <h3 className="font-semibold text-gray-900">QR Code Scanned</h3>
-                <p className="text-sm text-gray-600">
-                  Bin ID:{" "}
-                  <Badge variant="secondary" className="ml-1">
-                    {binId}
-                  </Badge>
-                </p>
                 <p className="text-sm text-gray-600">Location: Main Street & 5th Ave</p>
               </div>
             </div>
