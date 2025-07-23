@@ -128,11 +128,6 @@ export function ActivityTab() {
                   <option>This Month</option>
                 </select>
               </div>
-
-              {/* In future: make button apply filters explicitly if needed */}
-              <button className="w-full p-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors">
-                Apply Filters
-              </button>
             </CardContent>
           </Card>
 

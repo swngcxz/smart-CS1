@@ -1,9 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapContainer, TileLayer } from "react-leaflet";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L, { LatLngTuple } from "leaflet";
 import { BinMarker } from "./BinMarker";
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
+import { Viewer } from "mapillary-js";
+import "mapillary-js/dist/mapillary.css";
 
 // Fix default marker icons
 L.Icon.Default.mergeOptions({
@@ -62,6 +64,14 @@ const binLocations = [
   },
 ];
 
+function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    setMapRef(map);
+  }, [map, setMapRef]);
+  return null;
+}
+
 export function MapSection() {
   const criticalBins = binLocations.filter((bin) => bin.status === "critical").length;
   const warningBins = binLocations.filter((bin) => bin.status === "warning").length;
@@ -71,7 +81,7 @@ export function MapSection() {
 
   useEffect(() => {
     const pegman = document.getElementById("pegman");
-    const streetViewDiv = document.getElementById("street-view");
+    const streetViewDiv = document.getElementById("mapillary-viewer");
     const closeBtn = document.getElementById("close-street");
 
     if (!pegman || !streetViewDiv || !mapContainerRef.current) return;
@@ -81,21 +91,48 @@ export function MapSection() {
 
     mapArea.addEventListener("dragover", (e) => e.preventDefault());
 
-    mapArea.addEventListener("drop", (e) => {
+    mapArea.addEventListener("drop", async (e) => {
       e.preventDefault();
       pegman.classList.remove("drag-anim");
 
-      const leafletMap = (mapArea as any)._leaflet_map;
+      const leafletMap = (mapContainerRef as any).current._leaflet_map;
+      if (!leafletMap) return;
+
       const containerPoint = leafletMap.mouseEventToContainerPoint(e);
       const latlng = leafletMap.containerPointToLatLng(containerPoint);
 
       streetViewDiv.classList.remove("hidden");
+      streetViewDiv.innerHTML = "";
 
-      new window.google.maps.StreetViewPanorama(streetViewDiv, {
-        position: { lat: latlng.lat, lng: latlng.lng },
-        pov: { heading: 160, pitch: 0 },
-        zoom: 1,
-      });
+      try {
+        const response = await fetch(
+          `https://graph.mapillary.com/images?fields=id&closeto=${latlng.lat},${latlng.lng}&radius=50`,
+          {
+            headers: {
+              Authorization: "OAuth MLY|24007871562201571|74ae29b189e037740ce91b0c91021115",
+            },
+          }
+        );
+        const data = await response.json();
+        console.log("Mapillary API response:", data); // optional: debug
+
+        const imageId = data.data?.[0]?.id;
+
+        if (!imageId) {
+          streetViewDiv.innerHTML = "<p class='text-center pt-4'>No imagery found here.</p>";
+          return;
+        }
+
+        new Viewer({
+          accessToken: "MLY|24007871562201571|74ae29b189e037740ce91b0c91021115",
+          container: "mapillary-viewer",
+          imageId,
+        });
+      } catch (error) {
+        console.error("Failed to load Mapillary image", error);
+        streetViewDiv.innerHTML =
+          "<p class='text-center pt-4 text-red-500'>Failed to load imagery.</p>";
+      }
     });
 
     pegman.addEventListener("dragstart", () => {
@@ -138,13 +175,20 @@ export function MapSection() {
       </CardHeader>
 
       <CardContent className="p-0 h-full rounded-b-lg overflow-hidden relative z-0">
-        <MapContainer
+       <MapContainer
           center={center}
-          zoom={18}
+          zoom={21}
           scrollWheelZoom={true}
           zoomControl={true}
           className="h-full w-full z-0"
+          maxBounds={[[9.8, 123.5], [11.3, 124.1]]}
+          maxBoundsViscosity={1.0}
         >
+          <MapInitializer
+            setMapRef={(map) => {
+              (mapContainerRef as any).current._leaflet_map = map;
+            }}
+          />
           <TileLayer
             attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -153,6 +197,7 @@ export function MapSection() {
             <BinMarker key={bin.id} bin={bin} />
           ))}
         </MapContainer>
+
 
         {/* Pegman Icon */}
         <div
@@ -170,16 +215,16 @@ export function MapSection() {
 
         {/* Street View Viewer */}
         <div
-          id="street-view"
+          id="mapillary-viewer"
           className="absolute top-0 left-0 w-full h-full z-[998] hidden bg-white"
+        ></div>
+
+        <button
+          id="close-street"
+          className="absolute top-2 right-2 text-black px-3 py-1 rounded z-[999]"
         >
-          <button
-            id="close-street"
-            className="absolute top-2 right-2 bg-black text-white px-3 py-1 rounded z-[999]"
-          >
-            Close
-          </button>
-        </div>
+          x
+        </button>
       </CardContent>
     </Card>
   );

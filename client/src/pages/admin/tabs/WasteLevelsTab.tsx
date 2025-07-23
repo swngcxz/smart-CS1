@@ -2,7 +2,17 @@ import { useState } from "react";
 import { WasteLevelCards } from "../pages/WasteLevelCards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+// Example janitorial staff list with location
+const janitorialStaff = [
+  { id: 1, name: "Janitor Alice", location: "Central Plaza" },
+  { id: 2, name: "Janitor Bob", location: "Park Avenue" },
+  { id: 3, name: "Janitor Charlie", location: "Mall District" },
+  { id: 4, name: "Janitor Daisy", location: "Residential Area" },
+  { id: 5, name: "Janitor Ethan", location: "Central Plaza" },
+];
 // Your waste data with multiple bins in "Central Plaza"
 const detailedWasteData = [
   // Central Plaza
@@ -176,26 +186,55 @@ const detailedWasteData = [
 
 
 export function WasteLevelsTab() {
-  // ⬇️ Set default selected location to "Central Plaza"
   const [selectedLocation, setSelectedLocation] = useState("Central Plaza");
+  const [selectedBin, setSelectedBin] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedJanitorId, setSelectedJanitorId] = useState(null);
+const [taskNote, setTaskNote] = useState("");
+const [showConfirmation, setShowConfirmation] = useState(false);
 
   const filteredBins = detailedWasteData.filter(
     (bin) => bin.location === selectedLocation
   );
 
+  const handleCardClick = (bin) => {
+    setSelectedBin(bin);
+    setSelectedJanitorId(null); // Reset selection on open
+    setIsModalOpen(true);
+  };
+
+const handleAssignTask = () => {
+  if (!selectedJanitorId) {
+    setShowConfirmation(false);
+    return;
+  }
+
+  const janitor = janitorialStaff.find(j => j.id === parseInt(selectedJanitorId));
+
+  // If needed, log or save task assignment here
+
+  // Show confirmation modal (instead of alert)
+  setShowConfirmation(true);
+};
+
+
+  const filteredJanitors = selectedBin
+    ? janitorialStaff.filter((j) => j.location === selectedBin.location)
+    : [];
+
   return (
+    <>
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Levels</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Level</h2>
       </div>
 
-      {/* 🔹 Pass the click handler down */}
       <WasteLevelCards onCardClick={setSelectedLocation} />
 
       <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-           Waste Information - {selectedLocation}
+            Waste Information - {selectedLocation}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -203,7 +242,8 @@ export function WasteLevelsTab() {
             {filteredBins.map((bin) => (
               <Card
                 key={bin.id}
-                className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                onClick={() => handleCardClick(bin)}
+                className="cursor-pointer p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -249,6 +289,127 @@ export function WasteLevelsTab() {
           </div>
         </CardContent>
       </Card>
+
+
     </div>
+ {isModalOpen && selectedBin && (
+    <div className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center bg-gray-800 bg-opacity-50 ">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-xl p-8 space-y-6 relative">
+      {/* Modal Header */}
+      <div className="flex justify-between items-center border-b pb-3">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+          Bin Information - {selectedBin.location}
+        </h3>
+        <button
+          onClick={() => setIsModalOpen(false)}
+          className="text-gray-500 hover:text-gray-600 text-lg font-bold"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Overview Section */}
+      <div className="grid grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300">
+        <div><strong>Bin ID:</strong> {selectedBin.id}</div>
+        <div><strong>Waste Type:</strong> {selectedBin.wasteType}</div>
+        <div><strong>Status:</strong> 
+          <span className={`ml-1 font-semibold ${
+            selectedBin.status === "critical"
+              ? "text-red-600"
+              : selectedBin.status === "warning"
+              ? "text-yellow-600"
+              : "text-green-600"
+          }`}>{selectedBin.status.toUpperCase()}</span>
+        </div>
+        <div><strong>Fill Level:</strong> {selectedBin.level}%</div>
+        <div><strong>Capacity:</strong> {selectedBin.capacity}</div>
+        <div><strong>Est. Waste Volume:</strong> {
+          Math.round(parseInt(selectedBin.capacity) * (selectedBin.level / 100))
+        }L</div>
+        <div><strong>Last Collected:</strong> {selectedBin.lastCollected}</div>
+  
+      </div>
+
+      {/* Suggested Action */}
+      <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
+        <strong>Suggested Action:</strong> {
+          selectedBin.status === "critical"
+            ? "Immediate collection required."
+            : selectedBin.status === "warning"
+            ? "Monitor closely and prepare for collection."
+            : "No action needed at the moment."
+        }
+      </div>
+
+      {/* Assign Janitor */}
+      <div>
+        <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Assign to Janitor</label>
+        <Select onValueChange={(val) => setSelectedJanitorId(val)}>
+          <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
+            <SelectValue placeholder="Select Janitor" />
+          </SelectTrigger>
+          <SelectContent>
+            {filteredJanitors.length > 0 ? (
+              filteredJanitors.map((janitor) => (
+                <SelectItem key={janitor.id} value={janitor.id.toString()}>
+                  {janitor.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem disabled value="none">No janitors in this location</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Task Note */}
+      <div>
+        <label className="block text-sm font-medium text-gray-900 dark:text-white mt-4 mb-2">Task Notes (optional)</label>
+        <textarea
+          className="w-full h-24 rounded-md border bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-800 dark:text-white p-2"
+          placeholder="E.g., Prioritize recyclable waste. Use PPE."
+          value={taskNote}
+          onChange={(e) => setTaskNote(e.target.value)}
+        />
+      </div>
+
+      {/* Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button
+          onClick={handleAssignTask}
+          className="bg-green-600 text-white hover:bg-green-700"
+        >
+          Assign Task
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Confirmation Modal */}
+{showConfirmation && selectedJanitorId && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-6">
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Task Assigned</h3>
+      <p className="text-sm text-gray-800 dark:text-gray-300 mb-4">
+        Task successfully assigned to <strong>{janitorialStaff.find(j => j.id === parseInt(selectedJanitorId))?.name}</strong>
+        {taskNote && ` with note: "${taskNote}"`}
+      </p>
+      <Button
+        onClick={() => {
+          setShowConfirmation(false);
+          setIsModalOpen(false);
+          setTaskNote("");
+          setSelectedJanitorId(null);
+        }}
+        className="w-full bg-green-600 text-white hover:bg-green-700"
+      >
+        OK
+      </Button>
+    </div>
+  </div>
+)}
+
+    </>
   );
 }

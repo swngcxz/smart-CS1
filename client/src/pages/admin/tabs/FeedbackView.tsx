@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import FeedbackList from "@/pages/admin/pages/FeedbackList"
 import FeedbackStats from "@/pages/admin/pages/FeedbackStats"
 import ArchivedView from "@/pages/admin/pages/ArchivedView"
+import { Button } from "@/components/ui/button";
 
 interface FeedbackItem {
   id: number
@@ -127,12 +128,13 @@ const Feedback = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Feedback</h1>
         </div>
-        <button 
+       <button
           onClick={() => setShowArchived(true)}
-          className="text-blue-600 hover:text-red-800"
+          className="px-4 py-2 border border-gray-100 text-green hover:text-red-800 hover:border-red-800 rounded-md transition-colors"
         >
-          View Archived({stats.archived})
+          View Archived ({stats.archived})
         </button>
+
       </div>
 
       <FeedbackStats stats={stats} />

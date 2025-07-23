@@ -33,12 +33,6 @@ export function StaffManagementModal({ isOpen, onClose, staff }: StaffManagement
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" />
-            Manage Staff - {staff.name}
-          </DialogTitle>
-        </DialogHeader>
 
         <div className="space-y-6">
           {/* Staff Info Card */}
@@ -81,38 +75,11 @@ export function StaffManagementModal({ isOpen, onClose, staff }: StaffManagement
             </CardContent>
           </Card>
 
-          {/* Role Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Role Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Assign Role</label>
-                <Select value={selectedRole} onValueChange={setSelectedRole}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Collection Driver">Collection Driver</SelectItem>
-                    <SelectItem value="Supervisor">Supervisor</SelectItem>
-                    <SelectItem value="Maintenance">Maintenance</SelectItem>
-                    <SelectItem value="Route Coordinator">Route Coordinator</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Zone Assignment */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Zone Assignment
+                Assign Zone
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -129,7 +96,6 @@ export function StaffManagementModal({ isOpen, onClose, staff }: StaffManagement
                     <SelectItem value="Zone B">Zone B - Residential North</SelectItem>
                     <SelectItem value="Zone C">Zone C - Industrial</SelectItem>
                     <SelectItem value="Zone D">Zone D - Residential South</SelectItem>
-                    <SelectItem value="All Zones">All Zones</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -140,7 +106,6 @@ export function StaffManagementModal({ isOpen, onClose, staff }: StaffManagement
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Route className="w-4 h-4" />
                 Task Assignment
               </CardTitle>
             </CardHeader>
@@ -180,7 +145,7 @@ export function StaffManagementModal({ isOpen, onClose, staff }: StaffManagement
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
-            <Button className="flex-1 bg-blue-600 hover:bg-blue-700">Save Changes</Button>
+            <Button className="flex-1 bg-green-600 hover:bg-green-700">Save Changes</Button>
             <Button variant="outline" className="flex-1" onClick={onClose}>
               Cancel
             </Button>
