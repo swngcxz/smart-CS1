@@ -1,47 +1,28 @@
-// truckScheduleModel.js
-const {
-  db,
-  collection,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  updateDoc,
-  doc
-} = require("./firebase");
+const { db } = require("./firebase");
 
 async function createTruckSchedule(data) {
-  return await addDoc(collection(db, "truckSchedules"), data);
+  return await db.collection("truckSchedules").add(data);
 }
 
 async function getTruckSchedules(filter = {}) {
-  let ref = collection(db, "truckSchedules");
-
+  let ref = db.collection("truckSchedules");
   if (filter.status) {
-    ref = query(ref, where("status", "==", filter.status));
+    ref = ref.where("status", "==", filter.status);
   }
-
-  const snapshot = await getDocs(ref);
+  const snapshot = await ref.get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
 async function updateTruckScheduleStatus(id, status) {
-  const ref = doc(db, "truckSchedules", id);
-  await updateDoc(ref, { status });
+  await db.collection("truckSchedules").doc(id).update({ status });
 }
 
 async function findTruckScheduleByStaffAndDate(staffId, date) {
-  const q = query(
-    collection(db, "truckSchedules"),
-    where("staffId", "==", staffId),
-    where("date", "==", date)
-  );
-
-  const snapshot = await getDocs(q);
-  return snapshot.empty ? null : {
-    id: snapshot.docs[0].id,
-    ...snapshot.docs[0].data()
-  };
+  const snapshot = await db.collection("truckSchedules")
+    .where("staffId", "==", staffId)
+    .where("date", "==", date)
+    .get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
 module.exports = {

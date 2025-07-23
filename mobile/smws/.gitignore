@@ -1,39 +1,28 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# Node modules
 node_modules/
 
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
+# Logs
+*.log
+logs/
 
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
+.env
+# NPM package lock file (optional - you might want to keep it, but ignoring it can help avoid conflicts in some cases)
+package-lock.json
 
-# Metro
-.metro-health-check*
+# Debug folder
+.vscode/
 
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
+# OS-specific files
 .DS_Store
-*.pem
+Thumbs.db
 
-# local env files
-.env*.local
+# Optional: Ignore test/coverage folder (if you're using tools like Jest or Mocha)
+coverage/
 
-# typescript
-*.tsbuildinfo
+# Ignore the build or dist folder if you're using any build tool (e.g., Webpack)
+dist/
 
-app-example
+# Temporary files and folders
+*.tmp
+*.swp
+.env

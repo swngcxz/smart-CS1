@@ -1,51 +1,34 @@
-const { initializeApp } = require('firebase/app');
-const { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  query,          // ADD THIS
-  where,  
-  getDoc          // ADD THIS
-} = require('firebase/firestore');
+const admin = require('firebase-admin');
+const dotenv = require('dotenv');
+dotenv.config();
 
-// your Firebase config
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
-  measurementId: process.env.FIREBASE_MEASUREMENT_ID,
+// Prepare service account credentials from .env
+const serviceAccount = {
+  type: process.env.TYPE,
+  project_id: process.env.PROJECT_ID,
+  private_key_id: process.env.PRIVATE_KEY_ID,
+  private_key: process.env.PRIVATE_KEY.replace(/\\n/g, '\n'),
+  client_email: process.env.CLIENT_EMAIL,
+  client_id: process.env.CLIENT_ID,
+  auth_uri: process.env.AUTH_URI,
+  token_uri: process.env.TOKEN_URI,
+  auth_provider_x509_cert_url: process.env.AUTH_PROVIDER_X509_CERT_URL,
+  client_x509_cert_url: process.env.CLIENT_X509_CERT_URL,
+  universe_domain: process.env.UNIVERSE_DOMAIN
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-async function saveData(collectionName, data) {
-  try {
-    const docRef = await addDoc(collection(db, collectionName), data);
-    return { success: true, id: docRef.id };
-  } catch (err) {
-    console.error('Error saving data:', err);
-    return { success: false, error: err.message };
-  }
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+  });
 }
 
-module.exports = { 
-  db, 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  query,     // export
-  where,     // export
-  saveData,
-  getDoc 
+const db = admin.firestore();
+const bucket = admin.storage().bucket();
+
+module.exports = {
+  db,
+  bucket,
+  admin
 };

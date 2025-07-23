@@ -1,4 +1,4 @@
-const { db, addDoc, collection, query, getDocs, saveData, where } = require("../models/firebase");
+const { db, saveData } = require("../models/firebase");
 const { hashPassword, comparePassword } = require("../utils/authUtils");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
@@ -22,8 +22,7 @@ async function signup(req, res) {
 
   try {
     // check if user already exists
-    const q = query(collection(db, "users"), where("email", "==", email));
-    const snapshot = await getDocs(q);
+    const snapshot = await db.collection("users").where("email", "==", email).get();
 
     if (!snapshot.empty) {
       return res.status(409).json({ error: "User already exists" });
@@ -42,9 +41,9 @@ async function signup(req, res) {
       updatedAt: new Date().toISOString(),
     };
 
-    const result = await saveData("users", userData);
-
-    if (result.success) {
+    try {
+      console.log("Saving user to Firestore collection: users");
+      const docRef = await db.collection("users").add(userData);
       const token = jwt.sign({ email, role: userData.role }, JWT_SECRET, { expiresIn: "1d" });
 
       res.cookie("token", token, { httpOnly: true, secure: false });
@@ -56,10 +55,10 @@ async function signup(req, res) {
         text: `Thank you for signing up, ${fullName}!`,
       });
 
-      return res.status(201).json({ id: result.id, token });
+      return res.status(201).json({ id: docRef.id, token });
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to create user" });
     }
-
-    return res.status(500).json({ error: "Failed to create user" });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
@@ -75,8 +74,7 @@ async function login(req, res) {
 
   try {
     // find user by email
-    const q = query(collection(db, "users"), where("email", "==", email));
-    const snapshot = await getDocs(q);
+    const snapshot = await db.collection("users").where("email", "==", email).get();
 
     if (snapshot.empty) {
       return res.status(401).json({ error: "Invalid credentials" });
@@ -98,7 +96,8 @@ async function login(req, res) {
       logoutTime: null,
     };
 
-    const logRef = await addDoc(collection(db, "logs"), loginLog);
+    console.log("Saving login log to Firestore collection: logs");
+    const logRef = await db.collection("logs").add(loginLog);
 
     // generate JWT with log ID included
     const token = jwt.sign(

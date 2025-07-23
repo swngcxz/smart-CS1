@@ -1,4 +1,4 @@
-const { db, collection, addDoc, getDocs, query, where,getDoc, doc } = require("../models/firebase");
+const { db } = require("../models/firebase");
 
 // Save an activity log
 const saveActivityLog = async (req, res, next) => {
@@ -13,7 +13,8 @@ const saveActivityLog = async (req, res, next) => {
       status
     };
 
-    await addDoc(collection(db, "activitylogs"), data);
+    console.log("Saving activity log to Firestore collection: activitylogs");
+    await db.collection("activitylogs").add(data);
 
     res.status(201).json({ message: "Activity log saved successfully." });
   } catch (err) {
@@ -26,18 +27,17 @@ const getUserActivityLogs = async (req, res, next) => {
     const { userId } = req.params;
 
     // first get user info
-    const userDoc = await getDoc(doc(db, "users", userId));
+    const userDoc = await db.collection("users").doc(userId).get();
 
-    if (!userDoc.exists()) {
+    if (!userDoc.exists) {
       return res.status(404).json({ message: "User not found" });
     }
 
     const userData = userDoc.data();
 
     // then get activity logs
-    const logsRef = collection(db, "activitylogs");
-    const q = query(logsRef, where("user_id", "==", userId));
-    const snapshot = await getDocs(q);
+    console.log("Querying activitylogs for user_id:", userId);
+    const snapshot = await db.collection("activitylogs").where("user_id", "==", userId).get();
 
     const logs = snapshot.docs.map(doc => ({
       id: doc.id,
@@ -45,18 +45,17 @@ const getUserActivityLogs = async (req, res, next) => {
     }));
 
     res.status(200).json({
-        user: {
-            id: userId,
-            name: userData.fullName    // use correct field
-        },
-        activities: logs
-        });
+      user: {
+        id: userId,
+        name: userData.fullName    // use correct field
+      },
+      activities: logs
+    });
 
   } catch (err) {
     next(err);
   }
 };
-
 
 const getDailyActivitySummary = async (req, res, next) => {
   try {
@@ -65,14 +64,11 @@ const getDailyActivitySummary = async (req, res, next) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const activityRef = collection(db, "activity_logs");
-    const q = query(
-      activityRef,
-      where("timestamp", ">=", today),
-      where("timestamp", "<", tomorrow)
-    );
-
-    const snapshot = await getDocs(q);
+    console.log("Querying activitylogs for today's summary");
+    const snapshot = await db.collection("activitylogs")
+      .where("timestamp", ">=", today)
+      .where("timestamp", "<", tomorrow)
+      .get();
 
     const activities = snapshot.docs.map(doc => ({
       id: doc.id,

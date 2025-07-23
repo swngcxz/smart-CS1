@@ -1,10 +1,9 @@
-const { db, collection, getDocs, query, where } = require("../models/firebase");
+const { db } = require("../models/firebase");
 
 // get collection counts (weekly, daily, monthly, yearly)
 const getCollectionCounts = async (req, res, next) => {
   try {
-    const binsRef = collection(db, "bins");
-    const snapshot = await getDocs(binsRef);
+    const snapshot = await db.collection("bins").get();
 
     const now = new Date();
     let todayCount = 0, weekCount = 0, monthCount = 0, yearCount = 0;
@@ -33,8 +32,7 @@ const getCollectionCounts = async (req, res, next) => {
 // calculate average fill level
 const getAverageFillLevel = async (req, res, next) => {
   try {
-    const binsRef = collection(db, "bins");
-    const snapshot = await getDocs(binsRef);
+    const snapshot = await db.collection("bins").get();
 
     let totalFill = 0;
     let count = 0;
@@ -55,9 +53,7 @@ const getAverageFillLevel = async (req, res, next) => {
 // identify critical bins
 const getCriticalBins = async (req, res, next) => {
   try {
-    const binsRef = collection(db, "bins");
-    const q = query(binsRef, where("bin_level", ">=", 95));
-    const snapshot = await getDocs(q);
+    const snapshot = await db.collection("bins").where("bin_level", ">=", 95).get();
 
     const critical = snapshot.docs.map(doc => ({
       id: doc.id,
@@ -75,9 +71,7 @@ const getRouteEfficiency = async (req, res, next) => {
   try {
     // simplistic version:
     // count how many bins >90% are in the same location
-    const binsRef = collection(db, "bins");
-    const q = query(binsRef, where("bin_level", ">", 90));
-    const snapshot = await getDocs(q);
+    const snapshot = await db.collection("bins").where("bin_level", ">", 90).get();
 
     const grouped = {};
     snapshot.forEach(doc => {

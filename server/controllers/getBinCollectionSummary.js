@@ -1,9 +1,9 @@
-const { db, collection, getDocs } = require("../models/firebase");
+const { db } = require("../models/firebase");
 
 const getBinCollectionSummary = async (req, res, next) => {
   try {
-    const binsRef = collection(db, "bins");
-    const snapshot = await getDocs(binsRef);
+    console.log("Querying all bins from Firestore collection: bins");
+    const snapshot = await db.collection("bins").get();
 
     const bins = snapshot.docs.map(doc => ({
       id: doc.id,

@@ -1,11 +1,11 @@
-const { db, collection, addDoc, getDocs, query, where } = require("./firebase");
+const { db } = require("./firebase");
 
 async function saveFeedback(data) {
-  return await addDoc(collection(db, "feedbacks"), data);
+  return await db.collection("feedbacks").add(data);
 }
 
 async function getAllFeedbacks() {
-  const snapshot = await getDocs(collection(db, "feedbacks"));
+  const snapshot = await db.collection("feedbacks").get();
   return snapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
@@ -13,8 +13,7 @@ async function getAllFeedbacks() {
 }
 
 async function getFeedbacksByStatus(status) {
-  const q = query(collection(db, "feedbacks"), where("status", "==", status));
-  const snapshot = await getDocs(q);
+  const snapshot = await db.collection("feedbacks").where("status", "==", status).get();
   return snapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()

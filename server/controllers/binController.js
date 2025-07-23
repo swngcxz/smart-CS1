@@ -1,4 +1,4 @@
-const { saveData, db, collection, query, where, getDocs, addDoc} = require("../models/firebase");
+const { db } = require("../models/firebase");
 const { shouldSaveBinData } = require("../utils/binLevelHandler");
 
 let alreadySaved85_90 = {};  // in-memory tracking
@@ -17,20 +17,22 @@ const saveBinData = async (req, res, next) => {
     } = req.body;
 
     const action = shouldSaveBinData(bin_level);
+    const binData = {
+      sensored_id,
+      bin_code,
+      type,
+      location,
+      bin_level,
+      capacity,
+      last_collected,
+      status,
+      timestamp: new Date()
+    };
 
     if (action === "save_once") {
       if (!alreadySaved85_90[sensored_id]) {
-        await saveData("bins", {
-          sensored_id,
-          bin_code,
-          type,
-          location,
-          bin_level,
-          capacity,
-          last_collected,
-          status,
-          timestamp: new Date()
-        });
+        console.log("Saving bin data to Firestore collection: bins (save_once)");
+        await db.collection("bins").add(binData);
         alreadySaved85_90[sensored_id] = true;
         return res.status(200).json({ message: "Saved once for 85–90% bin level" });
       } else {
@@ -39,17 +41,8 @@ const saveBinData = async (req, res, next) => {
     }
 
     if (action === "save_always") {
-      await saveData("bins", {
-        sensored_id,
-        bin_code,
-        type,
-        location,
-        bin_level,
-        capacity,
-        last_collected,
-        status,
-        timestamp: new Date()
-      });
+      console.log("Saving bin data to Firestore collection: bins (save_always)");
+      await db.collection("bins").add(binData);
       alreadySaved85_90[sensored_id] = false; 
       return res.status(200).json({ message: "Saved individually for 91–99% bin level" });
     }
@@ -63,8 +56,8 @@ const saveBinData = async (req, res, next) => {
 
 const getAllBins = async (req, res, next) => {
   try {
-    const binsRef = collection(db, "bins");
-    const snapshot = await getDocs(binsRef);
+    console.log("Querying all bins from Firestore collection: bins");
+    const snapshot = await db.collection("bins").get();
 
     const bins = snapshot.docs.map(doc => ({
       id: doc.id,
@@ -96,7 +89,8 @@ const assignBinTask = async (req, res, next) => {
     };
 
     // save the task
-    const docRef = await addDoc(collection(db, "task_assignments"), taskData);
+    console.log("Saving task assignment to Firestore collection: task_assignments");
+    const docRef = await db.collection("task_assignments").add(taskData);
 
     // create a notification
     const notificationData = {
@@ -107,7 +101,8 @@ const assignBinTask = async (req, res, next) => {
       read: false
     };
 
-    await addDoc(collection(db, "notifications"), notificationData);
+    console.log("Saving notification to Firestore collection: notifications");
+    await db.collection("notifications").add(notificationData);
 
     res.status(201).json({
       message: "Task assigned successfully and notification sent",
