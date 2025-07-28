@@ -8,7 +8,7 @@ export function useAuth() {
   const navigate = useNavigate();
 
   // Login handler
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, setError?: (msg: string) => void) => {
     setLoading(true);
     try {
       const res = await api.post("/auth/login", { email, password });
@@ -23,19 +23,23 @@ export function useAuth() {
       } else {
         navigate("/users");
       }
+      if (setError) setError("");
+      return true;
     } catch (err: any) {
+      if (setError) setError("Incorrect Password or Email");
       toast({
         title: "Login Failed",
         description: err?.response?.data?.error || "Invalid credentials",
         variant: "destructive",
       });
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
   // Signup handler
-  const signup = async (fullName: string, email: string, password: string, address?: string, role?: string) => {
+  const signup = async (fullName: string, email: string, password: string, address?: string, role?: string, setError?: (msg: string) => void) => {
     setLoading(true);
     try {
       const res = await api.post("/auth/signup", { fullName, email, password, address, role });
@@ -48,12 +52,16 @@ export function useAuth() {
       } else {
         navigate("/users");
       }
+      if (setError) setError("");
+      return true;
     } catch (err: any) {
+      if (setError) setError("Incorrect Password or Email");
       toast({
         title: "Signup Failed",
         description: err?.response?.data?.error || "Signup error",
         variant: "destructive",
       });
+      return false;
     } finally {
       setLoading(false);
     }
