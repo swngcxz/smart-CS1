@@ -1,4 +1,4 @@
-import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,47 +22,14 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const navigate = useNavigate();
+  const { login, loading } = useAuth();
   const handleGoogleSignIn = () => {
     window.location.href = 'http://localhost:8000/auth/google';
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!email || !password) {
-      toast({
-        title: "Missing fields",
-        description: "Please enter both email and password.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const res = await api.post('/auth/login', { email, password });
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-      navigate("/admin");
-    } catch (err: any) {
-      toast({
-        title: "Login Failed",
-        description: err?.response?.data?.message || 'Invalid credentials',
-        variant: "destructive",
-      });
-    }
+    await login(email, password);
   };
 
   return (
@@ -160,8 +127,9 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
           <Button
             type="submit"
             className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
+            disabled={loading}
           >
-            Sign In
+            {loading ? "Signing In..." : "Sign In"}
           </Button>
         </form>
 

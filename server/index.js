@@ -24,7 +24,10 @@ const db = admin.database();
 const dataRef = db.ref('monitoring/data');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:8080',
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(cookieParser());

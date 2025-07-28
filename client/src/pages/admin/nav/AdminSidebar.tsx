@@ -1,4 +1,4 @@
-import { Home, BarChart3, Users, MapPin, Activity, Settings, Recycle, History } from "lucide-react";
+import { Home, BarChart3, Users, MapPin, Activity, Settings, Recycle, History, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +12,8 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 type AdminSidebarProps = {
   currentTab: string;
@@ -29,6 +31,7 @@ const menuItems = [
 ];
 
 export function AdminSidebar({ currentTab, onTabChange }: AdminSidebarProps) {
+  const { signout, loading } = useAuth();
   return (
     <Sidebar className="border-r border-gray-200 dark:border-slate-700 bg-background dark:bg-gray-900 text-gray-900 dark:text-white">
       <SidebarHeader className="p-4 border-b border-gray-200 bg-background dark:bg-gray-900 text-gray-900 dark:text-white">
@@ -65,7 +68,7 @@ export function AdminSidebar({ currentTab, onTabChange }: AdminSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-gray-200 dark:border-slate-700 bg-background dark:bg-gray-900 text-gray-900 dark:text-white">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-2">
           <div className="w-8 h-8 bg-gray-300 dark:bg-slate-600 rounded-full flex items-center justify-center">
             <Users className="w-4 h-4 text-gray-600 dark:text-gray-300" />
           </div>
@@ -74,6 +77,7 @@ export function AdminSidebar({ currentTab, onTabChange }: AdminSidebarProps) {
             <p className="text-xs text-gray-500 dark:text-gray-400">admin@smartwaste.com</p>
           </div>
         </div>
+
       </SidebarFooter>
     </Sidebar>
   );

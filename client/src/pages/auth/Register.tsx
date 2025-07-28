@@ -9,7 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 
 import { Recycle } from "lucide-react";
-import api from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 
 type RegisterProps = {
   onOpenLogin?: () => void;
@@ -28,9 +28,9 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     window.location.href = 'http://localhost:8000/auth/google';
   };
 
+  const { signup, loading } = useAuth();
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!name || !email || !password || !confirmPassword) {
       toast({
         title: "Missing fields",
@@ -39,36 +39,6 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       });
       return;
     }
-
-    const nameRegex = /^[A-Za-z]+(?: [A-Za-z]+)+$/;
-    if (!nameRegex.test(name)) {
-      toast({
-        title: "Invalid Name",
-        description: "Full name must contain only letters and at least two words.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Weak Password",
-        description: "Password must be at least 6 characters long.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (password !== confirmPassword) {
       toast({
         title: "Password Mismatch",
@@ -77,22 +47,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       });
       return;
     }
-
-    try {
-      const res = await api.post('/auth/signup', { name, email, password });
-      toast({
-        title: "Registration Successful",
-        description: "Your account has been created.",
-        variant: "success",
-      });
-      if (onOpenLogin) onOpenLogin();
-    } catch (err: any) {
-      toast({
-        title: "Registration Failed",
-        description: err?.response?.data?.message || 'Registration error',
-        variant: "destructive",
-      });
-    }
+    await signup(name, email, password);
   };
 
   return (
@@ -225,8 +180,9 @@ Create Account</CardTitle>
           <Button
             type="submit"
             className="w-full bg-green-600 hover:bg-green-700 text-white dark:bg-green-500 dark:hover:bg-green-600"
+            disabled={loading}
           >
-            Create Account
+            {loading ? "Creating Account..." : "Create Account"}
           </Button>
         </form>
 

@@ -120,7 +120,7 @@ async function login(req, res) {
 
     // generate JWT with log ID included
     const loginToken = jwt.sign(
-      { email: user.email, logId: logRef.id },
+      { email: user.email, role: user.role, logId: logRef.id },
       JWT_SECRET,
       { expiresIn: "1d" }
     );
@@ -180,4 +180,33 @@ async function resetPassword(req, res) {
   }
 }
 
-module.exports = { signup, login, requestPasswordReset, resetPassword };
+// Sign out function: clears token and updates logout time in logs
+async function signout(req, res) {
+  try {
+    // Get token from cookies
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(200).json({ message: "Already signed out." });
+    }
+    // Verify token and extract logId
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      res.clearCookie("token");
+      return res.status(200).json({ message: "Signed out." });
+    }
+    // Update logoutTime in logs if logId exists
+    if (decoded.logId) {
+      const logRef = db.collection("logs").doc(decoded.logId);
+      await logRef.update({ logoutTime: new Date().toISOString() });
+    }
+    // Clear the token cookie
+    res.clearCookie("token");
+    return res.status(200).json({ message: "Signed out successfully." });
+  } catch (err) {
+    return res.status(500).json({ error: "Failed to sign out." });
+  }
+}
+
+module.exports = { signup, login, requestPasswordReset, resetPassword, signout };
