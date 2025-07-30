@@ -19,6 +19,8 @@ const wasteRoutes = require('./routers/wasteRoutes');
 const { admin } = require('./models/firebase');
 const serialportgsm = require('serialport-gsm');
 
+const notificationRoutes = require('./routers/notificationRoutes');
+
 
 const db = admin.database();
 const dataRef = db.ref('monitoring/data');
@@ -48,6 +50,8 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/waste", wasteRoutes);
 app.use("/api", binRoutes);
 app.use("/api", activityRoutes);
+
+app.use('/api/notifications', notificationRoutes);
 
 app.use(errorHandler);
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNotifications } from "@/hooks/useNotifications";
 import { Bell, Trash, Check, ArrowLeft, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,106 +7,74 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  timestamp: string;
-  type: "info" | "warning" | "success" | "error";
-  read: boolean;
-}
 
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    title: "Bin Collection Alert",
-    message: "Trash bin TB001 at Main Street & 5th Ave is 95% full and needs collection",
-    timestamp: "2024-06-18 14:30:00",
-    type: "warning",
-    read: false,
-  },
-  {
-    id: "2",
-    title: "System Maintenance",
-    message: "Scheduled maintenance will occur tonight from 12:00 AM to 2:00 AM",
-    timestamp: "2024-06-18 12:15:00",
-    type: "info",
-    read: false,
-  },
-  {
-    id: "3",
-    title: "Collection Completed",
-    message: "Trash bin TB003 at University Campus has been successfully emptied",
-    timestamp: "2024-06-18 10:45:00",
-    type: "success",
-    read: true,
-  },
-  {
-    id: "4",
-    title: "Sensor Error",
-    message: "GPS sensor malfunction detected in bin TB005 at Beach Boardwalk",
-    timestamp: "2024-06-17 16:20:00",
-    type: "error",
-    read: false,
-  },
-  {
-    id: "5",
-    title: "New User Registration",
-    message: "New user Alice Johnson has registered and completed their first waste disposal",
-    timestamp: "2024-06-17 14:22:00",
-    type: "info",
-    read: true,
-  },
-  {
-    id: "6",
-    title: "Bin Collection Alert",
-    message: "Trash bin TB002 at Central Park East is 88% full",
-    timestamp: "2024-06-17 11:15:00",
-    type: "warning",
-    read: true,
-  },
-  {
-    id: "7",
-    title: "Feedback Received",
-    message: "New 5-star feedback received from user Bob Smith for bin TB004",
-    timestamp: "2024-06-16 18:45:00",
-    type: "success",
-    read: true,
-  },
-  {
-    id: "8",
-    title: "System Update",
-    message: "Waste monitoring system has been updated to version 2.1.3",
-    timestamp: "2024-06-16 09:30:00",
-    type: "info",
-    read: true,
-  },
-];
+// Notification type from hook
+import type { Notification as NotificationType } from "@/hooks/useNotifications";
+
+
+
 
 const Notifications = () => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState(mockNotifications);
+  // Use the hook for admin notifications
+  const { notifications, loading, error } = useNotifications("admin");
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  // Only use backend notifications
+  const backendNotifications: NotificationType[] = Array.isArray(notifications) ? notifications : [];
+  const unreadCount = backendNotifications.filter((n) => !n.read).length;
+
+
+
+  // Mark a single notification as read in the backend
+  const markAsRead = async (key: string) => {
+    try {
+      await fetch(`/api/notifications/admin/mark-read/${key}`, { method: 'PATCH' });
+    } catch (err) {
+      // Optionally show error
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  // Mark all notifications as read in the backend
+  const markAllAsRead = async () => {
+    try {
+      await fetch(`/api/notifications/admin/mark-all-read`, { method: 'PATCH' });
+    } catch (err) {
+      // Optionally show error
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  // Delete a notification in the backend
+  const deleteNotification = async (key: string) => {
+    try {
+      await fetch(`/api/notifications/admin/${key}`, { method: 'DELETE' });
+    } catch (err) {
+      // Optionally show error
+    }
   };
 
-  const filteredNotifications = notifications.filter((notification) => {
+
+
+
+  // Remove duplicate notifications (same title, message, and timestamp, regardless of key)
+  const uniqueNotifications = backendNotifications.filter((notif, idx, arr) => {
+    return (
+      arr.findIndex(
+        n =>
+          n.title === notif.title &&
+          n.message === notif.message &&
+          n.timestamp === notif.timestamp
+      ) === idx
+    );
+  });
+
+  const filteredNotifications = uniqueNotifications.filter((notification) => {
     const statusMatch =
       filter === "all" || (filter === "read" && notification.read) || (filter === "unread" && !notification.read);
-    const typeMatch = typeFilter === "all" || notification.type === typeFilter;
+    // If type is missing, treat as "info" (all backend notifications default to info)
+    const typeMatch = typeFilter === "all" || "info" === typeFilter;
     return statusMatch && typeMatch;
   });
 
@@ -135,6 +104,22 @@ const Notifications = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <span className="text-lg text-gray-600 dark:text-gray-300">Loading notifications...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <span className="text-lg text-red-600 dark:text-red-400">Error loading notifications: {error}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-950 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -156,7 +141,7 @@ const Notifications = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">All Notifications</h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {unreadCount} unread of {notifications.length} total notifications
+                  {unreadCount} unread of {backendNotifications.length} total notifications
                 </p>
               </div>
             </div>
@@ -228,8 +213,8 @@ const Notifications = () => {
           ) : (
             filteredNotifications.map((notification) => (
               <Card
-                key={notification.id}
-                className={`${getTypeColor(notification.type)} ${
+                key={notification.key}
+                className={`${getTypeColor("info")} ${
                   !notification.read ? "ring-2 ring-green-200 dark:ring-green-600" : ""
                 } transition-all hover:shadow-md`}
               >
@@ -238,7 +223,7 @@ const Notifications = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
-                        <Badge className={getTypeBadge(notification.type)}>{notification.type}</Badge>
+                        <Badge className={getTypeBadge("info")}>info</Badge>
                         {!notification.read && (
                           <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                             New
@@ -246,9 +231,12 @@ const Notifications = () => {
                         )}
                       </div>
                       <p className="text-gray-700 dark:text-gray-300 mb-3">{notification.message}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(notification.timestamp).toLocaleString()}
-                      </p>
+                      {/* Only show timestamp if not already in the message */}
+                      {notification.message && notification.timestamp && !notification.message.includes(new Date(notification.timestamp).toLocaleString()) && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(notification.timestamp).toLocaleString()}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       {!notification.read && (
@@ -256,7 +244,7 @@ const Notifications = () => {
                           variant="ghost"
                           size="sm"
                           className="text-green-600 hover:text-green-700 hover:bg-green-100 dark:text-green-300 dark:hover:bg-green-800"
-                          onClick={() => markAsRead(notification.id)}
+                          onClick={() => markAsRead(notification.key)}
                         >
                           <Check className="h-4 w-4 mr-1" />
                           Mark as Read
@@ -266,7 +254,7 @@ const Notifications = () => {
                         variant="ghost"
                         size="sm"
                         className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900"
-                        onClick={() => deleteNotification(notification.id)}
+                        onClick={() => deleteNotification(notification.key)}
                       >
                         <Trash className="h-4 w-4 mr-1" />
                         Delete

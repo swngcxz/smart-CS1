@@ -127,13 +127,24 @@ async function login(req, res) {
 
     res.cookie("token", loginToken, { httpOnly: true, secure: false });
 
-    // notify admin
-    await transporter.sendMail({
-      from: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
-      to: "admin@example.com", // replace with actual admin email
-      subject: "User Login Notification",
-      text: `${user.email} logged in at ${new Date().toLocaleString()}`,
-    });
+
+
+    // Only notify admin if a staff logs in (not admin themselves)
+    try {
+      if (user.role && user.role !== 'admin') {
+        const adminUserId = 'admin'; // You can change this to your admin's userId
+        const notification = {
+          title: 'User Login',
+          message: `${user.email} logged in at ${new Date().toLocaleString()}`,
+          timestamp: Date.now(),
+          read: false
+        };
+        const { admin: adminSDK } = require('../models/firebase');
+        await adminSDK.database().ref(`notifications/${adminUserId}`).push(notification);
+      }
+    } catch (notifyErr) {
+      console.error('Failed to send admin notification:', notifyErr);
+    }
 
     return res.status(200).json({ message: "Login successful", token: loginToken });
   } catch (err) {
