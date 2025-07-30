@@ -156,7 +156,6 @@ export function AddScheduleDialog({
                   <SelectItem value="Organic">Organic</SelectItem>
                   <SelectItem value="Recyclable">Recyclable</SelectItem>
                   <SelectItem value="Hazardous">Hazardous</SelectItem>
-                  <SelectItem value="Electronic">Electronic</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -200,27 +199,7 @@ export function AddScheduleDialog({
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="capacity">Estimated Bin Capacity</Label>
-              <Input
-                id="capacity"
-                placeholder="e.g., 75 or 75%"
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="truck-plate">Truck Plate</Label>
-              <Input
-                id="truck-plate"
-                placeholder="ABC-1234"
-                value={truckPlate}
-                onChange={(e) => setTruckPlate(e.target.value)}
-                required
-              />
-            </div>
-
+  
             <div className="grid gap-2">
               <Label htmlFor="collector">Assign Collector</Label>
               <Select value={collectorId} onValueChange={setCollectorId}>

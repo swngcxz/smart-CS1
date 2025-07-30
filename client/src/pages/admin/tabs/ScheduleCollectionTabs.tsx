@@ -260,11 +260,6 @@ export function ScheduleCollectionTabs() {
         </DialogContent>
       </Dialog>
 
-      <AddScheduleDialog 
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        onAddSchedule={handleAddSchedule}
-      />
     </div>
   );
 }
