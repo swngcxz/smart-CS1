@@ -8,6 +8,12 @@ import { Clock, MapPin, Truck, Plus, X } from "lucide-react";
 import { format, isSameDay } from "date-fns";
 import { AddScheduleDialog } from "../../staff/pages/AddScheduleDialog";
 
+interface Collector {
+  id: string;
+  name: string;
+  phone?: string;
+}
+
 interface Schedule {
   id: number;
   location: string;
@@ -16,6 +22,12 @@ interface Schedule {
   date: string;
   status: string;
   capacity: string;
+
+  collector?: Collector;
+  truckPlate?: string;
+  priority?: "Low" | "Normal" | "High";
+  notes?: string;
+  contactPerson?: string;
 }
 
 export function ScheduleCollectionTabs() {
@@ -72,6 +84,13 @@ export function ScheduleCollectionTabs() {
     }
   ]);
 
+  const collectors: Collector[] = [
+    { id: "c1", name: "Juan Dela Cruz", phone: "0917-000-1111" },
+    { id: "c2", name: "Maria Santos", phone: "0917-222-3333" },
+    { id: "c3", name: "Pedro Reyes", phone: "0917-444-5555" },
+  ];
+
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "scheduled":
@@ -92,14 +111,12 @@ export function ScheduleCollectionTabs() {
     return "text-green-600";
   };
 
-  // Get schedules for a specific date
   const getSchedulesForDate = (date: Date) => {
     return scheduleData.filter(schedule => 
       isSameDay(new Date(schedule.date), date)
     );
   };
 
-  // Handle date click
   const handleDateClick = (date: Date | undefined) => {
     if (!date) return;
     
@@ -111,7 +128,6 @@ export function ScheduleCollectionTabs() {
     setSelectedDate(date);
   };
 
-  // Custom day content to show schedule information directly in calendar
   const dayContent = (day: Date) => {
     const daySchedules = getSchedulesForDate(day);
     const hasSchedules = daySchedules.length > 0;
@@ -159,7 +175,6 @@ export function ScheduleCollectionTabs() {
      
 
 
-      {/* Large Calendar Section */}
       <Card className="w-full">
         <CardHeader className="pb-4">
          <CardTitle className="text-2xl">Collection Schedule</CardTitle>
@@ -242,6 +257,36 @@ export function ScheduleCollectionTabs() {
                       </div>
                     </div>
                   </div>
+
+                  {schedule.collector && (
+                    <div className="text-sm text-gray-700">
+                      <span className="font-medium">Collector:</span>{" "}
+                      {schedule.collector.name}
+                      {schedule.collector.phone ? (
+                        <span className="text-gray-500"> ({schedule.collector.phone})</span>
+                      ) : null}
+                    </div>
+                  )}
+                  {schedule.truckPlate && (
+                    <div className="text-sm text-gray-700">
+                      <span className="font-medium">Truck Plate:</span> {schedule.truckPlate}
+                    </div>
+                  )}
+                  {schedule.priority && (
+                    <div className="text-sm text-gray-700">
+                      <span className="font-medium">Priority:</span> {schedule.priority}
+                    </div>
+                  )}
+                  {schedule.contactPerson && (
+                    <div className="text-sm text-gray-700">
+                      <span className="font-medium">Contact:</span> {schedule.contactPerson}
+                    </div>
+                  )}
+                  {schedule.notes && (
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">Notes:</span> {schedule.notes}
+                    </div>
+                  )}
                   
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">
@@ -268,6 +313,7 @@ export function ScheduleCollectionTabs() {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onAddSchedule={handleAddSchedule}
+        collectors={collectors}
       />
     </div>
   );

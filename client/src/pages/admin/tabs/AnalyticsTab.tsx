@@ -251,7 +251,6 @@ export function AnalyticsTab() {
         <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-              <DollarSign className="w-5 h-5 text-green-600" />
               Cost Analysis - {timeFilter === "week" ? "Weekly" : "Monthly"}
             </CardTitle>
           </CardHeader>
