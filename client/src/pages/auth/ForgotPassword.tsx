@@ -1,15 +1,24 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast"; 
 
 const ForgotPassword = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast(); 
+
   const handleResetPassword = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Password reset requested");
-    alert("Password reset email sent - Demo only");
+
+    toast({
+      title: "Password reset email sent",
+      description: "Check your inbox for instructions.",
+    });
+
+    navigate("/verify-otp"); // Redirect to OTP verification page
   };
 
   return (
@@ -32,8 +41,8 @@ const ForgotPassword = () => {
 
           <div className="text-center text-sm">
             Remember your password?{" "}
-            <Link to="/login" className="text-green-600 hover:underline">
-              Back to Sign In
+            <Link to="/" className="text-green-600 hover:underline">
+              Back to Login
             </Link>
           </div>
         </CardContent>

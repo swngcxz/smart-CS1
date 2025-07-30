@@ -13,7 +13,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Feedback from "./pages/users/Feedback";
 import Notifications from "./pages/admin/pages/Notifications";
 import StaffDashboard from "./pages/StaffDashboard";
-
+import OtpVerification
+ from "./pages/auth/OtpVerification";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -32,7 +33,7 @@ const App = () => (
             <Route path="/staff" element={<StaffDashboard />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/notifications" element={<Notifications />} />
-
+            <Route path="/verify-otp" element={<OtpVerification />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
