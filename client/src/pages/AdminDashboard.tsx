@@ -4,7 +4,6 @@ import { AdminSidebar } from "./admin/nav/AdminSidebar";
 import { DashboardHeader } from "./admin/nav/DashboardHeader";
 import { AnalyticsTab } from "./admin/tabs/AnalyticsTab";
 import { DashboardOverview } from "./admin/tabs/DashboardOverview";
-import { WasteLevelsTab } from "./admin/tabs/WasteLevelsTab";
 import { MapTab } from "./admin/tabs/MapTab";
 import { StaffTab } from "./admin/tabs/StaffTab";
 import { ActivityTab } from "./admin/tabs/ActivityTab";
@@ -32,7 +31,7 @@ const AdminDashboard = () => {
       case "settings":
         return <SettingsTab />;
       default:
-        return <DashboardOverview />;
+        return <AnalyticsTab />;
     }
   };
 

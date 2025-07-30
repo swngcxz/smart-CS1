@@ -1,4 +1,4 @@
-import { WasteLevelCards } from "../pages/WasteLevelCards";
+import { WasteLevelCards } from "../../staff/pages/WasteLevelCards";
 import { DataAnalytics } from "../pages/DataAnalytics";
 import { MapSection } from "../pages/MapSection";
 
@@ -10,7 +10,6 @@ export function DashboardOverview() {
         <p className="text-gray-600 dark:text-gray-400">Get a quick overview of your waste management system.</p>
       </div>
 
-      <WasteLevelCards />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DataAnalytics />

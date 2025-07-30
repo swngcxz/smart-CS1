@@ -1,20 +1,14 @@
 import { useState } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AdminSidebar } from "./admin/nav/AdminSidebar";
-import { DashboardHeader } from "./admin/nav/DashboardHeader";
-import { AnalyticsTab } from "./admin/tabs/AnalyticsTab";
-import { DashboardOverview } from "./admin/tabs/DashboardOverview";
-import { WasteLevelsTab } from "./admin/tabs/WasteLevelsTab";
-import { MapTab } from "./admin/tabs/MapTab";
+import { WasteLevelsTab } from "./staff/tabs/WasteLevelsTab";
+import { MapTab } from "./staff/tabs/StaffMapTab";
 import { StaffTab } from "./staff/tabs/StaffTabb";
-import { ActivityTab } from "./admin/tabs/ActivityTab";
-import { HistoryLogsTab } from "./admin/tabs/HistoryLogsTab";
 import { SettingsTab } from "./admin/tabs/SettingsTab";
 import { StaffSidebar } from "./staff/nav/StaffSidebar";
 import { StaffDashboardHeader } from "./staff/nav/StaffDashboardHeader";
 import { StaffActivityTab } from "./staff/tabs/StaffActivityTab";
 import { ScheduleCollectionTabs } from "./staff/tabs/SchedulecollectionTabs";
-import Feedback from "./admin/tabs/FeedbackView";
+import Feedback from "./staff/tabs/FeedbackView";
 
 
 const StaffDashboard = () => {
@@ -37,7 +31,7 @@ const StaffDashboard = () => {
       case "settings":
         return <SettingsTab />;
       default:
-        return <DashboardOverview />;
+        return <WasteLevelsTab />;
     }
   };
 

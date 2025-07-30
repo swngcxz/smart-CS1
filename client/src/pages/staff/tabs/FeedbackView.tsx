@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { toast } from "sonner"
-import FeedbackList from "@/pages/admin/pages/FeedbackList"
-import FeedbackStats from "@/pages/admin/pages/FeedbackStats"
-import ArchivedView from "@/pages/admin/pages/ArchivedView"
+import FeedbackList from "@/pages/staff/pages/FeedbackList"
+import FeedbackStats from "@/pages/staff/pages/FeedbackStats"
+import ArchivedView from "@/pages/staff/pages/ArchivedView"
 import { Button } from "@/components/ui/button";
 
 interface FeedbackItem {
