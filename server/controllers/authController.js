@@ -41,7 +41,7 @@ async function signup(req, res) {
       email,
       password: hashed,
       address: address || "",
-      role: role || "user",
+      role: role || "staff",
       status: "active",
       emailVerified: true,
       createdAt: new Date().toISOString(),

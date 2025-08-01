@@ -41,13 +41,7 @@ export function useAuth() {
       const res = await api.post("/auth/signup", { fullName, email, password, address, role });
       toast({ title: "Signup Successful", description: "Welcome!" });
       // Redirect to login or dashboard after signup
-      if (role === "admin") {
-        navigate("/admin");
-      } else if (role === "staff") {
-        navigate("/staff");
-      } else {
-        navigate("/users");
-      }
+      navigate("/login");
     } catch (err: any) {
       toast({
         title: "Signup Failed",
