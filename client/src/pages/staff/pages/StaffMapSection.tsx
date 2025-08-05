@@ -1,19 +1,37 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
-import L, { LatLngTuple } from "leaflet";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  MapContainer,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
+import L, { LatLngTuple, Map as LeafletMap } from "leaflet";
 import { BinMarker } from "./StaffBinMarker";
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 import { Viewer } from "mapillary-js";
 import "mapillary-js/dist/mapillary.css";
 
-// Fix default marker icons
+// Leaflet default icon fix
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+// Custom ref type to store Leaflet map instance
+type MapCardRef = HTMLDivElement & {
+  _leaflet_map?: LeafletMap;
+};
+
+// Center point and bin data
 const center: LatLngTuple = [10.2105, 123.7583];
 
 const binLocations = [
@@ -64,7 +82,8 @@ const binLocations = [
   },
 ];
 
-function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
+// Helper component to expose Leaflet map instance
+function MapInitializer({ setMapRef }: { setMapRef: (map: LeafletMap) => void }) {
   const map = useMap();
   useEffect(() => {
     setMapRef(map);
@@ -77,7 +96,7 @@ export function MapSection() {
   const warningBins = binLocations.filter((bin) => bin.status === "warning").length;
   const normalBins = binLocations.filter((bin) => bin.status === "normal").length;
 
-  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<MapCardRef>(null);
 
   useEffect(() => {
     const pegman = document.getElementById("pegman");
@@ -91,53 +110,48 @@ export function MapSection() {
 
     mapArea.addEventListener("dragover", (e) => e.preventDefault());
 
-    mapArea.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      pegman.classList.remove("drag-anim");
+mapArea.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  pegman.classList.remove("drag-anim");
 
-      const leafletMap = (mapContainerRef as any).current._leaflet_map;
-      if (!leafletMap) return;
+  const leafletMap = mapContainerRef.current?._leaflet_map;
+  if (!leafletMap) return;
 
-      const containerPoint = leafletMap.mouseEventToContainerPoint(e);
-      const latlng = leafletMap.containerPointToLatLng(containerPoint);
+  const containerPoint = leafletMap.mouseEventToContainerPoint(e as unknown as MouseEvent);
+  const latlng = leafletMap.containerPointToLatLng(containerPoint);
 
-      streetViewDiv.classList.remove("hidden");
-      streetViewDiv.innerHTML = "";
+  streetViewDiv.classList.remove("hidden");
+  streetViewDiv.innerHTML = "";
 
-      try {
-        const response = await fetch(
-          `https://graph.mapillary.com/images?fields=id&closeto=${latlng.lat},${latlng.lng}&radius=50`,
-          {
-            headers: {
-              Authorization: "OAuth MLY|24007871562201571|74ae29b189e037740ce91b0c91021115",
-            },
-          }
-        );
-        const data = await response.json();
-        console.log("Mapillary API response:", data); // optional: debug
-
-        const imageId = data.data?.[0]?.id;
-
-        if (!imageId) {
-          streetViewDiv.innerHTML = "<p class='text-center pt-4'>No imagery found here.</p>";
-          return;
-        }
-
-        new Viewer({
-          accessToken: "MLY|24007871562201571|74ae29b189e037740ce91b0c91021115",
-          container: "mapillary-viewer",
-          imageId,
-        });
-      } catch (error) {
-        console.error("Failed to load Mapillary image", error);
-        streetViewDiv.innerHTML =
-          "<p class='text-center pt-4 text-red-500'>Failed to load imagery.</p>";
+  try {
+    const response = await fetch(
+      `https://graph.mapillary.com/images?fields=id&closeto=${latlng.lat},${latlng.lng}&radius=50`,
+      {
+        headers: {
+          Authorization:
+            "OAuth MLY|24007871562201571|74ae29b189e037740ce91b0c91021115",
+        },
       }
-    });
+    );
+    const data = await response.json();
+    const imageId = data.data?.[0]?.id;
 
-    pegman.addEventListener("dragstart", () => {
-      pegman.classList.add("drag-anim");
+    if (!imageId) {
+      streetViewDiv.innerHTML = "<p class='text-center pt-4'>No imagery found here.</p>";
+      return;
+    }
+
+    new Viewer({
+      accessToken: "MLY|24007871562201571|74ae29b189e037740ce91b0c91021115",
+      container: "mapillary-viewer",
+      imageId,
     });
+  } catch (error) {
+    console.error("Failed to load Mapillary image", error);
+    streetViewDiv.innerHTML =
+      "<p class='text-center pt-4 text-red-500'>Failed to load imagery.</p>";
+  }
+});
 
     pegman.addEventListener("dragend", () => {
       pegman.classList.remove("drag-anim");
@@ -159,15 +173,15 @@ export function MapSection() {
           <div className="flex items-center gap-2">Baywalk, Naga City, Cebu</div>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <div className="w-3 h-3 bg-green-500 rounded-full" />
               <span>Normal ({normalBins})</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+              <div className="w-3 h-3 bg-yellow-500 rounded-full" />
               <span>Warning ({warningBins})</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <div className="w-3 h-3 bg-red-500 rounded-full" />
               <span>Critical ({criticalBins})</span>
             </div>
           </div>
@@ -175,18 +189,20 @@ export function MapSection() {
       </CardHeader>
 
       <CardContent className="p-0 h-full rounded-b-lg overflow-hidden relative z-0">
-       <MapContainer
+        <MapContainer
           center={center}
           zoom={21}
-          scrollWheelZoom={true}
-          zoomControl={true}
+          scrollWheelZoom
+          zoomControl
           className="h-full w-full z-0"
           maxBounds={[[9.8, 123.5], [11.3, 124.1]]}
           maxBoundsViscosity={1.0}
         >
           <MapInitializer
             setMapRef={(map) => {
-              (mapContainerRef as any).current._leaflet_map = map;
+              if (mapContainerRef.current) {
+                mapContainerRef.current._leaflet_map = map;
+              }
             }}
           />
           <TileLayer
@@ -197,7 +213,6 @@ export function MapSection() {
             <BinMarker key={bin.id} bin={bin} />
           ))}
         </MapContainer>
-
 
         {/* Pegman Icon */}
         <div
