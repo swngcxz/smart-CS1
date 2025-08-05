@@ -6,7 +6,8 @@ import { Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StaffManagementModal } from "@/components/modal/staff/StaffManagementModal";
 import { AddStaffModal } from "@/components/modal/staff/AddStaffModal";
-export const staffData = [
+
+const staffData = [
   {
     id: 1,
     name: "John Smith",
@@ -15,7 +16,14 @@ export const staffData = [
     status: "active",
     lastActivity: "2 hours ago",
   },
-  { id: 2, name: "Maria Garcia", role: "Supervisor", zone: "Route B", status: "active", lastActivity: "30 min ago" },
+  {
+    id: 2,
+    name: "Maria Garcia",
+    role: "Supervisor",
+    zone: "Route B",
+    status: "active",
+    lastActivity: "30 min ago",
+  },
   {
     id: 3,
     name: "David Johnson",

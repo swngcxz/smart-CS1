@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,9 +19,10 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Trash2, Wrench } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 
 export interface Collector {
   id: string;
@@ -30,15 +31,16 @@ export interface Collector {
 }
 
 export interface Schedule {
+  id?: number;
   location: string;
+  serviceType: "collection" | "maintenance";
   type: string;
-  time: string;          // HH:mm (24h)
-  date: string;          // ISO yyyy-MM-dd (normalized)
+  time: string;      
+  date: string;         
   status: "scheduled" | "in-progress" | "completed" | "cancelled";
-  capacity: string;      // "75%"
-  collector?: Collector; // assigned collector
-  truckPlate: string;
-  priority?: "Low" | "Normal" | "High";
+  capacity?: string;      
+  collector?: Collector; 
+  truckPlate?: string;
   notes?: string;
   contactPerson?: string;
 }
@@ -46,7 +48,7 @@ export interface Schedule {
 interface AddScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddSchedule: (schedule: Schedule) => void;
+  onAddSchedule: (schedule: Omit<Schedule, 'id'>) => void;
   collectors: Collector[];
 }
 
@@ -56,6 +58,7 @@ export function AddScheduleDialog({
   onAddSchedule,
   collectors,
 }: AddScheduleDialogProps) {
+  const [serviceType, setServiceType] = useState<"collection" | "maintenance">("collection");
   const [location, setLocation] = useState("");
   const [type, setType] = useState("");
   const [time, setTime] = useState("");
@@ -63,17 +66,13 @@ export function AddScheduleDialog({
   const [capacity, setCapacity] = useState("");
   const [collectorId, setCollectorId] = useState<string>("");
   const [truckPlate, setTruckPlate] = useState("");
-  const [status, setStatus] = useState<Schedule["status"]>("scheduled");
-  const [priority, setPriority] = useState<Schedule["priority"]>("Normal");
   const [notes, setNotes] = useState("");
   const [contactPerson, setContactPerson] = useState("");
 
-  const selectedCollector = useMemo(
-    () => collectors.find((c) => c.id === collectorId),
-    [collectors, collectorId]
-  );
+  const selectedCollector = collectors.find((c) => c.id === collectorId);
 
   const resetForm = () => {
+    setServiceType("collection");
     setLocation("");
     setType("");
     setTime("");
@@ -81,8 +80,6 @@ export function AddScheduleDialog({
     setCapacity("");
     setCollectorId("");
     setTruckPlate("");
-    setStatus("scheduled");
-    setPriority("Normal");
     setNotes("");
     setContactPerson("");
   };
@@ -90,32 +87,29 @@ export function AddScheduleDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!location || !type || !time || !date || !truckPlate) {
-      // Basic required fields
+    if (!location || !type || !time || !date) {
       return;
     }
 
-    // Capacity normalization (ensure trailing %)
-    let normalizedCapacity = capacity.trim();
-    if (normalizedCapacity) {
-      // Allow numbers like "75" -> "75%"
+    // Capacity is only relevant for collection
+    let normalizedCapacity = "";
+    if (serviceType === "collection" && capacity.trim()) {
+      normalizedCapacity = capacity.trim();
       if (!normalizedCapacity.endsWith("%")) {
         normalizedCapacity = `${normalizedCapacity}%`;
       }
-    } else {
-      normalizedCapacity = "0%";
     }
 
-    const newSchedule: Schedule = {
+    const newSchedule: Omit<Schedule, 'id'> = {
+      serviceType,
       location: location.trim(),
       type,
-      time, // assumed HH:mm from <input type="time" />
+      time,
       date: format(date, "yyyy-MM-dd"),
-      status,
-      capacity: normalizedCapacity,
+      status: "scheduled",
+      capacity: normalizedCapacity || undefined,
       collector: selectedCollector,
-      truckPlate: truckPlate.trim().toUpperCase(),
-      priority,
+      truckPlate: truckPlate.trim().toUpperCase() || undefined,
       notes: notes.trim() || undefined,
       contactPerson: contactPerson.trim() || undefined,
     };
@@ -125,14 +119,66 @@ export function AddScheduleDialog({
     onOpenChange(false);
   };
 
+  const getTypeOptions = () => {
+    if (serviceType === "collection") {
+      return [
+        { value: "Mixed", label: "Mixed Waste" },
+        { value: "Organic", label: "Organic" },
+        { value: "Recyclable", label: "Recyclable" },
+        { value: "Hazardous", label: "Hazardous" },
+      ];
+    } else {
+      return [
+        { value: "Repair", label: "Bin Repair" },
+        { value: "Replacement", label: "Bin Replacement" },
+        { value: "Cleaning", label: "Deep Cleaning" },
+        { value: "Inspection", label: "Inspection" },
+      ];
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Add New Schedule</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Service Type Selection */}
+          <div className="grid gap-3">
+            <Label>Service Type</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Card 
+                className={cn(
+                  "cursor-pointer transition-all hover:shadow-md",
+                  serviceType === "collection" ? "ring-2 ring-primary bg-primary/5" : "border-border"
+                )}
+                onClick={() => setServiceType("collection")}
+              >
+                <CardContent className="flex items-center justify-center p-4">
+                  <div className="text-center">
+                    <p className="font-medium">Trash Collection</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card 
+                className={cn(
+                  "cursor-pointer transition-all hover:shadow-md",
+                  serviceType === "maintenance" ? "ring-2 ring-primary bg-primary/5" : "border-border"
+                )}
+                onClick={() => setServiceType("maintenance")}
+              >
+                <CardContent className="flex items-center justify-center p-4">
+                  <div className="text-center">
+                    <p className="font-medium">Maintenance</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="location">Location</Label>
@@ -146,22 +192,25 @@ export function AddScheduleDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="type">Waste Type</Label>
+              <Label htmlFor="type">
+                {serviceType === "collection" ? "Waste Type" : "Service Type"}
+              </Label>
               <Select value={type} onValueChange={setType} required>
                 <SelectTrigger id="type">
-                  <SelectValue placeholder="Select waste type" />
+                  <SelectValue placeholder={`Select ${serviceType === "collection" ? "waste" : "service"} type`} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Mixed">Mixed</SelectItem>
-                  <SelectItem value="Organic">Organic</SelectItem>
-                  <SelectItem value="Recyclable">Recyclable</SelectItem>
-                  <SelectItem value="Hazardous">Hazardous</SelectItem>
+                  {getTypeOptions().map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="date">Collection Date</Label>
+              <Label htmlFor="date">Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -189,7 +238,7 @@ export function AddScheduleDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="time">Collection Time</Label>
+              <Label htmlFor="time">Time</Label>
               <Input
                 id="time"
                 type="time"
@@ -199,12 +248,23 @@ export function AddScheduleDialog({
               />
             </div>
 
-  
+            {serviceType === "collection" && (
+              <div className="grid gap-2">
+                <Label htmlFor="capacity">Expected Capacity (%)</Label>
+                <Input
+                  id="capacity"
+                  placeholder="75"
+                  value={capacity}
+                  onChange={(e) => setCapacity(e.target.value)}
+                />
+              </div>
+            )}
+
             <div className="grid gap-2">
-              <Label htmlFor="collector">Assign Collector</Label>
+              <Label htmlFor="collector">Assign Worker</Label>
               <Select value={collectorId} onValueChange={setCollectorId}>
                 <SelectTrigger id="collector">
-                  <SelectValue placeholder="Select collector" />
+                  <SelectValue placeholder="Select worker" />
                 </SelectTrigger>
                 <SelectContent>
                   {collectors.map((c) => (
@@ -212,38 +272,6 @@ export function AddScheduleDialog({
                       {c.name} {c.phone ? `• ${c.phone}` : ""}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as Schedule["status"])}>
-                <SelectTrigger id="status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="priority">Priority</Label>
-              <Select
-                value={priority}
-                onValueChange={(v) => setPriority(v as Schedule["priority"])}
-              >
-                <SelectTrigger id="priority">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Normal">Normal</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -259,21 +287,22 @@ export function AddScheduleDialog({
             </div>
 
             <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">Notes (Optional)</Label>
               <Textarea
                 id="notes"
-                placeholder="Landmark, access instruction, safety notice, etc."
+                placeholder="Additional instructions or information..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                rows={3}
               />
             </div>
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add Schedule</Button>
+            <Button type="submit" className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">Add Schedule</Button>
           </DialogFooter>
         </form>
       </DialogContent>

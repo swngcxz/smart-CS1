@@ -16,10 +16,10 @@ const Header = () => {
       <header className="sticky top-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-green-100 dark:border-slate-700">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <img src="../public/logo-final2.png" alt="EcoBin Logo" className="w-8 h-8 align-middle" />
-            <span className="text-2xl font-bold text-gray-900 dark:text-white">ECOBIN</span>
-          </div>
+            <div className="flex items-center">
+              <img src="/logo-final2.png" alt="EcoBin Logo" className="w-8 h-8 align-middle" />
+              <span className="text-2xl font-bold text-gray-900 dark:text-white">ECOBIN</span>
+            </div>
 
 
 

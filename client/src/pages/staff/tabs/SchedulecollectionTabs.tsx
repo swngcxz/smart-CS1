@@ -4,9 +4,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, MapPin, Truck, Plus, X } from "lucide-react";
+import { Clock, MapPin, Truck, Plus, Wrench, Trash2 } from "lucide-react";
 import { format, isSameDay } from "date-fns";
-import { AddScheduleDialog } from "../../staff/pages/AddScheduleDialog";
+import { AddScheduleDialog } from "../pages/AddScheduleDialog";
 
 interface Collector {
   id: string;
@@ -17,12 +17,12 @@ interface Collector {
 interface Schedule {
   id: number;
   location: string;
+  serviceType: "collection" | "maintenance";
   type: string;
   time: string;
   date: string;
   status: string;
-  capacity: string;
-
+  capacity?: string;
   collector?: Collector;
   truckPlate?: string;
   priority?: "Low" | "Normal" | "High";
@@ -40,7 +40,8 @@ export function ScheduleCollectionTabs() {
     {
       id: 1,
       location: "Central Plaza",
-      type: "Mixed Waste",
+      serviceType: "collection",
+      type: "Mixed",
       time: "3:00 PM",
       date: "2025-01-02",
       status: "scheduled",
@@ -49,6 +50,7 @@ export function ScheduleCollectionTabs() {
     {
       id: 2,
       location: "Park Avenue",
+      serviceType: "collection",
       type: "Organic",
       time: "9:00 AM",
       date: "2025-01-03",
@@ -58,15 +60,16 @@ export function ScheduleCollectionTabs() {
     {
       id: 3,
       location: "Mall District",
-      type: "Recyclable",
+      serviceType: "maintenance",
+      type: "Repair",
       time: "5:00 PM",
       date: "2025-01-02",
-      status: "scheduled",
-      capacity: "70%"
+      status: "scheduled"
     },
     {
       id: 4,
       location: "Residential Area",
+      serviceType: "collection",
       type: "Mixed",
       time: "11:00 AM",
       date: "2025-01-01",
@@ -76,6 +79,7 @@ export function ScheduleCollectionTabs() {
     {
       id: 5,
       location: "Industrial Zone",
+      serviceType: "collection",
       type: "Hazardous",
       time: "2:00 PM",
       date: "2024-12-31",
@@ -89,7 +93,6 @@ export function ScheduleCollectionTabs() {
     { id: "c2", name: "Maria Santos", phone: "0917-222-3333" },
     { id: "c3", name: "Pedro Reyes", phone: "0917-444-5555" },
   ];
-
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -109,6 +112,12 @@ export function ScheduleCollectionTabs() {
     if (numCapacity >= 80) return "text-red-600";
     if (numCapacity >= 60) return "text-yellow-600";
     return "text-green-600";
+  };
+
+  const getServiceTypeColor = (serviceType: string) => {
+    return serviceType === "collection" 
+      ? "bg-green-100 text-green-800" 
+      : "bg-blue-100 text-blue-800";
   };
 
   const getSchedulesForDate = (date: Date) => {
@@ -141,14 +150,19 @@ export function ScheduleCollectionTabs() {
             {daySchedules.slice(0, 2).map((schedule, index) => (
               <div
                 key={index}
-                className={`text-xs p-1 rounded text-center truncate ${
+                className={`text-xs p-1 rounded text-center truncate flex items-center justify-center gap-1 ${
                   schedule.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
                   schedule.status === 'completed' ? 'bg-green-100 text-green-800' :
                   'bg-red-100 text-red-800'
                 }`}
                 title={`${schedule.location} - ${schedule.type} at ${schedule.time}`}
               >
-                {schedule.location}
+                {schedule.serviceType === "collection" ? (
+                  <Trash2 className="w-2 h-2" />
+                ) : (
+                  <Wrench className="w-2 h-2" />
+                )}
+                <span className="truncate">{schedule.location}</span>
               </div>
             ))}
             {daySchedules.length > 2 && (
@@ -172,18 +186,20 @@ export function ScheduleCollectionTabs() {
 
   return (
     <div className="space-y-6">
-     
-
-
       <Card className="w-full">
         <CardHeader className="pb-4">
-         <CardTitle className="text-2xl">Collection Schedule</CardTitle>
-            <div className="flex justify-end">
-        <Button onClick={() => setIsAddDialogOpen(true)} className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">
-            <Plus className="h-4 w-4" />
-            Add Schedule
-        </Button>
-    </div>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="text-2xl">Collection Schedule</CardTitle>
+            </div>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)} 
+              className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Schedule
+            </Button>
+          </div>
         </CardHeader>
         
         <CardContent className="p-6">
@@ -227,7 +243,7 @@ export function ScheduleCollectionTabs() {
               Schedules for {selectedDate && format(selectedDate, "MMMM dd, yyyy")}
             </DialogTitle>
             <DialogDescription>
-              {selectedDateSchedules.length} collection{selectedDateSchedules.length > 1 ? 's' : ''} scheduled for this date
+              {selectedDateSchedules.length} schedule{selectedDateSchedules.length > 1 ? 's' : ''} for this date
             </DialogDescription>
           </DialogHeader>
           
@@ -237,12 +253,21 @@ export function ScheduleCollectionTabs() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
+                      {schedule.serviceType === "collection" ? (
+                        <Trash2 className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Wrench className="h-4 w-4 text-blue-600" />
+                      )}
                       <span className="font-semibold">{schedule.location}</span>
                     </div>
-                    <Badge className={getStatusColor(schedule.status)} variant="secondary">
-                      {schedule.status}
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Badge className={getServiceTypeColor(schedule.serviceType)} variant="secondary">
+                        {schedule.serviceType}
+                      </Badge>
+                      <Badge className={getStatusColor(schedule.status)} variant="secondary">
+                        {schedule.status}
+                      </Badge>
+                    </div>
                   </div>
                   
                   <div className="flex items-center justify-between text-sm text-gray-600">
@@ -260,7 +285,7 @@ export function ScheduleCollectionTabs() {
 
                   {schedule.collector && (
                     <div className="text-sm text-gray-700">
-                      <span className="font-medium">Collector:</span>{" "}
+                      <span className="font-medium">Worker:</span>{" "}
                       {schedule.collector.name}
                       {schedule.collector.phone ? (
                         <span className="text-gray-500"> ({schedule.collector.phone})</span>
@@ -269,7 +294,7 @@ export function ScheduleCollectionTabs() {
                   )}
                   {schedule.truckPlate && (
                     <div className="text-sm text-gray-700">
-                      <span className="font-medium">Truck Plate:</span> {schedule.truckPlate}
+                      <span className="font-medium">Vehicle:</span> {schedule.truckPlate}
                     </div>
                   )}
                   {schedule.priority && (
@@ -288,14 +313,16 @@ export function ScheduleCollectionTabs() {
                     </div>
                   )}
                   
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">
-                      {schedule.status === 'completed' ? 'Collected' : 'Expected Capacity'}
-                    </span>
-                    <div className={`text-sm font-semibold ${getCapacityColor(schedule.capacity)}`}>
-                      {schedule.capacity}
+                  {schedule.capacity && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">
+                        {schedule.status === 'completed' ? 'Collected' : 'Expected Capacity'}
+                      </span>
+                      <div className={`text-sm font-semibold ${getCapacityColor(schedule.capacity)}`}>
+                        {schedule.capacity}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             ))}
