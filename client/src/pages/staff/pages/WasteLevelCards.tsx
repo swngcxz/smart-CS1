@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { useRealTimeData } from "@/hooks/useRealTimeData";
 
 const wasteData = [
   {
@@ -42,9 +43,60 @@ export function WasteLevelCards({
 }: {
   onCardClick: (location: string) => void;
 }) {
+  const { wasteBins } = useRealTimeData();
+
+  // Calculate average levels for each location from all real-time data
+  const calculateAverageLevel = (location: string) => {
+    const locationBins = wasteBins.filter(bin => bin.location === location);
+    if (locationBins.length === 0) return 0;
+    
+    const totalLevel = locationBins.reduce((sum, bin) => sum + bin.level, 0);
+    return Math.round(totalLevel / locationBins.length);
+  };
+
+  // Calculate average status for each location
+  const calculateAverageStatus = (location: string) => {
+    const locationBins = wasteBins.filter(bin => bin.location === location);
+    if (locationBins.length === 0) return "normal";
+    
+    const criticalCount = locationBins.filter(bin => bin.status === "critical").length;
+    const warningCount = locationBins.filter(bin => bin.status === "warning").length;
+    
+    if (criticalCount > 0) return "critical";
+    if (warningCount > 0) return "warning";
+    return "normal";
+  };
+
+  // Get most recent last collected time for each location
+  const getMostRecentLastCollected = (location: string) => {
+    const locationBins = wasteBins.filter(bin => bin.location === location);
+    if (locationBins.length === 0) return "Unknown";
+    
+    // For simplicity, return the first one's lastCollected
+    // In a real app, you'd parse timestamps and find the most recent
+    return locationBins[0].lastCollected;
+  };
+
+  // Update static data with calculated averages from real-time data
+  const updatedWasteData = wasteData.map((bin) => {
+    const averageLevel = calculateAverageLevel(bin.location);
+    const averageStatus = calculateAverageStatus(bin.location);
+    const mostRecentLastCollected = getMostRecentLastCollected(bin.location);
+    
+    // Check if we have real-time data for this location
+    const hasRealTimeData = wasteBins.some(wb => wb.location === bin.location);
+    
+    return {
+      ...bin,
+      level: hasRealTimeData ? averageLevel : bin.level,
+      status: hasRealTimeData ? averageStatus : bin.status,
+      lastCollected: hasRealTimeData ? mostRecentLastCollected : bin.lastCollected,
+    };
+  });
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {wasteData.map((bin) => {
+      {updatedWasteData.map((bin) => {
         const Icon = bin.icon;
         return (
           <Card

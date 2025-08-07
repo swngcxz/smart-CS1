@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
 
 // Example janitorial staff list with location
 const janitorialStaff = [
@@ -14,10 +15,10 @@ const janitorialStaff = [
   { id: 5, name: "Janitor Ethan", location: "Central Plaza" },
 ];
 // Your waste data with multiple bins in "Central Plaza"
-const detailedWasteData = [
+const detailedWasteData: WasteBin[] = [
   // Central Plaza
   {
-    id: 1,
+    id: "1",
     location: "Central Plaza",
     level: 85,
     status: "critical",
@@ -27,7 +28,7 @@ const detailedWasteData = [
     nextCollection: "Today 3:00 PM",
   },
   {
-    id: 2,
+    id: "2",
     location: "Central Plaza",
     level: 60,
     status: "warning",
@@ -37,7 +38,7 @@ const detailedWasteData = [
     nextCollection: "Today 4:30 PM",
   },
   {
-    id: 3,
+    id: "3",
     location: "Central Plaza",
     level: 90,
     status: "critical",
@@ -47,7 +48,7 @@ const detailedWasteData = [
     nextCollection: "Today 5:30 PM",
   },
   {
-    id: 4,
+    id: "4",
     location: "Central Plaza",
     level: 50,
     status: "normal",
@@ -59,7 +60,7 @@ const detailedWasteData = [
 
   // Park Avenue
   {
-    id: 5,
+    id: "5",
     location: "Park Avenue",
     level: 45,
     status: "normal",
@@ -69,7 +70,7 @@ const detailedWasteData = [
     nextCollection: "Tomorrow 9:00 AM",
   },
   {
-    id: 6,
+    id: "6",
     location: "Park Avenue",
     level: 75,
     status: "warning",
@@ -79,7 +80,7 @@ const detailedWasteData = [
     nextCollection: "Today 7:00 PM",
   },
   {
-    id: 7,
+    id: "7",
     location: "Park Avenue",
     level: 90,
     status: "critical",
@@ -89,7 +90,7 @@ const detailedWasteData = [
     nextCollection: "Today 8:00 PM",
   },
   {
-    id: 8,
+    id: "8",
     location: "Park Avenue",
     level: 30,
     status: "normal",
@@ -101,7 +102,7 @@ const detailedWasteData = [
 
   // Mall District
   {
-    id: 9,
+    id: "9",
     location: "Mall District",
     level: 70,
     status: "warning",
@@ -111,7 +112,7 @@ const detailedWasteData = [
     nextCollection: "Today 5:00 PM",
   },
   {
-    id: 10,
+    id: "10",
     location: "Mall District",
     level: 60,
     status: "warning",
@@ -121,7 +122,7 @@ const detailedWasteData = [
     nextCollection: "Today 7:00 PM",
   },
   {
-    id: 11,
+    id: "11",
     location: "Mall District",
     level: 95,
     status: "critical",
@@ -131,7 +132,7 @@ const detailedWasteData = [
     nextCollection: "Today 6:30 PM",
   },
   {
-    id: 12,
+    id: "12",
     location: "Mall District",
     level: 35,
     status: "normal",
@@ -143,7 +144,7 @@ const detailedWasteData = [
 
   // Residential Area
   {
-    id: 13,
+    id: "13",
     location: "Residential Area",
     level: 30,
     status: "normal",
@@ -153,7 +154,7 @@ const detailedWasteData = [
     nextCollection: "Tomorrow 11:00 AM",
   },
   {
-    id: 14,
+    id: "14",
     location: "Residential Area",
     level: 55,
     status: "normal",
@@ -163,7 +164,7 @@ const detailedWasteData = [
     nextCollection: "Tomorrow 1:00 PM",
   },
   {
-    id: 15,
+    id: "15",
     location: "Residential Area",
     level: 80,
     status: "critical",
@@ -173,7 +174,7 @@ const detailedWasteData = [
     nextCollection: "Today 9:00 PM",
   },
   {
-    id: 16,
+    id: "16",
     location: "Residential Area",
     level: 65,
     status: "warning",
@@ -187,17 +188,210 @@ const detailedWasteData = [
 
 export function WasteLevelsTab() {
   const [selectedLocation, setSelectedLocation] = useState("Central Plaza");
-  const [selectedBin, setSelectedBin] = useState(null);
+  const [selectedBin, setSelectedBin] = useState<WasteBin | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedJanitorId, setSelectedJanitorId] = useState(null);
-const [taskNote, setTaskNote] = useState("");
-const [showConfirmation, setShowConfirmation] = useState(false);
+  const [taskNote, setTaskNote] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const filteredBins = detailedWasteData.filter(
+  const { wasteBins, loading, error } = useRealTimeData();
+
+  // Create real-time data for each location
+  const realTimeBins: WasteBin[] = [
+    // Central Plaza - 4 bins
+    {
+      id: "1",
+      location: "Central Plaza",
+      level: (() => {
+        const realTimeBin = wasteBins.find(wb => wb.id === 'bin1');
+        return realTimeBin ? realTimeBin.level : 85;
+      })(),
+      status: (() => {
+        const realTimeBin = wasteBins.find(wb => wb.id === 'bin1');
+        return realTimeBin ? realTimeBin.status : "critical";
+      })(),
+      lastCollected: (() => {
+        const realTimeBin = wasteBins.find(wb => wb.id === 'bin1');
+        return realTimeBin ? realTimeBin.lastCollected : "2 hours ago";
+      })(),
+      capacity: "500L",
+      wasteType: "Mixed",
+      nextCollection: "Today 3:00 PM",
+      binData: wasteBins.find(wb => wb.id === 'bin1')?.binData
+    },
+    {
+      id: "2",
+      location: "Central Plaza",
+      level: (() => {
+        const realTimeBin = wasteBins.find(wb => wb.id === 'monitoring');
+        return realTimeBin ? realTimeBin.level : 60;
+      })(),
+      status: (() => {
+        const realTimeBin = wasteBins.find(wb => wb.id === 'monitoring');
+        return realTimeBin ? realTimeBin.status : "warning";
+      })(),
+      lastCollected: (() => {
+        const realTimeBin = wasteBins.find(wb => wb.id === 'monitoring');
+        return realTimeBin ? realTimeBin.lastCollected : "3 hours ago";
+      })(),
+      capacity: "450L",
+      wasteType: "Organic",
+      nextCollection: "Today 4:30 PM",
+      binData: wasteBins.find(wb => wb.id === 'monitoring')?.binData
+    },
+    {
+      id: "3",
+      location: "Central Plaza",
+      level: 90,
+      status: "critical",
+      lastCollected: "1 hour ago",
+      capacity: "600L",
+      wasteType: "Recyclable",
+      nextCollection: "Today 5:30 PM",
+    },
+    {
+      id: "4",
+      location: "Central Plaza",
+      level: 50,
+      status: "normal",
+      lastCollected: "5 hours ago",
+      capacity: "550L",
+      wasteType: "Mixed",
+      nextCollection: "Today 6:00 PM",
+    },
+
+    // Park Avenue - 4 bins
+    {
+      id: "5",
+      location: "Park Avenue",
+      level: 45,
+      status: "normal",
+      lastCollected: "1 day ago",
+      capacity: "300L",
+      wasteType: "Organic",
+      nextCollection: "Tomorrow 9:00 AM",
+    },
+    {
+      id: "6",
+      location: "Park Avenue",
+      level: 75,
+      status: "warning",
+      lastCollected: "3 hours ago",
+      capacity: "350L",
+      wasteType: "Mixed",
+      nextCollection: "Today 7:00 PM",
+    },
+    {
+      id: "7",
+      location: "Park Avenue",
+      level: 90,
+      status: "critical",
+      lastCollected: "2 hours ago",
+      capacity: "500L",
+      wasteType: "Recyclable",
+      nextCollection: "Today 8:00 PM",
+    },
+    {
+      id: "8",
+      location: "Park Avenue",
+      level: 30,
+      status: "normal",
+      lastCollected: "10 hours ago",
+      capacity: "400L",
+      wasteType: "Organic",
+      nextCollection: "Tomorrow 10:00 AM",
+    },
+
+    // Mall District - 4 bins
+    {
+      id: "9",
+      location: "Mall District",
+      level: 70,
+      status: "warning",
+      lastCollected: "4 hours ago",
+      capacity: "750L",
+      wasteType: "Recyclable",
+      nextCollection: "Today 5:00 PM",
+    },
+    {
+      id: "10",
+      location: "Mall District",
+      level: 60,
+      status: "warning",
+      lastCollected: "6 hours ago",
+      capacity: "650L",
+      wasteType: "Mixed",
+      nextCollection: "Today 7:00 PM",
+    },
+    {
+      id: "11",
+      location: "Mall District",
+      level: 95,
+      status: "critical",
+      lastCollected: "1 hour ago",
+      capacity: "800L",
+      wasteType: "Recyclable",
+      nextCollection: "Today 6:30 PM",
+    },
+    {
+      id: "12",
+      location: "Mall District",
+      level: 35,
+      status: "normal",
+      lastCollected: "9 hours ago",
+      capacity: "700L",
+      wasteType: "Organic",
+      nextCollection: "Tomorrow 8:00 AM",
+    },
+
+    // Residential Area - 4 bins
+    {
+      id: "13",
+      location: "Residential Area",
+      level: 30,
+      status: "normal",
+      lastCollected: "6 hours ago",
+      capacity: "400L",
+      wasteType: "Mixed",
+      nextCollection: "Tomorrow 11:00 AM",
+    },
+    {
+      id: "14",
+      location: "Residential Area",
+      level: 55,
+      status: "normal",
+      lastCollected: "7 hours ago",
+      capacity: "350L",
+      wasteType: "Organic",
+      nextCollection: "Tomorrow 1:00 PM",
+    },
+    {
+      id: "15",
+      location: "Residential Area",
+      level: 80,
+      status: "critical",
+      lastCollected: "2 hours ago",
+      capacity: "450L",
+      wasteType: "Recyclable",
+      nextCollection: "Today 9:00 PM",
+    },
+    {
+      id: "16",
+      location: "Residential Area",
+      level: 65,
+      status: "warning",
+      lastCollected: "8 hours ago",
+      capacity: "420L",
+      wasteType: "Mixed",
+      nextCollection: "Tomorrow 3:00 PM",
+    },
+  ];
+
+  const filteredBins = realTimeBins.filter(
     (bin) => bin.location === selectedLocation
   );
 
-  const handleCardClick = (bin) => {
+  const handleCardClick = (bin: WasteBin) => {
     setSelectedBin(bin);
     setSelectedJanitorId(null); // Reset selection on open
     setIsModalOpen(true);
@@ -228,6 +422,8 @@ const handleAssignTask = () => {
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Level</h2>
       </div>
+
+
 
       <WasteLevelCards onCardClick={setSelectedLocation} />
 
