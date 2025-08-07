@@ -24,6 +24,7 @@ const notificationRoutes = require('./routers/notificationRoutes');
 
 const db = admin.database();
 const dataRef = db.ref('monitoring/data');
+const bin1Ref = db.ref('monitoring/bin1');
 
 const app = express();
 app.use(cors({
@@ -113,6 +114,9 @@ modem.on('error', error => {
 modem.open('COM12', options, (error) => {
   if (error) {
     console.error('Error opening port:', error);
+    console.log('⚠️  Modem not connected, but real-time monitoring will still work');
+    // Setup real-time monitoring even without modem
+    setupRealTimeMonitoring();
     return;
   }
 });
@@ -125,21 +129,68 @@ modem.on('open', data => {
       return;
     }
     console.log('[SERIAL MONITOR] Modem is initialized:', result);
-    // Automatic SMS on threshold
-    const binLevelRef = db.ref('monitoring/data/bin_level');
-    binLevelRef.on('value', (snapshot) => {
-      const binLevel = snapshot.val();
-      console.log(`[SERIAL MONITOR] Current bin level from Firebase: ${binLevel}`);
-      if (binLevel > 85 && !smsSent) {
-        console.log('[SERIAL MONITOR] Bin level exceeded threshold, preparing to send SMS...');
-        sendSMS('+639686043229', `Alert: Bin S1Bin3 is at ${binLevel}% capacity.`);
-        smsSent = true;
-      } else if (binLevel <= 85) {
-        smsSent = false; // Reset flag if bin level drops
-      }
-    });
+    
+    // Real-time data monitoring for both data paths
+    setupRealTimeMonitoring();
   });
 });
+
+// Real-time data monitoring function
+function setupRealTimeMonitoring() {
+  console.log('🔍 Setting up real-time data monitoring...');
+  
+  // Monitor monitoring/data (original path)
+  dataRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      console.log('\n📊 === REAL-TIME DATA UPDATE (monitoring/data) ===');
+      console.log(`⏰ Timestamp: ${new Date().toLocaleString()}`);
+      console.log(`📦 Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
+      console.log(`📏 Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
+      console.log(`🗑️  Bin Level: ${data.bin_level || 0}%`);
+      console.log(`📍 GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
+      console.log(`🛰️  GPS Valid: ${data.gps_valid || false}`);
+      console.log(`📡 Satellites: ${data.satellites || 0}`);
+      console.log('==========================================\n');
+      
+      // SMS alert logic
+      if (data.bin_level > 85 && !smsSent) {
+        console.log('🚨 Bin level exceeded threshold, preparing to send SMS...');
+        sendSMS('+639686043229', `Alert: Bin S1Bin3 is at ${data.bin_level}% capacity.`);
+        smsSent = true;
+      } else if (data.bin_level <= 85) {
+        smsSent = false; // Reset flag if bin level drops
+      }
+    }
+  });
+  
+  // Monitor monitoring/bin1 (new path)
+  bin1Ref.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      console.log('\n📊 === REAL-TIME DATA UPDATE (monitoring/bin1) ===');
+      console.log(`⏰ Timestamp: ${new Date().toLocaleString()}`);
+      console.log(`📦 Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
+      console.log(`📏 Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
+      console.log(`🗑️  Bin Level: ${data.bin_level || 0}%`);
+      console.log(`📍 GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
+      console.log(`🛰️  GPS Valid: ${data.gps_valid || false}`);
+      console.log(`📡 Satellites: ${data.satellites || 0}`);
+      console.log('==========================================\n');
+      
+      // SMS alert logic for bin1
+      if (data.bin_level > 85 && !smsSent) {
+        console.log('🚨 Bin1 level exceeded threshold, preparing to send SMS...');
+        sendSMS('+639686043229', `Alert: Bin1 is at ${data.bin_level}% capacity.`);
+        smsSent = true;
+      } else if (data.bin_level <= 85) {
+        smsSent = false; // Reset flag if bin level drops
+      }
+    }
+  });
+  
+  console.log('✅ Real-time monitoring active for both data paths');
+}
 
 app.get('/api/bin', async (req, res) => {
   try {
@@ -148,6 +199,37 @@ app.get('/api/bin', async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch bin data', details: err.message });
+  }
+});
+
+app.get('/api/bin1', async (req, res) => {
+  try {
+    const snapshot = await bin1Ref.once('value');
+    const data = snapshot.val();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch bin1 data', details: err.message });
+  }
+});
+
+app.get('/api/status', async (req, res) => {
+  try {
+    const [dataSnapshot, bin1Snapshot] = await Promise.all([
+      dataRef.once('value'),
+      bin1Ref.once('value')
+    ]);
+    
+    const data = dataSnapshot.val();
+    const bin1Data = bin1Snapshot.val();
+    
+    res.json({
+      timestamp: new Date().toISOString(),
+      monitoring_data: data,
+      bin1_data: bin1Data,
+      server_status: 'running'
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch status', details: err.message });
   }
 });
 
