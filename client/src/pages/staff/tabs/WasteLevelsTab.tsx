@@ -532,7 +532,7 @@ const handleAssignTask = () => {
           selectedBin.status === "critical"
             ? "Immediate collection required."
             : selectedBin.status === "warning"
-            ? "Monitor closely and prepare for collection."
+            ? "Monitor closely and prepare for collection."   
             : "No action needed at the moment."
         }
       </div>

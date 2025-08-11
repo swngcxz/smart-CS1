@@ -1,3 +1,58 @@
+// Update current user info
+const updateCurrentUser = async (req, res) => {
+  try {
+    const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    // Find user by email
+    const snapshot = await db.collection('users').where('email', '==', decoded.email).get();
+    if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
+    const userDoc = snapshot.docs[0];
+    const updates = {};
+    if (req.body.fullName) updates.fullName = req.body.fullName;
+    if (req.body.address) updates.address = req.body.address;
+    if (req.body.phone) updates.phone = req.body.phone;
+    // Add more fields as needed
+    await userDoc.ref.update(updates);
+    return res.json({ message: 'Profile updated' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to update user info' });
+  }
+};
+// Get current user info from JWT token
+const getCurrentUser = async (req, res) => {
+  try {
+    const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    // Find user by email
+    const snapshot = await db.collection('users').where('email', '==', decoded.email).get();
+    if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
+    const userDoc = snapshot.docs[0];
+    const user = userDoc.data();
+    // Return safe user info
+    return res.json({
+      id: userDoc.id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      address: user.address || '',
+      phone: user.phone || '',
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to fetch user info' });
+  }
+};
 
 const { db, saveData } = require("../models/firebase");
 const { hashPassword, comparePassword } = require("../utils/authUtils");
@@ -20,7 +75,7 @@ const transporter = nodemailer.createTransport({
 
 async function signup(req, res) {
 
-  const { fullName, email, password, address, role } = req.body;
+  const { fullName, email, password, address, role, phone } = req.body;
   if (!fullName || !email || !password) {
     return res.status(400).json({ error: "Full name, email, and password are required" });
   }
@@ -35,12 +90,12 @@ async function signup(req, res) {
 
     const hashed = await hashPassword(password);
 
-
     const userData = {
       fullName,
       email,
       password: hashed,
       address: address || "",
+      phone: phone || "",
       role: role || "staff",
       status: "active",
       emailVerified: true,
@@ -220,4 +275,4 @@ async function signout(req, res) {
   }
 }
 
-module.exports = { signup, login, requestPasswordReset, resetPassword, signout };
+module.exports = { signup, login, requestPasswordReset, resetPassword, signout, getCurrentUser, updateCurrentUser };

@@ -1,7 +1,13 @@
 const express = require('express');
-const { signup, login, requestPasswordReset, resetPassword, signout } = require('../controllers/authController');
+
+const { signup, login, requestPasswordReset, resetPassword, signout, getCurrentUser, updateCurrentUser } = require('../controllers/authController');
 const passport = require('../utils/googleAuth');
 const router = express.Router();
+
+// Get current user info
+router.get('/me', getCurrentUser);
+// Update current user info
+router.patch('/me', updateCurrentUser);
 
 
 
