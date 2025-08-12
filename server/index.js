@@ -20,6 +20,7 @@ const { admin } = require('./models/firebase');
 const serialportgsm = require('serialport-gsm');
 
 const notificationRoutes = require('./routers/notificationRoutes');
+const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
 
 
 const db = admin.database();
@@ -105,7 +106,9 @@ function sendSMS(phoneNumber, message) {
   });
 }
 
-let smsSent = false; // For the automatic threshold check
+let smsSent = false;
+let criticalNotificationSent = false;
+let warningNotificationSent = false; // For the automatic threshold check
 
 modem.on('error', error => {
   console.error('Modem error:', error);
@@ -140,7 +143,7 @@ function setupRealTimeMonitoring() {
   console.log('🔍 Setting up real-time data monitoring...');
   
   // Monitor monitoring/data (original path)
-  dataRef.on('value', (snapshot) => {
+  dataRef.on('value', async (snapshot) => {
     const data = snapshot.val();
     if (data) {
       console.log('\n📊 === REAL-TIME DATA UPDATE (monitoring/data) ===');
@@ -161,11 +164,31 @@ function setupRealTimeMonitoring() {
       } else if (data.bin_level <= 85) {
         smsSent = false; // Reset flag if bin level drops
       }
+
+      // Notification logic for monitoring/data
+      try {
+        if (data.bin_level >= 85 && !criticalNotificationSent) {
+          console.log('🚨 Sending critical bin notification...');
+          await sendCriticalBinNotification('S1Bin3', data.bin_level, 'Central Plaza');
+          criticalNotificationSent = true;
+          warningNotificationSent = false; // Reset warning flag
+        } else if (data.bin_level >= 70 && data.bin_level < 85 && !warningNotificationSent) {
+          console.log('⚠️ Sending warning bin notification...');
+          await sendWarningBinNotification('S1Bin3', data.bin_level, 'Central Plaza');
+          warningNotificationSent = true;
+        } else if (data.bin_level < 70) {
+          // Reset flags when bin level drops below warning threshold
+          criticalNotificationSent = false;
+          warningNotificationSent = false;
+        }
+      } catch (notifyErr) {
+        console.error('Failed to send bin notification for monitoring/data:', notifyErr);
+      }
     }
   });
   
   // Monitor monitoring/bin1 (new path)
-  bin1Ref.on('value', (snapshot) => {
+  bin1Ref.on('value', async (snapshot) => {
     const data = snapshot.val();
     if (data) {
       console.log('\n📊 === REAL-TIME DATA UPDATE (monitoring/bin1) ===');
@@ -185,6 +208,26 @@ function setupRealTimeMonitoring() {
         smsSent = true;
       } else if (data.bin_level <= 85) {
         smsSent = false; // Reset flag if bin level drops
+      }
+
+      // Notification logic for monitoring/bin1
+      try {
+        if (data.bin_level >= 85 && !criticalNotificationSent) {
+          console.log('🚨 Sending critical bin1 notification...');
+          await sendCriticalBinNotification('Bin1', data.bin_level, 'Central Plaza');
+          criticalNotificationSent = true;
+          warningNotificationSent = false; // Reset warning flag
+        } else if (data.bin_level >= 70 && data.bin_level < 85 && !warningNotificationSent) {
+          console.log('⚠️ Sending warning bin1 notification...');
+          await sendWarningBinNotification('Bin1', data.bin_level, 'Central Plaza');
+          warningNotificationSent = true;
+        } else if (data.bin_level < 70) {
+          // Reset flags when bin level drops below warning threshold
+          criticalNotificationSent = false;
+          warningNotificationSent = false;
+        }
+      } catch (notifyErr) {
+        console.error('Failed to send bin notification for monitoring/bin1:', notifyErr);
       }
     }
   });

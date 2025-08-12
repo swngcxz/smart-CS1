@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 import { Viewer } from "mapillary-js";
 import "mapillary-js/dist/mapillary.css";
+import { useRealTimeData } from "@/hooks/useRealTimeData";
 
 // Fix default marker icons
 L.Icon.Default.mergeOptions({
@@ -73,9 +74,28 @@ function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
 }
 
 export function MapSection() {
-  const criticalBins = binLocations.filter((bin) => bin.status === "critical").length;
-  const warningBins = binLocations.filter((bin) => bin.status === "warning").length;
-  const normalBins = binLocations.filter((bin) => bin.status === "normal").length;
+  const { wasteBins, loading, error } = useRealTimeData();
+
+  // Update bin locations with real-time data
+  const updatedBinLocations = binLocations.map((bin) => {
+    // Find corresponding real-time data
+    const realTimeBin = wasteBins.find(wb => wb.id === bin.id.toString());
+    
+    if (realTimeBin) {
+      return {
+        ...bin,
+        level: realTimeBin.level,
+        status: realTimeBin.status,
+        lastCollection: realTimeBin.lastCollected,
+      };
+    }
+    
+    return bin;
+  });
+
+  const criticalBins = updatedBinLocations.filter((bin) => bin.status === "critical").length;
+  const warningBins = updatedBinLocations.filter((bin) => bin.status === "warning").length;
+  const normalBins = updatedBinLocations.filter((bin) => bin.status === "normal").length;
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -193,7 +213,7 @@ export function MapSection() {
             attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           />
-          {binLocations.map((bin) => (
+          {updatedBinLocations.map((bin) => (
             <BinMarker key={bin.id} bin={bin} />
           ))}
         </MapContainer>

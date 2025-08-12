@@ -184,18 +184,26 @@ async function login(req, res) {
 
 
 
-    // Only notify admin if a staff logs in (not admin themselves)
+    // Only notify admin if a non-admin (staff/janitor) logs in
     try {
-      if (user.role && user.role !== 'admin') {
-        const adminUserId = 'admin'; // You can change this to your admin's userId
+      const roleLabel = user.acc_type || user.role || 'user';
+      const isNonAdmin = (user.role && user.role !== 'admin') || (user.acc_type && user.acc_type !== 'admin');
+      if (isNonAdmin) {
+        const adminUserId = 'admin'; // Aligns with client useNotifications("admin")
         const notification = {
-          title: 'User Login',
-          message: `${user.email} logged in at ${new Date().toLocaleString()}`,
+          title: 'Staff Login Alert',
+          message: `${user.fullName || user.firstName || user.email} (${roleLabel}) logged into the system`,
           timestamp: Date.now(),
-          read: false
+          read: false,
+          type: 'login',
+          userId: userDoc.id,
+          userRole: roleLabel,
+          userEmail: user.email,
+          userFirstName: user.fullName || user.firstName || 'Unknown'
         };
         const { admin: adminSDK } = require('../models/firebase');
         await adminSDK.database().ref(`notifications/${adminUserId}`).push(notification);
+        console.log(`📧 Admin notification sent: ${user.email} (${roleLabel}) logged in`);
       }
     } catch (notifyErr) {
       console.error('Failed to send admin notification:', notifyErr);

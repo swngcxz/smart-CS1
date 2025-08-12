@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
+import api from "@/lib/api";
+import { useEffect } from "react";
 
 
 // Notification type from hook
@@ -16,8 +18,20 @@ import type { Notification as NotificationType } from "@/hooks/useNotifications"
 
 const Notifications = () => {
   const navigate = useNavigate();
-  // Use the hook for admin notifications
-  const { notifications, loading, error } = useNotifications("admin");
+  // Resolve current user and listen to their own bucket (staff should NOT see admin bucket)
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get("/auth/me");
+        setCurrentUserId(res.data.id);
+      } catch (_) {
+        setCurrentUserId("");
+      }
+    })();
+  }, []);
+
+  const { notifications, loading, error } = useNotifications(currentUserId || "none");
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
 
@@ -31,7 +45,8 @@ const Notifications = () => {
   // Mark a single notification as read in the backend
   const markAsRead = async (key: string) => {
     try {
-      await fetch(`/api/notifications/admin/mark-read/${key}`, { method: 'PATCH' });
+      if (!currentUserId) return;
+      await fetch(`/api/notifications/${currentUserId}/mark-read/${key}`, { method: 'PATCH' });
     } catch (err) {
       // Optionally show error
     }
@@ -40,7 +55,8 @@ const Notifications = () => {
   // Mark all notifications as read in the backend
   const markAllAsRead = async () => {
     try {
-      await fetch(`/api/notifications/admin/mark-all-read`, { method: 'PATCH' });
+      if (!currentUserId) return;
+      await fetch(`/api/notifications/${currentUserId}/mark-all-read`, { method: 'PATCH' });
     } catch (err) {
       // Optionally show error
     }
@@ -49,7 +65,8 @@ const Notifications = () => {
   // Delete a notification in the backend
   const deleteNotification = async (key: string) => {
     try {
-      await fetch(`/api/notifications/admin/${key}`, { method: 'DELETE' });
+      if (!currentUserId) return;
+      await fetch(`/api/notifications/${currentUserId}/${key}`, { method: 'DELETE' });
     } catch (err) {
       // Optionally show error
     }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ActivityLogs } from "../pages/ActivityLogs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useRealTimeData } from "@/hooks/useRealTimeData";
 
 const allActivities = [
   {
@@ -56,8 +57,41 @@ const todayStats = [
 export function ActivityTab() {
   const [activityType, setActivityType] = useState("All Activities");
   const [dateRange, setDateRange] = useState("Today");
+  const { wasteBins, loading, error } = useRealTimeData();
 
-  const filteredActivities = allActivities.filter((activity) => {
+  // Generate real-time activities based on waste bin data
+  const generateRealTimeActivities = () => {
+    const realTimeActivities = [];
+    
+    wasteBins.forEach((bin) => {
+      if (bin.status === 'critical') {
+        realTimeActivities.push({
+          id: `rt-${bin.id}-critical`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          activity: `Bin ${bin.id} at ${bin.location} is critical (${bin.level}% full)`,
+          type: "alert",
+          priority: "high",
+          user: "Real-time System",
+        });
+      } else if (bin.status === 'warning') {
+        realTimeActivities.push({
+          id: `rt-${bin.id}-warning`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          activity: `Bin ${bin.id} at ${bin.location} needs attention (${bin.level}% full)`,
+          type: "alert",
+          priority: "medium",
+          user: "Real-time System",
+        });
+      }
+    });
+    
+    return realTimeActivities;
+  };
+
+  const realTimeActivities = generateRealTimeActivities();
+  const combinedActivities = [...realTimeActivities, ...allActivities];
+
+  const filteredActivities = combinedActivities.filter((activity) => {
     const matchesType =
       activityType === "All Activities" || activity.type.toLowerCase() === activityType.toLowerCase();
     // You can enhance date filtering here

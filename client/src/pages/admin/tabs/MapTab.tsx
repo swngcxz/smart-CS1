@@ -2,6 +2,7 @@ import { MapSection } from "../pages/MapSection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Navigation, Route } from "lucide-react";
+import { useRealTimeData } from "@/hooks/useRealTimeData";
 
 const locationData = [
   { id: 1, name: "Central Plaza", lat: "40.7128", lng: "-74.0060", status: "critical", level: 85 },
@@ -11,6 +12,23 @@ const locationData = [
 ];
 
 export function MapTab() {
+  const { wasteBins, loading, error } = useRealTimeData();
+
+  // Update location data with real-time information
+  const updatedLocationData = locationData.map((location) => {
+    const realTimeBin = wasteBins.find(wb => wb.location === location.name);
+    
+    if (realTimeBin) {
+      return {
+        ...location,
+        level: realTimeBin.level,
+        status: realTimeBin.status,
+      };
+    }
+    
+    return location;
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -30,7 +48,7 @@ export function MapTab() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {locationData.map((location) => (
+              {updatedLocationData.map((location) => (
                 <div
                   key={location.id}
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"

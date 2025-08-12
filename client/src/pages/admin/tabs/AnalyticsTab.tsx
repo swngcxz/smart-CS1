@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, CalendarDays } from "lucide-react";
+import { useRealTimeData } from "@/hooks/useRealTimeData";
 
 interface BinData {
   id: string;
@@ -68,8 +69,26 @@ const mockBinData: BinData[] = [
 export function AnalyticsTab() {
   const [timeFilter, setTimeFilter] = useState<"week" | "month">("week");
   const [routeFilter, setRouteFilter] = useState<string>("all");
+  const { wasteBins, loading, error } = useRealTimeData();
 
-  const filteredData = mockBinData.filter((bin) => routeFilter === "all" || bin.route.includes(routeFilter));
+  // Combine mock data with real-time data
+  const enhancedBinData = mockBinData.map((bin) => {
+    // Find corresponding real-time data
+    const realTimeBin = wasteBins.find(wb => wb.id === bin.id || wb.location.includes(bin.route.split(' - ')[1]));
+    
+    if (realTimeBin) {
+      return {
+        ...bin,
+        fillLevel: realTimeBin.level,
+        status: realTimeBin.status,
+        lastCollection: realTimeBin.lastCollected,
+      };
+    }
+    
+    return bin;
+  });
+
+  const filteredData = enhancedBinData.filter((bin) => routeFilter === "all" || bin.route.includes(routeFilter));
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Bell, Trash, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -7,10 +7,34 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/hooks/useNotifications";
 import type { Notification as NotificationType } from "@/hooks/useNotifications";
+import api from "@/lib/api";
 
 export function NotificationPopover() {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+  const [userLoading, setUserLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await api.get("/auth/me");
+        if (mounted) {
+          setCurrentUser({ id: res.data.id, role: res.data.role });
+        }
+      } catch (_) {
+        if (mounted) setCurrentUser(null);
+      } finally {
+        if (mounted) setUserLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const notificationBucket = currentUser?.role === "admin" ? "admin" : currentUser?.id || "none";
   const {
     notifications,
     loading,
@@ -18,7 +42,7 @@ export function NotificationPopover() {
     markAsRead,
     markAllAsRead,
     deleteNotification
-  } = useNotifications("admin");
+  } = useNotifications(notificationBucket);
   const backendNotifications: NotificationType[] = Array.isArray(notifications) ? notifications : [];
   const unreadCount = backendNotifications.filter((n) => !n.read).length;
 
@@ -26,8 +50,10 @@ export function NotificationPopover() {
     switch (type) {
       case "warning":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "error":
+      case "critical":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "login":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
       case "success":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       default:
@@ -84,9 +110,23 @@ export function NotificationPopover() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-sm text-gray-900 dark:text-white">{notification.title}</h4>
-                      <Badge className={getTypeBadge("info")}>info</Badge>
+                      <Badge className={getTypeBadge(notification.type || "info")}>
+                        {notification.type || "info"}
+                      </Badge>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{notification.message}</p>
+                    {notification.userRole && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Role: {notification.userRole}
+                        </span>
+                        {notification.userEmail && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            • {notification.userEmail}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <p className="text-xs text-gray-400 dark:text-gray-500">
                       {notification.timestamp ? new Date(notification.timestamp).toLocaleString() : ""}
                     </p>

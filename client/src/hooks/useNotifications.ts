@@ -9,6 +9,11 @@ export interface Notification {
   timestamp: number;
   read: boolean;
   key?: string;
+  type?: string;
+  userId?: string;
+  userRole?: string;
+  userEmail?: string;
+  userFirstName?: string;
 }
 
 export function useNotifications(userId: string) {

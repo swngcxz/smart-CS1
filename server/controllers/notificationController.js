@@ -46,13 +46,59 @@ exports.deleteNotification = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Send critical bin level notification to admin
+exports.sendCriticalBinNotification = async (binId, binLevel, location) => {
+  try {
+    const adminUserId = 'admin';
+    const notification = {
+      title: 'Critical Bin Alert',
+      message: `Bin ${binId} at ${location} is at ${binLevel}% capacity and needs immediate attention!`,
+      timestamp: Date.now(),
+      read: false,
+      type: 'critical',
+      binId,
+      binLevel,
+      location
+    };
+    await db.ref(`notifications/${adminUserId}`).push(notification);
+    console.log(`🚨 Critical bin notification sent: Bin ${binId} at ${binLevel}%`);
+    return true;
+  } catch (error) {
+    console.error('Failed to send critical bin notification:', error);
+    return false;
+  }
+};
+
+// Send warning bin level notification to admin
+exports.sendWarningBinNotification = async (binId, binLevel, location) => {
+  try {
+    const adminUserId = 'admin';
+    const notification = {
+      title: 'Bin Warning Alert',
+      message: `Bin ${binId} at ${location} is at ${binLevel}% capacity and should be monitored.`,
+      timestamp: Date.now(),
+      read: false,
+      type: 'warning',
+      binId,
+      binLevel,
+      location
+    };
+    await db.ref(`notifications/${adminUserId}`).push(notification);
+    console.log(`⚠️ Warning bin notification sent: Bin ${binId} at ${binLevel}%`);
+    return true;
+  } catch (error) {
+    console.error('Failed to send warning bin notification:', error);
+    return false;
+  }
+};
 const admin = require('firebase-admin');
 const db = admin.database();
 
 // Send a notification to a user or group
 exports.sendNotification = async (req, res) => {
   try {
-    const { userId, title, message } = req.body;
+    const { userId, title, message, type = 'info', metadata = {} } = req.body;
     if (!userId || !title || !message) {
       return res.status(400).json({ error: 'userId, title, and message are required' });
     }
@@ -60,9 +106,12 @@ exports.sendNotification = async (req, res) => {
       title,
       message,
       timestamp: Date.now(),
-      read: false
+      read: false,
+      type,
+      ...metadata
     };
     await db.ref(`notifications/${userId}`).push(notification);
+    console.log(`📧 Notification sent to ${userId}: ${title}`);
     res.status(200).json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
