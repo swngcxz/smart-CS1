@@ -101,3 +101,48 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* GPS Marker Animations */
+@keyframes gps-pulse {
+  0% { 
+    transform: scale(1); 
+    opacity: 1; 
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  50% { 
+    transform: scale(1.1); 
+    opacity: 0.8; 
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% { 
+    transform: scale(1); 
+    opacity: 1; 
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.custom-gps-marker {
+  animation: gps-pulse 2s infinite;
+}
+
+/* GPS Tracking Line Styles */
+.gps-tracking-line {
+  stroke-dasharray: 10, 5;
+  animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -15;
+  }
+}
+
+/* GPS Status Indicator */
+.gps-status-valid {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}

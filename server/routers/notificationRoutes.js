@@ -9,6 +9,9 @@ router.post('/send', notificationController.sendNotification);
 // Get notifications for a user
 router.get('/:userId', notificationController.getNotifications);
 
+// Admin-specific route for admin notifications (with access control)
+router.get('/admin/notifications', notificationController.getAdminNotifications);
+
 // Mark a single notification as read
 router.patch('/:userId/mark-read/:key', notificationController.markNotificationRead);
 

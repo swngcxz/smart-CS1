@@ -34,6 +34,7 @@ export function NotificationPopover() {
     };
   }, []);
 
+  // Only admin users can see admin notifications, others see their own notifications
   const notificationBucket = currentUser?.role === "admin" ? "admin" : currentUser?.id || "none";
   const {
     notifications,
@@ -146,7 +147,11 @@ export function NotificationPopover() {
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                      onClick={() => deleteNotification(notification.key)}
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this notification?')) {
+                          deleteNotification(notification.key);
+                        }
+                      }}
                     >
                       <Trash className="h-3 w-3" />
                     </Button>

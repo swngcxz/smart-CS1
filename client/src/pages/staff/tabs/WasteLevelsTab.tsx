@@ -5,14 +5,17 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
+import { useJanitorialStaffByLocation, JanitorialStaff } from "@/hooks/useJanitorialStaff";
+import { useTaskAssignment, TaskAssignment } from "@/hooks/useTaskAssignment";
+import { useToast } from "@/hooks/use-toast";
 
-// Example janitorial staff list with location
-const janitorialStaff = [
-  { id: 1, name: "Janitor Alice", location: "Central Plaza" },
-  { id: 2, name: "Janitor Bob", location: "Park Avenue" },
-  { id: 3, name: "Janitor Charlie", location: "Mall District" },
-  { id: 4, name: "Janitor Daisy", location: "Residential Area" },
-  { id: 5, name: "Janitor Ethan", location: "Central Plaza" },
+// Fallback janitorial staff list (will be replaced by backend data)
+const fallbackJanitorialStaff = [
+  { id: "1", fullName: "Janitor Alice", location: "Central Plaza", role: "Janitor" },
+  { id: "2", fullName: "Janitor Bob", location: "Park Avenue", role: "Janitor" },
+  { id: "3", fullName: "Janitor Charlie", location: "Mall District", role: "Janitor" },
+  { id: "4", fullName: "Janitor Daisy", location: "Residential Area", role: "Janitor" },
+  { id: "5", fullName: "Janitor Ethan", location: "Central Plaza", role: "Janitor" },
 ];
 // Your waste data with multiple bins in "Central Plaza"
 const detailedWasteData: WasteBin[] = [
@@ -190,11 +193,22 @@ export function WasteLevelsTab() {
   const [selectedLocation, setSelectedLocation] = useState("Central Plaza");
   const [selectedBin, setSelectedBin] = useState<WasteBin | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedJanitorId, setSelectedJanitorId] = useState(null);
+  const [selectedJanitorId, setSelectedJanitorId] = useState<string | null>(null);
   const [taskNote, setTaskNote] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const { wasteBins, loading, error } = useRealTimeData();
+  const { data: backendStaff, loading: staffLoading, error: staffError } = useJanitorialStaffByLocation(selectedLocation);
+  
+  // Use backend data if available, otherwise fall back to static data
+  const janitorialStaff = backendStaff || fallbackJanitorialStaff;
+  
+  // Debug logging
+  console.log("Backend staff data:", backendStaff);
+  console.log("Fallback staff data:", fallbackJanitorialStaff);
+  console.log("Final staff data:", janitorialStaff);
+  const { assignTask, loading: assignmentLoading, error: assignmentError, clearError } = useTaskAssignment();
+  const { toast } = useToast();
 
   // Create real-time data for each location
   const realTimeBins: WasteBin[] = [
@@ -397,23 +411,63 @@ export function WasteLevelsTab() {
     setIsModalOpen(true);
   };
 
-const handleAssignTask = () => {
-  if (!selectedJanitorId) {
+const handleAssignTask = async () => {
+  if (!selectedJanitorId || !selectedBin) {
     setShowConfirmation(false);
     return;
   }
 
-  const janitor = janitorialStaff.find(j => j.id === parseInt(selectedJanitorId));
+  try {
+    const janitor = janitorialStaff?.find(j => j.id === selectedJanitorId);
+    if (!janitor) {
+      toast({
+        title: "Error",
+        description: "Selected janitor not found",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  // If needed, log or save task assignment here
+    // Determine priority based on bin status
+    const priority: "low" | "medium" | "high" | "critical" = 
+      selectedBin.status === "critical" ? "critical" :
+      selectedBin.status === "warning" ? "high" : "medium";
 
-  // Show confirmation modal (instead of alert)
-  setShowConfirmation(true);
+    // Create task assignment data
+    const taskData: TaskAssignment = {
+      staff_id: selectedJanitorId,
+      bin_id: selectedBin.id,
+      bin_location: selectedBin.location,
+      task_type: "waste_collection",
+      priority,
+      notes: taskNote,
+      assigned_by: "staff_user", // This could be the current user's ID
+      assigned_at: new Date().toISOString()
+    };
+
+    // Send to backend
+    await assignTask(taskData);
+
+    // Show success toast
+    toast({
+      title: "Task Assigned",
+      description: `Task successfully assigned to ${janitor.fullName}`,
+    });
+
+    // Show confirmation modal
+    setShowConfirmation(true);
+  } catch (error) {
+    toast({
+      title: "Assignment Failed",
+      description: error instanceof Error ? error.message : "Failed to assign task",
+      variant: "destructive",
+    });
+  }
 };
 
 
   const filteredJanitors = selectedBin
-    ? janitorialStaff.filter((j) => j.location === selectedBin.location)
+    ? (janitorialStaff || []).filter((j) => !j.location || j.location === selectedBin.location || j.location === "All Routes")
     : [];
 
   return (
@@ -493,9 +547,20 @@ const handleAssignTask = () => {
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-xl p-8 space-y-6 relative">
       {/* Modal Header */}
       <div className="flex justify-between items-center border-b pb-3">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-          Bin Information - {selectedBin.location}
-        </h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+            Bin Information - {selectedBin.location}
+          </h3>
+          <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+            selectedBin.status === "critical"
+              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
+              : selectedBin.status === "warning"
+              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
+              : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+          }`}>
+            {selectedBin.status.toUpperCase()}
+          </span>
+        </div>
         <button
           onClick={() => setIsModalOpen(false)}
           className="text-gray-500 hover:text-gray-600 text-lg font-bold"
@@ -523,7 +588,20 @@ const handleAssignTask = () => {
           Math.round(parseInt(selectedBin.capacity) * (selectedBin.level / 100))
         }L</div>
         <div><strong>Last Collected:</strong> {selectedBin.lastCollected}</div>
-  
+        
+        {/* Real-time Data Display */}
+        {selectedBin.binData && (
+          <>
+            <div><strong>Real-time Weight:</strong> {selectedBin.binData.weight_kg} kg</div>
+            <div><strong>Real-time Distance:</strong> {selectedBin.binData.distance_cm} cm</div>
+            {selectedBin.binData.gps_valid && (
+              <>
+                <div><strong>GPS:</strong> {selectedBin.binData.latitude?.toFixed(4)}, {selectedBin.binData.longitude?.toFixed(4)}</div>
+                <div><strong>Satellites:</strong> {selectedBin.binData.satellites}</div>
+              </>
+            )}
+          </>
+        )}
       </div>
 
       {/* Suggested Action */}
@@ -540,22 +618,32 @@ const handleAssignTask = () => {
       {/* Assign Janitor */}
       <div>
         <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Assign to Janitor</label>
-        <Select onValueChange={(val) => setSelectedJanitorId(val)}>
-          <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
-            <SelectValue placeholder="Select Janitor" />
-          </SelectTrigger>
-          <SelectContent>
-            {filteredJanitors.length > 0 ? (
-              filteredJanitors.map((janitor) => (
-                <SelectItem key={janitor.id} value={janitor.id.toString()}>
-                  {janitor.name}
+        {staffLoading ? (
+          <div className="text-sm text-gray-500 dark:text-gray-400">Loading janitors...</div>
+        ) : staffError ? (
+          <div className="text-sm text-red-500 dark:text-red-400">Error loading janitors: {staffError}</div>
+        ) : (
+          <Select onValueChange={(val) => setSelectedJanitorId(val)}>
+            <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
+              <SelectValue placeholder="Select Janitor" />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredJanitors.length > 0 ? (
+                filteredJanitors.map((janitor) => (
+                  <SelectItem key={janitor.id} value={janitor.id.toString()}>
+                    {janitor.fullName} - {janitor.role}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem disabled value="none">
+                  {janitorialStaff && janitorialStaff.length > 0 
+                    ? "No janitors in this location" 
+                    : "No janitors available"}
                 </SelectItem>
-              ))
-            ) : (
-              <SelectItem disabled value="none">No janitors in this location</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
+              )}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Task Note */}
@@ -573,11 +661,28 @@ const handleAssignTask = () => {
       <div className="flex justify-end gap-2">
         <Button
           onClick={handleAssignTask}
-          className="bg-green-600 text-white hover:bg-green-700"
+          disabled={!selectedJanitorId || assignmentLoading}
         >
-          Assign Task
+          {assignmentLoading ? "Assigning..." : "Assign Task"}
         </Button>
       </div>
+
+      {/* Assignment Error Display */}
+      {assignmentError && (
+        <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Error: {assignmentError}
+          </p>
+          <Button
+            onClick={clearError}
+            variant="outline"
+            size="sm"
+            className="mt-2 text-red-600 border-red-300 hover:bg-red-50"
+          >
+            Dismiss
+          </Button>
+        </div>
+      )}
     </div>
   </div>
 )}
@@ -588,7 +693,7 @@ const handleAssignTask = () => {
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-6">
       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Task Assigned</h3>
       <p className="text-sm text-gray-800 dark:text-gray-300 mb-4">
-        Task successfully assigned to <strong>{janitorialStaff.find(j => j.id === parseInt(selectedJanitorId))?.name}</strong>
+        Task successfully assigned to <strong>{janitorialStaff?.find(j => j.id === selectedJanitorId)?.fullName}</strong>
         {taskNote && ` with note: "${taskNote}"`}
       </p>
       <Button

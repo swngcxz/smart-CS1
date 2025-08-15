@@ -184,29 +184,18 @@ async function login(req, res) {
 
 
 
-    // Only notify admin if a non-admin (staff/janitor) logs in
+    // Send login notification to admin dashboard for all user logins
     try {
-      const roleLabel = user.acc_type || user.role || 'user';
-      const isNonAdmin = (user.role && user.role !== 'admin') || (user.acc_type && user.acc_type !== 'admin');
-      if (isNonAdmin) {
-        const adminUserId = 'admin'; // Aligns with client useNotifications("admin")
-        const notification = {
-          title: 'Staff Login Alert',
-          message: `${user.fullName || user.firstName || user.email} (${roleLabel}) logged into the system`,
-          timestamp: Date.now(),
-          read: false,
-          type: 'login',
-          userId: userDoc.id,
-          userRole: roleLabel,
-          userEmail: user.email,
-          userFirstName: user.fullName || user.firstName || 'Unknown'
-        };
-        const { admin: adminSDK } = require('../models/firebase');
-        await adminSDK.database().ref(`notifications/${adminUserId}`).push(notification);
-        console.log(`📧 Admin notification sent: ${user.email} (${roleLabel}) logged in`);
-      }
+      const { sendAdminLoginNotification } = require('./notificationController');
+      await sendAdminLoginNotification({
+        id: userDoc.id,
+        fullName: user.fullName || user.firstName,
+        firstName: user.firstName,
+        role: user.acc_type || user.role || 'user',
+        email: user.email
+      });
     } catch (notifyErr) {
-      console.error('Failed to send admin notification:', notifyErr);
+      console.error('Failed to send admin login notification:', notifyErr);
     }
 
     return res.status(200).json({ message: "Login successful", token: loginToken });
