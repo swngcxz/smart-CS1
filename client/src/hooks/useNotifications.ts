@@ -24,7 +24,15 @@ export function useNotifications(userId: string) {
   // Fetch notifications
   const fetchNotifications = async () => {
     try {
-      const res = await api.get(`/api/notifications/${userId}`);
+      let res;
+      
+      // If userId is 'admin', use the admin-specific endpoint
+      if (userId === 'admin') {
+        res = await api.get('/api/notifications/admin/notifications');
+      } else {
+        res = await api.get(`/api/notifications/${userId}`);
+      }
+      
       const data = res.data;
       const notificationsObj = data.notifications || {};
       const notificationsArr = Object.entries(notificationsObj)

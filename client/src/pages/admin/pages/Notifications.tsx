@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
+import api from "@/lib/api";
 
 
 // Notification type from hook
@@ -32,18 +33,28 @@ const Notifications = () => {
   // Mark a single notification as read in the backend
   const markAsRead = async (key: string) => {
     try {
-      await fetch(`/api/notifications/admin/mark-read/${key}`, { method: 'PATCH' });
+      await api.patch(`/api/notifications/admin/mark-read/${key}`);
+      
+      // Refresh notifications after marking as read
+      window.location.reload();
+      
+      console.log('✅ Admin notification marked as read:', key);
     } catch (err) {
-      // Optionally show error
+      console.error('❌ Failed to mark admin notification as read:', err);
     }
   };
 
   // Mark all notifications as read in the backend
   const markAllAsRead = async () => {
     try {
-      await fetch(`/api/notifications/admin/mark-all-read`, { method: 'PATCH' });
+      await api.patch(`/api/notifications/admin/mark-all-read`);
+      
+      // Refresh notifications after marking all as read
+      window.location.reload();
+      
+      console.log('✅ All admin notifications marked as read');
     } catch (err) {
-      // Optionally show error
+      console.error('❌ Failed to mark all admin notifications as read:', err);
     }
   };
 
@@ -85,12 +96,16 @@ const Notifications = () => {
 
   const getTypeColor = (type: string) => {
     switch (type) {
+      case "login":
+        return "border-purple-200 bg-purple-50 dark:border-purple-700 dark:bg-purple-900";
       case "warning":
         return "border-yellow-200 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900";
       case "error":
         return "border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900";
       case "success":
         return "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900";
+      case "critical":
+        return "border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900";
       default:
         return "border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900";
     }
@@ -98,12 +113,16 @@ const Notifications = () => {
 
   const getTypeBadge = (type: string) => {
     switch (type) {
+      case "login":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
       case "warning":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "error":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       case "success":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "critical":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       default:
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
     }
@@ -190,6 +209,7 @@ const Notifications = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="login">Login</SelectItem>
                     <SelectItem value="info">Info</SelectItem>
                     <SelectItem value="warning">Warning</SelectItem>
                     <SelectItem value="success">Success</SelectItem>
@@ -259,7 +279,11 @@ const Notifications = () => {
                         variant="ghost"
                         size="sm"
                         className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900"
-                        onClick={() => deleteNotification(notification.key)}
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to delete this notification?')) {
+                            deleteNotification(notification.key);
+                          }
+                        }}
                       >
                         <Trash className="h-4 w-4 mr-1" />
                         Delete

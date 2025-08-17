@@ -92,6 +92,30 @@ exports.sendWarningBinNotification = async (binId, binLevel, location) => {
     return false;
   }
 };
+
+// Send admin login notification (only for admin dashboard)
+exports.sendAdminLoginNotification = async (userData) => {
+  try {
+    const adminUserId = 'admin';
+    const notification = {
+      title: 'User Login',
+      message: `${userData.fullName || userData.firstName || 'Unknown User'} (${userData.role || 'user'})`,
+      timestamp: Date.now(),
+      read: false,
+      type: 'login',
+      userId: userData.id,
+      userRole: userData.role || 'user',
+      userEmail: userData.email,
+      userFullName: userData.fullName || userData.firstName || 'Unknown'
+    };
+    await db.ref(`notifications/${adminUserId}`).push(notification);
+    console.log(`📧 Admin login notification sent: ${userData.email} (${userData.role || 'user'}) logged in`);
+    return true;
+  } catch (error) {
+    console.error('Failed to send admin login notification:', error);
+    return false;
+  }
+};
 const admin = require('firebase-admin');
 const db = admin.database();
 
@@ -127,6 +151,42 @@ exports.getNotifications = async (req, res) => {
     }
     const snapshot = await db.ref(`notifications/${userId}`).once('value');
     const notifications = snapshot.val() || {};
+    res.status(200).json({ notifications });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get admin notifications (with access control)
+exports.getAdminNotifications = async (req, res) => {
+  try {
+    // Check if user is authenticated and is admin
+    const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    // Verify JWT token and check admin role
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.TOKEN_SECRET || "your_jwt_secret";
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Check if user is admin - allow both 'admin' role and 'acc_type' admin
+    if (decoded.role !== 'admin' && decoded.acc_type !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    // Get admin notifications
+    const adminUserId = 'admin';
+    const snapshot = await db.ref(`notifications/${adminUserId}`).once('value');
+    const notifications = snapshot.val() || {};
+    
     res.status(200).json({ notifications });
   } catch (error) {
     res.status(500).json({ error: error.message });

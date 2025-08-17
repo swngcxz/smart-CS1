@@ -20,25 +20,126 @@ const Notifications = () => {
   const navigate = useNavigate();
   // Resolve current user and listen to their own bucket (staff should NOT see admin bucket)
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [currentUserRole, setCurrentUserRole] = useState<string>("");
+  
   useEffect(() => {
     (async () => {
       try {
         const res = await api.get("/auth/me");
         setCurrentUserId(res.data.id);
+        setCurrentUserRole(res.data.role || res.data.acc_type || "");
+        
+        // Security check: ensure staff users never access admin notifications
+        if (res.data.role === 'admin' || res.data.acc_type === 'admin') {
+          console.warn('🚨 Admin user detected in staff notification component');
+        }
       } catch (_) {
         setCurrentUserId("");
+        setCurrentUserRole("");
       }
     })();
   }, []);
 
-  const { notifications, loading, error } = useNotifications(currentUserId || "none");
+  // Ensure staff users only see their personal notifications, never admin notifications
+  const notificationBucket = currentUserId || "none";
+  
+  // Double-check: never allow staff to access admin notifications
+  if (notificationBucket === "admin" && currentUserRole !== "admin") {
+    console.error('🚨 SECURITY ISSUE: Staff user attempting to access admin notifications!');
+  }
+  
+  // Force staff users to use their personal notification endpoint
+  const finalNotificationBucket = (currentUserRole === "admin") ? "admin" : currentUserId || "none";
+  
+  // SECURITY CHECK: Never allow staff users to access admin notifications
+  if (finalNotificationBucket === "admin" && currentUserRole !== "admin") {
+    console.error('🚨 CRITICAL SECURITY ISSUE: Staff user attempting to access admin notifications!');
+    // Force fallback to personal notifications
+    const fallbackBucket = currentUserId || "none";
+    console.log('🛡️ Security fallback: Using personal notification bucket:', fallbackBucket);
+  }
+  
+  // Debug logging
+  console.log('🔍 Staff Notification Debug:', {
+    currentUserId,
+    currentUserRole,
+    finalNotificationBucket,
+    isAdmin: currentUserRole === "admin",
+    securityCheck: finalNotificationBucket === "admin" && currentUserRole !== "admin"
+  });
+  
+  const { notifications, loading, error } = useNotifications(finalNotificationBucket);
+  
+  // Additional safety check: if somehow admin notifications are loaded, filter them out
+  const safeNotifications = Array.isArray(notifications) ? notifications.filter(notification => {
+    // Comprehensive filter: exclude any admin-related notifications
+    const isAdminNotification = (
+      // Login notifications (admin-only)
+      notification.type === 'login' ||
+      notification.title?.includes('User Login') ||
+      notification.title?.includes('Staff Login Alert') ||
+      notification.message?.includes('logged into the system') ||
+      notification.message?.includes('logged in') ||
+      
+      // Admin user notifications
+      notification.userRole === 'admin' ||
+      notification.userEmail?.includes('admin') ||
+      notification.userId === 'admin' ||
+      
+      // System-wide notifications that staff shouldn't see
+      notification.type === 'system' ||
+      notification.title?.includes('System') ||
+      notification.title?.includes('Admin') ||
+      
+      // Bin alerts (admin-only)
+      notification.type === 'critical' ||
+      notification.type === 'warning' ||
+      notification.title?.includes('Bin') ||
+      notification.title?.includes('Critical') ||
+      notification.title?.includes('Warning')
+    );
+    
+    // Debug log if admin notifications are detected
+    if (isAdminNotification) {
+      console.warn('🚨 Admin notification detected in staff view:', notification);
+      console.warn('🚨 Notification details:', {
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        userRole: notification.userRole,
+        userEmail: notification.userEmail
+      });
+    }
+    
+    return !isAdminNotification;
+  }) : [];
+  
+  // Debug logging for notifications
+  const adminNotificationCount = notifications.filter(n => 
+    n.type === 'login' || 
+    n.title?.includes('User Login') || 
+    n.title?.includes('Staff Login Alert') ||
+    n.type === 'critical' ||
+    n.type === 'warning'
+  ).length;
+  
+  console.log('🔍 Notifications Debug:', {
+    rawNotifications: notifications,
+    safeNotifications: safeNotifications,
+    filteredCount: safeNotifications.length,
+    adminNotificationCount,
+    hasAdminNotifications: adminNotificationCount > 0,
+    filteredOutTypes: notifications
+      .filter(n => n.type === 'login' || n.title?.includes('User Login'))
+      .map(n => ({ type: n.type, title: n.title }))
+  });
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [hiddenNotifications, setHiddenNotifications] = useState<string[]>([]);
 
 
-  // Only use backend notifications
-  const backendNotifications: NotificationType[] = Array.isArray(notifications) ? notifications : [];
+  // Only use safe, filtered notifications (no admin notifications)
+  const backendNotifications: NotificationType[] = safeNotifications;
   const unreadCount = backendNotifications.filter((n) => !n.read).length;
 
 
@@ -47,9 +148,14 @@ const Notifications = () => {
   const markAsRead = async (key: string) => {
     try {
       if (!currentUserId) return;
-      await fetch(`/api/notifications/${currentUserId}/mark-read/${key}`, { method: 'PATCH' });
+      await api.patch(`/api/notifications/${currentUserId}/mark-read/${key}`);
+      
+      // Refresh notifications after marking as read
+      window.location.reload();
+      
+      console.log('✅ Notification marked as read:', key);
     } catch (err) {
-      // Optionally show error
+      console.error('❌ Failed to mark notification as read:', err);
     }
   };
 
@@ -57,11 +163,16 @@ const Notifications = () => {
   const markAllAsRead = async () => {
     try {
       if (!currentUserId) return;
-      await fetch(`/api/notifications/${currentUserId}/mark-all-read`, { method: 'PATCH' });
+      await api.patch(`/api/notifications/${currentUserId}/mark-all-read`);
+      
+      // Refresh notifications after marking all as read
+      window.location.reload();
+      
+      console.log('✅ All notifications marked as read');
     } catch (err) {
-      // Optionally show error
+      console.error('❌ Failed to mark all notifications as read:', err);
     }
-  };
+    }
 
   // Temporary hide notification (do not delete from backend)
   const deleteNotification = (key: string) => {
@@ -83,21 +194,21 @@ const Notifications = () => {
     );
   });
 
-  const filteredNotifications = uniqueNotifications
-    .filter((notification) => !hiddenNotifications.includes(notification.key))
-    .filter((notification) => {
-      // Hide 'info' notifications with no title or message
-      if (notification.type === 'info' && (!notification.title || !notification.message)) {
-        return false;
-      }
-      return notification.type !== 'info';
-    })
-    .filter((notification) => {
-      const statusMatch =
-        filter === "all" || (filter === "read" && notification.read) || (filter === "unread" && !notification.read);
-      const typeMatch = typeFilter === "all" || notification.type === typeFilter;
-      return statusMatch && typeMatch;
-    });
+  const filteredNotifications = uniqueNotifications.filter((notification) => {
+    const statusMatch =
+      filter === "all" || (filter === "read" && notification.read) || (filter === "unread" && !notification.read);
+    
+    // Filter by notification type - staff should only see personal notifications
+    // Exclude admin-specific notifications like login alerts
+    const typeMatch = typeFilter === "all" || notification.type === typeFilter;
+    
+    // Additional filter: exclude admin notifications that might have leaked through
+    const isAdminNotification = notification.type === 'login' || 
+                              notification.title?.includes('User Login') ||
+                              notification.message?.includes('logged into the system');
+    
+    return statusMatch && typeMatch && !isAdminNotification;
+  });
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -159,12 +270,17 @@ const Notifications = () => {
               <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
                 <Bell className="h-6 w-6 text-green-600 dark:text-green-300" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">All Notifications</h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {unreadCount} unread of {backendNotifications.length} total notifications
-                </p>
-              </div>
+                              <div>
+                  <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Personal Notifications</h1>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    {unreadCount} unread of {backendNotifications.length} total personal notifications
+                  </p>
+                  {currentUserRole && currentUserRole !== "admin" && (
+                    <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                      Showing only your personal notifications
+                    </p>
+                  )}
+                </div>
             </div>
           </div>
 
@@ -216,6 +332,24 @@ const Notifications = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Security Notice */}
+        {currentUserRole && currentUserRole !== "admin" && (
+          <Card className="border-blue-200 dark:border-blue-700 dark:bg-blue-900/20">
+            <CardContent className="pt-4">
+              <div className="text-center py-2">
+                <p className="text-sm text-blue-600 dark:text-blue-400">
+                  🔒 Showing only your personal notifications. Admin notifications are not accessible to staff users.
+                </p>
+                {adminNotificationCount > 0 && (
+                  <p className="text-xs text-blue-500 dark:text-blue-300 mt-1">
+                    {adminNotificationCount} admin notification(s) filtered out for security
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Notifications List */}
         <div className="space-y-4">
@@ -275,7 +409,11 @@ const Notifications = () => {
                         variant="ghost"
                         size="sm"
                         className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900"
-                        onClick={() => deleteNotification(notification.key)}
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to delete this notification?')) {
+                            deleteNotification(notification.key);
+                          }
+                        }}
                       >
                         <Trash className="h-4 w-4 mr-1" />
                         Delete

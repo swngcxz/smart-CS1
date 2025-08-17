@@ -40,6 +40,44 @@ const saveActivityLog = async (req, res, next) => {
   }
 };
 
+// Save a task assignment
+const saveTaskAssignment = async (req, res, next) => {
+  try {
+    const { 
+      staff_id, 
+      bin_id, 
+      bin_location, 
+      task_type, 
+      priority, 
+      notes, 
+      assigned_by,
+      assigned_at 
+    } = req.body;
+
+    const data = {
+      staff_id,
+      bin_id,
+      bin_location,
+      task_type,
+      priority,
+      notes,
+      assigned_by,
+      assigned_at: assigned_at || new Date().toISOString(),
+      status: "assigned"
+    };
+
+    console.log("Saving task assignment to Firestore collection: task_assignments");
+    await db.collection("task_assignments").add(data);
+
+    res.status(201).json({ 
+      message: "Task assignment saved successfully.",
+      task_id: data.id 
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const getUserActivityLogs = async (req, res, next) => {
   try {
     const { userId } = req.params;
@@ -120,6 +158,7 @@ const getDailyActivitySummary = async (req, res, next) => {
 
 module.exports = {
   saveActivityLog,
+  saveTaskAssignment,
   getUserActivityLogs,
   getDailyActivitySummary
 };

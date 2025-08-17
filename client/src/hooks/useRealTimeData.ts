@@ -32,6 +32,7 @@ export function useRealTimeData() {
   const [monitoringData, setMonitoringData] = useState<BinData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [gpsHistory, setGpsHistory] = useState<Array<{lat: number, lng: number, timestamp: number}>>([]);
 
   // Fetch initial data
   useEffect(() => {
@@ -47,10 +48,26 @@ export function useRealTimeData() {
 
         if (bin1Response.data) {
           setBin1Data(bin1Response.data);
+          // Track GPS history if valid
+          if (bin1Response.data.gps_valid && bin1Response.data.latitude && bin1Response.data.longitude) {
+            setGpsHistory(prev => [...prev, {
+              lat: bin1Response.data.latitude,
+              lng: bin1Response.data.longitude,
+              timestamp: bin1Response.data.timestamp
+            }].slice(-50)); // Keep last 50 points
+          }
         }
         
         if (monitoringResponse.data) {
           setMonitoringData(monitoringResponse.data);
+          // Track GPS history if valid
+          if (monitoringResponse.data.gps_valid && monitoringResponse.data.latitude && monitoringResponse.data.longitude) {
+            setGpsHistory(prev => [...prev, {
+              lat: monitoringResponse.data.latitude,
+              lng: monitoringResponse.data.longitude,
+              timestamp: monitoringResponse.data.timestamp
+            }].slice(-50)); // Keep last 50 points
+          }
         }
         
         setError(null);
@@ -76,10 +93,26 @@ export function useRealTimeData() {
 
         if (bin1Response.data) {
           setBin1Data(bin1Response.data);
+          // Track GPS history if valid
+          if (bin1Response.data.gps_valid && bin1Response.data.latitude && bin1Response.data.longitude) {
+            setGpsHistory(prev => [...prev, {
+              lat: bin1Response.data.latitude,
+              lng: bin1Response.data.longitude,
+              timestamp: bin1Response.data.timestamp
+            }].slice(-50)); // Keep last 50 points
+          }
         }
         
         if (monitoringResponse.data) {
           setMonitoringData(monitoringResponse.data);
+          // Track GPS history if valid
+          if (monitoringResponse.data.gps_valid && monitoringResponse.data.latitude && monitoringResponse.data.longitude) {
+            setGpsHistory(prev => [...prev, {
+              lat: monitoringResponse.data.latitude,
+              lng: monitoringResponse.data.longitude,
+              timestamp: monitoringResponse.data.timestamp
+            }].slice(-50)); // Keep last 50 points
+          }
         }
         
         setError(null);
@@ -133,6 +166,7 @@ export function useRealTimeData() {
     bin1Data,
     monitoringData,
     wasteBins: getWasteBins(),
+    gpsHistory,
     loading,
     error,
     refresh: () => {
@@ -141,6 +175,14 @@ export function useRealTimeData() {
       api.get('/api/bin1').then(res => setBin1Data(res.data)).catch(console.error);
       api.get('/api/bin').then(res => setMonitoringData(res.data)).catch(console.error);
       setLoading(false);
+    },
+    // GPS utility functions
+    getCurrentGPSLocation: () => {
+      return bin1Data?.gps_valid ? bin1Data : monitoringData?.gps_valid ? monitoringData : null;
+    },
+    isGPSValid: () => {
+      return (bin1Data?.gps_valid && bin1Data?.latitude && bin1Data?.longitude) ||
+             (monitoringData?.gps_valid && monitoringData?.latitude && monitoringData?.longitude);
     }
   };
 }

@@ -11,10 +11,13 @@ import {
 } from "react-leaflet";
 import L, { LatLngTuple, Map as LeafletMap } from "leaflet";
 import { BinMarker } from "./StaffBinMarker";
-import { useEffect, useRef } from "react";
+import { GPSMarker } from "../../admin/pages/GPSMarker";
+import { GPSTrackingLine } from "../../admin/pages/GPSTrackingLine";
+import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { Viewer } from "mapillary-js";
 import "mapillary-js/dist/mapillary.css";
+import { useRealTimeData } from "@/hooks/useRealTimeData";
 
 // Leaflet default icon fix
 L.Icon.Default.mergeOptions({
@@ -92,6 +95,9 @@ function MapInitializer({ setMapRef }: { setMapRef: (map: LeafletMap) => void })
 }
 
 export function MapSection() {
+  const { bin1Data, monitoringData, gpsHistory } = useRealTimeData();
+  const [showGPSTracking, setShowGPSTracking] = useState(false);
+  
   const criticalBins = binLocations.filter((bin) => bin.status === "critical").length;
   const warningBins = binLocations.filter((bin) => bin.status === "warning").length;
   const normalBins = binLocations.filter((bin) => bin.status === "normal").length;
@@ -172,6 +178,34 @@ mapArea.addEventListener("drop", async (e) => {
         <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
           <div className="flex items-center gap-2">Baywalk, Naga City, Cebu</div>
           <div className="flex items-center gap-4 text-xs">
+            {/* GPS Status */}
+            <div className="flex items-center gap-1">
+              <div className={`w-3 h-3 rounded-full ${(bin1Data?.gps_valid || monitoringData?.gps_valid) ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
+              <span className="flex items-center gap-1">
+                📍 GPS: {(bin1Data?.gps_valid || monitoringData?.gps_valid) ? 'Valid' : 'Invalid'}
+                {bin1Data?.gps_valid || monitoringData?.gps_valid ? (
+                  <span className="text-blue-600">
+                    ({bin1Data?.latitude?.toFixed(4) || monitoringData?.latitude?.toFixed(4)}, {bin1Data?.longitude?.toFixed(4) || monitoringData?.longitude?.toFixed(4)})
+                  </span>
+                ) : null}
+              </span>
+            </div>
+            
+            {/* GPS Tracking Toggle */}
+            {gpsHistory.length > 1 && (
+              <button
+                onClick={() => setShowGPSTracking(!showGPSTracking)}
+                className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                  showGPSTracking 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title="Toggle GPS tracking path"
+              >
+                🗺️ {showGPSTracking ? 'Hide' : 'Show'} Path
+              </button>
+            )}
+            
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 bg-green-500 rounded-full" />
               <span>Normal ({normalBins})</span>
@@ -212,6 +246,12 @@ mapArea.addEventListener("drop", async (e) => {
           {binLocations.map((bin) => (
             <BinMarker key={bin.id} bin={bin} />
           ))}
+          
+          {/* GPS Marker for real-time location */}
+          <GPSMarker gpsData={bin1Data || monitoringData} />
+          
+          {/* GPS Tracking Line */}
+          <GPSTrackingLine gpsHistory={gpsHistory} visible={showGPSTracking} />
         </MapContainer>
 
         {/* Pegman Icon */}

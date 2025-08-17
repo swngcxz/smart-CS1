@@ -8,13 +8,13 @@ import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
 import { useJanitors, useActivityLogging } from "@/hooks/useStaffApi";
 import { toast } from "@/hooks/use-toast";
 
-// Example janitorial staff list with location
-const janitorialStaff = [
-  { id: 1, name: "Janitor Alice", location: "Central Plaza" },
-  { id: 2, name: "Janitor Bob", location: "Park Avenue" },
-  { id: 3, name: "Janitor Charlie", location: "Mall District" },
-  { id: 4, name: "Janitor Daisy", location: "Residential Area" },
-  { id: 5, name: "Janitor Ethan", location: "Central Plaza" },
+// Fallback janitorial staff list (will be replaced by backend data)
+const fallbackJanitorialStaff = [
+  { id: "1", fullName: "Janitor Alice", location: "Central Plaza", role: "Janitor" },
+  { id: "2", fullName: "Janitor Bob", location: "Park Avenue", role: "Janitor" },
+  { id: "3", fullName: "Janitor Charlie", location: "Mall District", role: "Janitor" },
+  { id: "4", fullName: "Janitor Daisy", location: "Residential Area", role: "Janitor" },
+  { id: "5", fullName: "Janitor Ethan", location: "Central Plaza", role: "Janitor" },
 ];
 // Your waste data with multiple bins in "Central Plaza"
 const detailedWasteData: WasteBin[] = [
@@ -534,9 +534,20 @@ const handleAssignTask = async () => {
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-xl p-8 space-y-6 relative">
       {/* Modal Header */}
       <div className="flex justify-between items-center border-b pb-3">
-        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-          Bin Information - {selectedBin.location}
-        </h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+            Bin Information - {selectedBin.location}
+          </h3>
+          <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+            selectedBin.status === "critical"
+              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
+              : selectedBin.status === "warning"
+              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
+              : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+          }`}>
+            {selectedBin.status.toUpperCase()}
+          </span>
+        </div>
         <button
           onClick={() => setIsModalOpen(false)}
           className="text-gray-500 hover:text-gray-600 text-lg font-bold"
@@ -564,7 +575,20 @@ const handleAssignTask = async () => {
           Math.round(parseInt(selectedBin.capacity) * (selectedBin.level / 100))
         }L</div>
         <div><strong>Last Collected:</strong> {selectedBin.lastCollected}</div>
-  
+        
+        {/* Real-time Data Display */}
+        {selectedBin.binData && (
+          <>
+            <div><strong>Real-time Weight:</strong> {selectedBin.binData.weight_kg} kg</div>
+            <div><strong>Real-time Distance:</strong> {selectedBin.binData.distance_cm} cm</div>
+            {selectedBin.binData.gps_valid && (
+              <>
+                <div><strong>GPS:</strong> {selectedBin.binData.latitude?.toFixed(4)}, {selectedBin.binData.longitude?.toFixed(4)}</div>
+                <div><strong>Satellites:</strong> {selectedBin.binData.satellites}</div>
+              </>
+            )}
+          </>
+        )}
       </div>
 
       {/* Suggested Action */}
