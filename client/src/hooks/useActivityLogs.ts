@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 
 export interface ActivityLog {
@@ -17,22 +17,31 @@ export function useActivityLogs(userId?: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchLogs = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     setError(null);
-    api.get(`/activity/${userId}`)
-      .then(res => {
-        setLogs(res.data.activities || []);
-        setUser(res.data.user || null);
-      })
-      .catch(err => {
-        setLogs([]);
-        setUser(null);
-        setError(err?.response?.data?.message || "Failed to fetch activity logs");
-      })
-      .finally(() => setLoading(false));
+    
+    try {
+      const res = await api.get(`/api/activitylogs/${userId}`);
+      setLogs(res.data.activities || []);
+      setUser(res.data.user || null);
+    } catch (err: any) {
+      setLogs([]);
+      setUser(null);
+      setError(err?.response?.data?.message || "Failed to fetch activity logs");
+    } finally {
+      setLoading(false);
+    }
   }, [userId]);
 
-  return { logs, user, loading, error };
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  const refetch = useCallback(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  return { logs, user, loading, error, refetch };
 }

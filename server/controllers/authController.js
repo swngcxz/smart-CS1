@@ -191,16 +191,19 @@ async function login(req, res) {
 
 
 
-    // Send login notification to admin dashboard for all user logins
+    // Send login notification to admin dashboard for staff user logins only
     try {
-      const { sendAdminLoginNotification } = require('./notificationController');
-      await sendAdminLoginNotification({
-        id: userDoc.id,
-        fullName: user.fullName || user.firstName,
-        firstName: user.firstName,
-        role: user.acc_type || user.role || 'user',
-        email: user.email
-      });
+      // Only send notification if the user is NOT an admin (i.e., is a staff user)
+      if (user.role !== 'admin' && user.acc_type !== 'admin') {
+        const { sendAdminLoginNotification } = require('./notificationController');
+        await sendAdminLoginNotification({
+          id: userDoc.id,
+          fullName: user.fullName || user.firstName,
+          firstName: user.firstName,
+          role: user.acc_type || user.role || 'user',
+          email: user.email
+        });
+      }
     } catch (notifyErr) {
       console.error('Failed to send admin login notification:', notifyErr);
     }

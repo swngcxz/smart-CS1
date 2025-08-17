@@ -82,17 +82,9 @@ const getUserActivityLogs = async (req, res, next) => {
   try {
     const { userId } = req.params;
 
-    // first get user info
-    const userDoc = await db.collection("users").doc(userId).get();
-
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const userData = userDoc.data();
-
-    // then get activity logs
     console.log("Querying activitylogs for user_id:", userId);
+    
+    // Get activity logs directly without requiring user document to exist
     const snapshot = await db.collection("activitylogs").where("user_id", "==", userId).get();
 
     const logs = snapshot.docs.map(doc => ({
@@ -100,11 +92,51 @@ const getUserActivityLogs = async (req, res, next) => {
       ...doc.data()
     }));
 
+    console.log(`Found ${logs.length} activity logs for user: ${userId}`);
+
+    // Try to get user info if it exists, but don't fail if it doesn't
+    let userInfo = { id: userId, name: userId };
+    try {
+      const userDoc = await db.collection("users").doc(userId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        userInfo = {
+          id: userId,
+          name: userData.fullName || userData.name || userId
+        };
+      }
+    } catch (userErr) {
+      console.log("User document not found, using default user info:", userErr.message);
+    }
+
     res.status(200).json({
-      user: {
-        id: userId,
-        name: userData.fullName    // use correct field
-      },
+      user: userInfo,
+      activities: logs
+    });
+
+  } catch (err) {
+    console.error("Error in getUserActivityLogs:", err);
+    next(err);
+  }
+};
+
+const getDailyActivitySummary = async (req, res, next) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const snapshot = await db.collection("activitylogs")
+      .where("date", "==", today)
+      .orderBy("timestamp", "desc")
+      .get();
+
+    const logs = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    res.status(200).json({
+      date: today,
+      totalActivities: logs.length,
       activities: logs
     });
 
@@ -113,45 +145,76 @@ const getUserActivityLogs = async (req, res, next) => {
   }
 };
 
-const getDailyActivitySummary = async (req, res, next) => {
+// Get all activity logs for admin view
+const getAllActivityLogs = async (req, res, next) => {
   try {
-    const today = new Date();
-    today.setHours(0,0,0,0); // midnight start
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    console.log("Querying activitylogs for today's summary");
-    const snapshot = await db.collection("activitylogs")
-      .where("timestamp", ">=", today)
-      .where("timestamp", "<", tomorrow)
+    const { limit = 100, offset = 0, type, user_id } = req.query;
+    
+    let query = db.collection("activitylogs");
+    
+    // Apply filters if provided
+    if (type) {
+      query = query.where("activity_type", "==", type);
+    }
+    if (user_id) {
+      query = query.where("user_id", "==", user_id);
+    }
+    
+    // Get logs with pagination
+    const snapshot = await query
+      .orderBy("timestamp", "desc")
+      .limit(parseInt(limit))
+      .offset(parseInt(offset))
       .get();
 
-    const activities = snapshot.docs.map(doc => ({
+    const logs = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
 
-    // categorize
-    const summary = {
-      shifts: [],
-      task: [],
-      onboarding: [],
-      reports: [],
-      update: []
-    };
-
-    activities.forEach(act => {
-      if (summary[act.type]) {
-        summary[act.type].push(act);
-      }
-    });
+    // Get total count for pagination
+    const totalSnapshot = await query.get();
+    const totalCount = totalSnapshot.size;
 
     res.status(200).json({
-      date: today.toISOString().slice(0,10),
-      summary
+      activities: logs,
+      totalCount,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
     });
 
   } catch (err) {
+    next(err);
+  }
+};
+
+// Get all activity logs for any user (for testing/debugging)
+const getActivityLogsByUserId = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    
+    console.log(`Getting all activity logs for user: ${userId}`);
+    
+    const snapshot = await db.collection("activitylogs")
+      .where("user_id", "==", userId)
+      .orderBy("timestamp", "desc")
+      .get();
+
+    const logs = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    console.log(`Found ${logs.length} activity logs for user: ${userId}`);
+
+    res.status(200).json({
+      user_id: userId,
+      totalCount: logs.length,
+      activities: logs
+    });
+
+  } catch (err) {
+    console.error("Error in getActivityLogsByUserId:", err);
     next(err);
   }
 };
@@ -160,5 +223,7 @@ module.exports = {
   saveActivityLog,
   saveTaskAssignment,
   getUserActivityLogs,
-  getDailyActivitySummary
+  getDailyActivitySummary,
+  getAllActivityLogs,
+  getActivityLogsByUserId
 };
