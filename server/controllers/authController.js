@@ -59,6 +59,7 @@ const { hashPassword, comparePassword } = require("../utils/authUtils");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const crypto = require("crypto");
+const zxcvbn = require("zxcvbn"); // For password strength validation
 const rateLimitMap = new Map(); // For rate limiting
 
 const JWT_SECRET = process.env.TOKEN_SECRET || "your_jwt_secret";
@@ -78,6 +79,12 @@ async function signup(req, res) {
   const { fullName, email, password, address, role, phone } = req.body;
   if (!fullName || !email || !password) {
     return res.status(400).json({ error: "Full name, email, and password are required" });
+  }
+
+  // Password strength validation
+  const passwordStrength = zxcvbn(password);
+  if (passwordStrength.score < 3) {
+    return res.status(400).json({ error: "Password is too weak. Please choose a stronger password." });
   }
 
   try {
@@ -241,6 +248,13 @@ async function resetPassword(req, res) {
   const { token: resetToken } = req.query;
   const { newPassword } = req.body;
   if (!resetToken || !newPassword) return res.status(400).json({ error: "Missing token or new password" });
+
+  // Password strength validation
+  const passwordStrength = zxcvbn(newPassword);
+  if (passwordStrength.score < 3) {
+    return res.status(400).json({ error: "Password is too weak. Please choose a stronger password." });
+  }
+
   try {
     const decoded = jwt.verify(resetToken, PASSWORD_RESET_SECRET);
     const snapshot = await db.collection("users").where("email", "==", decoded.email).get();

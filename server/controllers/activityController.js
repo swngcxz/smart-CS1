@@ -3,17 +3,35 @@ const { db } = require("../models/firebase");
 // Save an activity log
 const saveActivityLog = async (req, res, next) => {
   try {
-    const { user_id, bin_id, date, time, status } = req.body;
+    const { 
+      user_id, 
+      bin_id, 
+      bin_location, 
+      bin_status, 
+      bin_level, 
+      assigned_janitor_id, 
+      assigned_janitor_name, 
+      task_note, 
+      activity_type,
+      timestamp 
+    } = req.body;
 
     const data = {
       user_id,
       bin_id,
-      date,
-      time,
-      status
+      bin_location,
+      bin_status,
+      bin_level,
+      assigned_janitor_id,
+      assigned_janitor_name,
+      task_note,
+      activity_type: activity_type || 'task_assignment',
+      timestamp: timestamp || new Date().toISOString(),
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toTimeString().split(' ')[0]
     };
 
-    console.log("Saving activity log to Firestore collection: activitylogs");
+    console.log("Saving activity log to Firestore collection: activitylogs", data);
     await db.collection("activitylogs").add(data);
 
     res.status(201).json({ message: "Activity log saved successfully." });

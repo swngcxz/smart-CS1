@@ -34,6 +34,7 @@ const Notifications = () => {
   const { notifications, loading, error } = useNotifications(currentUserId || "none");
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [hiddenNotifications, setHiddenNotifications] = useState<string[]>([]);
 
 
   // Only use backend notifications
@@ -62,14 +63,9 @@ const Notifications = () => {
     }
   };
 
-  // Delete a notification in the backend
-  const deleteNotification = async (key: string) => {
-    try {
-      if (!currentUserId) return;
-      await fetch(`/api/notifications/${currentUserId}/${key}`, { method: 'DELETE' });
-    } catch (err) {
-      // Optionally show error
-    }
+  // Temporary hide notification (do not delete from backend)
+  const deleteNotification = (key: string) => {
+    setHiddenNotifications((prev) => [...prev, key]);
   };
 
 
@@ -87,13 +83,21 @@ const Notifications = () => {
     );
   });
 
-  const filteredNotifications = uniqueNotifications.filter((notification) => {
-    const statusMatch =
-      filter === "all" || (filter === "read" && notification.read) || (filter === "unread" && !notification.read);
-    // If type is missing, treat as "info" (all backend notifications default to info)
-    const typeMatch = typeFilter === "all" || "info" === typeFilter;
-    return statusMatch && typeMatch;
-  });
+  const filteredNotifications = uniqueNotifications
+    .filter((notification) => !hiddenNotifications.includes(notification.key))
+    .filter((notification) => {
+      // Hide 'info' notifications with no title or message
+      if (notification.type === 'info' && (!notification.title || !notification.message)) {
+        return false;
+      }
+      return notification.type !== 'info';
+    })
+    .filter((notification) => {
+      const statusMatch =
+        filter === "all" || (filter === "read" && notification.read) || (filter === "unread" && !notification.read);
+      const typeMatch = typeFilter === "all" || notification.type === typeFilter;
+      return statusMatch && typeMatch;
+    });
 
   const getTypeColor = (type: string) => {
     switch (type) {

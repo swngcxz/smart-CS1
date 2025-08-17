@@ -20,6 +20,25 @@ const staffController = {
     }
   },
 
+  async getJanitors(req, res) {
+    try {
+      const staff = await StaffModel.getAllStaff();
+      const janitors = staff.filter(member => member.role === 'janitor');
+      res.json(janitors);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async seedSampleData(req, res) {
+    try {
+      await StaffModel.seedSampleJanitors();
+      res.json({ message: "Sample janitor data seeded successfully" });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
   async update(req, res) {
     try {
       const { id } = req.params;

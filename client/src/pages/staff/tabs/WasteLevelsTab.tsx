@@ -5,6 +5,8 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
+import { useJanitors, useActivityLogging } from "@/hooks/useStaffApi";
+import { toast } from "@/hooks/use-toast";
 
 // Example janitorial staff list with location
 const janitorialStaff = [
@@ -190,11 +192,13 @@ export function WasteLevelsTab() {
   const [selectedLocation, setSelectedLocation] = useState("Central Plaza");
   const [selectedBin, setSelectedBin] = useState<WasteBin | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedJanitorId, setSelectedJanitorId] = useState(null);
+  const [selectedJanitorId, setSelectedJanitorId] = useState<string | null>(null);
   const [taskNote, setTaskNote] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const { wasteBins, loading, error } = useRealTimeData();
+  const { janitors, loading: janitorsLoading, error: janitorsError } = useJanitors();
+  const { logActivity, loading: activityLoading, error: activityError } = useActivityLogging();
 
   // Create real-time data for each location
   const realTimeBins: WasteBin[] = [
@@ -397,23 +401,60 @@ export function WasteLevelsTab() {
     setIsModalOpen(true);
   };
 
-const handleAssignTask = () => {
-  if (!selectedJanitorId) {
-    setShowConfirmation(false);
+const handleAssignTask = async () => {
+  if (!selectedJanitorId || !selectedBin) {
+    toast({
+      title: "Error",
+      description: "Please select a janitor and ensure bin data is available",
+      variant: "destructive",
+    });
     return;
   }
 
-  const janitor = janitorialStaff.find(j => j.id === parseInt(selectedJanitorId));
+  try {
+    const selectedJanitor = janitors.find(j => j.id === selectedJanitorId);
+    if (!selectedJanitor) {
+      toast({
+        title: "Error",
+        description: "Selected janitor not found",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  // If needed, log or save task assignment here
+    // Log the activity to the backend
+    await logActivity({
+      user_id: "staff-user", // You might want to get this from auth context
+      bin_id: selectedBin.id,
+      bin_location: selectedBin.location,
+      bin_status: selectedBin.status,
+      bin_level: selectedBin.level,
+      assigned_janitor_id: selectedJanitorId,
+      assigned_janitor_name: selectedJanitor.fullName,
+      task_note: taskNote,
+      activity_type: "task_assignment"
+    });
 
-  // Show confirmation modal (instead of alert)
-  setShowConfirmation(true);
+    // Show success confirmation
+    setShowConfirmation(true);
+    
+    toast({
+      title: "Success",
+      description: `Task assigned to ${selectedJanitor.fullName}`,
+    });
+
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to assign task",
+      variant: "destructive",
+    });
+  }
 };
 
 
   const filteredJanitors = selectedBin
-    ? janitorialStaff.filter((j) => j.location === selectedBin.location)
+    ? janitors.filter((j) => j.location === selectedBin.location || !j.location)
     : [];
 
   return (
@@ -500,7 +541,7 @@ const handleAssignTask = () => {
           onClick={() => setIsModalOpen(false)}
           className="text-gray-500 hover:text-gray-600 text-lg font-bold"
         >
-          ✕
+          ×
         </button>
       </div>
 
@@ -542,20 +583,25 @@ const handleAssignTask = () => {
         <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Assign to Janitor</label>
         <Select onValueChange={(val) => setSelectedJanitorId(val)}>
           <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
-            <SelectValue placeholder="Select Janitor" />
+            <SelectValue placeholder={janitorsLoading ? "Loading janitors..." : "Select Janitor"} />
           </SelectTrigger>
           <SelectContent>
-            {filteredJanitors.length > 0 ? (
+            {janitorsLoading ? (
+              <SelectItem disabled value="loading">Loading janitors...</SelectItem>
+            ) : filteredJanitors.length > 0 ? (
               filteredJanitors.map((janitor) => (
-                <SelectItem key={janitor.id} value={janitor.id.toString()}>
-                  {janitor.name}
+                <SelectItem key={janitor.id} value={janitor.id}>
+                  {janitor.fullName} {janitor.location && `(${janitor.location})`}
                 </SelectItem>
               ))
             ) : (
-              <SelectItem disabled value="none">No janitors in this location</SelectItem>
+              <SelectItem disabled value="none">No janitors available</SelectItem>
             )}
           </SelectContent>
         </Select>
+        {janitorsError && (
+          <p className="text-sm text-red-600 mt-1">Error loading janitors: {janitorsError}</p>
+        )}
       </div>
 
       {/* Task Note */}
@@ -573,11 +619,15 @@ const handleAssignTask = () => {
       <div className="flex justify-end gap-2">
         <Button
           onClick={handleAssignTask}
-          className="bg-green-600 text-white hover:bg-green-700"
+          disabled={activityLoading || !selectedJanitorId}
+          className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
         >
-          Assign Task
+          {activityLoading ? "Assigning..." : "Assign Task"}
         </Button>
       </div>
+      {activityError && (
+        <p className="text-sm text-red-600 mt-2">Error: {activityError}</p>
+      )}
     </div>
   </div>
 )}
@@ -586,10 +636,13 @@ const handleAssignTask = () => {
 {showConfirmation && selectedJanitorId && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-6">
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Task Assigned</h3>
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Task Assigned Successfully</h3>
       <p className="text-sm text-gray-800 dark:text-gray-300 mb-4">
-        Task successfully assigned to <strong>{janitorialStaff.find(j => j.id === parseInt(selectedJanitorId))?.name}</strong>
+        Task successfully assigned to <strong>{janitors.find(j => j.id === selectedJanitorId)?.fullName}</strong>
         {taskNote && ` with note: "${taskNote}"`}
+      </p>
+      <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+        Activity has been logged to the system.
       </p>
       <Button
         onClick={() => {
