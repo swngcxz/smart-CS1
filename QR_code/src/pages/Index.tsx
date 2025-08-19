@@ -1,9 +1,9 @@
-
 import Hero from "@/components/Hero";
 import VideoSection from "@/components/VideoSection";
 import TipsSection from "@/components/TipsSection";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import QRCodeSection from "@/components/QR_code/QRCodeSection";
 
 const Index = () => {
   return (
@@ -12,6 +12,7 @@ const Index = () => {
       <VideoSection />
       <TipsSection />
       <WhatsAppButton />
+      <QRCodeSection />
       <Footer />
     </div>
   );
