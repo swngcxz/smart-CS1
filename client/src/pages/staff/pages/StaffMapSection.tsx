@@ -1,15 +1,3 @@
-/**
- * StaffMapSection Component
- * 
- * This component displays a map with a single dynamic bin location and GPS tracking.
- * 
- * Dynamic Coordinates System:
- * - Only displays Bin1 with real-time coordinates from Firebase Realtime Database
- * - Coordinates are fetched from: monitoring/bin1/latitude and monitoring/bin1/longitude
- * - The map center automatically updates when new coordinates are received
- * - No static coordinates are used - only real-time data
- * - Bin is only visible when GPS data is valid
- */
 
 import {
   Card,
@@ -212,7 +200,7 @@ mapArea.addEventListener("drop", async (e) => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
           <div className="flex items-center gap-2">
-            Dynamic Bin Mapping
+            Bin Mapping
             {binLocations.length > 0 ? (
               <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center gap-1">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
