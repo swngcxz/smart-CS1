@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
@@ -6,93 +6,52 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Clock, MapPin, Truck, Plus, Wrench, Trash2 } from "lucide-react";
 import { format, isSameDay } from "date-fns";
-import { AddScheduleDialog } from "../pages/AddScheduleDialog";
+import { AddScheduleDialog, Schedule, Collector } from "../pages/AddScheduleDialog";
+import { useTruckSchedulesList, useCreateTruckSchedule, useUpdateTruckScheduleStatus } from "@/hooks/useTruckSchedules";
+import { useCreateSchedule } from "@/hooks/useSchedules";
+import { useStaffList } from "@/hooks/useStaff";
 
-interface Collector {
-  id: string;
-  name: string;
-  phone?: string;
-}
-
-interface Schedule {
-  id: number;
-  location: string;
-  serviceType: "collection" | "maintenance";
-  type: string;
-  time: string;
-  date: string;
-  status: string;
-  capacity?: string;
-  collector?: Collector;
-  truckPlate?: string;
-  priority?: "Low" | "Normal" | "High";
-  notes?: string;
-  contactPerson?: string;
-}
+// Using shared Collector/Schedule from AddScheduleDialog
 
 export function ScheduleCollectionTabs() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSchedulePopupOpen, setIsSchedulePopupOpen] = useState(false);
   const [selectedDateSchedules, setSelectedDateSchedules] = useState<Schedule[]>([]);
-  
-  const [scheduleData, setScheduleData] = useState<Schedule[]>([
-    {
-      id: 1,
-      location: "Central Plaza",
-      serviceType: "collection",
-      type: "Mixed",
-      time: "3:00 PM",
-      date: "2025-01-02",
-      status: "scheduled",
-      capacity: "85%"
-    },
-    {
-      id: 2,
-      location: "Park Avenue",
-      serviceType: "collection",
-      type: "Organic",
-      time: "9:00 AM",
-      date: "2025-01-03",
-      status: "scheduled",
-      capacity: "45%"
-    },
-    {
-      id: 3,
-      location: "Mall District",
-      serviceType: "maintenance",
-      type: "Repair",
-      time: "5:00 PM",
-      date: "2025-01-02",
-      status: "scheduled"
-    },
-    {
-      id: 4,
-      location: "Residential Area",
-      serviceType: "collection",
-      type: "Mixed",
-      time: "11:00 AM",
-      date: "2025-01-01",
-      status: "completed",
-      capacity: "30%"
-    },
-    {
-      id: 5,
-      location: "Industrial Zone",
-      serviceType: "collection",
-      type: "Hazardous",
-      time: "2:00 PM",
-      date: "2024-12-31",
-      status: "overdue",
-      capacity: "95%"
-    }
-  ]);
+  const [scheduleData, setScheduleData] = useState<Schedule[]>([]);
 
-  const collectors: Collector[] = [
-    { id: "c1", name: "Juan Dela Cruz", phone: "0917-000-1111" },
-    { id: "c2", name: "Maria Santos", phone: "0917-222-3333" },
-    { id: "c3", name: "Pedro Reyes", phone: "0917-444-5555" },
-  ];
+  // Read: load schedules from backend
+  const { data: truckSchedules } = useTruckSchedulesList();
+  useEffect(() => {
+    if (!truckSchedules) return;
+    const mapped: Schedule[] = (truckSchedules as any[]).map((t) => ({
+      id: t.id,
+      location: t.location,
+      serviceType: (t.sched_type === "maintenance" ? "maintenance" : "collection"),
+      type: t.sched_type,
+      time: `${t.start_collected} - ${t.end_collected}`,
+      date: t.date,
+      status: t.status,
+    }));
+    setScheduleData(mapped);
+  }, [truckSchedules]);
+
+  // Load staff and derive drivers as collectors
+  const { data: staffData } = useStaffList();
+  const drivers: Collector[] = useMemo(() => {
+    const list = Array.isArray(staffData) ? staffData : [];
+    const drivers = list
+      .filter((s: any) => (s.role || "").toLowerCase() === "driver")
+      .map((s: any) => ({ id: s.id, name: s.fullName }));
+    return drivers;
+  }, [staffData]);
+
+  const maintenanceWorkers: Collector[] = useMemo(() => {
+    const list = Array.isArray(staffData) ? staffData : [];
+    return list
+      .filter((s: any) => (s.role || "").toLowerCase() === "maintenance")
+      .map((s: any) => ({ id: s.id, name: s.fullName }));
+  }, [staffData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -176,12 +135,137 @@ export function ScheduleCollectionTabs() {
     );
   };
 
+  // Create: POST to backend
+  const [createBody, setCreateBody] = useState<any>(null);
+  const [triggerCreate, setTriggerCreate] = useState(false);
+  const { data: createRes, error: createErr } = useCreateTruckSchedule(createBody, triggerCreate);
+  // Create (maintenance via /api/schedules)
+  const [createMaintBody, setCreateMaintBody] = useState<any>(null);
+  const [triggerCreateMaint, setTriggerCreateMaint] = useState(false);
+  const { data: createMaintRes, error: createMaintErr } = useCreateSchedule(createMaintBody, triggerCreateMaint);
+  useEffect(() => {
+    if (!triggerCreate) return;
+    if (createRes || createErr) {
+      // If backend returned id, attach to last created optimistic schedule
+      if (createRes?.id) {
+        setScheduleData((prev) => {
+          const next = [...prev];
+          // Find last without id and set it
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (!next[i].id) {
+              next[i] = { ...next[i], id: createRes.id } as Schedule;
+              break;
+            }
+          }
+          return next;
+        });
+      }
+      setTriggerCreate(false);
+    }
+  }, [createRes, createErr, triggerCreate]);
+
+  // Surface create errors
+  useEffect(() => {
+    if (createErr) {
+      console.error("Failed to create collection schedule:", createErr);
+      window.alert(typeof createErr === "string" ? createErr : "Failed to create collection schedule");
+    }
+  }, [createErr]);
+
+  useEffect(() => {
+    if (!triggerCreateMaint) return;
+    if (createMaintRes || createMaintErr) {
+      if (createMaintRes?.id) {
+        setScheduleData((prev) => {
+          const next = [...prev];
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (!next[i].id) {
+              next[i] = { ...next[i], id: createMaintRes.id } as Schedule;
+              break;
+            }
+          }
+          return next;
+        });
+      }
+      setTriggerCreateMaint(false);
+    }
+  }, [createMaintRes, createMaintErr, triggerCreateMaint]);
+
+  // Surface maintenance create errors
+  useEffect(() => {
+    if (createMaintErr) {
+      console.error("Failed to create maintenance schedule:", createMaintErr);
+      window.alert(typeof createMaintErr === "string" ? createMaintErr : "Failed to create maintenance schedule");
+    }
+  }, [createMaintErr]);
+
   const handleAddSchedule = (newSchedule: Omit<Schedule, 'id'>) => {
-    const schedule: Schedule = {
-      ...newSchedule,
-      id: Math.max(...scheduleData.map(s => s.id), 0) + 1
-    };
-    setScheduleData([...scheduleData, schedule]);
+    // Validate driver selection (backend requires staffId)
+    if (!newSchedule.collector?.id) {
+      window.alert("Please select a driver before saving the schedule.");
+      return;
+    }
+    // Optimistic UI
+    setScheduleData((prev) => [...prev, newSchedule as Schedule]);
+
+    // Route to correct backend
+    const startTime = (newSchedule as any).start_collected || (newSchedule.time || "").split(" - ")[0];
+    const endTime = (newSchedule as any).end_collected || (newSchedule.time || "").split(" - ")[1];
+
+    if (newSchedule.serviceType === "collection") {
+      const payload = {
+        staffId: newSchedule.collector?.id,
+        sched_type: newSchedule.serviceType,
+        start_collected: startTime,
+        end_collected: endTime,
+        location: newSchedule.location,
+        status: "scheduled",
+        date: newSchedule.date,
+      };
+      setCreateBody(payload);
+      setTriggerCreate(true);
+    } else {
+      const payload = {
+        staffId: newSchedule.collector?.id,
+        sched_type: newSchedule.type,
+        start_time: startTime,
+        end_time: endTime,
+        location: newSchedule.location,
+        status: "scheduled",
+        date: newSchedule.date,
+      };
+      setCreateMaintBody(payload);
+      setTriggerCreateMaint(true);
+    }
+  };
+
+  // Update: PUT status
+  const [updateTargetId, setUpdateTargetId] = useState<string | null>(null);
+  const [updateStatusValue, setUpdateStatusValue] = useState<string>("");
+  const [triggerUpdate, setTriggerUpdate] = useState(false);
+  const { data: updateRes, error: updateErr } = useUpdateTruckScheduleStatus(updateTargetId, updateStatusValue, triggerUpdate);
+  useEffect(() => {
+    if (!triggerUpdate) return;
+    if (updateRes || updateErr) {
+      setTriggerUpdate(false);
+    }
+  }, [updateRes, updateErr, triggerUpdate]);
+
+  // Surface update errors
+  useEffect(() => {
+    if (updateErr) {
+      console.error("Failed to update schedule status:", updateErr);
+      window.alert(typeof updateErr === "string" ? updateErr : "Failed to update schedule status");
+    }
+  }, [updateErr]);
+
+  const handleUpdateStatus = (id: string | undefined, status: string) => {
+    if (!id) return;
+    // Optimistic
+    setScheduleData((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+    setUpdateTargetId(id);
+    setUpdateStatusValue(status);
+    setTriggerUpdate(true);
   };
 
   return (
@@ -340,7 +424,8 @@ export function ScheduleCollectionTabs() {
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onAddSchedule={handleAddSchedule}
-        collectors={collectors}
+        drivers={drivers}
+        maintenanceWorkers={maintenanceWorkers}
       />
     </div>
   );

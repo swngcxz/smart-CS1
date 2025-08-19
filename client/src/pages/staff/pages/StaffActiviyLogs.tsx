@@ -49,10 +49,10 @@ export function StaffActivityLogs() {
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-            My Activity Logs {user ? `for ${user.name}` : `for ${userId}`}
+           Activity Logs
           </CardTitle>
           <div className="text-xs text-gray-500">
-            User ID: {userId} | Logs: {logs?.length || 0}
+           Logs: {logs?.length || 0}
           </div>
         </div>
       </CardHeader>

@@ -29,12 +29,12 @@ async function createNewSchedule(req, res) {
   }
 
   try {
-    
-    const existing = await findScheduleByStaffAndDate(req.body.staffId, req.body.sched_type);
+    // Prevent duplicate schedule for the same staff on the same date
+    const existing = await findScheduleByStaffAndDate(req.body.staffId, req.body.date);
     if (existing && existing.length > 0) {
       return res
         .status(400)
-        .json({ error: "Staff already has a schedule for this type." });
+        .json({ error: "Staff already has a schedule on this date." });
     }
 
     const data = {
@@ -48,6 +48,8 @@ async function createNewSchedule(req, res) {
       },
       location: req.body.location,
       status: req.body.status,
+      date: req.body.date,
+      ...(req.body.priority ? { priority: req.body.priority } : {}),
       createdAt: new Date().toISOString()
     };
 

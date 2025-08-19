@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -6,66 +6,90 @@ import { Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StaffManagementModal } from "@/components/modal/staff/StaffManagementModal";
 import { AddStaffModal } from "@/components/modal/staff/AddStaffModal";
+import api from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 
-const staffData = [
-  {
-    id: 1,
-    name: "John Smith",
-    role: "Collection Driver",
-    zone: "Route A",
-    status: "active",
-    lastActivity: "2 hours ago",
-  },
-  {
-    id: 2,
-    name: "Maria Garcia",
-    role: "Supervisor",
-    zone: "Route B",
-    status: "active",
-    lastActivity: "30 min ago",
-  },
-  {
-    id: 3,
-    name: "David Johnson",
-    role: "Collection Driver",
-    zone: "Route C",
-    status: "offline",
-    lastActivity: "1 day ago",
-  },
-  {
-    id: 4,
-    name: "Sarah Wilson",
-    role: "Maintenance",
-    zone: "Route D",
-    status: "active",
-    lastActivity: "1 hour ago",
-  },
-  {
-    id: 5,
-    name: "Michael Brown",
-    role: "Collection Driver",
-    zone: "Route A",
-    status: "break",
-    lastActivity: "15 min ago",
-  },
-];
+type StaffRecord = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  location?: string;
+  status?: string;
+  lastActivity?: string;
+};
 
 export function StaffTable() {
-  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState("all");
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [staffList, setStaffList] = useState(staffData);
+  const [staffList, setStaffList] = useState<StaffRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleRowClick = (staff) => {
-    setSelectedStaff(staff);
+  const loadStaff = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get("/api/staff");
+      setStaffList(res.data);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to load staff");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStaff();
+  }, []);
+
+  const handleRowClick = (staff: StaffRecord) => {
+    // Map backend staff shape to modal's expected shape
+    const modalStaff = {
+      id: staff.id,
+      name: staff.fullName,
+      role: staff.role,
+      zone: staff.location || "",
+      status: staff.status || "active",
+      lastActivity: staff.lastActivity || "",
+      email: staff.email,
+    };
+    setSelectedStaff(modalStaff);
     setIsModalOpen(true);
   };
-  const handleAddStaff = (newStaff) => {
-    setStaffList((prev) => [...prev, { ...newStaff, id: prev.length + 1 }]);
-    setAddModalOpen(false);
+  const handleAddStaff = async (payload: any) => {
+    try {
+      setLoading(true);
+      await api.post("/api/staff", payload);
+      toast({ title: "Staff added", description: `${payload.fullName} created.` });
+      setAddModalOpen(false);
+      await loadStaff();
+    } catch (err: any) {
+      toast({ title: "Failed to add staff", description: err?.response?.data?.error || "Error", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
-  const filteredStaff = selectedRoute === "all" ? staffData : staffData.filter((staff) => staff.zone === selectedRoute);
+
+  const handleDeleteStaff = async (staffId: string) => {
+    try {
+      setLoading(true);
+      await api.delete(`/api/staff/${staffId}`);
+      toast({ title: "Staff deleted", description: `Record removed.` });
+      await loadStaff();
+    } catch (err: any) {
+      toast({ title: "Failed to delete staff", description: err?.response?.data?.error || "Error", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredStaff = useMemo(() => {
+    if (selectedRoute === "all") return staffList;
+    return staffList.filter((s) => (s.location || "") === selectedRoute);
+  }, [selectedRoute, staffList]);
 
   return (
     <>
@@ -86,17 +110,14 @@ export function StaffTable() {
           </Select>
         </div>
 
-        <button
-          onClick={() => setAddModalOpen(true)}
-          className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition"
-        >
+        <button onClick={() => setAddModalOpen(true)} className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">
           + Add Staff
         </button>
       </div>
 
       {/* Staff Table */}
     <Card>
-  <CardContent className="pt-4"> {/* Added padding-top (pt-4) */}
+  <CardContent className="pt-4">
     <Table>
       <TableHeader>
         <TableRow>
@@ -105,39 +126,58 @@ export function StaffTable() {
           <TableHead>Route</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Last Activity</TableHead>
+          <TableHead></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {filteredStaff.map((staff) => (
+        {loading && (
+          <TableRow>
+            <TableCell colSpan={6} className="text-center text-sm text-gray-500">Loading...</TableCell>
+          </TableRow>
+        )}
+        {error && (
+          <TableRow>
+            <TableCell colSpan={6} className="text-center text-sm text-red-600">{error}</TableCell>
+          </TableRow>
+        )}
+        {!loading && !error && filteredStaff.map((staff) => (
           <TableRow
             key={staff.id}
             onClick={() => handleRowClick(staff)}
             className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition"
           >
-            <TableCell className="font-medium">{staff.name}</TableCell>
+            <TableCell className="font-medium">{staff.fullName}</TableCell>
             <TableCell>{staff.role}</TableCell>
-            <TableCell>{staff.zone}</TableCell>
+            <TableCell>{staff.location || ""}</TableCell>
             <TableCell>
               <Badge
                 variant={
-                  staff.status === "active"
+                  (staff.status || "active") === "active"
                     ? "default"
-                    : staff.status === "offline"
+                    : (staff.status || "active") === "offline"
                     ? "destructive"
                     : "secondary"
                 }
                 className={
-                  staff.status === "active"
+                  (staff.status || "active") === "active"
                     ? "bg-green-100 text-green-800 hover:bg-green-200"
-                    : staff.status === "break"
+                    : (staff.status || "") === "break"
                     ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
                     : ""
                 }
               >
-                {staff.status}
+                {staff.status || "active"}
               </Badge>
             </TableCell>
-            <TableCell className="text-gray-500">{staff.lastActivity}</TableCell>
+            <TableCell className="text-gray-500">{staff.lastActivity || ""}</TableCell>
+            <TableCell>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDeleteStaff(staff.id); }}
+                className="text-red-600 hover:underline text-sm"
+              >
+                Delete
+              </button>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

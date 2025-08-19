@@ -197,7 +197,6 @@ export function StaffActivityTab() {
         <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
-              <Filter className="w-5 h-5" />
               Activity Filters
             </CardTitle>
           </CardHeader>
@@ -247,7 +246,6 @@ export function StaffActivityTab() {
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
-                <Activity className="w-5 h-5" />
                 Recent Activity Summary
                 {loading && <span className="text-sm text-gray-500">(Loading...)</span>}
               </CardTitle>

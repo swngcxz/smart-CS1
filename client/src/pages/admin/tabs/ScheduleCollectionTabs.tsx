@@ -1,76 +1,59 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, MapPin, Truck, Plus, X } from "lucide-react";
+import { Clock, MapPin, Truck } from "lucide-react";
 import { format, isSameDay } from "date-fns";
-import { AddScheduleDialog } from "../../staff/pages/AddScheduleDialog";
+import { AddScheduleDialog, Schedule, Collector } from "../../staff/pages/AddScheduleDialog";
+import { useTruckSchedulesList, useCreateTruckSchedule } from "@/hooks/useTruckSchedules";
+import { useStaffList } from "@/hooks/useStaff";
 
-interface Schedule {
-  id: number;
-  location: string;
-  type: string;
-  time: string;
-  date: string;
-  status: string;
-  capacity: string;
-}
+// Using shared Schedule interface from AddScheduleDialog
 
 export function ScheduleCollectionTabs() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSchedulePopupOpen, setIsSchedulePopupOpen] = useState(false);
   const [selectedDateSchedules, setSelectedDateSchedules] = useState<Schedule[]>([]);
-  
-  const [scheduleData, setScheduleData] = useState<Schedule[]>([
-    {
-      id: 1,
-      location: "Central Plaza",
-      type: "Mixed Waste",
-      time: "3:00 PM",
-      date: "2025-01-02",
-      status: "scheduled",
-      capacity: "85%"
-    },
-    {
-      id: 2,
-      location: "Park Avenue",
-      type: "Organic",
-      time: "9:00 AM",
-      date: "2025-01-03",
-      status: "scheduled",
-      capacity: "45%"
-    },
-    {
-      id: 3,
-      location: "Mall District",
-      type: "Recyclable",
-      time: "5:00 PM",
-      date: "2025-01-02",
-      status: "scheduled",
-      capacity: "70%"
-    },
-    {
-      id: 4,
-      location: "Residential Area",
-      type: "Mixed",
-      time: "11:00 AM",
-      date: "2025-01-01",
-      status: "completed",
-      capacity: "30%"
-    },
-    {
-      id: 5,
-      location: "Industrial Zone",
-      type: "Hazardous",
-      time: "2:00 PM",
-      date: "2024-12-31",
-      status: "overdue",
-      capacity: "95%"
+  const [scheduleData, setScheduleData] = useState<Schedule[]>([]);
+
+  // Load schedules from backend
+  const { data: truckSchedules } = useTruckSchedulesList();
+  useEffect(() => {
+    if (!truckSchedules) return;
+    const mapped: Schedule[] = (truckSchedules as any[]).map((t) => ({
+      id: t.id,
+      location: t.location,
+      serviceType: (t.sched_type === "maintenance" ? "maintenance" : "collection"),
+      type: t.sched_type,
+      time: `${t.start_collected} - ${t.end_collected}`,
+      date: t.date,
+      status: t.status,
+    }));
+    setScheduleData(mapped);
+  }, [truckSchedules]);
+
+  // Load drivers as collectors
+  const { data: staffData } = useStaffList();
+  const collectors: Collector[] = useMemo(() => {
+    const list = Array.isArray(staffData) ? staffData : [];
+    return list
+      .filter((s: any) => (s.role || "").toLowerCase() === "driver")
+      .map((s: any) => ({ id: s.id, name: s.fullName }));
+  }, [staffData]);
+
+  // Create schedule
+  const [createBody, setCreateBody] = useState<any>(null);
+  const [triggerCreate, setTriggerCreate] = useState(false);
+  const { data: createRes, error: createErr } = useCreateTruckSchedule(createBody, triggerCreate);
+  useEffect(() => {
+    if (!triggerCreate) return;
+    if (createRes || createErr) {
+      setTriggerCreate(false);
     }
-  ]);
+  }, [createRes, createErr, triggerCreate]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -85,7 +68,8 @@ export function ScheduleCollectionTabs() {
     }
   };
 
-  const getCapacityColor = (capacity: string) => {
+  const getCapacityColor = (capacity?: string) => {
+    if (!capacity) return "text-gray-600";
     const numCapacity = parseInt(capacity);
     if (numCapacity >= 80) return "text-red-600";
     if (numCapacity >= 60) return "text-yellow-600";
@@ -146,25 +130,20 @@ export function ScheduleCollectionTabs() {
     );
   };
 
-  const handleAddSchedule = (newSchedule: Omit<Schedule, 'id'>) => {
-    const schedule: Schedule = {
-      ...newSchedule,
-      id: Math.max(...scheduleData.map(s => s.id), 0) + 1
-    };
-    setScheduleData([...scheduleData, schedule]);
+  const onAddSchedule = (newSchedule: Omit<Schedule, 'id'>) => {
+    setScheduleData([...scheduleData, newSchedule as Schedule]);
   };
 
   return (
     <div className="space-y-6">
-     
-
-
+      
       {/* Large Calendar Section */}
       <Card className="w-full">
         <CardHeader className="pb-4">
-         <CardTitle className="text-2xl">Collection Schedule</CardTitle>
-            <div className="flex justify-end">
-    </div>
+          <CardTitle className="text-2xl">Collection Schedule</CardTitle>
+          <div className="flex justify-end">
+            <Button onClick={() => setIsAddDialogOpen(true)}>Add Schedule</Button>
+          </div>
         </CardHeader>
         
         <CardContent className="p-6">
@@ -199,7 +178,6 @@ export function ScheduleCollectionTabs() {
           />
         </CardContent>
       </Card>
-
       {/* Schedule Popup Dialog */}
       <Dialog open={isSchedulePopupOpen} onOpenChange={setIsSchedulePopupOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -259,7 +237,12 @@ export function ScheduleCollectionTabs() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
+      <AddScheduleDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        onAddSchedule={onAddSchedule}
+        collectors={collectors}
+      />
     </div>
   );
 }

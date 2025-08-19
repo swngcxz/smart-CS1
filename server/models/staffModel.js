@@ -17,6 +17,12 @@ const StaffModel = {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
 
+  // Get all users (to include janitor users)
+  async getAllUsers() {
+    const snapshot = await db.collection("users").get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
   // Update a staff member by ID
   async updateStaff(id, data) {
     await db.collection(STAFF_COLLECTION).doc(id).update(data);

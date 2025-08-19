@@ -19,7 +19,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, Trash2, Wrench } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,25 +31,30 @@ export interface Collector {
 }
 
 export interface Schedule {
-  id?: number;
+  id?: string;
   location: string;
   serviceType: "collection" | "maintenance";
   type: string;
-  time: string;      
-  date: string;         
+  time: string;
+  date: string;
   status: "scheduled" | "in-progress" | "completed" | "cancelled";
-  capacity?: string;      
-  collector?: Collector; 
+  capacity?: string;
+  collector?: Collector;
   truckPlate?: string;
   notes?: string;
   contactPerson?: string;
+  start_collected?: string;
+  end_collected?: string;
+  priority?: "Low" | "Normal" | "High";
 }
 
 interface AddScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddSchedule: (schedule: Omit<Schedule, 'id'>) => void;
-  collectors: Collector[];
+  collectors?: Collector[];
+  drivers?: Collector[];
+  maintenanceWorkers?: Collector[];
 }
 
 export function AddScheduleDialog({
@@ -57,37 +62,48 @@ export function AddScheduleDialog({
   onOpenChange,
   onAddSchedule,
   collectors,
+  drivers,
+  maintenanceWorkers,
 }: AddScheduleDialogProps) {
   const [serviceType, setServiceType] = useState<"collection" | "maintenance">("collection");
   const [location, setLocation] = useState("");
   const [type, setType] = useState("");
-  const [time, setTime] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [date, setDate] = useState<Date>();
   const [capacity, setCapacity] = useState("");
   const [collectorId, setCollectorId] = useState<string>("");
   const [truckPlate, setTruckPlate] = useState("");
   const [notes, setNotes] = useState("");
   const [contactPerson, setContactPerson] = useState("");
+  const [priority, setPriority] = useState<"Low" | "Normal" | "High">("Normal");
 
-  const selectedCollector = collectors.find((c) => c.id === collectorId);
+  const availableCollectors: Collector[] = (collectors
+    ? collectors
+    : serviceType === "collection"
+    ? (drivers || [])
+    : (maintenanceWorkers || [])) as Collector[];
+  const selectedCollector = availableCollectors.find((c) => c.id === collectorId);
 
   const resetForm = () => {
     setServiceType("collection");
     setLocation("");
     setType("");
-    setTime("");
+    setStartTime("");
+    setEndTime("");
     setDate(undefined);
     setCapacity("");
     setCollectorId("");
     setTruckPlate("");
     setNotes("");
     setContactPerson("");
+    setPriority("Normal");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!location || !type || !time || !date) {
+    if (!location || !type || !startTime || !endTime || !date) {
       return;
     }
 
@@ -104,7 +120,7 @@ export function AddScheduleDialog({
       serviceType,
       location: location.trim(),
       type,
-      time,
+      time: `${startTime} - ${endTime}`,
       date: format(date, "yyyy-MM-dd"),
       status: "scheduled",
       capacity: normalizedCapacity || undefined,
@@ -112,6 +128,9 @@ export function AddScheduleDialog({
       truckPlate: truckPlate.trim().toUpperCase() || undefined,
       notes: notes.trim() || undefined,
       contactPerson: contactPerson.trim() || undefined,
+      start_collected: startTime,
+      end_collected: endTime,
+      priority,
     };
 
     onAddSchedule(newSchedule);
@@ -238,12 +257,23 @@ export function AddScheduleDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="time">Time</Label>
+              <Label htmlFor="startTime">Start Time</Label>
               <Input
-                id="time"
+                id="startTime"
                 type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="endTime">End Time</Label>
+              <Input
+                id="endTime"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
                 required
               />
             </div>
@@ -261,17 +291,31 @@ export function AddScheduleDialog({
             )}
 
             <div className="grid gap-2">
-              <Label htmlFor="collector">Assign Worker</Label>
+              <Label htmlFor="collector">{serviceType === "collection" ? "Assign Driver" : "Assign Maintenance"}</Label>
               <Select value={collectorId} onValueChange={setCollectorId}>
                 <SelectTrigger id="collector">
                   <SelectValue placeholder="Select worker" />
                 </SelectTrigger>
                 <SelectContent>
-                  {collectors.map((c) => (
+                  {availableCollectors.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name} {c.phone ? `• ${c.phone}` : ""}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="priority">Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as any)}>
+                <SelectTrigger id="priority">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Normal">Normal</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
                 </SelectContent>
               </Select>
             </div>

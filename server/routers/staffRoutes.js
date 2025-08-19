@@ -7,6 +7,7 @@ router.post("/", validateStaff, staffController.create);
 router.get("/", staffController.getAll);
 router.get("/janitors", staffController.getJanitors);
 router.post("/seed-sample", staffController.seedSampleData);
+router.post("/seed-current-user", staffController.seedCurrentUser);
 router.put("/:id", staffController.update);
 router.delete("/:id", staffController.delete);
 

@@ -1,12 +1,13 @@
-import { useMemo, useState } from "react";
-import { format, isSameDay, parseISO } from "date-fns";
+import { useEffect, useMemo, useState } from "react";
+import { format, isSameDay } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { AddScheduleDialog, Schedule, Collector } from "./AddScheduleDialog";
 import { cn } from "@/lib/utils";
+import { useTruckSchedulesList, useCreateTruckSchedule } from "@/hooks/useTruckSchedules";
+import { useStaffList } from "@/hooks/useStaff";
 
 /**
  * Example list of collectors you can fetch from your API.
@@ -22,15 +23,69 @@ type Props = {
   collectors?: Collector[];
 };
 
-export function SchedulesBoard({ collectors = DEFAULT_COLLECTORS }: Props) {
+export function SchedulesBoard({ collectors: collectorsProp }: Props) {
   const [open, setOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [schedules, setSchedules] = useState<Schedule[]>([]);
 
+  // Load schedules from backend
+  const { data: truckSchedules } = useTruckSchedulesList();
+
+  useEffect(() => {
+    if (!truckSchedules) return;
+    const mapped: Schedule[] = (truckSchedules as any[]).map((t) => ({
+      id: t.id,
+      location: t.location,
+      serviceType: (t.sched_type === "maintenance" ? "maintenance" : "collection"),
+      type: t.sched_type,
+      time: `${t.start_collected} - ${t.end_collected}`,
+      date: t.date,
+      status: t.status,
+    }));
+    setSchedules(mapped);
+  }, [truckSchedules]);
+
+  // Load staff and map drivers to collectors
+  const { data: staffData } = useStaffList();
+  const derivedCollectors: Collector[] = useMemo(() => {
+    const list = Array.isArray(staffData) ? staffData : [];
+    return list
+      .filter((s: any) => (s.role || "").toLowerCase() === "driver")
+      .map((s: any) => ({ id: s.id, name: s.fullName }));
+  }, [staffData]);
+
+  const collectors = collectorsProp && collectorsProp.length > 0 ? collectorsProp : derivedCollectors;
+
+  // Create schedule
+  const [createBody, setCreateBody] = useState<any>(null);
+  const [triggerCreate, setTriggerCreate] = useState(false);
+  const { data: createRes, error: createErr } = useCreateTruckSchedule(createBody, triggerCreate);
+
+  useEffect(() => {
+    if (!triggerCreate) return;
+    // reset trigger after request completes (success or error)
+    if (createRes || createErr) {
+      setTriggerCreate(false);
+    }
+  }, [createRes, createErr, triggerCreate]);
+
   const onAddSchedule = (schedule: Schedule) => {
+    // Optimistic UI
     setSchedules((prev) => [...prev, schedule]);
-    // If the added schedule date is new, move calendar selection to it
     setSelectedDate(new Date(schedule.date));
+
+    // Build backend payload
+    const payload = {
+      staffId: schedule.collector?.id,
+      sched_type: schedule.serviceType,
+      start_collected: schedule.start_collected || schedule.time.split(" - ")[0],
+      end_collected: schedule.end_collected || schedule.time.split(" - ")[1],
+      location: schedule.location,
+      status: "scheduled",
+      date: schedule.date,
+    };
+    setCreateBody(payload);
+    setTriggerCreate(true);
   };
 
   // Dates that have at least one schedule (for calendar highlighting)
@@ -109,8 +164,7 @@ export function SchedulesBoard({ collectors = DEFAULT_COLLECTORS }: Props) {
               <div
                 key={`${s.location}-${s.time}-${idx}`}
                 className={cn(
-                  "rounded-lg border p-3",
-                  s.priority === "High" && "border-destructive"
+                  "rounded-lg border p-3"
                 )}
               >
                 <div className="flex items-center justify-between">
@@ -155,11 +209,7 @@ export function SchedulesBoard({ collectors = DEFAULT_COLLECTORS }: Props) {
                       <span className="font-medium">{s.contactPerson}</span>
                     </div>
                   ) : null}
-                  {s.priority ? (
-                    <div>
-                      Priority: <span className="font-medium">{s.priority}</span>
-                    </div>
-                  ) : null}
+                  {/* Priority removed: not part of Schedule interface */}
                   {s.notes ? (
                     <div className="text-muted-foreground">Notes: {s.notes}</div>
                   ) : null}
@@ -174,7 +224,8 @@ export function SchedulesBoard({ collectors = DEFAULT_COLLECTORS }: Props) {
         open={open}
         onOpenChange={setOpen}
         onAddSchedule={onAddSchedule}
-        collectors={collectors}
+        drivers={collectors}
+        maintenanceWorkers={[]}
       />
     </div>
   );

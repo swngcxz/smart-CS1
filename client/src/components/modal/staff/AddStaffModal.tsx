@@ -6,14 +6,23 @@ import { useState } from "react";
 
 export function AddStaffModal({ isOpen, onClose, onAdd }) {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState("");
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState("active");
 
   const handleSubmit = () => {
-    if (!name || !role || !zone) return;
-    onAdd({ name, role, zone, status, lastActivity: "Just now" });
+    if (!name || !email || !role) return;
+    onAdd({
+      fullName: name,
+      email,
+      role,
+      location: zone,
+      status,
+      lastActivity: "Just now",
+    });
     setName("");
+    setEmail("");
     setRole("");
     setZone("");
     setStatus("active");
@@ -27,6 +36,7 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
         </DialogHeader>
         <div className="space-y-4">
           <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input placeholder="Role" value={role} onChange={(e) => setRole(e.target.value)} />
 
           <Select value={zone} onValueChange={setZone}>

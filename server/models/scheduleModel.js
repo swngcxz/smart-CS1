@@ -20,10 +20,10 @@ async function updateScheduleStatus(id, status) {
   await db.collection("schedules").doc(id).update({ status });
 }
 
-async function findScheduleByStaffAndDate(staffId, sched_type) {
+async function findScheduleByStaffAndDate(staffId, date) {
   const snapshot = await db.collection("schedules")
     .where("staffId", "==", staffId)
-    .where("sched_type", "==", sched_type)
+    .where("date", "==", date)
     .get();
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }

@@ -200,6 +200,11 @@ export function WasteLevelsTab() {
   const { janitors, loading: janitorsLoading, error: janitorsError } = useJanitors();
   const { logActivity, loading: activityLoading, error: activityError } = useActivityLogging();
 
+  // Debug logging to see what janitors data is being fetched
+  console.log('Fetched janitors data:', janitors);
+  console.log('Janitors loading:', janitorsLoading);
+  console.log('Janitors error:', janitorsError);
+
   // Create real-time data for each location
   const realTimeBins: WasteBin[] = [
     // Central Plaza - 4 bins
@@ -454,7 +459,18 @@ const handleAssignTask = async () => {
 
 
   const filteredJanitors = selectedBin
-    ? janitors.filter((j) => j.location === selectedBin.location || !j.location)
+    ? janitors.filter((j) => {
+        // Ensure we only show janitors with the correct role
+        const hasValidRole = j.role && j.role.toLowerCase() === 'janitor';
+        // Accept janitors with same location, unknown location, or generic coverage
+        const locationIsGeneric = !j.location || j.location === 'General' || j.location === 'All Routes';
+        const hasMatchingLocation = j.location === selectedBin.location || locationIsGeneric;
+        
+        // Debug logging to help verify role filtering
+        console.log(`Janitor ${j.fullName}: role="${j.role}", location="${j.location}", validRole=${hasValidRole}, matchingLocation=${hasMatchingLocation}, source=${(j as any).source || 'unknown'}`);
+        
+        return hasValidRole && hasMatchingLocation;
+      })
     : [];
 
   return (
@@ -604,7 +620,14 @@ const handleAssignTask = async () => {
 
       {/* Assign Janitor */}
       <div>
-        <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">Assign to Janitor</label>
+        <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+          Assign to Janitor ({filteredJanitors.length} available)
+        </label>
+        {filteredJanitors.length > 0 && (
+          <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+            Available janitors: {filteredJanitors.map(j => j.fullName).join(', ')}
+          </div>
+        )}
         <Select onValueChange={(val) => setSelectedJanitorId(val)}>
           <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
             <SelectValue placeholder={janitorsLoading ? "Loading janitors..." : "Select Janitor"} />
@@ -613,11 +636,16 @@ const handleAssignTask = async () => {
             {janitorsLoading ? (
               <SelectItem disabled value="loading">Loading janitors...</SelectItem>
             ) : filteredJanitors.length > 0 ? (
-              filteredJanitors.map((janitor) => (
-                <SelectItem key={janitor.id} value={janitor.id}>
-                  {janitor.fullName} {janitor.location && `(${janitor.location})`}
-                </SelectItem>
-              ))
+                             filteredJanitors.map((janitor) => (
+                 <SelectItem key={janitor.id} value={janitor.id}>
+                   <div className="flex flex-col">
+                     <span className="font-medium">{janitor.fullName}</span>
+                     <span className="text-xs text-gray-500">
+                       {janitor.location && `${janitor.location}`} • Role: {janitor.role || 'Janitor'}
+                     </span>
+                   </div>
+                 </SelectItem>
+               ))
             ) : (
               <SelectItem disabled value="none">No janitors available</SelectItem>
             )}
@@ -625,6 +653,11 @@ const handleAssignTask = async () => {
         </Select>
         {janitorsError && (
           <p className="text-sm text-red-600 mt-1">Error loading janitors: {janitorsError}</p>
+        )}
+        {!janitorsLoading && filteredJanitors.length === 0 && (
+          <p className="text-sm text-yellow-600 mt-1">
+            No janitors available for {selectedBin?.location}. Consider assigning a general janitor.
+          </p>
         )}
       </div>
 

@@ -16,7 +16,8 @@ async function createNewTruckSchedule(req, res) {
     end_collected,
     location,
     status,
-    date
+    date,
+    priority
   } = req.body;
 
   if (!staffId || !sched_type || !start_collected || !end_collected || !location || !status || !date) {
@@ -30,13 +31,14 @@ async function createNewTruckSchedule(req, res) {
       return res.status(404).json({ error: "Staff not found" });
     }
 
-    if (staff.role !== "Driver") {
-      return res.status(400).json({ error: "Staff must have role 'driver' to be scheduled for truck collection" });
+    const normalizedRole = String(staff.role || '').toLowerCase();
+    if (normalizedRole !== "driver" && normalizedRole !== "janitor") {
+      return res.status(400).json({ error: "Staff must have role 'driver' (or 'janitor') to be scheduled" });
     }
 
     // check if already has schedule on same date
     const existing = await findTruckScheduleByStaffAndDate(staffId, date);
-    if (existing) {
+    if (existing && existing.length > 0) {
       return res.status(400).json({ error: "Schedule for this driver already exists on that date" });
     }
 
@@ -48,6 +50,7 @@ async function createNewTruckSchedule(req, res) {
       location,
       status,
       date,
+      ...(priority ? { priority } : {}),
       createdAt: new Date().toISOString()
     };
 
