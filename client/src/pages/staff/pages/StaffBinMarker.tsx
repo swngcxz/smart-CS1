@@ -10,13 +10,16 @@ interface BinData {
   status: "normal" | "warning" | "critical";
   lastCollection: string;
   route: string;
+  isDynamic?: boolean;
+  isLive?: boolean;
+  lastLocationUpdate?: number;
 }
 
 interface BinMarkerProps {
   bin: BinData;
 }
 
-const createCustomIcon = (level: number, status: string): DivIcon => {
+const createCustomIcon = (level: number, status: string, isLive: boolean = true): DivIcon => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "critical":
@@ -29,6 +32,8 @@ const createCustomIcon = (level: number, status: string): DivIcon => {
   };
 
   const color = getStatusColor(status);
+  const borderColor = isLive ? "white" : "#f59e0b"; // Yellow border for cached data
+  const borderWidth = isLive ? "3px" : "4px"; // Thicker border for cached data
 
   return L.divIcon({
     html: `
@@ -37,7 +42,7 @@ const createCustomIcon = (level: number, status: string): DivIcon => {
         width: 30px;
         height: 30px;
         border-radius: 50%;
-        border: 3px solid white;
+        border: ${borderWidth} solid ${borderColor};
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         display: flex;
         align-items: center;
@@ -45,8 +50,10 @@ const createCustomIcon = (level: number, status: string): DivIcon => {
         font-weight: bold;
         color: white;
         font-size: 10px;
+        position: relative;
       ">
         ${level}%
+        ${!isLive ? '<div style="position: absolute; top: -8px; right: -8px; width: 12px; height: 12px; background: #f59e0b; border-radius: 50%; border: 2px solid white;"></div>' : ''}
       </div>
     `,
     className: "custom-bin-marker",
@@ -57,7 +64,7 @@ const createCustomIcon = (level: number, status: string): DivIcon => {
 };
 
 export function BinMarker({ bin }: BinMarkerProps) {
-  const customIcon = createCustomIcon(bin.level, bin.status);
+  const customIcon = createCustomIcon(bin.level, bin.status, bin.isLive);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -115,6 +122,29 @@ export function BinMarker({ bin }: BinMarkerProps) {
               <span className="text-sm text-gray-600">Last Collection:</span>
               <span className="text-sm font-medium">{bin.lastCollection}</span>
             </div>
+            
+            {/* GPS Status Information */}
+            {bin.isDynamic && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">GPS Status:</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${bin.isLive ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                  <span className="text-sm font-medium">
+                    {bin.isLive ? 'Live' : 'Cached'}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+            {/* Last Location Update Time */}
+            {bin.isDynamic && bin.lastLocationUpdate && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Location Updated:</span>
+                <span className="text-sm font-medium">
+                  {new Date(bin.lastLocationUpdate).toLocaleString()}
+                </span>
+              </div>
+            )}
             
           </div>
         </div>

@@ -1,3 +1,16 @@
+/**
+ * StaffMapSection Component
+ * 
+ * This component displays a map with a single dynamic bin location and GPS tracking.
+ * 
+ * Dynamic Coordinates System:
+ * - Only displays Bin1 with real-time coordinates from Firebase Realtime Database
+ * - Coordinates are fetched from: monitoring/bin1/latitude and monitoring/bin1/longitude
+ * - The map center automatically updates when new coordinates are received
+ * - No static coordinates are used - only real-time data
+ * - Bin is only visible when GPS data is valid
+ */
+
 import {
   Card,
   CardContent,
@@ -34,56 +47,55 @@ type MapCardRef = HTMLDivElement & {
   _leaflet_map?: LeafletMap;
 };
 
-// Center point and bin data
-const center: LatLngTuple = [10.2105, 123.7583];
+// Center point and bin data - will be updated dynamically
+const getCenterPoint = (bin1Data: any, monitoringData: any): LatLngTuple => {
+  // Check if we have valid coordinates from either data source
+  const hasValidCoordinates = (data: any) => {
+    return data && typeof data.latitude === 'number' && typeof data.longitude === 'number' && 
+           !isNaN(data.latitude) && !isNaN(data.longitude);
+  };
 
-const binLocations = [
-  {
-    id: 1,
-    name: "Baywalk Entrance Bin",
-    position: [10.2107, 123.7579] as LatLngTuple,
-    level: 85,
-    status: "critical" as const,
-    lastCollection: "2024-01-14 08:30",
-    route: "Route A - Baywalk",
-  },
-  {
-    id: 2,
-    name: "Seaside Pathway Bin",
-    position: [10.2102, 123.7586] as LatLngTuple,
-    level: 45,
-    status: "normal" as const,
-    lastCollection: "2024-01-15 10:15",
-    route: "Route A - Baywalk",
-  },
-  {
-    id: 3,
-    name: "Playground Area Bin",
-    position: [10.2098, 123.7582] as LatLngTuple,
-    level: 70,
-    status: "warning" as const,
-    lastCollection: "2024-01-15 09:45",
-    route: "Route A - Baywalk",
-  },
-  {
-    id: 4,
-    name: "Picnic Zone Bin",
-    position: [10.2101, 123.7576] as LatLngTuple,
-    level: 30,
-    status: "normal" as const,
-    lastCollection: "2024-01-15 11:20",
-    route: "Route A - Baywalk",
-  },
-  {
-    id: 5,
-    name: "Parking Area Bin",
-    position: [10.211, 123.7581] as LatLngTuple,
-    level: 92,
-    status: "critical" as const,
-    lastCollection: "2024-01-13 16:00",
-    route: "Route A - Baywalk",
-  },
-];
+  // Use bin1 coordinates if valid, otherwise fallback to monitoringData
+  if (hasValidCoordinates(bin1Data)) {
+    return [bin1Data.latitude, bin1Data.longitude] as LatLngTuple;
+  }
+  if (hasValidCoordinates(monitoringData)) {
+    return [monitoringData.latitude, monitoringData.longitude] as LatLngTuple;
+  }
+  return [10.2105, 123.7583]; // Fallback center
+};
+
+// Dynamic bin locations - only bin1 with real-time coordinates
+const getBinLocations = (bin1Data: any, monitoringData: any) => {
+  // Check if we have coordinates from either data source
+  const hasCoordinates = (data: any) => {
+    return data && typeof data.latitude === 'number' && typeof data.longitude === 'number' && 
+           !isNaN(data.latitude) && !isNaN(data.longitude);
+  };
+
+  // Use bin1Data first, then fallback to monitoringData
+  const activeData = hasCoordinates(bin1Data) ? bin1Data : 
+                     hasCoordinates(monitoringData) ? monitoringData : null;
+
+  if (activeData) {
+    return [
+      {
+        id: 1,
+        name: "Dynamic Bin1",
+        position: [activeData.latitude, activeData.longitude] as LatLngTuple,
+        level: activeData.bin_level || 0,
+        status: (activeData.bin_level || 0) >= 85 ? "critical" as const : 
+                (activeData.bin_level || 0) >= 70 ? "warning" as const : "normal" as const,
+        lastCollection: activeData.timestamp ? new Date(activeData.timestamp).toLocaleString() : "Unknown",
+        route: "Real-time Route",
+        isDynamic: true,
+      }
+    ];
+  }
+  
+  // Return empty array if no valid coordinates
+  return [];
+};
 
 // Helper component to expose Leaflet map instance
 function MapInitializer({ setMapRef }: { setMapRef: (map: LeafletMap) => void }) {
@@ -97,12 +109,35 @@ function MapInitializer({ setMapRef }: { setMapRef: (map: LeafletMap) => void })
 export function MapSection() {
   const { bin1Data, monitoringData, gpsHistory } = useRealTimeData();
   const [showGPSTracking, setShowGPSTracking] = useState(false);
+  const [mapInstance, setMapInstance] = useState<LeafletMap | null>(null);
+  
+  // Get dynamic bin locations and center point
+  const binLocations = getBinLocations(bin1Data, monitoringData);
+  const center = getCenterPoint(bin1Data, monitoringData);
+  
+  // Debug logging to see what data we're receiving
+  useEffect(() => {
+    console.log('StaffMapSection - Received data:', {
+      bin1Data,
+      monitoringData,
+      binLocations,
+      center
+    });
+  }, [bin1Data, monitoringData, binLocations, center]);
   
   const criticalBins = binLocations.filter((bin) => bin.status === "critical").length;
   const warningBins = binLocations.filter((bin) => bin.status === "warning").length;
   const normalBins = binLocations.filter((bin) => bin.status === "normal").length;
 
   const mapContainerRef = useRef<MapCardRef>(null);
+
+  // Update map center when dynamic coordinates change
+  useEffect(() => {
+    if (mapInstance && binLocations.length > 0) {
+      const newCenter = getCenterPoint(bin1Data, monitoringData);
+      mapInstance.setView(newCenter, mapInstance.getZoom());
+    }
+  }, [binLocations.length, mapInstance, bin1Data, monitoringData]);
 
   useEffect(() => {
     const pegman = document.getElementById("pegman");
@@ -176,21 +211,21 @@ mapArea.addEventListener("drop", async (e) => {
     >
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
-          <div className="flex items-center gap-2">Baywalk, Naga City, Cebu</div>
-          <div className="flex items-center gap-4 text-xs">
-            {/* GPS Status */}
-            <div className="flex items-center gap-1">
-              <div className={`w-3 h-3 rounded-full ${(bin1Data?.gps_valid || monitoringData?.gps_valid) ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
-              <span className="flex items-center gap-1">
-               GPS: {(bin1Data?.gps_valid || monitoringData?.gps_valid) ? 'Valid' : 'Invalid'}
-                {bin1Data?.gps_valid || monitoringData?.gps_valid ? (
-                  <span className="text-blue-600">
-                    ({bin1Data?.latitude?.toFixed(4) || monitoringData?.latitude?.toFixed(4)}, {bin1Data?.longitude?.toFixed(4) || monitoringData?.longitude?.toFixed(4)})
-                  </span>
-                ) : null}
+          <div className="flex items-center gap-2">
+            Dynamic Bin Mapping
+            {binLocations.length > 0 ? (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                Live Bin1
               </span>
-            </div>
-            
+            ) : (
+              <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full flex items-center gap-1">
+                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                No GPS Signal
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-4 text-xs">
             {/* GPS Tracking Toggle */}
             {gpsHistory.length > 1 && (
               <button
@@ -206,18 +241,23 @@ mapArea.addEventListener("drop", async (e) => {
               </button>
             )}
             
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-green-500 rounded-full" />
-              <span>Normal ({normalBins})</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-              <span>Warning ({warningBins})</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-red-500 rounded-full" />
-              <span>Critical ({criticalBins})</span>
-            </div>
+            {/* Bin Status Counts - only show if we have bins */}
+            {binLocations.length > 0 && (
+              <>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-green-500 rounded-full" />
+                  <span>Normal ({normalBins})</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full" />
+                  <span>Warning ({warningBins})</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-red-500 rounded-full" />
+                  <span>Critical ({criticalBins})</span>
+                </div>
+              </>
+            )}
           </div>
         </CardTitle>
       </CardHeader>
@@ -236,6 +276,7 @@ mapArea.addEventListener("drop", async (e) => {
             setMapRef={(map) => {
               if (mapContainerRef.current) {
                 mapContainerRef.current._leaflet_map = map;
+                setMapInstance(map);
               }
             }}
           />
@@ -243,9 +284,32 @@ mapArea.addEventListener("drop", async (e) => {
             attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           />
-          {binLocations.map((bin) => (
+          
+          {/* Only render bins if we have valid GPS data */}
+          {binLocations.length > 0 && binLocations.map((bin) => (
             <BinMarker key={bin.id} bin={bin} />
           ))}
+          
+          {/* Message when no bins are available */}
+          {binLocations.length === 0 && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[1000] bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto mb-3 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">No Bin Available</h3>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">
+                  Waiting for GPS signal from Bin1...
+                </p>
+                <p className="text-gray-500 dark:text-gray-400 text-xs mt-2">
+                  Check your Firebase Realtime Database for monitoring/bin1 data
+                </p>
+              </div>
+            </div>
+          )}
           
           {/* GPS Marker for real-time location */}
           <GPSMarker gpsData={bin1Data || monitoringData} />
