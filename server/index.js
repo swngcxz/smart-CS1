@@ -146,14 +146,14 @@ function setupRealTimeMonitoring() {
   dataRef.on('value', async (snapshot) => {
     const data = snapshot.val();
     if (data) {
-      console.log('\n📊 === REAL-TIME DATA UPDATE (monitoring/data) ===');
-      console.log(`⏰ Timestamp: ${new Date().toLocaleString()}`);
-      console.log(`📦 Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
-      console.log(`📏 Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
-      console.log(`🗑️  Bin Level: ${data.bin_level || 0}%`);
-      console.log(`📍 GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
-      console.log(`🛰️  GPS Valid: ${data.gps_valid || false}`);
-      console.log(`📡 Satellites: ${data.satellites || 0}`);
+      console.log('\n === REAL-TIME DATA UPDATE (monitoring/data) ===');
+      console.log(`Timestamp: ${new Date().toLocaleString()}`);
+      console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
+      console.log(` Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
+      console.log(` Bin Level: ${data.bin_level || 0}%`);
+      console.log(` GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
+      console.log(` GPS Valid: ${data.gps_valid || false}`);
+      console.log(` Satellites: ${data.satellites || 0}`);
       console.log('==========================================\n');
       
       // SMS alert logic
@@ -191,14 +191,14 @@ function setupRealTimeMonitoring() {
   bin1Ref.on('value', async (snapshot) => {
     const data = snapshot.val();
     if (data) {
-      console.log('\n📊 === REAL-TIME DATA UPDATE (monitoring/bin1) ===');
-      console.log(`⏰ Timestamp: ${new Date().toLocaleString()}`);
-      console.log(`📦 Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
-      console.log(`📏 Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
-      console.log(`🗑️  Bin Level: ${data.bin_level || 0}%`);
-      console.log(`📍 GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
-      console.log(`🛰️  GPS Valid: ${data.gps_valid || false}`);
-      console.log(`📡 Satellites: ${data.satellites || 0}`);
+      console.log('\n === REAL-TIME DATA UPDATE (monitoring/bin1) ===');
+      console.log(` Timestamp: ${new Date().toLocaleString()}`);
+      console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
+      console.log(` Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
+      console.log(` Bin Level: ${data.bin_level || 0}%`);
+      console.log(` GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
+      console.log(` GPS Valid: ${data.gps_valid || false}`);
+      console.log(` Satellites: ${data.satellites || 0}`);
       console.log('==========================================\n');
       
       // SMS alert logic for bin1
