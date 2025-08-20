@@ -5,10 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
 
 const todayStats = [
-  { label: "Collections", value: "24", icon: "🚛" },
-  { label: "Alerts", value: "3", icon: "⚠️" },
-  { label: "Maintenance", value: "1", icon: "🔧" },
-  { label: "Route Changes", value: "2", icon: "🗺️" },
+  { label: "Collections", value: "24"},
+  { label: "Alerts", value: "3"},
+  { label: "Maintenance", value: "1"},
+  { label: "Route Changes", value: "2" },
 ];
 
 export function ActivityTab() {
@@ -60,7 +60,7 @@ export function ActivityTab() {
                   <p className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
                 </div>
-                <span className="text-2xl">{stat.icon}</span>
+                <span className="text-2xl"></span>
               </div>
             </CardContent>
           </Card>
