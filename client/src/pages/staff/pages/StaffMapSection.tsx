@@ -182,7 +182,7 @@ mapArea.addEventListener("drop", async (e) => {
             <div className="flex items-center gap-1">
               <div className={`w-3 h-3 rounded-full ${(bin1Data?.gps_valid || monitoringData?.gps_valid) ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
               <span className="flex items-center gap-1">
-                📍 GPS: {(bin1Data?.gps_valid || monitoringData?.gps_valid) ? 'Valid' : 'Invalid'}
+               GPS: {(bin1Data?.gps_valid || monitoringData?.gps_valid) ? 'Valid' : 'Invalid'}
                 {bin1Data?.gps_valid || monitoringData?.gps_valid ? (
                   <span className="text-blue-600">
                     ({bin1Data?.latitude?.toFixed(4) || monitoringData?.latitude?.toFixed(4)}, {bin1Data?.longitude?.toFixed(4) || monitoringData?.longitude?.toFixed(4)})
@@ -202,7 +202,7 @@ mapArea.addEventListener("drop", async (e) => {
                 }`}
                 title="Toggle GPS tracking path"
               >
-                🗺️ {showGPSTracking ? 'Hide' : 'Show'} Path
+                {showGPSTracking ? 'Hide' : 'Show'} Path
               </button>
             )}
             

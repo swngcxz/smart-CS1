@@ -115,13 +115,7 @@ export function BinMarker({ bin }: BinMarkerProps) {
               <span className="text-sm text-gray-600">Last Collection:</span>
               <span className="text-sm font-medium">{bin.lastCollection}</span>
             </div>
-
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Coordinates:</span>
-              <span className="text-xs text-gray-500">
-                {bin.position[0].toFixed(4)}, {bin.position[1].toFixed(4)}
-              </span>
-            </div>
+            
           </div>
         </div>
       </Popup>
