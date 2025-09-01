@@ -2,21 +2,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Activity, Calendar, Filter, RefreshCw } from "lucide-react";
+import { Activity, Calendar, Filter, RefreshCw, AlertTriangle, MapPin, Satellite, Wifi } from "lucide-react";
 import { StaffActivityLogs } from "../pages/StaffActiviyLogs";
 import { useState, useMemo, useEffect } from "react";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { useAuth } from "@/hooks/useAuth";
+import { useBinHistory } from "@/hooks/useBinHistory";
 
 export function StaffActivityTab() {
   const [activityTypeFilter, setActivityTypeFilter] = useState("all");
   const [dateRangeFilter, setDateRangeFilter] = useState("all");
+  const [selectedBinId, setSelectedBinId] = useState("bin1"); // Default bin ID
   
   // Get user ID from auth context or localStorage, fallback to 'staff-user' for testing
   const storedUserId = localStorage.getItem("userId");
   const userId = storedUserId || "staff-user"; // Use the user ID from your saved data
   
   const { logs, user, loading, error, refetch } = useActivityLogs(userId);
+  const { 
+    history: binHistory, 
+    errorRecords: binErrorRecords, 
+    stats: binStats, 
+    loading: binHistoryLoading, 
+    error: binHistoryError, 
+    fetchBinHistory, 
+    fetchErrorRecords, 
+    fetchBinStats 
+  } = useBinHistory(selectedBinId);
 
   // Debug logging
   useEffect(() => {
@@ -29,6 +41,21 @@ export function StaffActivityTab() {
       error
     });
   }, [storedUserId, userId, logs, loading, error]);
+
+  // Fetch bin history data when selected bin changes
+  useEffect(() => {
+    if (selectedBinId) {
+      fetchBinHistory(selectedBinId);
+      fetchErrorRecords(selectedBinId);
+    }
+  }, [selectedBinId]);
+
+  // Initial fetch of bin history data
+  useEffect(() => {
+    if (selectedBinId) {
+      fetchErrorRecords(selectedBinId);
+    }
+  }, []);
 
   // Generate dynamic stats based on real data
   const generateStats = useMemo(() => {
@@ -45,9 +72,8 @@ export function StaffActivityTab() {
       log.activity_type === 'bin_emptied' || log.activity_type === 'task_assignment'
     ).length;
 
-    const alerts = logs.filter(log => 
-      log.bin_status === 'critical' || log.bin_status === 'warning'
-    ).length;
+    // Use bin history error records for alerts count
+    const alerts = binErrorRecords?.length || 0;
 
     const maintenance = logs.filter(log => 
       log.activity_type === 'maintenance'
@@ -59,14 +85,36 @@ export function StaffActivityTab() {
 
     return [
       { label: "Collections", value: collections.toString(), icon: Activity },
-      { label: "Alerts", value: alerts.toString(), icon: Activity },
+      { label: "Alerts", value: alerts.toString(), icon: AlertTriangle },
       { label: "Maintenance", value: maintenance.toString(), icon: Activity },
       { label: "Route Changes", value: routeChanges.toString(), icon: Activity },
     ];
-  }, [logs]);
+  }, [logs, binErrorRecords]);
 
   // Filter activities based on selected filters
   const filteredActivities = useMemo(() => {
+    // If "Alerts" is selected, show bin history error records instead of activity logs
+    if (activityTypeFilter === "alerts") {
+      if (!binErrorRecords || binErrorRecords.length === 0) return [];
+      
+      // Convert bin history records to activity-like format for display
+      return binErrorRecords.map(record => ({
+        id: record.id,
+        activity_type: 'bin_alert',
+        timestamp: record.timestamp,
+        date: new Date(record.timestamp).toISOString().split('T')[0],
+        bin_id: record.binId,
+        bin_location: `GPS: ${record.gps.lat}, ${record.gps.lng}`,
+        bin_status: record.status.toLowerCase(),
+        task_note: record.errorMessage || `Bin ${record.status}: ${record.binLevel}% full`,
+        weight_percent: record.weight,
+        height_percent: record.distance,
+        bin_level: record.binLevel,
+        gps_valid: record.gpsValid,
+        satellites: record.satellites
+      }));
+    }
+
     if (!logs || logs.length === 0) return [];
 
     let filtered = logs;
@@ -106,7 +154,11 @@ export function StaffActivityTab() {
 
   const handleApplyFilters = () => {
     console.log("Filters applied:", { activityTypeFilter, dateRangeFilter });
-    // The filtering is already applied through useMemo, but you could trigger a refetch here if needed
+    
+    // If alerts are selected, fetch bin history error records
+    if (activityTypeFilter === "alerts") {
+      fetchErrorRecords(selectedBinId);
+    }
   };
 
   const handleRefresh = () => {
@@ -117,6 +169,8 @@ export function StaffActivityTab() {
 
   const getActivityTypeColor = (type: string) => {
     switch (type) {
+      case "bin_alert":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       case "task_assignment":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
       case "bin_emptied":
@@ -202,6 +256,19 @@ export function StaffActivityTab() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-900 dark:text-white">Bin ID</label>
+              <Select value={selectedBinId} onValueChange={setSelectedBinId}>
+                <SelectTrigger className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-gray-500">
+                  <SelectValue placeholder="Select bin" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bin1">Bin 1</SelectItem>
+                  <SelectItem value="bin2">Bin 2</SelectItem>
+                  <SelectItem value="bin3">Bin 3</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-900 dark:text-white">Activity Type</label>
               <Select value={activityTypeFilter} onValueChange={setActivityTypeFilter}>
                 <SelectTrigger className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-gray-500">
@@ -209,6 +276,7 @@ export function StaffActivityTab() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Activities</SelectItem>
+                  <SelectItem value="alerts">Alerts & Errors</SelectItem>
                   <SelectItem value="task_assignment">Task Assignment</SelectItem>
                   <SelectItem value="bin_emptied">Bin Emptied</SelectItem>
                   <SelectItem value="maintenance">Maintenance</SelectItem>
@@ -247,7 +315,9 @@ export function StaffActivityTab() {
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
                 Recent Activity Summary
-                {loading && <span className="text-sm text-gray-500">(Loading...)</span>}
+                {(loading || (activityTypeFilter === "alerts" && binHistoryLoading)) && (
+                  <span className="text-sm text-gray-500">(Loading...)</span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -257,11 +327,20 @@ export function StaffActivityTab() {
                 <div className="text-center py-8 text-red-500 dark:text-red-400">{error}</div>
               ) : filteredActivities.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  No activities found
+                  {activityTypeFilter === "alerts" ? "No alerts found" : "No activities found"}
                   <div className="text-xs mt-2">
-                    Total logs: {logs?.length || 0} | 
-                    Date filter: {dateRangeFilter} | 
-                    Type filter: {activityTypeFilter}
+                    {activityTypeFilter === "alerts" ? (
+                      <>
+                        Bin: {selectedBinId} | 
+                        Total errors: {binErrorRecords?.length || 0}
+                      </>
+                    ) : (
+                      <>
+                        Total logs: {logs?.length || 0} | 
+                        Date filter: {dateRangeFilter} | 
+                        Type filter: {activityTypeFilter}
+                      </>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -286,6 +365,25 @@ export function StaffActivityTab() {
                         <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                           Bin: {activity.bin_id} - {activity.bin_location || "Unknown Location"}
                         </p>
+                      )}
+                      {activity.activity_type === 'bin_alert' && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {activity.bin_status}
+                          </Badge>
+                          {activity.gps_valid !== undefined && (
+                            <span className="text-xs text-gray-500 flex items-center gap-1">
+                              <Wifi className="w-3 h-3" />
+                              GPS: {activity.gps_valid ? 'Valid' : 'Invalid'}
+                            </span>
+                          )}
+                          {activity.satellites !== undefined && (
+                            <span className="text-xs text-gray-500 flex items-center gap-1">
+                              <Satellite className="w-3 h-3" />
+                              {activity.satellites} satellites
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

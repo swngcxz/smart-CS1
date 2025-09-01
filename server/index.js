@@ -20,7 +20,11 @@ const { admin } = require('./models/firebase');
 const serialportgsm = require('serialport-gsm');
 
 const notificationRoutes = require('./routers/notificationRoutes');
+const binHistoryRoutes = require('./routers/binHistoryRoutes');
+const binNotificationRoutes = require('./routers/binNotificationRoutes');
 const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
+const BinHistoryProcessor = require('./utils/binHistoryProcessor');
+const binNotificationController = require('./controllers/binNotificationController');
 
 
 const db = admin.database();
@@ -54,6 +58,8 @@ app.use("/api", binRoutes);
 app.use("/api", activityRoutes);
 
 app.use('/api/notifications', notificationRoutes);
+app.use('/api', binHistoryRoutes);
+app.use('/api', binNotificationRoutes);
 
 app.use(errorHandler);
 
@@ -118,6 +124,23 @@ modem.open('COM12', options, (error) => {
   if (error) {
     console.error('Error opening port:', error);
     console.log('⚠️  Modem not connected, but real-time monitoring will still work');
+    
+    // Record the error in bin history
+    BinHistoryProcessor.processError('bin1', `Error opening port: ${error.message}`, {
+      weight: 0,
+      distance: 0,
+      binLevel: 0,
+      gps: { lat: 0, lng: 0 },
+      gpsValid: false,
+      satellites: 0
+    }).then(result => {
+      if (result.success) {
+        console.log(`[BIN HISTORY] Recorded modem error: Status=${result.status}`);
+      }
+    }).catch(err => {
+      console.error('[BIN HISTORY] Failed to record modem error:', err);
+    });
+    
     // Setup real-time monitoring even without modem
     setupRealTimeMonitoring();
     return;
@@ -200,6 +223,55 @@ function setupRealTimeMonitoring() {
       console.log(` GPS Valid: ${data.gps_valid || false}`);
       console.log(` Satellites: ${data.satellites || 0}`);
       console.log('==========================================\n');
+      
+      // Process data through bin history system
+      try {
+        const historyResult = await BinHistoryProcessor.processExistingMonitoringData({
+          weight: data.weight_percent || 0,
+          distance: data.height_percent || 0,
+          binLevel: data.bin_level || 0,
+          gps: {
+            lat: data.latitude || 0,
+            lng: data.longitude || 0
+          },
+          gpsValid: data.gps_valid || false,
+          satellites: data.satellites || 0,
+          errorMessage: null
+        });
+        
+                 if (historyResult.success) {
+           console.log(`[BIN HISTORY] Recorded monitoring data for bin1: Status=${historyResult.status}`);
+           
+           // Check if notification should be sent
+           try {
+             const notificationResult = await binNotificationController.checkBinAndNotify({
+               binId: 'bin1',
+               binLevel: data.bin_level || 0,
+               status: historyResult.status,
+               gps: {
+                 lat: data.latitude || 0,
+                 lng: data.longitude || 0
+               },
+               timestamp: new Date(),
+               weight: data.weight_percent || 0,
+               distance: data.height_percent || 0,
+               gpsValid: data.gps_valid || false,
+               satellites: data.satellites || 0,
+               errorMessage: null
+             });
+             
+             if (notificationResult.notificationSent) {
+               console.log(`[BIN NOTIFICATION] Sent notification to janitor: ${notificationResult.type}`);
+             }
+           } catch (notifyErr) {
+             console.error('[BIN NOTIFICATION] Error sending notification:', notifyErr);
+           }
+         } else {
+           console.error('[BIN HISTORY] Failed to record monitoring data:', historyResult.error);
+         }
+       } catch (historyErr) {
+         console.error('[BIN HISTORY] Error processing monitoring data:', historyErr);
+       }
       
       // SMS alert logic for bin1
       if (data.bin_level > 85 && !smsSent) {
