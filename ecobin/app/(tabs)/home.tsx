@@ -164,18 +164,6 @@ export default function HomeScreen() {
           </View>
         </View>
       ))}
-
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
-      <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.actionBtn}>
-          <Ionicons name="alert-circle-outline" size={18} color="#fff" />
-          <Text style={styles.actionText}>Report</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn}>
-          <Ionicons name="analytics-outline" size={18} color="#fff" />
-          <Text style={styles.actionText}>Stats</Text>
-        </TouchableOpacity>
-      </View>
     </ScrollView>
   );
 }
@@ -186,6 +174,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     paddingHorizontal: 20,
     paddingTop: 16,
+    paddingBottom: 20,
   },
   header: {
     marginTop: 44,

@@ -48,7 +48,6 @@ export default function SettingsScreen() {
             <>
               <Text style={[styles.name, { color: textColor }]}>{account.fullName}</Text>
               <Text style={[styles.username, { color: secondaryTextColor }]}>{account.email}</Text>
-              <Text style={[styles.username, { color: secondaryTextColor }]}>Role: {account.role}</Text>
             </>
           ) : null}
         </View>
@@ -159,7 +158,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 20,
   },
   sectionHeader: {
     fontSize: 13,
@@ -187,7 +186,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   profileContainer: {
-    marginBottom: 20,
+    marginBottom: 0,
   },
   profileHeader: {
     flexDirection: "row",
@@ -205,7 +204,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   username: {
-    fontSize: 14,
+    fontSize: 12,
+
   },
   divider: {
     height: StyleSheet.hairlineWidth,

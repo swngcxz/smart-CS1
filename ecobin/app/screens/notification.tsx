@@ -1,7 +1,13 @@
 import BackButton from "@/components/BackButton";
-import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const initialNotifications = [
   {
@@ -38,53 +44,81 @@ export default function NotificationScreen() {
   const [notifications, setNotifications] = useState(initialNotifications);
   const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
 
-  const handleDeleteAll = () => {
-    Alert.alert("Delete All", "Are you sure you want to delete all notifications?", [
+  const handleDelete = (id: string) => {
+    Alert.alert("Delete", "Delete this notification?", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Delete All",
+        text: "Delete",
         style: "destructive",
-        onPress: () => setNotifications([]),
+        onPress: () =>
+          setNotifications((prev) => prev.filter((n) => n.id !== id)),
       },
     ]);
   };
 
   const handleMarkAsDone = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
   };
 
   const filteredNotifications =
-    filter === "all" ? notifications : notifications.filter((n) => n.isRead === (filter === "read"));
+    filter === "all"
+      ? notifications
+      : notifications.filter((n) => n.isRead === (filter === "read"));
 
   return (
     <View style={styles.container}>
       <BackButton title="Home" />
 
-      <View style={styles.topRow}>
-        <Text style={styles.header}>Notifications</Text>
-        <TouchableOpacity onPress={handleDeleteAll}>
-          <Ionicons name="trash-outline" size={24} color="red" />
-        </TouchableOpacity>
-      </View>
+      <Text style={styles.header}>Notifications</Text>
 
-      <View style={styles.filterRow}>
+      {/* Filter Box */}
+      <View style={styles.filterBox}>
         <TouchableOpacity
           onPress={() => setFilter("all")}
           style={[styles.filterButton, filter === "all" && styles.activeFilter]}
         >
-          <Text>All</Text>
+          <Text
+            style={[
+              styles.filterButtonText,
+              filter === "all" && styles.activeFilterText,
+            ]}
+          >
+            All
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setFilter("unread")}
-          style={[styles.filterButton, filter === "unread" && styles.activeFilter]}
+          style={[
+            styles.filterButton,
+            filter === "unread" && styles.activeFilter,
+          ]}
         >
-          <Text>Unread</Text>
+          <Text
+            style={[
+              styles.filterButtonText,
+              filter === "unread" && styles.activeFilterText,
+            ]}
+          >
+            Unread
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setFilter("read")}
-          style={[styles.filterButton, filter === "read" && styles.activeFilter]}
+          style={[
+            styles.filterButton,
+            filter === "read" && styles.activeFilter,
+          ]}
         >
-          <Text>Read</Text>
+          <Text
+            style={[
+              styles.filterButtonText,
+              filter === "read" && styles.activeFilterText,
+            ]}
+          >
+            Read
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -102,20 +136,32 @@ export default function NotificationScreen() {
           });
 
           return (
-            <View style={[styles.card, item.isRead && styles.read]}>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.message}>{item.message}</Text>
-              <Text style={styles.timestamp}>{formattedTimestamp}</Text>
+            <TouchableOpacity
+              onLongPress={() => handleDelete(item.id)} // long press delete popup
+              delayLongPress={500}
+            >
+              <View style={[styles.card, item.isRead && styles.read]}>
+                <Text style={styles.title}>{item.title}</Text>
+                <Text style={styles.message}>{item.message}</Text>
+                <Text style={styles.timestamp}>{formattedTimestamp}</Text>
 
-              {!item.isRead && (
-                <TouchableOpacity style={styles.markButton} onPress={() => handleMarkAsDone(item.id)}>
-                  <Text style={styles.markButtonText}>Mark as Done</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                {!item.isRead && (
+                  <TouchableOpacity
+                    style={styles.markButton}
+                    onPress={() => handleMarkAsDone(item.id)}
+                  >
+                    <Text style={styles.markButtonText}>Mark as Done</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </TouchableOpacity>
           );
         }}
-        ListEmptyComponent={<Text style={{ textAlign: "center", marginTop: 30 }}>No notifications</Text>}
+        ListEmptyComponent={
+          <Text style={{ textAlign: "center", marginTop: 30 }}>
+            No notifications
+          </Text>
+        }
       />
     </View>
   );
@@ -123,25 +169,32 @@ export default function NotificationScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, backgroundColor: "#fff", flex: 1, marginTop: 44 },
-  topRow: {
+  header: { fontSize: 24, fontWeight: "bold", marginBottom: 10 },
+  filterBox: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  header: { fontSize: 24, fontWeight: "bold" },
-  filterRow: {
-    flexDirection: "row",
-    marginBottom: 15,
     justifyContent: "space-around",
+    marginBottom: 15,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 12,
+    backgroundColor: "#fff",
   },
   filterButton: {
-    padding: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 8,
-    backgroundColor: "#eee",
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: "black", // default text color
   },
   activeFilter: {
-    backgroundColor: "#cde1ff",
+    backgroundColor: "#4CAF50",
+  },
+  activeFilterText: {
+    color: "white", // active text becomes white
+    fontWeight: "bold",
   },
   card: {
     backgroundColor: "#f9f9f9",
