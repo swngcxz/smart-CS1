@@ -68,7 +68,7 @@ export default function LocationBinsScreen() {
               </View>
 
               {/* Progress */}
-              <Text style={styles.percentText}>{bin.level}% full</Text>
+              <Text style={styles.percentText}>{bin.level}%</Text>
               <ProgressBar progress={bin.level / 100} color={statusColor} style={styles.progress} />
 
               {/* Details */}

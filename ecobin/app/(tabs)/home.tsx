@@ -123,10 +123,10 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 20, paddingTop: 16, marginBottom: 90 },
   header: { marginTop: 44, marginBottom: 10 },
-  sectionTitle: { fontSize: 20, fontWeight: "600", marginBottom: 10, color: "#000" },
+  sectionTitle: { fontSize: 20, fontWeight: "600", marginBottom: 15, color: "#000" },
 
   // Location cards
-  locationCard: { backgroundColor: "#fff", borderRadius: 12, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#ddd", shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  locationCard: { backgroundColor: "#fafafa", borderRadius: 12, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#ddd", elevation: 2 },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   locationName: { fontSize: 16, fontWeight: "600", color: "#333" },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },

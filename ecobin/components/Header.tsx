@@ -15,7 +15,7 @@ const Header: React.FC<HeaderProps> = ({ showIcons = true, style }) => {
       <Image source={require("@/assets/icon/logo-final2.png")} style={styles.logo} resizeMode="contain" />
 
       {/* Centered Text */}
-      <Text style={styles.centerText}>Ecobin</Text>
+      <Text style={styles.centerText}>ECOBIN</Text>
 
       {/* Icons (right-aligned) */}
       {showIcons && (
@@ -55,9 +55,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
+    top: 10,
     textAlign: "center",
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "bold",
     color: "#000",
   },
 });
