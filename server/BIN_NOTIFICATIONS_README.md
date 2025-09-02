@@ -326,3 +326,4 @@ const { notifications, stats, markAsRead, sendManualNotification } =
 ## 📝 License
 
 This system is part of the Smart CS1 project and follows the same licensing terms.
+

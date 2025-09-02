@@ -353,3 +353,4 @@ class BinNotificationController {
 }
 
 module.exports = new BinNotificationController();
+

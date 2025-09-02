@@ -125,3 +125,4 @@ async function testBinNotifications() {
 
 // Run the test
 testBinNotifications().catch(console.error);
+

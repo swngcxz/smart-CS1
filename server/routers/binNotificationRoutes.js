@@ -184,3 +184,4 @@ router.get('/bin-notifications/test', async (req, res) => {
 });
 
 module.exports = router;
+
