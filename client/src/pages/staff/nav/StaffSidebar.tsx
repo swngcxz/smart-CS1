@@ -14,6 +14,7 @@ import {
 import { Calendar, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 type StaffSidebarProps = {
   currentTab: string;
@@ -32,6 +33,7 @@ const menuItems = [
 
 export function StaffSidebar({ currentTab, onTabChange }: StaffSidebarProps) {
   const { signout, loading } = useAuth();
+  const { user } = useCurrentUser();
   return (
     <Sidebar className="border-r border-gray-200 dark:border-slate-700 bg-background dark:bg-gray-900 text-gray-900 dark:text-white">
       <SidebarHeader className="p-4 border-b border-gray-200 bg-background dark:bg-gray-900 text-gray-900 dark:text-white">
@@ -73,8 +75,8 @@ export function StaffSidebar({ currentTab, onTabChange }: StaffSidebarProps) {
             <Users className="w-4 h-4 text-gray-600 dark:text-gray-300" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">Staff</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">staff@smartwaste.com</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.fullName || 'Staff'}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'staff@smartwaste.com'}</p>
           </div>
         </div>
 
