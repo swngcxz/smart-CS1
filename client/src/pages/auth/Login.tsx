@@ -139,12 +139,12 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
           </Link>
         </div>
 
-        <div className="text-center text-sm">
+        {/* <div className="text-center text-sm">
           Don’t have an account?{" "}
           <button onClick={onOpenRegister} className="text-green-600 hover:underline dark:text-green-400">
             Sign up
           </button>
-        </div>
+        </div> */}
       </CardContent>
     </Card>
   );
