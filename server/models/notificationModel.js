@@ -59,6 +59,43 @@ class NotificationModel {
   }
 
   /**
+   * Get users by role(s)
+   * @param {Array<string>} roles - Roles to match (e.g., ['janitor','staff'])
+   * @returns {Promise<Array>} Users with matching roles
+   */
+  async getUsersByRoles(roles = []) {
+    try {
+      if (!roles.length) return [];
+      // Firestore doesn't support "in" on different fields, so query by role field
+      const snapshot = await db.collection(this.collections.users)
+        .where('role', 'in', roles)
+        .get();
+
+      const users = [];
+      snapshot.forEach(doc => {
+        users.push({ id: doc.id, ...doc.data() });
+      });
+
+      // Some records might use an alternate field like acc_type; include them via a second pass
+      // Note: This requires a separate query per role because Firestore doesn't support 'in' on different fields
+      for (const role of roles) {
+        const altSnapshot = await db.collection(this.collections.users)
+          .where('acc_type', '==', role)
+          .get();
+        altSnapshot.forEach(doc => {
+          const user = { id: doc.id, ...doc.data() };
+          if (!users.find(u => u.id === user.id)) users.push(user);
+        });
+      }
+
+      return users;
+    } catch (error) {
+      console.error('[NOTIFICATION MODEL] Error getting users by roles:', error);
+      throw new Error(`Failed to get users by roles: ${error.message}`);
+    }
+  }
+
+  /**
    * Get all bin assignments
    * @returns {Promise<Array>} Array of all bin assignments
    */

@@ -1,5 +1,5 @@
 import BackButton from "@/components/BackButton";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -9,39 +9,13 @@ import {
   View,
 } from "react-native";
 
-const initialNotifications = [
-  {
-    id: "1",
-    title: "New Task Assigned",
-    message: "You have a new waste collection task.",
-    timestamp: "2025-07-23T10:45:00",
-    isRead: false,
-  },
-  {
-    id: "2",
-    title: "Task Completed",
-    message: "Your previous task was marked as completed.",
-    timestamp: "2025-07-22T16:20:00",
-    isRead: true,
-  },
-  {
-    id: "3",
-    title: "Reminder",
-    message: "Check bin 2nd floor before 5PM.",
-    timestamp: "2025-07-24T08:15:00",
-    isRead: false,
-  },
-  {
-    id: "4",
-    title: "Maintenance Notice",
-    message: "System update tonight at 9 PM.",
-    timestamp: "2025-07-21T11:30:00",
-    isRead: true,
-  },
-];
+import { useAccount } from "@/hooks/useAccount"; // current user info from /auth/me
+import { useNotifications } from "@/hooks/useNotifications";
 
 export default function NotificationScreen() {
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const { account } = useAccount();
+  const janitorId = useMemo(() => account?.id, [account]);
+  const { notifications, loading, error, markAsRead, refresh, setNotifications } = useNotifications(janitorId, { auto: true, intervalMs: 10000 });
   const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
 
   const handleDelete = (id: string) => {
@@ -56,22 +30,23 @@ export default function NotificationScreen() {
     ]);
   };
 
-  const handleMarkAsDone = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const handleMarkAsDone = async (id: string) => {
+    await markAsRead(id);
   };
 
   const filteredNotifications =
     filter === "all"
       ? notifications
-      : notifications.filter((n) => n.isRead === (filter === "read"));
+      : notifications.filter((n: any) => (n.read ? "read" : "unread") === filter);
 
   return (
     <View style={styles.container}>
       <BackButton title="Home" />
 
       <Text style={styles.header}>Notifications</Text>
+      {!!error && (
+        <Text style={{ color: 'red', marginBottom: 10 }}>{String(error)}</Text>
+      )}
 
       {/* Filter Box */}
       <View style={styles.filterBox}>
@@ -124,7 +99,7 @@ export default function NotificationScreen() {
 
       <FlatList
         data={filteredNotifications}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item: any) => item.id}
         renderItem={({ item }) => {
           const date = new Date(item.timestamp);
           const formattedTimestamp = date.toLocaleString("en-US", {
@@ -145,7 +120,7 @@ export default function NotificationScreen() {
                 <Text style={styles.message}>{item.message}</Text>
                 <Text style={styles.timestamp}>{formattedTimestamp}</Text>
 
-                {!item.isRead && (
+                {!item.read && (
                   <TouchableOpacity
                     style={styles.markButton}
                     onPress={() => handleMarkAsDone(item.id)}

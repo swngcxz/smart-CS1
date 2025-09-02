@@ -38,16 +38,50 @@ class BinNotificationController {
 
       // Get janitor assignment for this bin
       const assignment = await notificationModel.getBinAssignment(binId);
-      
+
+      // Create notification payload
+      const notificationData = this.createNotificationData(binData, shouldNotify.type);
+
+      // If no assignment, broadcast to all janitors
       if (!assignment) {
-        console.log(`[BIN NOTIFICATION] No janitor assigned to bin ${binId}`);
+        console.log(`[BIN NOTIFICATION] No janitor assigned to bin ${binId}. Broadcasting to all janitors...`);
+
+        // Fetch all users with janitor-like roles
+        const janitorCandidates = await notificationModel.getUsersByRoles(['janitor', 'staff']);
+
+        // Send to each janitor if they have FCM and create per-user notification records for ALL
+        const results = [];
+        for (const user of janitorCandidates) {
+          try {
+            let fcmMessageId = null;
+            if (user.fcmToken) {
+              try {
+                fcmMessageId = await fcmService.sendToUser(user.fcmToken, notificationData);
+              } catch (sendErr) {
+                console.error(`[BIN NOTIFICATION] FCM send failed for janitor ${user.id}:`, sendErr);
+              }
+            }
+
+            const created = await notificationModel.createNotification({
+              ...notificationData,
+              janitorId: user.id,
+              timestamp: timestamp || new Date()
+            });
+            results.push({ userId: user.id, fcmMessageId, notificationId: created.id, hadFcmToken: !!user.fcmToken });
+          } catch (err) {
+            console.error(`[BIN NOTIFICATION] Failed processing janitor ${user.id}:`, err);
+          }
+        }
+
         return {
           success: true,
-          notificationSent: false,
-          reason: 'No janitor assigned'
+          notificationSent: results.length > 0,
+          broadcast: true,
+          recipients: results
         };
       }
 
+      // Otherwise, notify the specifically assigned janitor
       const { janitorId } = assignment;
 
       // Get janitor's FCM token
@@ -62,9 +96,6 @@ class BinNotificationController {
         };
       }
 
-      // Create notification data
-      const notificationData = this.createNotificationData(binData, shouldNotify.type);
-      
       // Send FCM notification
       const fcmResult = await fcmService.sendToUser(janitor.fcmToken, notificationData);
       

@@ -1,4 +1,6 @@
 const { db } = require("../models/firebase");
+const notificationModel = require('../models/notificationModel');
+const fcmService = require('../services/fcmService');
 
 // Save an activity log
 const saveActivityLog = async (req, res, next) => {
@@ -67,11 +69,43 @@ const saveTaskAssignment = async (req, res, next) => {
     };
 
     console.log("Saving task assignment to Firestore collection: task_assignments");
-    await db.collection("task_assignments").add(data);
+    const taskRef = await db.collection("task_assignments").add(data);
+
+    // Notify assigned janitor (staff_id) via push and in-app record
+    try {
+      const janitor = await notificationModel.getUserById(staff_id);
+      const notificationData = {
+        binId: bin_id,
+        type: 'task_assignment',
+        title: `🧹 New Task Assigned`,
+        message: `You have a new ${task_type || 'task'} for bin ${bin_id} at ${bin_location || 'assigned location'}. Priority: ${priority || 'normal'}.`,
+        status: 'ASSIGNED',
+        binLevel: null,
+        gps: { lat: 0, lng: 0 },
+        timestamp: new Date()
+      };
+
+      // Send push if token exists
+      if (janitor && janitor.fcmToken) {
+        try {
+          await fcmService.sendToUser(janitor.fcmToken, notificationData);
+        } catch (sendErr) {
+          console.error('[TASK ASSIGNMENT] FCM send failed:', sendErr);
+        }
+      }
+
+      // Create in-app notification record
+      await notificationModel.createNotification({
+        ...notificationData,
+        janitorId: staff_id
+      });
+    } catch (notifyErr) {
+      console.error('[TASK ASSIGNMENT] Failed to notify assigned janitor:', notifyErr);
+    }
 
     res.status(201).json({ 
       message: "Task assignment saved successfully.",
-      task_id: data.id 
+      task_id: taskRef.id 
     });
   } catch (err) {
     next(err);
