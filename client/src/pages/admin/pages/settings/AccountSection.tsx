@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,14 +18,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Trash2, Save, Pencil, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 export const AccountSection = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
+  const { user } = useCurrentUser();
   const [accountInfo, setAccountInfo] = useState({
-    username: "johndoe",
-    accountType: "Premium",
-    memberSince: "January 2023",
-    timezone: "Pacific Standard Time (PST)",
+    username: "",
+    accountType: "",
+    memberSince: "",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
   });
 
   const { toast } = useToast();
@@ -40,6 +42,16 @@ export const AccountSection = () => {
       description: `${field} has been updated.`,
     });
   };
+
+  useEffect(() => {
+    if (!user) return;
+    setAccountInfo({
+      username: user.fullName || user.email?.split('@')[0] || '',
+      accountType: user.role || 'user',
+      memberSince: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+    });
+  }, [user]);
 
   const handleDeleteAccount = () => {
     toast({

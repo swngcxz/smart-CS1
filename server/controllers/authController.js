@@ -14,10 +14,15 @@ const updateCurrentUser = async (req, res) => {
     if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
     const userDoc = snapshot.docs[0];
     const updates = {};
-    if (req.body.fullName) updates.fullName = req.body.fullName;
-    if (req.body.address) updates.address = req.body.address;
-    if (req.body.phone) updates.phone = req.body.phone;
-    // Add more fields as needed
+    const allowedFields = [
+      'fullName','firstName','lastName','address','phone','avatarUrl','bio','website','timezone','fcmToken','status'
+    ];
+    for (const key of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        updates[key] = req.body[key];
+      }
+    }
+    updates.updatedAt = new Date().toISOString();
     await userDoc.ref.update(updates);
     return res.json({ message: 'Profile updated' });
   } catch (err) {
@@ -40,14 +45,22 @@ const getCurrentUser = async (req, res) => {
     if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
     const userDoc = snapshot.docs[0];
     const user = userDoc.data();
-    // Return safe user info
+    // Return safe, expanded user info for settings/profile (exclude sensitive fields like password, reset tokens)
     return res.json({
       id: userDoc.id,
-      fullName: user.fullName,
+      fullName: user.fullName || user.firstName || '',
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
       email: user.email,
-      role: user.role,
+      role: user.role || user.acc_type || 'user',
       address: user.address || '',
       phone: user.phone || '',
+      status: user.status || 'active',
+      emailVerified: Boolean(user.emailVerified),
+      avatarUrl: user.avatarUrl || '',
+      fcmToken: user.fcmToken || '',
+      createdAt: user.createdAt || '',
+      updatedAt: user.updatedAt || new Date().toISOString(),
     });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to fetch user info' });
@@ -260,6 +273,47 @@ async function resetPassword(req, res) {
   }
 }
 
+// Change password for logged-in user
+async function changePassword(req, res) {
+  try {
+    const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new password are required' });
+    }
+
+    // Password strength validation
+    const passwordStrength = zxcvbn(newPassword);
+    if (passwordStrength.score < 3) {
+      return res.status(400).json({ error: 'Password is too weak. Please choose a stronger password.' });
+    }
+
+    // Find user by email
+    const snapshot = await db.collection('users').where('email', '==', decoded.email).get();
+    if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
+    const userDoc = snapshot.docs[0];
+    const user = userDoc.data();
+
+    const matches = await comparePassword(currentPassword, user.password);
+    if (!matches) return res.status(401).json({ error: 'Current password is incorrect' });
+
+    const hashed = await hashPassword(newPassword);
+    await userDoc.ref.update({ password: hashed, updatedAt: new Date().toISOString() });
+
+    return res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to change password' });
+  }
+}
+
 // Sign out function: clears token and updates logout time in logs
 async function signout(req, res) {
   try {
@@ -289,4 +343,4 @@ async function signout(req, res) {
   }
 }
 
-module.exports = { signup, login, requestPasswordReset, resetPassword, signout, getCurrentUser, updateCurrentUser };
+module.exports = { signup, login, requestPasswordReset, resetPassword, signout, getCurrentUser, updateCurrentUser, changePassword };

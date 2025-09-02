@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,20 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Pencil, Camera, Save, X, Mail, Github, Facebook } from "lucide-react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 export const ProfileSection = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
+  const { user } = useCurrentUser();
   const [profile, setProfile] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    bio: "Software Developer passionate about creating amazing user experiences",
-    location: "San Francisco, CA",
-    website: "https://johndoe.dev",
+    name: "",
+    email: "",
+    phone: "",
+    bio: "",
+    location: "",
+    website: "",
   });
-  const [imageUrl, setImageUrl] = useState<string>(
-    "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=400&h=400&fit=crop&crop=face"
-  );
+  const [imageUrl, setImageUrl] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleEdit = (field: string) => setIsEditing(field);
@@ -37,6 +37,19 @@ export const ProfileSection = () => {
     }
   };
   const triggerFileSelect = () => fileInputRef.current?.click();
+
+  useEffect(() => {
+    if (!user) return;
+    setProfile({
+      name: user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" "),
+      email: user.email || "",
+      phone: user.phone || "",
+      bio: "",
+      location: user.address || "",
+      website: "",
+    });
+    setImageUrl(user.avatarUrl || "");
+  }, [user]);
 
   const connectedAccounts = [
     { name: "Google", icon: <Mail className="w-4 h-4 text-red-500" />, linked: true, value: "john.doe@gmail.com" },
@@ -105,7 +118,7 @@ export const ProfileSection = () => {
             <div className="relative">
               <Avatar className="w-24 h-24">
                 <AvatarImage src={imageUrl} />
-                <AvatarFallback className="text-xl">JD</AvatarFallback>
+                <AvatarFallback className="text-xl">{(profile.name || 'U').slice(0,2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <Button
                 type="button"
@@ -123,7 +136,7 @@ export const ProfileSection = () => {
                 variant="secondary"
                 className="bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100 mt-1"
               >
-                Admin
+                {user?.role || 'User'}
               </Badge>
             </div>
           </div>
