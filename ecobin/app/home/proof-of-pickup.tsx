@@ -1,14 +1,24 @@
 import BackButton from "@/components/BackButton";
-import Header from "@/components/Header";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function ProofOfPickupScreen() {
-  const { binId } = useLocalSearchParams();
+  const { binId, location } = useLocalSearchParams();
   const router = useRouter();
   const [image, setImage] = useState<string | null>(null);
+  const [remarks, setRemarks] = useState("");
+
+  const now = new Date();
+  // 📅 Format date like "September 3, 2025"
+  const currentDate = now.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  // ⏰ Time in HH:MM AM/PM
+  const currentTime = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -22,18 +32,33 @@ export default function ProofOfPickupScreen() {
   };
 
   const handleSubmit = () => {
-    console.log(`Bin ${binId} marked as picked up with image:`, image);
-   
-    router.replace("/(tabs)/home"); 
+    console.log(
+      `Bin ${binId} at ${location} marked as picked up\nDate: ${currentDate}\nTime: ${currentTime}\nRemarks: ${
+        remarks || "None"
+      }\nImage: ${image}`
+    );
+    router.replace("/home/activity-logs");
   };
 
   return (
     <View style={styles.container}>
-      <Header />
       <BackButton />
 
-      <Text style={styles.title}>Upload Proof of Pickup</Text>
+      <Text style={styles.title}>Proof of Pickup</Text>
 
+      {/* Bin details */}
+      <View style={styles.detailsBox}>
+        <Text style={styles.detail}><Text style={styles.label}>Bin ID:</Text> {binId ?? "N/A"}</Text>
+        <Text style={styles.detail}><Text style={styles.label}>Location:</Text> {location ?? "Unknown"}</Text>
+        <Text style={styles.detail}><Text style={styles.label}>Date:</Text> {currentDate}</Text>
+        <Text style={styles.detail}><Text style={styles.label}>Time:</Text> {currentTime}</Text>
+      </View>
+
+      <Text style={styles.instructions}>
+        Upload a clear photo after marking this bin as collected.
+      </Text>
+
+      {/* Upload Image */}
       <TouchableOpacity style={styles.imageBox} onPress={pickImage}>
         {image ? (
           <Image source={{ uri: image }} style={styles.image} />
@@ -42,12 +67,23 @@ export default function ProofOfPickupScreen() {
         )}
       </TouchableOpacity>
 
+      {/* Remarks Textbox */}
+      <TextInput
+        style={styles.textInput}
+        placeholder="Write any messages..."
+        placeholderTextColor="#888"
+        value={remarks}
+        onChangeText={setRemarks}
+        multiline
+      />
+
+      {/* Submit button */}
       <TouchableOpacity
         style={[styles.button, !image && styles.disabled]}
         onPress={handleSubmit}
         disabled={!image}
       >
-        <Text style={styles.buttonText}>Submit & Mark as Done</Text>
+        <Text style={styles.buttonText}>Submit</Text>
       </TouchableOpacity>
     </View>
   );
@@ -56,37 +92,68 @@ export default function ProofOfPickupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#fdfdfd",
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 50,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 15,
+    textAlign: "center",
+    color: "#2e7d32",
+  },
+  detailsBox: {
+    backgroundColor: "#e8f5e9",
+    padding: 15,
+    borderRadius: 12,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#c8e6c9",
+  },
+  detail: { fontSize: 15, marginBottom: 8, color: "#333" },
+  label: { fontWeight: "bold", color: "#1b5e20" },
+  instructions: {
+    fontSize: 14,
+    color: "#555",
+    marginBottom: 15,
     textAlign: "center",
   },
   imageBox: {
-    width: 200,
-    height: 200,
+    width: 280,
+    height: 280,
     borderWidth: 2,
-    borderColor: "#ccc",
+    borderColor: "#aaa",
     borderStyle: "dashed",
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 10,
+    borderRadius: 15,
     alignSelf: "center",
     marginBottom: 20,
+    backgroundColor: "#fafafa",
   },
-  plus: { fontSize: 40, color: "#999" },
-  image: { width: "100%", height: "100%", borderRadius: 10 },
+  // ⬆️ made bigger plus sign
+  plus: { fontSize: 60, color: "#999" },
+  image: { width: "100%", height: "100%", borderRadius: 15},
+  textInput: {
+    minHeight: 90,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    textAlignVertical: "top",
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    fontSize: 14,
+    color: "#333",
+  },
   button: {
     backgroundColor: "#2e7d32",
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignSelf: "center",
   },
-  buttonText: { color: "#fff", fontSize: 16 },
-  disabled: { backgroundColor: "#ccc" },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  disabled: { backgroundColor: "#bbb" },
 });

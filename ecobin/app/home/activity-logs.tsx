@@ -1,7 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 const initialLogs = [
   { type: "emptied", message: "Emptied Bin A1", bin: "A1", location: "Main Entrance", time: "9:42 AM", date: "Today" },
@@ -17,6 +24,7 @@ export default function ActivityLogsScreen() {
   const [selectedLogs, setSelectedLogs] = useState<number[]>([]);
   const [showArchive, setShowArchive] = useState(false);
 
+  // ✅ Toggle selection (used in long press)
   const toggleSelection = (index: number) => {
     setSelectedLogs((prev) =>
       prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
@@ -123,13 +131,26 @@ export default function ActivityLogsScreen() {
         {showArchive
           ? archivedLogs.map((log, idx) => renderLogCard(log, idx, true))
           : logs.map((log, idx) => (
-              <TouchableOpacity key={idx} onPress={() => toggleSelection(idx)}>
+              <TouchableOpacity
+                key={idx}
+                onPress={() => {
+                  // ✅ Normal click → open ProofOfPickupScreen
+                  router.push({
+                    pathname: "/home/proof-of-pickup",
+                    params: { binId: log.bin ?? "N/A" },
+                  });
+                }}
+                onLongPress={() => {
+                  // ✅ Long press → selection mode
+                  toggleSelection(idx);
+                }}
+              >
                 {renderLogCard(log, idx)}
               </TouchableOpacity>
             ))}
       </ScrollView>
 
-      {/* Action buttons */}
+      {/* Action buttons (only show in selection mode via long press) */}
       {!showArchive && selectedLogs.length > 0 && (
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -191,7 +212,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "bold",
     color: "#fff",
-    textTransform: "uppercase", // first letter uppercase
+    textTransform: "uppercase",
   },
   badgeLogin: { backgroundColor: "#64b5f6" },
   badgePickup: { backgroundColor: "#ffd54f" },
