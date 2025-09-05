@@ -3,7 +3,7 @@ import axios from 'axios';
 // You can switch these as needed for web, mobile, or local
 export const BASE_URLS = {
   web: 'http://192.168.100.155:8000', // Web deployment
-  mobile: 'http://192.168.100.46:8000', // Mobile (Expo/React Native)
+  mobile: 'http://192.168.100.155:8000', // Mobile (Expo/React Native)
   local: 'http://localhost:8000', // Local development
 };
 

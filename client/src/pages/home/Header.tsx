@@ -21,8 +21,6 @@ const Header = () => {
               <span className="text-2xl font-bold text-gray-900 dark:text-white">ECOBIN</span>
             </div>
 
-
-
             <nav className="hidden md:flex space-x-8">
               <a
                 href="#features"

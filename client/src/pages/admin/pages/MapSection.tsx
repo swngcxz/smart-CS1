@@ -82,8 +82,8 @@ export function MapSection() {
   // Update bin locations with real-time data
   const updatedBinLocations = binLocations.map((bin) => {
     // Find corresponding real-time data
-    const realTimeBin = wasteBins.find(wb => wb.id === bin.id.toString());
-    
+    const realTimeBin = wasteBins.find((wb) => wb.id === bin.id.toString());
+
     if (realTimeBin) {
       return {
         ...bin,
@@ -92,7 +92,7 @@ export function MapSection() {
         lastCollection: realTimeBin.lastCollected,
       };
     }
-    
+
     return bin;
   });
 
@@ -153,8 +153,7 @@ export function MapSection() {
         });
       } catch (error) {
         console.error("Failed to load Mapillary image", error);
-        streetViewDiv.innerHTML =
-          "<p class='text-center pt-4 text-red-500'>Failed to load imagery.</p>";
+        streetViewDiv.innerHTML = "<p class='text-center pt-4 text-red-500'>Failed to load imagery.</p>";
       }
     });
 
@@ -183,32 +182,35 @@ export function MapSection() {
           <div className="flex items-center gap-4 text-xs">
             {/* GPS Status */}
             <div className="flex items-center gap-1">
-              <div className={`w-3 h-3 rounded-full ${(bin1Data?.gps_valid || monitoringData?.gps_valid) ? 'bg-blue-500' : 'bg-gray-400'}`}></div>
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  bin1Data?.gps_valid || monitoringData?.gps_valid ? "bg-blue-500" : "bg-gray-400"
+                }`}
+              ></div>
               <span className="flex items-center gap-1">
-                📍 GPS: {(bin1Data?.gps_valid || monitoringData?.gps_valid) ? 'Valid' : 'Invalid'}
+                📍 GPS: {bin1Data?.gps_valid || monitoringData?.gps_valid ? "Valid" : "Invalid"}
                 {bin1Data?.gps_valid || monitoringData?.gps_valid ? (
                   <span className="text-blue-600">
-                    ({bin1Data?.latitude?.toFixed(4) || monitoringData?.latitude?.toFixed(4)}, {bin1Data?.longitude?.toFixed(4) || monitoringData?.longitude?.toFixed(4)})
+                    ({bin1Data?.latitude?.toFixed(4) || monitoringData?.latitude?.toFixed(4)},{" "}
+                    {bin1Data?.longitude?.toFixed(4) || monitoringData?.longitude?.toFixed(4)})
                   </span>
                 ) : null}
               </span>
             </div>
-            
+
             {/* GPS Tracking Toggle */}
             {gpsHistory.length > 1 && (
               <button
                 onClick={() => setShowGPSTracking(!showGPSTracking)}
                 className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                  showGPSTracking 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  showGPSTracking ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
                 title="Toggle GPS tracking path"
               >
-                🗺️ {showGPSTracking ? 'Hide' : 'Show'} Path
+                🗺️ {showGPSTracking ? "Hide" : "Show"} Path
               </button>
             )}
-            
+
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
               <span>Normal ({normalBins})</span>
@@ -226,13 +228,16 @@ export function MapSection() {
       </CardHeader>
 
       <CardContent className="p-0 h-full rounded-b-lg overflow-hidden relative z-0">
-       <MapContainer
+        <MapContainer
           center={center}
           zoom={21}
           scrollWheelZoom={true}
           zoomControl={true}
           className="h-full w-full z-0"
-          maxBounds={[[9.8, 123.5], [11.3, 124.1]]}
+          maxBounds={[
+            [9.8, 123.5],
+            [11.3, 124.1],
+          ]}
           maxBoundsViscosity={1.0}
         >
           <MapInitializer
@@ -247,14 +252,13 @@ export function MapSection() {
           {updatedBinLocations.map((bin) => (
             <BinMarker key={bin.id} bin={bin} />
           ))}
-          
+
           {/* GPS Marker for real-time location */}
           <GPSMarker gpsData={bin1Data || monitoringData} />
-          
+
           {/* GPS Tracking Line */}
           <GPSTrackingLine gpsHistory={gpsHistory} visible={showGPSTracking} />
         </MapContainer>
-
 
         {/* Pegman Icon */}
         <div
@@ -271,15 +275,9 @@ export function MapSection() {
         </div>
 
         {/* Street View Viewer */}
-        <div
-          id="mapillary-viewer"
-          className="absolute top-0 left-0 w-full h-full z-[998] hidden bg-white"
-        ></div>
+        <div id="mapillary-viewer" className="absolute top-0 left-0 w-full h-full z-[998] hidden bg-white"></div>
 
-        <button
-          id="close-street"
-          className="absolute top-2 right-2 text-black px-3 py-1 rounded z-[999]"
-        >
+        <button id="close-street" className="absolute top-2 right-2 text-black px-3 py-1 rounded z-[999]">
           x
         </button>
       </CardContent>
