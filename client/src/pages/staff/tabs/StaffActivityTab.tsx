@@ -6,7 +6,7 @@ import { Activity, Calendar, Filter, RefreshCw, AlertTriangle, MapPin, Satellite
 import { StaffActivityLogs } from "../pages/StaffActiviyLogs";
 import { useState, useMemo, useEffect } from "react";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useBinHistory } from "@/hooks/useBinHistory";
 
 export function StaffActivityTab() {

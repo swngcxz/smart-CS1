@@ -2,17 +2,17 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { NotificationPopover } from "@/components/modal/NotificationPopover";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useState } from "react";
 
 export function StaffDashboardHeader() {
   const [open, setOpen] = useState(false);
-  const { signout, loading } = useAuth();
+  const { logout, loading } = useAuth();
 
   const handleConfirmLogout = async () => {
     setOpen(false);
-    await signout();
+    await logout();
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,12 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login(email, password);
+    try {
+      await login(email, password);
+    } catch (error) {
+      // Error handling is done in the context
+      console.error('Login failed:', error);
+    }
   };
 
   return (

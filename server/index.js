@@ -33,8 +33,12 @@ const bin1Ref = db.ref('monitoring/bin1');
 
 const app = express();
 app.use(cors({
-  origin: 'http://localhost:8080',
-  credentials: true
+  origin: ['http://localhost:8081', 'http://localhost:8080', 'http://localhost:8000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 }));
 app.use(bodyParser.json());
 app.use(express.json());
@@ -65,6 +69,11 @@ app.use(errorHandler);
 
 app.get('/', (req, res) => {
   res.send('API is running');
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
 // Google OAuth routes
