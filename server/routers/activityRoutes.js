@@ -1,7 +1,10 @@
-const express = require("express");
-const { saveActivityLog, saveTaskAssignment, getUserActivityLogs, getDailyActivitySummary, getAllActivityLogs, getActivityLogsByUserId } = require("../controllers/activityController");
 
+const express = require("express");
 const router = express.Router();
+const { saveActivityLog, saveTaskAssignment, getUserActivityLogs, getDailyActivitySummary, getAllActivityLogs, getActivityLogsByUserId, getAssignedActivityLogs } = require("../controllers/activityController");
+
+// Get all activity logs assigned to a janitor
+router.get("/activitylogs/assigned/:janitorId", getAssignedActivityLogs);
 
 // Save a new activity log
 router.post("/activitylogs", saveActivityLog);

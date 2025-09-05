@@ -1,41 +1,23 @@
+
 import BackButton from "@/components/BackButton";
 import PickupHistoryModal from "@/components/modals/PickupHistoryModal";
 import { useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { ProgressBar } from "react-native-paper";
+import { useRealTimeData } from "../../hooks/useRealTimeData";
+
 
 export default function BinDetailScreen() {
-  const params = useLocalSearchParams<{
-    binId: string;
-    location: string;
-    area: string;
-    capacity: string;
-    lastCollected: string;
-    level: string;
-    latitude: string;
-    longitude: string;
-    logs: string;
-  }>();
-
+  const params = useLocalSearchParams<{ binId: string }>();
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const { wasteBins, loading, error } = useRealTimeData();
 
-  const parsedLogs: string[] = params.logs ? JSON.parse(params.logs) : [];
-
-  const bin = {
-    id: params.binId,
-    name: params.location,
-    location: params.area,
-    capacity: params.capacity,
-    latitude: parseFloat(params.latitude),
-    longitude: parseFloat(params.longitude),
-    level: parseInt(params.level),
-    lastEmptied: params.lastCollected,
-    status: "Operational",
-  };
+  // Find the bin by binId param
+  const bin = wasteBins.find((b) => b.id === params.binId);
 
   const getStatusColor = (val: number) => {
     if (val >= 90) return "#f44336"; // red
@@ -48,13 +30,28 @@ export default function BinDetailScreen() {
       allowsMultipleSelection: true,
       quality: 0.7,
     });
-
     if (!result.canceled) {
       const uris = result.assets.map((asset) => asset.uri);
       setImages((prev) => [...prev, ...uris]);
     }
   };
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#2e7d32" />
+        <Text>Loading bin data...</Text>
+      </View>
+    );
+  }
+  if (!bin) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <BackButton />
+        <Text>No data found for this bin.</Text>
+      </View>
+    );
+  }
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <BackButton />
@@ -63,17 +60,17 @@ export default function BinDetailScreen() {
       <MapView
         style={styles.map}
         initialRegion={{
-          latitude: bin.latitude,
-          longitude: bin.longitude,
-          latitudeDelta: 0.0008, // 👈 closer zoom
+          latitude: bin.binData?.latitude || 0,
+          longitude: bin.binData?.longitude || 0,
+          latitudeDelta: 0.0008,
           longitudeDelta: 0.0008,
         }}
-        mapType="satellite" // 👈 Satellite view
-        showsBuildings={true} // 👈 Show 3D buildings
-        showsCompass={false} // Hide compass
-        showsScale={false} // Hide scale bar
+        mapType="satellite"
+        showsBuildings={true}
+        showsCompass={false}
+        showsScale={false}
       >
-        <Marker coordinate={{ latitude: bin.latitude, longitude: bin.longitude }}>
+        <Marker coordinate={{ latitude: bin.binData?.latitude || 0, longitude: bin.binData?.longitude || 0 }}>
           <View style={[styles.marker, { backgroundColor: getStatusColor(bin.level) }]}>
             <Text style={styles.markerText}>{bin.level}%</Text>
           </View>
@@ -94,7 +91,7 @@ export default function BinDetailScreen() {
         color={getStatusColor(bin.level)}
         style={{ height: 10, borderRadius: 5, marginBottom: 15 }}
       />
-      <Text style={styles.text}>Last Collected: {bin.lastEmptied}</Text>
+      <Text style={styles.text}>Last Collected: {bin.lastCollected}</Text>
       <Text style={[styles.text, styles.status]}>Status: {bin.status}</Text>
 
       <Text style={styles.sectionTitle}>Proof of Pickup</Text>
@@ -126,7 +123,7 @@ export default function BinDetailScreen() {
         visible={historyModalVisible}
         onClose={() => setHistoryModalVisible(false)}
         binId={bin.id}
-        logs={parsedLogs}
+        logs={[]}
       />
     </ScrollView>
   );

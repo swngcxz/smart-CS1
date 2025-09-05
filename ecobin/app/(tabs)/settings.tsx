@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { useAccount } from "@/hooks/useAccount";
+import { useAuth } from "@/hooks/useAuth";
 import { Alert, Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
 export default function SettingsScreen() {
@@ -13,6 +14,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { account, loading: accountLoading, error: accountError } = useAccount();
 
+  const { logout } = useAuth();
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
@@ -20,8 +22,13 @@ export default function SettingsScreen() {
         text: "Logout",
         style: "destructive",
         onPress: async () => {
-          await AsyncStorage.clear();
-          router.replace("/landing");
+          const ok = await logout();
+          if (ok) {
+            await AsyncStorage.clear();
+            router.replace("/landing");
+          } else {
+            Alert.alert("Logout Failed", "Could not log out. Please try again.");
+          }
         },
       },
     ]);

@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -9,20 +9,41 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-const initialLogs = [
-  { type: "emptied", message: "Emptied Bin A1", bin: "A1", location: "Main Entrance", time: "9:42 AM", date: "Today" },
-  { type: "pickup", message: "Picked up Bin B2", bin: "B2", location: "Cafeteria", time: "8:15 AM", date: "Today" },
-  { type: "login", message: "User Logged In", time: "7:58 AM", date: "Today" },
-  { type: "error", message: "Sensor Error in Bin D4", bin: "D4", location: "Parking Lot", time: "2:10 AM", date: "Yesterday" },
-];
+import axiosInstance from "../../utils/axiosInstance";
 
 export default function ActivityLogsScreen() {
   const router = useRouter();
-  const [logs, setLogs] = useState(initialLogs);
-  const [archivedLogs, setArchivedLogs] = useState<typeof initialLogs>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [archivedLogs, setArchivedLogs] = useState<any[]>([]);
   const [selectedLogs, setSelectedLogs] = useState<number[]>([]);
   const [showArchive, setShowArchive] = useState(false);
+
+  // Fetch logs from backend on mount
+  useEffect(() => {
+    const janitorId = "Ogf04pQwTMAChaFm0Af8"; // Replace with dynamic user id if needed
+    axiosInstance
+      .get(`/api/activitylogs/assigned/${janitorId}`)
+      .then((res) => {
+        setLogs(res.data.activities || []);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch activity logs", err);
+      });
+  }, []);
+
+  // Map backend fields to UI-expected fields
+  const mappedLogs = (logs as any[]).map((log) => ({
+    ...log,
+    type: log.activity_type || "task_assignment",
+    message:
+      log.task_note && log.task_note.trim() !== ""
+        ? log.task_note
+        : `Task for bin ${log.bin_id}`,
+    bin: log.bin_id,
+    location: log.bin_location,
+    time: log.time,
+    date: log.date,
+  }));
 
   // ✅ Toggle selection (used in long press)
   const toggleSelection = (index: number) => {
@@ -33,18 +54,22 @@ export default function ActivityLogsScreen() {
 
   const handleBulkDelete = () => {
     if (selectedLogs.length === 0) return;
-    Alert.alert("Delete Selected Logs", "Are you sure you want to delete selected logs?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          const updatedLogs = logs.filter((_, i) => !selectedLogs.includes(i));
-          setLogs(updatedLogs);
-          setSelectedLogs([]);
+    Alert.alert(
+      "Delete Selected Logs",
+      "Are you sure you want to delete selected logs?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            const updatedLogs = logs.filter((_, i) => !selectedLogs.includes(i));
+            setLogs(updatedLogs);
+            setSelectedLogs([]);
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleArchive = () => {
@@ -89,19 +114,27 @@ export default function ActivityLogsScreen() {
         selectedLogs.includes(index) && !isArchived && styles.selectedCard,
       ]}
     >
-      <View style={styles.logTextContainer}>
-        <Text style={styles.logMessage}>{log.message}</Text>
-        <Text style={styles.logTime}>
-          {log.date} – {log.time}
-        </Text>
-        {log.bin && log.location && (
-          <Text style={styles.logSubtext}>📍 Bin {log.bin} – {log.location}</Text>
-        )}
+      {/* Title row */}
+      <View style={styles.logTitleRow}>
+        <Text style={styles.logTitle}>{`Bin ${log.bin}`}</Text>
+        <View style={{ flex: 1 }} />
+        <View style={[styles.typeBadge, getBadgeStyle(log.type)]}>
+          <Text style={styles.badgeText}>{String(log.type)}</Text>
+        </View>
       </View>
 
-      {/* Badge with colored background */}
-      <View style={[styles.typeBadge, getBadgeStyle(log.type)]}>
-        <Text style={styles.badgeText}>{log.type}</Text>
+      {/* Message */}
+      <View style={styles.logMsgRow}>
+        <Text style={styles.logMessage}>{String(log.message)}</Text>
+      </View>
+
+      {/* Location + Date/Time */}
+      <View style={styles.logLocTimeRow}>
+        {log.location && (
+          <Text style={styles.logSubtext}>{`📍 ${log.location}`}</Text>
+        )}
+        <View style={{ flex: 1 }} />
+        <Text style={styles.logTime}>{`${log.date} ${log.time}`}</Text>
       </View>
     </View>
   );
@@ -110,18 +143,25 @@ export default function ActivityLogsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={[styles.backButton, { width: 40, alignItems: "flex-start" }]}
+        >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {showArchive ? "Archived Logs" : "Activity Logs"}
-        </Text>
-        <TouchableOpacity onPress={() => setShowArchive(!showArchive)}>
+        <View style={{ flex: 1, alignItems: "center" }}>
+          <Text style={styles.headerTitle}>
+            {showArchive ? "Archived Logs" : "Activity Logs"}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => setShowArchive(!showArchive)}
+          style={[styles.archiveIcon, { width: 40, alignItems: "flex-end" }]}
+        >
           <Ionicons
             name={showArchive ? "time-outline" : "archive-outline"}
             size={24}
             color="#000"
-            style={styles.archiveIcon}
           />
         </TouchableOpacity>
       </View>
@@ -130,27 +170,23 @@ export default function ActivityLogsScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
         {showArchive
           ? archivedLogs.map((log, idx) => renderLogCard(log, idx, true))
-          : logs.map((log, idx) => (
+          : mappedLogs.map((log, idx) => (
               <TouchableOpacity
                 key={idx}
                 onPress={() => {
-                  // ✅ Normal click → open ProofOfPickupScreen
                   router.push({
                     pathname: "/home/proof-of-pickup",
-                    params: { binId: log.bin ?? "N/A" },
+                    params: { binId: log.bin ?? "N/A" }, // ✅ expo-router correct way
                   });
                 }}
-                onLongPress={() => {
-                  // ✅ Long press → selection mode
-                  toggleSelection(idx);
-                }}
+                onLongPress={() => toggleSelection(idx)}
               >
                 {renderLogCard(log, idx)}
               </TouchableOpacity>
             ))}
       </ScrollView>
 
-      {/* Action buttons (only show in selection mode via long press) */}
+      {/* Action buttons */}
       {!showArchive && selectedLogs.length > 0 && (
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -173,7 +209,12 @@ export default function ActivityLogsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 20, paddingTop: 60 },
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingTop: 60,
+  },
   headerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -181,13 +222,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   backButton: { marginRight: 10 },
-  headerTitle: { fontSize: 20, fontWeight: "bold", color: "#000", flex: 1, textAlign: "center" },
+  headerTitle: { fontSize: 20, fontWeight: "bold", color: "#000" },
   archiveIcon: { marginLeft: 10 },
 
   logCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: "column",
     borderRadius: 10,
     padding: 14,
     marginBottom: 12,
@@ -196,12 +235,14 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
   },
   selectedCard: { backgroundColor: "#e6f4ea", borderColor: "#4CAF50" },
-  logTextContainer: { flex: 1, paddingRight: 10 },
   logMessage: { fontSize: 15, fontWeight: "600", color: "#333" },
   logTime: { fontSize: 12, color: "#777", marginTop: 4 },
   logSubtext: { fontSize: 13, color: "#555", marginTop: 4 },
+  logTitle: { fontSize: 16, fontWeight: "bold", color: "#333", marginBottom: 2 },
+  logTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  logMsgRow: { marginBottom: 8 },
+  logLocTimeRow: { flexDirection: "row", alignItems: "center", marginBottom: 2 },
 
-  /* Badge styles */
   typeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,

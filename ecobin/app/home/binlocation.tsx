@@ -1,29 +1,24 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+
 import React from "react";
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { ScrollView, StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import BackButton from "@/components/BackButton";
-
-const binsData = {
-  "central-plaza": [
-    { id: "A1", location: "Bin A1", level: 45, capacity: 120, lastCollected: "2 days ago", locationArea: "Central Plaza - North", latitude: 10.2101, longitude: 123.7578 },
-    { id: "A2", location: "Bin A2", level: 70, capacity: 100, lastCollected: "5 hours ago", locationArea: "Central Plaza - East", latitude: 10.2103, longitude: 123.758 },
-    { id: "A3", location: "Bin A3", level: 20, capacity: 90, lastCollected: "1 day ago", locationArea: "Central Plaza - West", latitude: 10.2105, longitude: 123.7582 },
-    { id: "A4", location: "Bin A4", level: 95, capacity: 110, lastCollected: "3 hours ago", locationArea: "Central Plaza - South", latitude: 10.2107, longitude: 123.7584 },
-  ],
-  "park-avenue": [
-    { id: "B1", location: "Bin B1", level: 60, capacity: 150, lastCollected: "6 hours ago", locationArea: "Park Avenue - Gate 1", latitude: 10.211, longitude: 123.759 },
-    { id: "B2", location: "Bin B2", level: 75, capacity: 140, lastCollected: "12 hours ago", locationArea: "Park Avenue - Gate 2", latitude: 10.2112, longitude: 123.7592 },
-    { id: "B3", location: "Bin B3", level: 50, capacity: 100, lastCollected: "1 day ago", locationArea: "Park Avenue - Playground", latitude: 10.2114, longitude: 123.7594 },
-    { id: "B4", location: "Bin B4", level: 90, capacity: 130, lastCollected: "2 hours ago", locationArea: "Park Avenue - Parking Lot", latitude: 10.2116, longitude: 123.7596 },
-  ],
-};
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRealTimeData } from "../../hooks/useRealTimeData";
 
 export default function LocationBinsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { wasteBins, loading, error } = useRealTimeData();
 
-  const bins = binsData[id as keyof typeof binsData] || [];
+  // Optionally filter bins by location if needed
+  const bins = id
+    ? wasteBins.filter(
+        (b) =>
+          b.location &&
+          b.location.toLowerCase().replace(/ /g, "-") === id
+      )
+    : wasteBins;
 
   const getStatusColor = (val: number) => {
     if (val >= 90) return "#f44336"; // red
@@ -33,10 +28,15 @@ export default function LocationBinsScreen() {
 
   return (
     <ScrollView style={styles.container}>
-        <BackButton />
+      <BackButton />
       <Text style={styles.title}>{id?.replace("-", " ").toUpperCase()}</Text>
 
-      {bins.length > 0 ? (
+      {loading ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", marginTop: 40 }}>
+          <ActivityIndicator size="large" color="#2e7d32" />
+          <Text>Loading bins...</Text>
+        </View>
+      ) : bins.length > 0 ? (
         bins.map((bin) => {
           const statusColor = getStatusColor(bin.level);
           const statusLabel =
@@ -52,15 +52,15 @@ export default function LocationBinsScreen() {
                   params: {
                     binId: bin.id,
                     location: bin.location,
-                    area: bin.locationArea,
+                    area: bin.location,
                     capacity: String(bin.capacity),
                     lastCollected: bin.lastCollected,
                     level: String(bin.level),
-                    latitude: String(bin.latitude),
-                    longitude: String(bin.longitude),
+                    latitude: String(bin.binData?.latitude ?? ""),
+                    longitude: String(bin.binData?.longitude ?? ""),
                     logs: JSON.stringify([
                       `Bin ${bin.id} was last collected ${bin.lastCollected}`,
-                      `Inspection done at ${bin.locationArea}`,
+                      `Inspection done at ${bin.location}`,
                     ]),
                   },
                 })
@@ -83,7 +83,7 @@ export default function LocationBinsScreen() {
                 <Text style={styles.info}>Capacity: {bin.capacity} L</Text>
                 <Text style={styles.info}>Last Collected: {bin.lastCollected}</Text>
               </View>
-              <Text style={styles.info}>Area: {bin.locationArea}</Text>
+              <Text style={styles.info}>Area: {bin.location}</Text>
             </TouchableOpacity>
           );
         })

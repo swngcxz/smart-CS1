@@ -1,3 +1,21 @@
+// Get activity logs assigned to a janitor
+const getAssignedActivityLogs = async (req, res, next) => {
+  try {
+    const { janitorId } = req.params;
+    const snapshot = await db.collection("activitylogs").where("assigned_janitor_id", "==", janitorId).get();
+    const logs = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    res.status(200).json({ activities: logs });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ...existing code...
+
+
 const { db } = require("../models/firebase");
 const notificationModel = require('../models/notificationModel');
 const fcmService = require('../services/fcmService');
@@ -259,5 +277,6 @@ module.exports = {
   getUserActivityLogs,
   getDailyActivitySummary,
   getAllActivityLogs,
-  getActivityLogsByUserId
+  getActivityLogsByUserId,
+  getAssignedActivityLogs
 };

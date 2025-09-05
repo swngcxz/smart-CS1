@@ -34,5 +34,20 @@ export function useAuth() {
     }
   };
 
-  return { login, signup, loading, error };
+  // Logout function
+  const logout = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await axiosInstance.post('/auth/signout');
+      setLoading(false);
+      return true;
+    } catch (err: any) {
+      setLoading(false);
+      setError(err.response?.data?.error || 'Logout failed');
+      return false;
+    }
+  };
+
+  return { login, signup, logout, loading, error };
 }
