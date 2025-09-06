@@ -1,6 +1,7 @@
 import { useTheme } from "@/hooks/useTheme";
 import { useNavigation } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
+import { useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function ChangePassword() {

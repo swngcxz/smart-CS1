@@ -1,3 +1,4 @@
+import React from "react";
 import BackButton from "@/components/BackButton";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";

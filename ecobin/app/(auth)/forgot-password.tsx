@@ -3,7 +3,8 @@ import Label from "@/components/fields/Label";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@react-navigation/elements";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
+import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function ForgotPasswordScreen() {

@@ -17,55 +17,8 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-const center: LatLngTuple = [10.2105, 123.7583];
-
-const binLocations = [
-  {
-    id: 1,
-    name: "Baywalk Entrance Bin",
-    position: [10.2107, 123.7579] as LatLngTuple,
-    level: 85,
-    status: "critical" as const,
-    lastCollection: "2024-01-14 08:30",
-    route: "Route A - Baywalk",
-  },
-  {
-    id: 2,
-    name: "Seaside Pathway Bin",
-    position: [10.2102, 123.7586] as LatLngTuple,
-    level: 45,
-    status: "normal" as const,
-    lastCollection: "2024-01-15 10:15",
-    route: "Route A - Baywalk",
-  },
-  {
-    id: 3,
-    name: "Playground Area Bin",
-    position: [10.2098, 123.7582] as LatLngTuple,
-    level: 70,
-    status: "warning" as const,
-    lastCollection: "2024-01-15 09:45",
-    route: "Route A - Baywalk",
-  },
-  {
-    id: 4,
-    name: "Picnic Zone Bin",
-    position: [10.2101, 123.7576] as LatLngTuple,
-    level: 30,
-    status: "normal" as const,
-    lastCollection: "2024-01-15 11:20",
-    route: "Route A - Baywalk",
-  },
-  {
-    id: 5,
-    name: "Parking Area Bin",
-    position: [10.211, 123.7581] as LatLngTuple,
-    level: 92,
-    status: "critical" as const,
-    lastCollection: "2024-01-13 16:00",
-    route: "Route A - Baywalk",
-  },
-];
+// Default center coordinates (fallback)
+const defaultCenter: LatLngTuple = [10.2105, 123.7583];
 
 function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
   const map = useMap();
@@ -76,25 +29,36 @@ function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
 }
 
 export function MapSection() {
-  const { wasteBins, loading, error, bin1Data, monitoringData, gpsHistory } = useRealTimeData();
+  const { wasteBins, loading, error, bin1Data, monitoringData, gpsHistory, dynamicBinLocations } = useRealTimeData();
   const [showGPSTracking, setShowGPSTracking] = useState(false);
 
-  // Update bin locations with real-time data
-  const updatedBinLocations = binLocations.map((bin) => {
-    // Find corresponding real-time data
-    const realTimeBin = wasteBins.find((wb) => wb.id === bin.id.toString());
+  // Use dynamic bin locations from API or fallback to static data
+  const updatedBinLocations = dynamicBinLocations.length > 0 
+    ? dynamicBinLocations.map((bin) => ({
+        id: bin.id,
+        name: bin.name,
+        position: bin.position as LatLngTuple,
+        level: bin.level,
+        status: bin.status as 'normal' | 'warning' | 'critical',
+        lastCollection: bin.lastCollection,
+        route: bin.route,
+        gps_valid: bin.gps_valid,
+        satellites: bin.satellites
+      }))
+    : wasteBins.map((bin) => ({
+        id: bin.id,
+        name: bin.location,
+        position: [10.2105, 123.7583] as LatLngTuple, // Default position
+        level: bin.level,
+        status: bin.status,
+        lastCollection: bin.lastCollected,
+        route: 'Route A - Central'
+      }));
 
-    if (realTimeBin) {
-      return {
-        ...bin,
-        level: realTimeBin.level,
-        status: realTimeBin.status,
-        lastCollection: realTimeBin.lastCollected,
-      };
-    }
-
-    return bin;
-  });
+  // Determine map center based on available data
+  const mapCenter = dynamicBinLocations.length > 0 
+    ? (dynamicBinLocations[0]?.position as LatLngTuple) || defaultCenter
+    : defaultCenter;
 
   const criticalBins = updatedBinLocations.filter((bin) => bin.status === "critical").length;
   const warningBins = updatedBinLocations.filter((bin) => bin.status === "warning").length;
@@ -229,7 +193,7 @@ export function MapSection() {
 
       <CardContent className="p-0 h-full rounded-b-lg overflow-hidden relative z-0">
         <MapContainer
-          center={center}
+          center={mapCenter}
           zoom={21}
           scrollWheelZoom={true}
           zoomControl={true}

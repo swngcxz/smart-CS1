@@ -2,7 +2,7 @@
 
 const { db, admin } = require("./firebase");
 
-const STAFF_COLLECTION = "staff";
+const STAFF_COLLECTION = "janitor";
 
 const StaffModel = {
   // Create a new staff member

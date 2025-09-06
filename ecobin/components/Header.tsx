@@ -1,13 +1,13 @@
+import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from "react-native";
 interface HeaderProps {
   showIcons?: boolean;
   style?: ViewStyle;
 }
 
-const Header: React.FC<HeaderProps> = ({ showIcons = true, style }) => {
+const Header = ({ showIcons = true, style }: HeaderProps) => {
   const router = useRouter();
 
   return (

@@ -124,6 +124,7 @@ export function StaffActivityTab() {
       filtered = filtered.filter((activity) => activity.activity_type === activityTypeFilter);
     }
 
+
     // Filter by date range - show all records by default
     if (dateRangeFilter !== "all") {
       const today = new Date().toISOString().split('T')[0];
@@ -181,6 +182,34 @@ export function StaffActivityTab() {
         return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
       case "schedule_update":
         return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "in_progress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "done":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority?.toLowerCase()) {
+      case "low":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "high":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "urgent":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
@@ -350,24 +379,47 @@ export function StaffActivityTab() {
                     className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
                   >
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-600">
                           {formatTimestamp(activity.timestamp)}
                         </span>
                         <Badge className={getActivityTypeColor(activity.activity_type || "unknown")}>
-                          {activity.activity_type || "unknown"}
+                          {activity.activity_type?.replace('_', ' ') || "unknown"}
+                        </Badge>
+                        <Badge className={getStatusColor(activity.status)}>
+                          {activity.display_status || activity.status || "Pending"}
+                        </Badge>
+                        <Badge className={getPriorityColor(activity.priority)}>
+                          {activity.display_priority || activity.priority || "Low"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-800 dark:text-white font-medium">
+                      <p className="text-sm text-gray-800 dark:text-white font-medium mb-1">
                         {formatActivityDescription(activity)}
                       </p>
-                      {activity.bin_id && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                          Bin: {activity.bin_id} - {activity.bin_location || "Unknown Location"}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
+                        {activity.bin_id && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            Bin: {activity.bin_id}
+                          </span>
+                        )}
+                        {activity.bin_location && (
+                          <span>{activity.bin_location}</span>
+                        )}
+                        {activity.assigned_janitor_name && (
+                          <span className="text-blue-600 dark:text-blue-400">
+                            Assigned: {activity.assigned_janitor_name}
+                          </span>
+                        )}
+                        {activity.bin_level !== undefined && (
+                          <span className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            Level: {activity.bin_level}%
+                          </span>
+                        )}
+                      </div>
                       {activity.activity_type === 'bin_alert' && (
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-2">
                           <Badge variant="outline" className="text-xs">
                             {activity.bin_status}
                           </Badge>
@@ -384,6 +436,11 @@ export function StaffActivityTab() {
                             </span>
                           )}
                         </div>
+                      )}
+                      {activity.task_note && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
+                          Note: {activity.task_note}
+                        </p>
                       )}
                     </div>
                   </div>

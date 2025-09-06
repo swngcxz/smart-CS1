@@ -1,7 +1,8 @@
+import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAccount } from "@/hooks/useAccount";
 import axiosInstance from "@/utils/axiosInstance";
 import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";

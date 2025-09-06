@@ -36,25 +36,54 @@ const saveActivityLog = async (req, res, next) => {
       timestamp 
     } = req.body;
 
+    const now = new Date();
     const data = {
       user_id,
       bin_id,
       bin_location,
-      bin_status,
-      bin_level,
+      bin_status: bin_status || 'pending',
+      bin_level: bin_level || 0,
       assigned_janitor_id,
       assigned_janitor_name,
       task_note,
       activity_type: activity_type || 'task_assignment',
-      timestamp: timestamp || new Date().toISOString(),
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toTimeString().split(' ')[0]
+      status: 'pending', // Clear status field
+      priority: bin_level > 80 ? 'high' : bin_level > 50 ? 'medium' : 'low',
+      timestamp: timestamp || now.toISOString(),
+      date: now.toISOString().split('T')[0],
+      time: now.toTimeString().split(' ')[0],
+      created_at: now.toISOString(),
+      updated_at: now.toISOString()
     };
 
     console.log("Saving activity log to Firestore collection: activitylogs", data);
-    await db.collection("activitylogs").add(data);
+    const activityRef = await db.collection("activitylogs").add(data);
 
-    res.status(201).json({ message: "Activity log saved successfully." });
+    // Send notification to assigned janitor if assigned_janitor_id is provided
+    if (assigned_janitor_id) {
+      try {
+        await sendJanitorAssignmentNotification({
+          janitorId: assigned_janitor_id,
+          janitorName: assigned_janitor_name,
+          binId: bin_id,
+          binLocation: bin_location,
+          binLevel: bin_level,
+          taskNote: task_note,
+          activityType: activity_type,
+          priority: data.priority,
+          activityId: activityRef.id,
+          timestamp: now
+        });
+      } catch (notifyErr) {
+        console.error('[ACTIVITY LOG] Failed to send janitor assignment notification:', notifyErr);
+        // Don't fail the main operation if notification fails
+      }
+    }
+
+    res.status(201).json({ 
+      message: "Activity log saved successfully.",
+      activity_id: activityRef.id 
+    });
   } catch (err) {
     next(err);
   }
@@ -91,31 +120,18 @@ const saveTaskAssignment = async (req, res, next) => {
 
     // Notify assigned janitor (staff_id) via push and in-app record
     try {
-      const janitor = await notificationModel.getUserById(staff_id);
-      const notificationData = {
+      await sendJanitorAssignmentNotification({
+        janitorId: staff_id,
+        janitorName: null, // Will be fetched from user data
         binId: bin_id,
-        type: 'task_assignment',
-        title: `🧹 New Task Assigned`,
-        message: `You have a new ${task_type || 'task'} for bin ${bin_id} at ${bin_location || 'assigned location'}. Priority: ${priority || 'normal'}.`,
-        status: 'ASSIGNED',
+        binLocation: bin_location,
         binLevel: null,
-        gps: { lat: 0, lng: 0 },
-        timestamp: new Date()
-      };
-
-      // Send push if token exists
-      if (janitor && janitor.fcmToken) {
-        try {
-          await fcmService.sendToUser(janitor.fcmToken, notificationData);
-        } catch (sendErr) {
-          console.error('[TASK ASSIGNMENT] FCM send failed:', sendErr);
-        }
-      }
-
-      // Create in-app notification record
-      await notificationModel.createNotification({
-        ...notificationData,
-        janitorId: staff_id
+        taskNote: notes,
+        activityType: task_type,
+        priority: priority,
+        activityId: taskRef.id,
+        timestamp: new Date(),
+        isTaskAssignment: true
       });
     } catch (notifyErr) {
       console.error('[TASK ASSIGNMENT] Failed to notify assigned janitor:', notifyErr);
@@ -200,7 +216,7 @@ const getDailyActivitySummary = async (req, res, next) => {
 // Get all activity logs for admin view
 const getAllActivityLogs = async (req, res, next) => {
   try {
-    const { limit = 100, offset = 0, type, user_id } = req.query;
+    const { limit = 100, offset = 0, type, user_id, status } = req.query;
     
     let query = db.collection("activitylogs");
     
@@ -211,6 +227,9 @@ const getAllActivityLogs = async (req, res, next) => {
     if (user_id) {
       query = query.where("user_id", "==", user_id);
     }
+    if (status) {
+      query = query.where("status", "==", status);
+    }
     
     // Get logs with pagination
     const snapshot = await query
@@ -219,10 +238,21 @@ const getAllActivityLogs = async (req, res, next) => {
       .offset(parseInt(offset))
       .get();
 
-    const logs = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const logs = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Ensure consistent status values
+        status: data.status || 'pending',
+        priority: data.priority || (data.bin_level > 80 ? 'high' : data.bin_level > 50 ? 'medium' : 'low'),
+        // Format display values
+        display_status: getDisplayStatus(data.status || 'pending'),
+        display_priority: getDisplayPriority(data.priority || (data.bin_level > 80 ? 'high' : data.bin_level > 50 ? 'medium' : 'low')),
+        formatted_date: formatDisplayDate(data.timestamp),
+        formatted_time: formatDisplayTime(data.timestamp)
+      };
+    });
 
     // Get total count for pagination
     const totalSnapshot = await query.get();
@@ -233,6 +263,86 @@ const getAllActivityLogs = async (req, res, next) => {
       totalCount,
       limit: parseInt(limit),
       offset: parseInt(offset)
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Helper function to get display status
+const getDisplayStatus = (status) => {
+  const statusMap = {
+    'pending': 'Pending',
+    'in_progress': 'In Progress',
+    'done': 'Done'
+  };
+  return statusMap[status] || 'Unknown';
+};
+
+// Helper function to get display priority
+const getDisplayPriority = (priority) => {
+  const priorityMap = {
+    'low': 'Low',
+    'medium': 'Medium',
+    'high': 'High',
+    'urgent': 'Urgent'
+  };
+  return priorityMap[priority] || 'Low';
+};
+
+// Helper function to format display date
+const formatDisplayDate = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = new Date(timestamp);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
+
+// Helper function to format display time
+const formatDisplayTime = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
+// Update activity status
+const updateActivityStatus = async (req, res, next) => {
+  try {
+    const { activityId } = req.params;
+    const { status, notes } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: "Status is required" });
+    }
+
+    const validStatuses = ['pending', 'in_progress', 'done'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const updateData = {
+      status,
+      updated_at: new Date().toISOString()
+    };
+
+    if (notes) {
+      updateData.status_notes = notes;
+    }
+
+    await db.collection("activitylogs").doc(activityId).update(updateData);
+
+    res.status(200).json({ 
+      message: "Activity status updated successfully",
+      activityId,
+      status 
     });
 
   } catch (err) {
@@ -271,6 +381,160 @@ const getActivityLogsByUserId = async (req, res, next) => {
   }
 };
 
+// Get login history logs
+const getLoginHistory = async (req, res, next) => {
+  try {
+    console.log('[LOGIN HISTORY] Fetching login history...');
+    
+    // Get all login logs from the logs collection
+    const snapshot = await db.collection("logs").orderBy("loginTime", "desc").get();
+    
+    const logs = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        userEmail: data.userEmail || 'Unknown',
+        role: data.role || 'Unknown',
+        loginTime: data.loginTime || new Date().toISOString(),
+        logoutTime: data.logoutTime || null,
+        sessionDuration: data.logoutTime ? 
+          Math.round((new Date(data.logoutTime).getTime() - new Date(data.loginTime).getTime()) / (1000 * 60)) : 
+          null, // Duration in minutes
+        status: data.logoutTime ? 'completed' : 'active',
+        ipAddress: data.ipAddress || 'Unknown',
+        userAgent: data.userAgent || 'Unknown',
+        location: data.location || 'Unknown'
+      };
+    });
+
+    console.log(`[LOGIN HISTORY] Found ${logs.length} login history records`);
+    
+    res.status(200).json({ 
+      logs,
+      totalCount: logs.length
+    });
+  } catch (err) {
+    console.error('[LOGIN HISTORY] Error fetching login history:', err);
+    next(err);
+  }
+};
+
+// Helper function to send janitor assignment notifications
+const sendJanitorAssignmentNotification = async (notificationData) => {
+  try {
+    const {
+      janitorId,
+      janitorName,
+      binId,
+      binLocation,
+      binLevel,
+      taskNote,
+      activityType,
+      priority,
+      activityId,
+      timestamp,
+      isTaskAssignment = false
+    } = notificationData;
+
+    // Get janitor information
+    const janitor = await notificationModel.getUserById(janitorId);
+    if (!janitor) {
+      console.error(`[JANITOR NOTIFICATION] Janitor with ID ${janitorId} not found`);
+      return;
+    }
+
+    // Determine notification type and content
+    const notificationType = isTaskAssignment ? 'task_assignment' : 'activity_assignment';
+    const priorityEmoji = priority === 'high' ? '🔴' : priority === 'medium' ? '🟡' : '🟢';
+    const binLevelText = binLevel ? ` (${binLevel}% full)` : '';
+    const locationText = binLocation ? ` at ${binLocation}` : '';
+    const taskTypeText = activityType ? ` (${activityType})` : '';
+    const noteText = taskNote ? `\n📝 Note: ${taskNote}` : '';
+
+    const title = isTaskAssignment ? '🧹 New Task Assigned' : '📋 New Activity Assigned';
+    const message = `You have been assigned a new ${activityType || 'task'} for bin ${binId}${locationText}${binLevelText}${taskTypeText}.${noteText}\n\nPriority: ${priorityEmoji} ${priority || 'normal'}`;
+
+    const notificationPayload = {
+      binId: binId,
+      type: notificationType,
+      title: title,
+      message: message,
+      status: 'ASSIGNED',
+      binLevel: binLevel,
+      gps: { lat: 0, lng: 0 }, // Default GPS, can be updated with actual location
+      timestamp: timestamp || new Date(),
+      activityId: activityId,
+      priority: priority
+    };
+
+    // Send push notification if FCM token exists
+    if (janitor.fcmToken) {
+      try {
+        await fcmService.sendToUser(janitor.fcmToken, notificationPayload);
+        console.log(`[JANITOR NOTIFICATION] Push notification sent to janitor ${janitorId}`);
+      } catch (fcmErr) {
+        console.error('[JANITOR NOTIFICATION] FCM send failed:', fcmErr);
+      }
+    } else {
+      console.log(`[JANITOR NOTIFICATION] No FCM token found for janitor ${janitorId}`);
+    }
+
+    // Create in-app notification record
+    await notificationModel.createNotification({
+      ...notificationPayload,
+      janitorId: janitorId
+    });
+
+    console.log(`[JANITOR NOTIFICATION] In-app notification created for janitor ${janitorId}`);
+
+    // Log the assignment for tracking
+    console.log(`[JANITOR NOTIFICATION] Successfully notified janitor ${janitorId} (${janitor.name || janitorName || 'Unknown'}) about ${isTaskAssignment ? 'task' : 'activity'} assignment for bin ${binId}`);
+
+  } catch (error) {
+    console.error('[JANITOR NOTIFICATION] Error sending janitor assignment notification:', error);
+    throw error;
+  }
+};
+
+// Test endpoint for janitor assignment notifications
+const testJanitorNotification = async (req, res, next) => {
+  try {
+    const { janitorId, binId, binLocation, binLevel, taskNote, activityType, priority } = req.body;
+
+    if (!janitorId || !binId) {
+      return res.status(400).json({ 
+        error: "janitorId and binId are required" 
+      });
+    }
+
+    console.log('[TEST NOTIFICATION] Testing janitor assignment notification...');
+    
+    await sendJanitorAssignmentNotification({
+      janitorId: janitorId,
+      janitorName: null,
+      binId: binId,
+      binLocation: binLocation || 'Test Location',
+      binLevel: binLevel || 75,
+      taskNote: taskNote || 'This is a test notification',
+      activityType: activityType || 'test_task',
+      priority: priority || 'medium',
+      activityId: 'test-activity-' + Date.now(),
+      timestamp: new Date(),
+      isTaskAssignment: false
+    });
+
+    res.status(200).json({ 
+      message: "Test notification sent successfully",
+      janitorId,
+      binId
+    });
+
+  } catch (err) {
+    console.error('[TEST NOTIFICATION] Error sending test notification:', err);
+    next(err);
+  }
+};
+
 module.exports = {
   saveActivityLog,
   saveTaskAssignment,
@@ -278,5 +542,9 @@ module.exports = {
   getDailyActivitySummary,
   getAllActivityLogs,
   getActivityLogsByUserId,
-  getAssignedActivityLogs
+  getAssignedActivityLogs,
+  updateActivityStatus,
+  getLoginHistory,
+  sendJanitorAssignmentNotification,
+  testJanitorNotification
 };

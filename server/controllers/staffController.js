@@ -14,7 +14,13 @@ const staffController = {
   async getAll(req, res) {
     try {
       const staff = await StaffModel.getAllStaff();
-      res.json(staff);
+      // Filter out admin roles
+      const filteredStaff = staff.filter(member => 
+        member.role && 
+        member.role.toLowerCase() !== 'admin' && 
+        member.role.toLowerCase() !== 'administrator'
+      );
+      res.json(filteredStaff);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -26,10 +32,20 @@ const staffController = {
       const staff = await StaffModel.getAllStaff();
       const users = await StaffModel.getAllUsers();
       
-             // Combine and filter janitors from both collections (case-insensitive)
+             // Combine and filter janitors from both collections (case-insensitive), excluding admin roles
        const allJanitors = [
-         ...staff.filter(member => member.role && member.role.toLowerCase() === 'janitor').map(m => ({ ...m, source: 'staff' })),
-         ...users.filter(user => user.role && user.role.toLowerCase() === 'janitor').map(u => ({ ...u, source: 'users' }))
+         ...staff.filter(member => 
+           member.role && 
+           member.role.toLowerCase() === 'janitor' &&
+           member.role.toLowerCase() !== 'admin' &&
+           member.role.toLowerCase() !== 'administrator'
+         ).map(m => ({ ...m, source: 'staff' })),
+         ...users.filter(user => 
+           user.role && 
+           user.role.toLowerCase() === 'janitor' &&
+           user.role.toLowerCase() !== 'admin' &&
+           user.role.toLowerCase() !== 'administrator'
+         ).map(u => ({ ...u, source: 'users' }))
        ];
       
       // Normalize the data structure to ensure consistency
@@ -110,22 +126,78 @@ const staffController = {
 
   async getStatusSummary(req, res) {
     try {
-      const allStaff = await StaffModel.getAllStaff();
+      // Get all staff from both collections
+      const staff = await StaffModel.getAllStaff();
+      const users = await StaffModel.getAllUsers();
+      
+      // Combine all staff members and filter out admin roles
+      const allStaff = [
+        ...staff.map(s => ({ ...s, source: 'staff' })),
+        ...users.map(u => ({ ...u, source: 'users' }))
+      ].filter(member => 
+        member.role && 
+        member.role.toLowerCase() !== 'admin' && 
+        member.role.toLowerCase() !== 'administrator'
+      );
+
       const totalStaff = allStaff.length;
 
-      const activeSchedules = await ScheduleModel.getSchedules({ status: "active" });
-      const onBreakSchedules = await ScheduleModel.getSchedules({ status: "on_break" });
-      const offlineSchedules = await ScheduleModel.getSchedules({ status: "offline" });
-
-      const activeNow = activeSchedules.length;
-      const onBreak = onBreakSchedules.length;
-      const offline = offlineSchedules.length;
+      // Count by status (using status field or defaulting to 'active')
+      const activeNow = allStaff.filter(s => (s.status || 'active') === 'active').length;
+      const onBreak = allStaff.filter(s => (s.status || 'active') === 'break' || (s.status || 'active') === 'on_break').length;
+      const offline = allStaff.filter(s => (s.status || 'active') === 'offline').length;
 
       res.json({
         totalStaff,
         activeNow,
         onBreak,
-        offline
+        offline,
+        staff: allStaff // Include the full staff list
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async getAllStaffWithCounts(req, res) {
+    try {
+      // Get all staff from both collections
+      const staff = await StaffModel.getAllStaff();
+      const users = await StaffModel.getAllUsers();
+      
+      // Combine and normalize all staff members, filtering out admin roles
+      const allStaff = [
+        ...staff.map(s => ({ ...s, source: 'staff' })),
+        ...users.map(u => ({ ...u, source: 'users' }))
+      ].filter(member => 
+        member.role && 
+        member.role.toLowerCase() !== 'admin' && 
+        member.role.toLowerCase() !== 'administrator'
+      ).map(member => ({
+        id: member.id,
+        fullName: member.fullName,
+        email: member.email,
+        role: member.role,
+        location: member.location || 'General',
+        status: member.status || 'active',
+        lastActivity: member.lastActivity || 'Recently active',
+        source: member.source
+      }));
+
+      const totalStaff = allStaff.length;
+      const activeNow = allStaff.filter(s => s.status === 'active').length;
+      const onBreak = allStaff.filter(s => s.status === 'break' || s.status === 'on_break').length;
+      const offline = allStaff.filter(s => s.status === 'offline').length;
+
+      res.json({
+        staff: allStaff,
+        counts: {
+          totalStaff,
+          activeNow,
+          onBreak,
+          offline
+        }
       });
     } catch (error) {
       console.error(error);

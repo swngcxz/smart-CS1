@@ -1,5 +1,6 @@
 import BackButton from "@/components/BackButton";
-import React, { useMemo, useState } from "react";
+import React from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   FlatList,

@@ -1,6 +1,7 @@
 // app/(tabs)/home.tsx
+import React from "react";
 import Header from "@/components/Header";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { useRealTimeData } from "../../hooks/useRealTimeData";

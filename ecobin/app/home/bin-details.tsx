@@ -1,9 +1,10 @@
 
+import React from "react";
 import BackButton from "@/components/BackButton";
 import PickupHistoryModal from "@/components/modals/PickupHistoryModal";
 import { useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
+import { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { ProgressBar } from "react-native-paper";

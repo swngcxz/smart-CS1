@@ -23,6 +23,36 @@ export function StaffActivityLogs() {
         return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
       case "schedule_update":
         return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200";
+      case "bin_alert":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "in_progress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "done":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority?.toLowerCase()) {
+      case "low":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "high":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "urgent":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
@@ -32,6 +62,26 @@ export function StaffActivityLogs() {
     if (!timestamp) return "N/A";
     const date = new Date(timestamp);
     return date.toLocaleString();
+  };
+
+  const formatDisplayDate = (timestamp: string) => {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatDisplayTime = (timestamp: string) => {
+    if (!timestamp) return 'N/A';
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   const formatActivityDescription = (activity: any) => {
@@ -73,46 +123,107 @@ export function StaffActivityLogs() {
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             No activities to display
             <div className="text-xs mt-2">
-              User ID: {userId} | Check if data exists in database
+              Check if data exists in database
             </div>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-32">Time</TableHead>
-                <TableHead>Activity</TableHead>
-                <TableHead className="w-32">Type</TableHead>
-                <TableHead className="w-40">Details</TableHead>
+                <TableHead className="w-40">Date & Time</TableHead>
+                <TableHead className="w-32">Activity Type</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="w-32">Assigned To</TableHead>
+                <TableHead className="w-24">Location</TableHead>
                 <TableHead className="w-24">Status</TableHead>
+                <TableHead className="w-20">Priority</TableHead>
+                <TableHead className="w-32">Details</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logs.map((activity) => (
-                <TableRow key={activity.id}>
+                <TableRow key={activity.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                   <TableCell className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {formatTimestamp(activity.timestamp)}
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-800 dark:text-white font-medium">
-                    {formatActivityDescription(activity)}
+                    <div className="space-y-1">
+                      <div className="font-semibold">
+                        {activity.formatted_date || formatDisplayDate(activity.timestamp)}
+                      </div>
+                      <div className="text-gray-400">
+                        {activity.formatted_time || formatDisplayTime(activity.timestamp)}
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge className={getActivityTypeColor(activity.activity_type || "unknown")}>
-                      {activity.activity_type || "unknown"}
+                      {activity.activity_type?.replace('_', ' ') || "unknown"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-800 dark:text-white">
+                    <div className="space-y-1">
+                      <div className="font-medium">
+                        {formatActivityDescription(activity)}
+                      </div>
+                      {activity.task_note && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          {activity.task_note}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-gray-400">
+                    <div className="space-y-1">
+                      {activity.assigned_janitor_name ? (
+                        <div className="font-medium text-gray-800 dark:text-white">
+                          {activity.assigned_janitor_name}
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 italic">Unassigned</div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-xs text-gray-600 dark:text-gray-400">
+                    <div className="space-y-1">
+                      {activity.bin_location && (
+                        <div className="font-medium">
+                          {activity.bin_location}
+                        </div>
+                      )}
+                      {activity.bin_id && (
+                        <div className="text-gray-500">
+                          Bin: {activity.bin_id}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(activity.status)}>
+                      {activity.display_status || activity.status || "Pending"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={getPriorityColor(activity.priority)}>
+                      {activity.display_priority || activity.priority || "Low"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-gray-600 dark:text-gray-400">
-                    {activity.bin_id && (
-                      <div>
-                        <div>Bin: {activity.bin_id}</div>
-                        {activity.bin_level !== undefined && (
-                          <div>Level: {activity.bin_level}%</div>
-                        )}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-gray-600 dark:text-gray-400">
-                    {activity.bin_status || "N/A"}
+                    <div className="space-y-1">
+                      {activity.bin_level !== undefined && (
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                          <span>Level: {activity.bin_level}%</span>
+                        </div>
+                      )}
+                      {activity.bin_status && activity.bin_status !== activity.status && (
+                        <div className="text-gray-500">
+                          Bin: {activity.bin_status}
+                        </div>
+                      )}
+                      {activity.status_notes && (
+                        <div className="text-gray-500 italic">
+                          {activity.status_notes}
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

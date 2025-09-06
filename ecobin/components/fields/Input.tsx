@@ -3,7 +3,7 @@ import { StyleSheet, TextInput, TextInputProps } from "react-native";
 
 interface InputProps extends TextInputProps {}
 
-const Input: React.FC<InputProps> = (props) => {
+const Input = (props: InputProps) => {
   return <TextInput style={styles.input} placeholderTextColor="#999" {...props} />;
 };
 

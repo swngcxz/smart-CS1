@@ -191,7 +191,7 @@ function setupRealTimeMonitoring() {
       // SMS alert logic
       if (data.bin_level > 85 && !smsSent) {
         console.log('🚨 Bin level exceeded threshold, preparing to send SMS...');
-        sendSMS('+639686043229', `Alert: Bin S1Bin3 is at ${data.bin_level}% capacity.`);
+        sendSMS('+639309096606', `Alert: Bin S1Bin3 is at ${data.bin_level}% capacity.`);
         smsSent = true;
       } else if (data.bin_level <= 85) {
         smsSent = false; // Reset flag if bin level drops
@@ -285,7 +285,7 @@ function setupRealTimeMonitoring() {
       // SMS alert logic for bin1
       if (data.bin_level > 85 && !smsSent) {
         console.log('🚨 Bin1 level exceeded threshold, preparing to send SMS...');
-        sendSMS('+639686043229', `Alert: Bin1 is at ${data.bin_level}% capacity.`);
+        sendSMS('+639309096606', `Alert: Bin1 is at ${data.bin_level}% capacity.`);
         smsSent = true;
       } else if (data.bin_level <= 85) {
         smsSent = false; // Reset flag if bin level drops
@@ -364,7 +364,7 @@ app.post('/api/send-sms', async (req, res) => {
     const data = snapshot.val();
     const binName = data.bin_name || 'SmartBin';
     const msg = `Alert: ${binName}\nWeight: ${data.weight_percent || 0}%\nHeight: ${data.height_percent || 0}%\nBin Level: ${data.bin_level || 0}%`;
-    const phoneNumber = req.body.phoneNumber || '+639686043229';
+    const phoneNumber = req.body.phoneNumber || '+639309096606';
     await sendSMS(phoneNumber, msg);
     res.json({ status: 'success', message: 'SMS sent.' });
   } catch (err) {

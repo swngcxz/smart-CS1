@@ -196,73 +196,65 @@ export function WasteLevelsTab() {
   const [taskNote, setTaskNote] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const { wasteBins, loading, error } = useRealTimeData();
+  const { wasteBins, loading, error, bin1Data } = useRealTimeData();
+  
+  // Debug logging
+  console.log('🔍 WasteLevelsTab Debug:', { 
+    wasteBins, 
+    loading, 
+    error, 
+    bin1Data,
+    wasteBinsLength: wasteBins.length,
+    isModalOpen,
+    selectedBin: selectedBin?.id
+  });
   const { janitors, loading: janitorsLoading, error: janitorsError } = useJanitors();
   const { logActivity, loading: activityLoading, error: activityError } = useActivityLogging();
 
   // Debug logging to see what janitors data is being fetched
-  console.log('Fetched janitors data:', janitors);
-  console.log('Janitors loading:', janitorsLoading);
-  console.log('Janitors error:', janitorsError);
+  console.log('🔍 Janitors Debug:', {
+    janitors,
+    janitorsLength: janitors.length,
+    loading: janitorsLoading,
+    error: janitorsError
+  });
 
   // Create real-time data for each location
   const realTimeBins: WasteBin[] = [
-    // Central Plaza - 4 bins
-    {
-      id: "1",
-      location: "Central Plaza",
-      level: (() => {
-        const realTimeBin = wasteBins.find(wb => wb.id === 'bin1');
-        return realTimeBin ? realTimeBin.level : 85;
-      })(),
-      status: (() => {
-        const realTimeBin = wasteBins.find(wb => wb.id === 'bin1');
-        return realTimeBin ? realTimeBin.status : "critical";
-      })(),
-      lastCollected: (() => {
-        const realTimeBin = wasteBins.find(wb => wb.id === 'bin1');
-        return realTimeBin ? realTimeBin.lastCollected : "2 hours ago";
-      })(),
-      capacity: "500L",
-      wasteType: "Mixed",
-      nextCollection: "Today 3:00 PM",
-      binData: wasteBins.find(wb => wb.id === 'bin1')?.binData
-    },
+    // Central Plaza - ONLY bin1 real-time data (as requested)
+    ...wasteBins.filter(wb => wb.location === "Central Plaza" && wb.id === "bin1").map((realTimeBin) => ({
+      ...realTimeBin,
+      id: realTimeBin.id,
+      wasteType: 'Mixed',
+      nextCollection: 'Today 3:00 PM',
+    })),
+    
+    // Add static backup bins for Central Plaza to show 4 total bins
     {
       id: "2",
       location: "Central Plaza",
-      level: (() => {
-        const realTimeBin = wasteBins.find(wb => wb.id === 'monitoring');
-        return realTimeBin ? realTimeBin.level : 60;
-      })(),
-      status: (() => {
-        const realTimeBin = wasteBins.find(wb => wb.id === 'monitoring');
-        return realTimeBin ? realTimeBin.status : "warning";
-      })(),
-      lastCollected: (() => {
-        const realTimeBin = wasteBins.find(wb => wb.id === 'monitoring');
-        return realTimeBin ? realTimeBin.lastCollected : "3 hours ago";
-      })(),
+      level: 60,
+      status: "warning" as const,
+      lastCollected: "3 hours ago",
       capacity: "450L",
       wasteType: "Organic",
       nextCollection: "Today 4:30 PM",
-      binData: wasteBins.find(wb => wb.id === 'monitoring')?.binData
     },
     {
       id: "3",
       location: "Central Plaza",
       level: 90,
-      status: "critical",
+      status: "critical" as const,
       lastCollected: "1 hour ago",
       capacity: "600L",
       wasteType: "Recyclable",
       nextCollection: "Today 5:30 PM",
     },
     {
-      id: "4",
+      id: "4", 
       location: "Central Plaza",
       level: 50,
-      status: "normal",
+      status: "normal" as const,
       lastCollected: "5 hours ago",
       capacity: "550L",
       wasteType: "Mixed",
@@ -401,9 +393,11 @@ export function WasteLevelsTab() {
   );
 
   const handleCardClick = (bin: WasteBin) => {
+    console.log('🖱️ Card clicked:', bin);
     setSelectedBin(bin);
     setSelectedJanitorId(null); // Reset selection on open
     setIsModalOpen(true);
+    console.log('📱 Modal should open now');
   };
 
 const handleAssignTask = async () => {
@@ -462,22 +456,64 @@ const handleAssignTask = async () => {
     ? janitors.filter((j) => {
         // Ensure we only show janitors with the correct role
         const hasValidRole = j.role && j.role.toLowerCase() === 'janitor';
-        // Accept janitors with same location, unknown location, or generic coverage
-        const locationIsGeneric = !j.location || j.location === 'General' || j.location === 'All Routes';
-        const hasMatchingLocation = j.location === selectedBin.location || locationIsGeneric;
+        // For now, accept any janitor regardless of location to test the data
+        const hasMatchingLocation = true; // Temporarily accept all janitors
         
         // Debug logging to help verify role filtering
-        console.log(`Janitor ${j.fullName}: role="${j.role}", location="${j.location}", validRole=${hasValidRole}, matchingLocation=${hasMatchingLocation}, source=${(j as any).source || 'unknown'}`);
+        console.log(`🔍 Janitor Filter: ${j.fullName}`, {
+          role: j.role,
+          location: j.location,
+          selectedBinLocation: selectedBin.location,
+          hasValidRole,
+          hasMatchingLocation,
+          source: (j as any).source || 'unknown'
+        });
         
         return hasValidRole && hasMatchingLocation;
       })
     : [];
+    
+  console.log('🔍 Filtered Janitors Result:', {
+    totalJanitors: janitors.length,
+    filteredCount: filteredJanitors.length,
+    selectedBinLocation: selectedBin?.location,
+    filteredJanitors: filteredJanitors.map(j => ({ name: j.fullName, location: j.location }))
+  });
 
   return (
     <>
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Level</h2>
+        
+        {/* Debug Connection Status */}
+        <div className="flex items-center gap-4 text-sm">
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+            loading ? 'bg-yellow-100 text-yellow-800' :
+            error ? 'bg-red-100 text-red-800' :
+            bin1Data ? 'bg-green-100 text-green-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              loading ? 'bg-yellow-500 animate-pulse' :
+              error ? 'bg-red-500' :
+              bin1Data ? 'bg-green-500 animate-pulse' :
+              'bg-gray-500'
+            }`}></div>
+            <span className="text-xs font-medium">
+              {loading ? 'Connecting...' : 
+               error ? 'Connection Error' :
+               bin1Data ? 'Live Data' : 
+               'No Data'}
+            </span>
+          </div>
+          
+          {bin1Data && (
+            <div className="text-xs text-gray-600 dark:text-gray-400">
+              Level: {bin1Data.bin_level}% | Updated: {new Date(bin1Data.timestamp || Date.now()).toLocaleTimeString()}
+            </div>
+          )}
+        </div>
       </div>
 
 

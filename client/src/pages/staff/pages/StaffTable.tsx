@@ -17,9 +17,14 @@ type StaffRecord = {
   location?: string;
   status?: string;
   lastActivity?: string;
+  source?: string;
 };
 
-export function StaffTable() {
+interface StaffTableProps {
+  onStaffUpdate?: () => void;
+}
+
+export function StaffTable({ onStaffUpdate }: StaffTableProps) {
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState("all");
@@ -32,10 +37,12 @@ export function StaffTable() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get("/api/staff");
-      setStaffList(res.data);
+      const res = await api.get("/api/staff/all-with-counts");
+      setStaffList(res.data.staff);
+      console.log("Loaded staff data:", res.data);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Failed to load staff");
+      console.error("Error loading staff:", err);
     } finally {
       setLoading(false);
     }
@@ -66,6 +73,7 @@ export function StaffTable() {
       toast({ title: "Staff added", description: `${payload.fullName} created.` });
       setAddModalOpen(false);
       await loadStaff();
+      onStaffUpdate?.(); // Trigger parent refresh
     } catch (err: any) {
       toast({ title: "Failed to add staff", description: err?.response?.data?.error || "Error", variant: "destructive" });
     } finally {
@@ -79,6 +87,7 @@ export function StaffTable() {
       await api.delete(`/api/staff/${staffId}`);
       toast({ title: "Staff deleted", description: `Record removed.` });
       await loadStaff();
+      onStaffUpdate?.(); // Trigger parent refresh
     } catch (err: any) {
       toast({ title: "Failed to delete staff", description: err?.response?.data?.error || "Error", variant: "destructive" });
     } finally {
@@ -126,18 +135,19 @@ export function StaffTable() {
           <TableHead>Route</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Last Activity</TableHead>
+          <TableHead>Source</TableHead>
           <TableHead></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {loading && (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-sm text-gray-500">Loading...</TableCell>
+            <TableCell colSpan={7} className="text-center text-sm text-gray-500">Loading...</TableCell>
           </TableRow>
         )}
         {error && (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-sm text-red-600">{error}</TableCell>
+            <TableCell colSpan={7} className="text-center text-sm text-red-600">{error}</TableCell>
           </TableRow>
         )}
         {!loading && !error && filteredStaff.map((staff) => (
@@ -170,6 +180,14 @@ export function StaffTable() {
               </Badge>
             </TableCell>
             <TableCell className="text-gray-500">{staff.lastActivity || ""}</TableCell>
+            <TableCell>
+              <Badge 
+                variant="outline" 
+                className={staff.source === 'staff' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}
+              >
+                {staff.source || 'Unknown'}
+              </Badge>
+            </TableCell>
             <TableCell>
               <button
                 onClick={(e) => { e.stopPropagation(); handleDeleteStaff(staff.id); }}
