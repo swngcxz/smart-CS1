@@ -1,9 +1,9 @@
-import React from "react";
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import MapView, { Callout, Marker } from "react-native-maps";
 import { ProgressBar } from "react-native-paper";
+import * as Location from 'expo-location';
 
 type Bin = {
   id: string;
@@ -50,14 +50,58 @@ const bins: Bin[] = [
 ];
 
 export default function MapScreen() {
-  const [region] = useState({
+  const [region, setRegion] = useState({
     latitude: 10.2098,
     longitude: 123.758,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
+  const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
   const router = useRouter();
+
+  // Function to get user's current location
+  const findMyLocation = async () => {
+    try {
+      setIsLocating(true);
+      
+      // Request permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Location permission is required to find your location.');
+        setIsLocating(false);
+        return;
+      }
+
+      // Get current position
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const newLocation = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+
+      setUserLocation(newLocation);
+      
+      // Update map region to center on user location
+      setRegion({
+        latitude: newLocation.latitude,
+        longitude: newLocation.longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      });
+
+      setIsLocating(false);
+      
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert('Error', 'Unable to get your current location. Please try again.');
+      setIsLocating(false);
+    }
+  };
 
   const handleViewDetails = (binId: string) => {
     router.push({
@@ -86,8 +130,10 @@ export default function MapScreen() {
     <View style={styles.container}>
       <MapView
         style={StyleSheet.absoluteFillObject}
-        initialRegion={region}
+        region={region}
         mapType="satellite"
+        showsUserLocation={false}
+        showsMyLocationButton={false}
       >
         {bins.map((bin) => (
           <Marker
@@ -149,7 +195,31 @@ export default function MapScreen() {
             </Callout>
           </Marker>
         ))}
+
+        {/* User Location Marker */}
+        {userLocation && (
+          <Marker
+            coordinate={userLocation}
+            title="Your Location"
+            description="You are here"
+          >
+            <View style={styles.userLocationMarker}>
+              <View style={styles.userLocationInner} />
+            </View>
+          </Marker>
+        )}
       </MapView>
+
+      {/* Location Finder Button */}
+      <TouchableOpacity
+        style={[styles.locationButton, isLocating && styles.locationButtonLoading]}
+        onPress={findMyLocation}
+        disabled={isLocating}
+      >
+        <Text style={styles.locationButtonText}>
+          {isLocating ? "📍" : "🎯"}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -221,5 +291,50 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginTop: 5,
     marginBottom: 8,
+  },
+  // User location marker styles
+  userLocationMarker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#007AFF',
+    borderWidth: 3,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userLocationInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'white',
+  },
+  // Location button styles
+  locationButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  locationButtonLoading: {
+    backgroundColor: '#999',
+  },
+  locationButtonText: {
+    fontSize: 24,
   },
 });

@@ -13,6 +13,7 @@ type StaffRecord = {
   id: string;
   fullName: string;
   email: string;
+  contactNumber?: string;
   role: string;
   location?: string;
   status?: string;
@@ -40,6 +41,11 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
       const res = await api.get("/api/staff/all-with-counts");
       setStaffList(res.data.staff);
       console.log("Loaded admin staff data:", res.data);
+      console.log("Staff with contact numbers:", res.data.staff.map(s => ({ 
+        name: s.fullName, 
+        contactNumber: s.contactNumber,
+        hasContactNumber: !!s.contactNumber 
+      })));
     } catch (err: any) {
       setError(err?.response?.data?.error || "Failed to load staff");
       console.error("Error loading staff:", err);
@@ -62,6 +68,7 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
       status: staff.status || "active",
       lastActivity: staff.lastActivity || "",
       email: staff.email,
+      contactNumber: staff.contactNumber,
     };
     setSelectedStaff(modalStaff);
     setIsModalOpen(true);
@@ -121,7 +128,7 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
         </div>
 
         <button onClick={() => setAddModalOpen(true)} className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">
-          + Add Staff
+          + Add Janitor
         </button>
       </div>
 
@@ -132,6 +139,8 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Contact Number</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Route</TableHead>
                 <TableHead>Status</TableHead>
@@ -143,12 +152,12 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
             <TableBody>
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-gray-500">Loading...</TableCell>
+                  <TableCell colSpan={9} className="text-center text-sm text-gray-500">Loading...</TableCell>
                 </TableRow>
               )}
               {error && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-red-600">{error}</TableCell>
+                  <TableCell colSpan={9} className="text-center text-sm text-red-600">{error}</TableCell>
                 </TableRow>
               )}
               {!loading && !error && filteredStaff.map((staff) => (
@@ -158,6 +167,8 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
                   className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition"
                 >
                   <TableCell className="font-medium">{staff.fullName}</TableCell>
+                  <TableCell>{staff.email}</TableCell>
+                  <TableCell>{staff.contactNumber || "N/A"}</TableCell>
                   <TableCell>{staff.role}</TableCell>
                   <TableCell>{staff.location || ""}</TableCell>
                   <TableCell>
@@ -204,7 +215,12 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
         </CardContent>
       </Card>
 
-      <StaffManagementModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} staff={selectedStaff} />
+      <StaffManagementModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        staff={selectedStaff} 
+        onStaffUpdate={loadStaff}
+      />
       <AddStaffModal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} onAdd={handleAddStaff} />
     </>
   );

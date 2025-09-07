@@ -376,72 +376,81 @@ export function StaffActivityTab() {
                 filteredActivities.slice(0, 3).map((activity, index) => (
                   <div
                     key={activity.id || index}
-                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                    className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-600">
+                    <div className="grid grid-cols-12 gap-4 items-start">
+                      {/* Date & Time - 2 columns */}
+                      <div className="col-span-2">
+                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-600 text-center">
                           {formatTimestamp(activity.timestamp)}
-                        </span>
-                        <Badge className={getActivityTypeColor(activity.activity_type || "unknown")}>
+                        </div>
+                      </div>
+                      
+                      {/* Activity Type - 2 columns */}
+                      <div className="col-span-2">
+                        <Badge className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs w-full justify-center`}>
                           {activity.activity_type?.replace('_', ' ') || "unknown"}
                         </Badge>
-                        <Badge className={getStatusColor(activity.status)}>
+                      </div>
+                      
+                      {/* Status - 1 column */}
+                      <div className="col-span-1">
+                        <Badge className={`${getStatusColor(activity.status)} text-xs w-full justify-center`}>
                           {activity.display_status || activity.status || "Pending"}
                         </Badge>
-                        <Badge className={getPriorityColor(activity.priority)}>
+                      </div>
+                      
+                      {/* Priority - 1 column */}
+                      <div className="col-span-1">
+                        <Badge className={`${getPriorityColor(activity.priority)} text-xs w-full justify-center`}>
                           {activity.display_priority || activity.priority || "Low"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-800 dark:text-white font-medium mb-1">
-                        {formatActivityDescription(activity)}
-                      </p>
-                      <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
-                        {activity.bin_id && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            Bin: {activity.bin_id}
-                          </span>
-                        )}
-                        {activity.bin_location && (
-                          <span>{activity.bin_location}</span>
-                        )}
-                        {activity.assigned_janitor_name && (
-                          <span className="text-blue-600 dark:text-blue-400">
-                            Assigned: {activity.assigned_janitor_name}
-                          </span>
-                        )}
-                        {activity.bin_level !== undefined && (
-                          <span className="flex items-center gap-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                            Level: {activity.bin_level}%
-                          </span>
-                        )}
-                      </div>
-                      {activity.activity_type === 'bin_alert' && (
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="outline" className="text-xs">
-                            {activity.bin_status}
-                          </Badge>
-                          {activity.gps_valid !== undefined && (
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                              <Wifi className="w-3 h-3" />
-                              GPS: {activity.gps_valid ? 'Valid' : 'Invalid'}
+                      
+                      {/* Description - 4 columns */}
+                      <div className="col-span-4">
+                        <p className="text-sm text-gray-800 dark:text-white font-medium mb-1">
+                          {formatActivityDescription(activity)}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                          {activity.bin_id && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              Bin: {activity.bin_id}
                             </span>
                           )}
-                          {activity.satellites !== undefined && (
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                              <Satellite className="w-3 h-3" />
-                              {activity.satellites} satellites
+                          {activity.bin_location && (
+                            <span>{activity.bin_location}</span>
+                          )}
+                          {activity.assigned_janitor_name && (
+                            <span className="text-blue-600 dark:text-blue-400">
+                              Assigned: {activity.assigned_janitor_name}
+                            </span>
+                          )}
+                          {activity.bin_level !== undefined && (
+                            <span className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              Level: {activity.bin_level}%
                             </span>
                           )}
                         </div>
-                      )}
-                      {activity.task_note && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 italic">
-                          Note: {activity.task_note}
-                        </p>
-                      )}
+                      </div>
+                      
+                      {/* Details - 2 columns */}
+                      <div className="col-span-2">
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          {activity.task_note && (
+                            <div className="mb-1">
+                              <span className="font-medium">Note:</span> {activity.task_note}
+                            </div>
+                          )}
+                          {activity.bin_status && activity.bin_status !== activity.status && (
+                            <div>
+                              <span className="font-medium">Bin Status:</span> {activity.bin_status}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))

@@ -4,32 +4,22 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Navigation, Route } from "lucide-react";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
 
-const locationData = [
-  { id: 1, name: "Central Plaza", lat: "10.2105", lng: "123.7583", status: "critical", level: 85 },
-  { id: 2, name: "Park Avenue", lat: "10.2107", lng: "123.7579", status: "normal", level: 45 },
-  { id: 3, name: "Mall District", lat: "10.2102", lng: "123.7586", status: "warning", level: 70 },
-  { id: 4, name: "Residential Area", lat: "10.2098", lng: "123.7582", status: "normal", level: 30 },
-];
-
 export function MapTab() {
-  const { wasteBins, loading, error, bin1Data } = useRealTimeData();
+  const { wasteBins, loading, error, bin1Data, dynamicBinLocations } = useRealTimeData();
 
-  // Update location data with real-time information
-  const updatedLocationData = locationData.map((location) => {
-    const realTimeBin = wasteBins.find(wb => wb.location === location.name);
-    
-    if (realTimeBin) {
-      return {
-        ...location,
-        level: realTimeBin.level,
-        status: realTimeBin.status,
-        lastCollected: realTimeBin.lastCollected,
-        binData: realTimeBin.binData
-      };
-    }
-    
-    return location;
-  });
+  // Use ONLY real-time bin locations from database - no hardcoded coordinates
+  const updatedLocationData = dynamicBinLocations.length > 0 
+    ? dynamicBinLocations.map((bin) => ({
+        id: bin.id,
+        name: bin.name,
+        lat: bin.position[0].toString(),
+        lng: bin.position[1].toString(),
+        status: bin.status,
+        level: bin.level,
+        lastCollected: bin.lastCollection,
+        binData: bin
+      }))
+    : []; // No fallback to hardcoded coordinates - only show real-time data
 
   // Calculate summary statistics
   const criticalBins = updatedLocationData.filter((location) => location.status === "critical").length;
@@ -110,6 +100,11 @@ export function MapTab() {
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {location.lat}, {location.lng}
                       </p>
+                      {'binData' in location && location.binData && location.binData.gps_valid && (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          GPS: {location.binData.satellites} satellites
+                        </p>
+                      )}
                       {'lastCollected' in location && location.lastCollected && (
                         <p className="text-xs text-gray-400 dark:text-gray-500">
                           Last: {location.lastCollected}

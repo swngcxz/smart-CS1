@@ -7,15 +7,17 @@ import { useState } from "react";
 export function AddStaffModal({ isOpen, onClose, onAdd }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
   const [role, setRole] = useState("");
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState("active");
 
   const handleSubmit = () => {
-    if (!name || !email || !role) return;
+    if (!name || !email || !contactNumber || !role) return;
     onAdd({
       fullName: name,
       email,
+      contactNumber,
       role,
       location: zone,
       status,
@@ -23,6 +25,7 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
     });
     setName("");
     setEmail("");
+    setContactNumber("");
     setRole("");
     setZone("");
     setStatus("active");
@@ -32,11 +35,12 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Staff</DialogTitle>
+          <DialogTitle>Add New Janitor</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input placeholder="Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} />
           <Input placeholder="Role" value={role} onChange={(e) => setRole(e.target.value)} />
 
           <Select value={zone} onValueChange={setZone}>
@@ -63,7 +67,7 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
           </Select>
 
           <Button onClick={handleSubmit} className="w-full">
-            Add Staff
+            Add Janitor
           </Button>
         </div>
       </DialogContent>

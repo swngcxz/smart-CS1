@@ -14,7 +14,9 @@ const StaffModel = {
   // Get all staff
   async getAllStaff() {
     const snapshot = await db.collection(STAFF_COLLECTION).get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const staff = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    console.log('StaffModel.getAllStaff() - Raw data from Firestore:', staff.map(s => ({ id: s.id, fullName: s.fullName, contactNumber: s.contactNumber })));
+    return staff;
   },
 
   // Get all users (to include janitor users)
@@ -50,6 +52,7 @@ const StaffModel = {
       {
         fullName: "Janitor Alice",
         email: "alice@smartwaste.com",
+        contactNumber: "+63 912 345 6789",
         role: "janitor",
         location: "Central Plaza",
         status: "active",
@@ -58,6 +61,7 @@ const StaffModel = {
       {
         fullName: "Janitor Bob",
         email: "bob@smartwaste.com",
+        contactNumber: "+63 912 345 6790",
         role: "janitor",
         location: "Park Avenue",
         status: "active",
@@ -66,6 +70,7 @@ const StaffModel = {
       {
         fullName: "Janitor Charlie",
         email: "charlie@smartwaste.com",
+        contactNumber: "+63 912 345 6791",
         role: "janitor",
         location: "Mall District",
         status: "active",
@@ -74,6 +79,7 @@ const StaffModel = {
       {
         fullName: "Janitor Daisy",
         email: "daisy@smartwaste.com",
+        contactNumber: "+63 912 345 6792",
         role: "janitor",
         location: "Residential Area",
         status: "active",
@@ -82,6 +88,7 @@ const StaffModel = {
       {
         fullName: "Janitor Ethan",
         email: "ethan@smartwaste.com",
+        contactNumber: "+63 912 345 6793",
         role: "janitor",
         location: "Central Plaza",
         status: "active",

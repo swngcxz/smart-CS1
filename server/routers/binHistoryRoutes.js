@@ -79,4 +79,18 @@ router.post('/bin-history/hybrid/force-process', binHistoryController.forceProce
  */
 router.put('/bin-history/hybrid/config', binHistoryController.updateHybridConfig);
 
+/**
+ * @route GET /api/bin-history/rate-limit/stats
+ * @desc Get rate limit statistics
+ * @access Private (Admin only)
+ */
+router.get('/bin-history/rate-limit/stats', binHistoryController.getRateLimitStats);
+
+/**
+ * @route PUT /api/bin-history/rate-limit/config
+ * @desc Update rate limit configuration
+ * @access Private (Admin only)
+ */
+router.put('/bin-history/rate-limit/config', binHistoryController.updateRateLimitConfig);
+
 module.exports = router;

@@ -17,3 +17,4 @@ config.resolver.assetExts.push(
 config.resolver.sourceExts.push('jsx', 'js', 'ts', 'tsx', 'json');
 
 module.exports = config;
+

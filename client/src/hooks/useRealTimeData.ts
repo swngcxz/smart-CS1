@@ -33,16 +33,15 @@ export function useRealTimeData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gpsHistory, setGpsHistory] = useState<Array<{lat: number, lng: number, timestamp: number}>>([]);
-  const [dynamicBinLocations, setDynamicBinLocations] = useState<any[]>([]);
 
-  // Fetch initial data - bin1 and dynamic locations
+  // Fetch initial data - ONLY bin1 as requested
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
         console.log('🔄 Fetching initial data from Firebase...');
         
-        // Fetch bin1 data
+        // Only fetch bin1 data as requested
         const bin1Response = await api.get('/api/bin1');
 
         console.log('📡 API Response:', bin1Response);
@@ -61,23 +60,6 @@ export function useRealTimeData() {
         } else {
           console.log('⚠️ No bin1 data received from API');
         }
-
-        // Create dynamic bin locations from bin1 data
-        if (bin1Response.data && bin1Response.data.latitude && bin1Response.data.longitude && bin1Response.data.latitude !== 0 && bin1Response.data.longitude !== 0) {
-          const dynamicBins = [{
-            id: 'monitoring-bin1',
-            name: 'Central Plaza',
-            position: [bin1Response.data.latitude, bin1Response.data.longitude],
-            level: bin1Response.data.bin_level || 0,
-            status: getStatusFromLevel(bin1Response.data.bin_level || 0),
-            lastCollection: bin1Response.data.timestamp ? new Date(bin1Response.data.timestamp).toISOString() : new Date().toISOString(),
-            route: 'Route A - Central',
-            gps_valid: Boolean(bin1Response.data.gps_valid),
-            satellites: parseInt(bin1Response.data.satellites) || 0
-          }];
-          console.log('🗺️ Dynamic bin locations created:', dynamicBins);
-          setDynamicBinLocations(dynamicBins);
-        }
         
         setError(null);
       } catch (err: any) {
@@ -91,7 +73,7 @@ export function useRealTimeData() {
     fetchInitialData();
   }, []);
 
-  // Set up real-time updates using polling - bin1 data and dynamic locations
+  // Set up real-time updates using polling - only bin1 data as requested
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -109,23 +91,6 @@ export function useRealTimeData() {
               timestamp: bin1Response.data.timestamp
             }].slice(-50)); // Keep last 50 points
           }
-        }
-
-        // Update dynamic bin locations from bin1 data
-        if (bin1Response.data && bin1Response.data.latitude && bin1Response.data.longitude && bin1Response.data.latitude !== 0 && bin1Response.data.longitude !== 0) {
-          const dynamicBins = [{
-            id: 'monitoring-bin1',
-            name: 'Central Plaza',
-            position: [bin1Response.data.latitude, bin1Response.data.longitude],
-            level: bin1Response.data.bin_level || 0,
-            status: getStatusFromLevel(bin1Response.data.bin_level || 0),
-            lastCollection: bin1Response.data.timestamp ? new Date(bin1Response.data.timestamp).toISOString() : new Date().toISOString(),
-            route: 'Route A - Central',
-            gps_valid: Boolean(bin1Response.data.gps_valid),
-            satellites: parseInt(bin1Response.data.satellites) || 0
-          }];
-          console.log('🔄 Polling update - bin locations:', dynamicBins);
-          setDynamicBinLocations(dynamicBins);
         }
         
         setError(null);
@@ -160,35 +125,43 @@ export function useRealTimeData() {
     return bins;
   };
 
+  // Create dynamic bin locations with live coordinates
+  const getDynamicBinLocations = () => {
+    const locations = [];
+    
+    // Add bin1 with live coordinates from real-time database
+    if (bin1Data && bin1Data.gps_valid && bin1Data.latitude && bin1Data.longitude) {
+      locations.push({
+        id: 'bin1',
+        name: 'Central Plaza',
+        position: [bin1Data.latitude, bin1Data.longitude] as [number, number],
+        level: bin1Data.bin_level || 0,
+        status: getStatusFromLevel(bin1Data.bin_level || 0),
+        lastCollection: getTimeAgo(bin1Data.timestamp),
+        route: 'Route A - Central',
+        gps_valid: bin1Data.gps_valid,
+        satellites: bin1Data.satellites,
+        timestamp: bin1Data.timestamp,
+        weight_kg: bin1Data.weight_kg,
+        distance_cm: bin1Data.distance_cm
+      });
+    }
+    
+    return locations;
+  };
+
   return {
     bin1Data,
     monitoringData,
     wasteBins: getWasteBins(),
-    dynamicBinLocations,
+    dynamicBinLocations: getDynamicBinLocations(),
     gpsHistory,
     loading,
     error,
     refresh: () => {
       setLoading(true);
       // Trigger a refresh by refetching data
-      api.get('/api/bin1').then(res => {
-        setBin1Data(res.data);
-        // Update dynamic bin locations
-        if (res.data && res.data.latitude && res.data.longitude && res.data.latitude !== 0 && res.data.longitude !== 0) {
-          const dynamicBins = [{
-            id: 'monitoring-bin1',
-            name: 'Central Plaza',
-            position: [res.data.latitude, res.data.longitude],
-            level: res.data.bin_level || 0,
-            status: getStatusFromLevel(res.data.bin_level || 0),
-            lastCollection: res.data.timestamp ? new Date(res.data.timestamp).toISOString() : new Date().toISOString(),
-            route: 'Route A - Central',
-            gps_valid: Boolean(res.data.gps_valid),
-            satellites: parseInt(res.data.satellites) || 0
-          }];
-          setDynamicBinLocations(dynamicBins);
-        }
-      }).catch(console.error);
+      api.get('/api/bin1').then(res => setBin1Data(res.data)).catch(console.error);
       api.get('/api/bin').then(res => setMonitoringData(res.data)).catch(console.error);
       setLoading(false);
     },

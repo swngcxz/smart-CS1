@@ -42,3 +42,5 @@ async function testBinHistoryController() {
 
 // Run the test
 testBinHistoryController();
+
+

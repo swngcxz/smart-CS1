@@ -53,6 +53,7 @@ const staffController = {
         id: janitor.id,
         fullName: janitor.fullName,
         email: janitor.email,
+        contactNumber: janitor.contactNumber,
         role: janitor.role,
         // Preserve original location; do not force a default here
         location: janitor.location,
@@ -90,6 +91,7 @@ const staffController = {
         await StaffModel.createStaff({
           fullName: currentUser.fullName,
           email: currentUser.email,
+          contactNumber: currentUser.contactNumber || '',
           role: 'janitor',
           location: 'General',
           status: 'active',
@@ -166,6 +168,10 @@ const staffController = {
       const staff = await StaffModel.getAllStaff();
       const users = await StaffModel.getAllUsers();
       
+      // Debug logging
+      console.log('Raw staff data:', staff.map(s => ({ id: s.id, fullName: s.fullName, contactNumber: s.contactNumber })));
+      console.log('Raw users data:', users.map(u => ({ id: u.id, fullName: u.fullName, contactNumber: u.contactNumber })));
+      
       // Combine and normalize all staff members, filtering out admin roles
       const allStaff = [
         ...staff.map(s => ({ ...s, source: 'staff' })),
@@ -174,16 +180,26 @@ const staffController = {
         member.role && 
         member.role.toLowerCase() !== 'admin' && 
         member.role.toLowerCase() !== 'administrator'
-      ).map(member => ({
-        id: member.id,
-        fullName: member.fullName,
-        email: member.email,
-        role: member.role,
-        location: member.location || 'General',
-        status: member.status || 'active',
-        lastActivity: member.lastActivity || 'Recently active',
-        source: member.source
-      }));
+      ).map(member => {
+        const mapped = {
+          id: member.id,
+          fullName: member.fullName,
+          email: member.email,
+          contactNumber: member.contactNumber ? member.contactNumber : 'N/A',
+          role: member.role,
+          location: member.location || 'General',
+          status: member.status || 'active',
+          lastActivity: member.lastActivity || 'Recently active',
+          source: member.source
+        };
+        console.log('Mapping member:', { 
+          input: { id: member.id, fullName: member.fullName, contactNumber: member.contactNumber },
+          output: { id: mapped.id, fullName: mapped.fullName, contactNumber: mapped.contactNumber }
+        });
+        return mapped;
+      });
+      
+      console.log('Final allStaff before response:', allStaff.map(s => ({ id: s.id, fullName: s.fullName, contactNumber: s.contactNumber })));
 
       const totalStaff = allStaff.length;
       const activeNow = allStaff.filter(s => s.status === 'active').length;
@@ -201,6 +217,22 @@ const staffController = {
       });
     } catch (error) {
       console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // Test endpoint to debug the issue
+  async testContactNumber(req, res) {
+    try {
+      const staff = await StaffModel.getAllStaff();
+      const testData = staff.map(s => ({
+        id: s.id,
+        fullName: s.fullName,
+        contactNumber: s.contactNumber,
+        hasContactNumber: !!s.contactNumber
+      }));
+      res.json({ message: "Test endpoint", data: testData });
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }

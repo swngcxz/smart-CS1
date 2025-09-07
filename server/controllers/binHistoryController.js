@@ -1,5 +1,6 @@
 const binHistoryModel = require('../models/binHistoryModel');
 const hybridDataService = require('../services/hybridDataService');
+const rateLimitService = require('../services/rateLimitService');
 
 class BinHistoryController {
   /**
@@ -28,6 +29,22 @@ class BinHistoryController {
         });
       }
 
+      // Check rate limit before processing
+      const rateLimitStatus = rateLimitService.checkBinHistoryUploadLimit(binId);
+      if (!rateLimitStatus.allowed) {
+        console.log(`[BIN HISTORY CONTROLLER] Rate limit exceeded for bin ${binId}. Current: ${rateLimitStatus.currentCount}/${rateLimitStatus.maxCount}`);
+        return res.status(429).json({
+          success: false,
+          message: 'Daily upload limit exceeded for this bin',
+          rateLimit: {
+            currentCount: rateLimitStatus.currentCount,
+            maxCount: rateLimitStatus.maxCount,
+            remaining: rateLimitStatus.remaining,
+            resetTime: rateLimitStatus.resetTime
+          }
+        });
+      }
+
       // Prepare data for hybrid processing
       const binData = {
         binId,
@@ -43,6 +60,11 @@ class BinHistoryController {
       // Process through hybrid service
       const result = await hybridDataService.processIncomingData(binData);
 
+      // Record the upload only if it was successful
+      if (result.success) {
+        rateLimitService.recordBinHistoryUpload(binId);
+      }
+
       console.log(`[BIN HISTORY CONTROLLER] Processed data for bin ${binId}: Action=${result.action}`);
 
       res.status(201).json({
@@ -50,7 +72,8 @@ class BinHistoryController {
         message: result.success ? 'Bin data processed successfully' : 'Bin data filtered',
         action: result.action,
         data: result.recordId ? { id: result.recordId } : null,
-        stats: hybridDataService.getStats()
+        stats: hybridDataService.getStats(),
+        rateLimit: rateLimitService.checkBinHistoryUploadLimit(binId)
       });
 
     } catch (error) {
@@ -505,6 +528,58 @@ class BinHistoryController {
       res.status(500).json({
         success: false,
         message: 'Failed to update configuration',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get rate limit statistics
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async getRateLimitStats(req, res) {
+    try {
+      const stats = rateLimitService.getStats();
+      
+      res.status(200).json({
+        success: true,
+        message: 'Rate limit statistics retrieved successfully',
+        data: stats
+      });
+
+    } catch (error) {
+      console.error('[BIN HISTORY CONTROLLER] Error retrieving rate limit stats:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve rate limit statistics',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Update rate limit configuration
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  async updateRateLimitConfig(req, res) {
+    try {
+      const newConfig = req.body;
+      
+      rateLimitService.updateConfig(newConfig);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Rate limit configuration updated successfully',
+        data: newConfig
+      });
+
+    } catch (error) {
+      console.error('[BIN HISTORY CONTROLLER] Error updating rate limit config:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update rate limit configuration',
         error: error.message
       });
     }

@@ -276,3 +276,4 @@ The system provides detailed logging:
 - [ ] Bulk assignment notifications
 - [ ] Notification history and analytics
 - [ ] Real-time notification status updates
+

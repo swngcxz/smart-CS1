@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import L, { LatLngTuple } from "leaflet";
-import { BinMarker } from "./BinMarker";
+import { DynamicBinMarker } from "../../staff/pages/DynamicBinMarker";
 import { GPSMarker } from "./GPSMarker";
 import { GPSTrackingLine } from "./GPSTrackingLine";
 import { useEffect, useRef, useState } from "react";
@@ -10,12 +10,54 @@ import { Viewer } from "mapillary-js";
 import "mapillary-js/dist/mapillary.css";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
 
+// Add custom styles for user location marker
+const userLocationStyles = `
+  .user-location-marker {
+    background: transparent !important;
+    border: none !important;
+  }
+  .user-location-marker .animate-ping {
+    animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  @keyframes ping {
+    75%, 100% {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.type = "text/css";
+  styleSheet.innerText = userLocationStyles;
+  document.head.appendChild(styleSheet);
+}
+
 // Fix default marker icons
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
+
+// Create custom icon for user location
+const createUserLocationIcon = () => {
+  return L.divIcon({
+    className: 'user-location-marker',
+    html: `
+      <div class="relative">
+        <div class="absolute inset-0 w-6 h-6 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+        <div class="relative w-6 h-6 bg-blue-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+          <div class="w-2 h-2 bg-white rounded-full"></div>
+        </div>
+      </div>
+    `,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  });
+};
 
 // Default center coordinates (fallback)
 const defaultCenter: LatLngTuple = [10.2105, 123.7583];
@@ -31,13 +73,16 @@ function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
 export function MapSection() {
   const { wasteBins, loading, error, bin1Data, monitoringData, gpsHistory, dynamicBinLocations } = useRealTimeData();
   const [showGPSTracking, setShowGPSTracking] = useState(false);
+  const [userLocation, setUserLocation] = useState<LatLngTuple | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
-  // Use dynamic bin locations from API or fallback to static data
+  // Use ONLY real-time bin locations from database - no hardcoded coordinates
   const updatedBinLocations = dynamicBinLocations.length > 0 
     ? dynamicBinLocations.map((bin) => ({
         id: bin.id,
         name: bin.name,
-        position: bin.position as LatLngTuple,
+        position: [bin.position[0], bin.position[1]] as [number, number],
         level: bin.level,
         status: bin.status as 'normal' | 'warning' | 'critical',
         lastCollection: bin.lastCollection,
@@ -45,26 +90,69 @@ export function MapSection() {
         gps_valid: bin.gps_valid,
         satellites: bin.satellites
       }))
-    : wasteBins.map((bin) => ({
-        id: bin.id,
-        name: bin.location,
-        position: [10.2105, 123.7583] as LatLngTuple, // Default position
-        level: bin.level,
-        status: bin.status,
-        lastCollection: bin.lastCollected,
-        route: 'Route A - Central'
-      }));
+    : []; // No fallback to hardcoded coordinates - only show real-time data
 
-  // Determine map center based on available data
-  const mapCenter = dynamicBinLocations.length > 0 
-    ? (dynamicBinLocations[0]?.position as LatLngTuple) || defaultCenter
-    : defaultCenter;
+  // Determine map center based on live GPS data from real-time database
+  const mapCenter = bin1Data && bin1Data.gps_valid && bin1Data.latitude && bin1Data.longitude
+    ? [bin1Data.latitude, bin1Data.longitude] as LatLngTuple
+    : dynamicBinLocations.length > 0 
+    ? (dynamicBinLocations[0]?.position as LatLngTuple)
+    : defaultCenter; // Only use default as last resort
 
   const criticalBins = updatedBinLocations.filter((bin) => bin.status === "critical").length;
   const warningBins = updatedBinLocations.filter((bin) => bin.status === "warning").length;
   const normalBins = updatedBinLocations.filter((bin) => bin.status === "normal").length;
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+
+  // Function to get user's current location
+  const findMyLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    setIsLocating(true);
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const newLocation: LatLngTuple = [latitude, longitude];
+        
+        setUserLocation(newLocation);
+        
+        // Center map on user location
+        if (mapRef.current) {
+          mapRef.current.setView(newLocation, 18);
+        }
+        
+        setIsLocating(false);
+      },
+      (error) => {
+        let errorMessage = "Unable to retrieve your location";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied by user";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out";
+            break;
+        }
+        setLocationError(errorMessage);
+        setIsLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutes
+      }
+    );
+  };
 
   useEffect(() => {
     const pegman = document.getElementById("pegman");
@@ -194,19 +282,26 @@ export function MapSection() {
       <CardContent className="p-0 h-full rounded-b-lg overflow-hidden relative z-0">
         <MapContainer
           center={mapCenter}
-          zoom={21}
+          zoom={18}
+          minZoom={10}
+          maxZoom={22}
           scrollWheelZoom={true}
           zoomControl={true}
+          doubleClickZoom={true}
+          touchZoom={true}
+          boxZoom={true}
+          keyboard={true}
           className="h-full w-full z-0"
           maxBounds={[
             [9.8, 123.5],
             [11.3, 124.1],
           ]}
-          maxBoundsViscosity={1.0}
+          maxBoundsViscosity={0.5}
         >
           <MapInitializer
             setMapRef={(map) => {
               (mapContainerRef as any).current._leaflet_map = map;
+              mapRef.current = map;
             }}
           />
           <TileLayer
@@ -214,7 +309,7 @@ export function MapSection() {
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           />
           {updatedBinLocations.map((bin) => (
-            <BinMarker key={bin.id} bin={bin} />
+            <DynamicBinMarker key={bin.id} bin={bin} />
           ))}
 
           {/* GPS Marker for real-time location */}
@@ -222,7 +317,77 @@ export function MapSection() {
 
           {/* GPS Tracking Line */}
           <GPSTrackingLine gpsHistory={gpsHistory} visible={showGPSTracking} />
+
+          {/* User Location Marker */}
+          {userLocation && (
+            <Marker position={userLocation} icon={createUserLocationIcon()}>
+              <Popup>
+                <div className="text-center">
+                  <div className="font-semibold text-blue-600">Your Location</div>
+                  <div className="text-sm text-gray-600">
+                    {userLocation[0].toFixed(6)}, {userLocation[1].toFixed(6)}
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          )}
         </MapContainer>
+
+        {/* Auto Find Location Button (Triangular Arrow) */}
+        <button
+          onClick={findMyLocation}
+          disabled={isLocating}
+          className={`absolute bottom-4 right-4 z-[999] bg-white hover:bg-gray-50 disabled:bg-gray-200 p-3 rounded-full shadow-lg border transition-all duration-300 ${
+            isLocating ? 'animate-pulse' : 'hover:shadow-xl'
+          }`}
+          title={isLocating ? "Finding your location..." : "Find my location"}
+        >
+          <svg
+            className={`w-6 h-6 text-blue-600 ${isLocating ? 'animate-spin' : ''}`}
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            {isLocating ? (
+              // Spinning loading icon
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            ) : (
+              // Location finder icon (crosshair with dot)
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            )}
+          </svg>
+        </button>
+
+        {/* Location Error Toast */}
+        {locationError && (
+          <div className="absolute top-4 right-4 z-[1000] bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg max-w-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">{locationError}</span>
+              <button
+                onClick={() => setLocationError(null)}
+                className="ml-2 text-white hover:text-gray-200"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Location Success Toast */}
+        {userLocation && !isLocating && (
+          <div className="absolute top-4 right-4 z-[1000] bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg max-w-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">
+                Location found: {userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}
+              </span>
+              <button
+                onClick={() => setUserLocation(null)}
+                className="ml-2 text-white hover:text-gray-200"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Pegman Icon */}
         <div
