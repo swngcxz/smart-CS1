@@ -105,20 +105,6 @@ const createDynamicIcon = (status: string, level: number, isLive: boolean, gpsVa
           z-index: 2;
         ">
           <span>${icon}</span>
-          
-          ${isLive ? `
-            <div style="
-              position: absolute;
-              top: -5px;
-              right: -5px;
-              width: 12px;
-              height: 12px;
-              background: #10B981;
-              border: 2px solid white;
-              border-radius: 50%;
-              animation: pulse-dot 1s ease-in-out infinite;
-            "></div>
-          ` : ''}
         </div>
         
         <div style="
@@ -140,26 +126,6 @@ const createDynamicIcon = (status: string, level: number, isLive: boolean, gpsVa
           ${level}%
         </div>
         
-        ${gpsValid ? `
-          <div style="
-            position: absolute;
-            top: -8px;
-            left: -8px;
-            width: 16px;
-            height: 16px;
-            background: #10B981;
-            border: 2px solid white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 8px;
-            color: white;
-            z-index: 3;
-          ">
-            📡
-          </div>
-        ` : ''}
       </div>
     `,
     className: "dynamic-bin-marker",
