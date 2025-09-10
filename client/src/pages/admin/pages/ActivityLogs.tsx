@@ -169,7 +169,7 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
               onClick={onRefresh}
               variant="outline"
               size="sm"
-              className="text-black-600 hover:text-gray-800"
+              className="text-black-600 hover:text-green-800"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
@@ -321,7 +321,7 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleSort('priority')}
-                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start "
                       >
                         Priority {getSortIcon('priority')}
                       </Button>
@@ -329,11 +329,13 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                     <TableHead className="w-[10%]">Details</TableHead>
                   </TableRow>
                 </TableHeader>
+
+
                 <TableBody>
                   {filteredAndSortedLogs.map((activity) => (
                     <TableRow 
                       key={activity.id} 
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 cursor-pointer group"
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer group"
                       title={`Click to view details for ${activity.activity_type || 'activity'}`}
                     >
                       <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
@@ -348,7 +350,7 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                       </TableCell>
                       <TableCell className="px-4 py-3">
                         <Badge 
-                          className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs px-2 py-1 transition-all duration-200 group-hover:scale-105`}
+                          className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs px-2 py-1`}
                           title={`Activity Type: ${activity.activity_type || "unknown"}`}
                         >
                           {activity.activity_type || "unknown"}
@@ -358,12 +360,12 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                         <div className="space-y-1">
                           {activity.bin_id && (
                             <div className="font-medium text-sm leading-tight" title={`Bin: ${activity.bin_id} — ${activity.bin_location || "Unknown Location"}`}>
-                              Bin: {activity.bin_id} — {activity.bin_location || "Unknown Location"}
+                            {activity.bin_id} at {activity.bin_location || "Unknown Location"}
                             </div>
                           )}
                           {activity.task_note && (
                             <div className="text-xs text-gray-600 dark:text-gray-400 italic leading-tight" title={activity.task_note}>
-                              <span className="font-medium">Note:</span> {activity.task_note}
+                              <span className="font-medium">Note: </span>{activity.task_note}
                             </div>
                           )}
                         </div>
@@ -390,7 +392,6 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                           )}
                           {activity.bin_id && (
                             <div className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
-                              <span className="font-medium">Bin:</span> {activity.bin_id}
                             </div>
                           )}
                         </div>
@@ -399,7 +400,7 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                         {activity.status && (
                           <Badge 
                             variant="outline" 
-                            className="text-xs px-2 py-1 transition-all duration-200 group-hover:scale-105"
+                            className="text-xs px-2 py-1 transition-all duration-200"
                             title={`Status: ${activity.status}`}
                           >
                             {activity.status}
@@ -410,7 +411,7 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                         {activity.priority && (
                           <Badge 
                             variant="outline" 
-                            className="text-xs px-2 py-1 transition-all duration-200 group-hover:scale-105"
+                            className="text-xs px-2 py-1 transition-all duration-200"
                             title={`Priority: ${activity.priority}`}
                           >
                             {activity.priority}
@@ -435,11 +436,6 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                             <div className="flex items-center gap-2">
                               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                               <span className="font-medium">User: {activity.user_id}</span>
-                            </div>
-                          )}
-                          {activity.task_note && (
-                            <div className="text-gray-500 italic text-xs leading-tight" title={activity.task_note}>
-                              <span className="font-medium">Note:</span> {activity.task_note}
                             </div>
                           )}
                         </div>

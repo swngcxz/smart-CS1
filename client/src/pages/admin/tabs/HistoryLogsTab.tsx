@@ -81,7 +81,7 @@ export const HistoryLogsTab = () => {
     const colors = {
       admin: "bg-purple-100 text-purple-800",
       staff: "bg-blue-100 text-blue-800",
-      user: "bg-gray-100 text-gray-800",
+      janitor: "bg-green-100 text-green-800",
     };
     return <Badge className={colors[role.toLowerCase() as keyof typeof colors] || "bg-gray-100 text-gray-800"}>{role}</Badge>;
   };
@@ -287,7 +287,7 @@ return (
                   <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="user">Janitor</SelectItem>
                 </SelectContent>
               </Select>
             </div>
