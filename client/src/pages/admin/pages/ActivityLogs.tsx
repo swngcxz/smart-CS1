@@ -159,28 +159,26 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between mb-4">
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-            All Activity Logs
-            <Badge variant="secondary" className="ml-2">
-              {filteredAndSortedLogs.length} of {totalCount}
-            </Badge>
+            Activity Logs
           </CardTitle>
-          <Button
-                onClick={onRefresh}
-            variant="outline"
-            size="sm"
-            className="text-gray-600 hover:text-gray-800"
-              >
-            <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-          </Button>
+          <div className="flex items-center ml-auto space-x-2">
+            <Badge variant="secondary">
+              {filteredAndSortedLogs.length} of {totalCount} Logs
+            </Badge>
+            <Button
+              onClick={onRefresh}
+              variant="outline"
+              size="sm"
+              className="text-black-600 hover:text-gray-800"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+
         </div>
 
-        {/* Filters Section */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <Filter className="w-4 h-4" />
-            Activity Filters
-          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Search */}
