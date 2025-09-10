@@ -232,9 +232,9 @@ export function StaffActivityTab() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Activity Overview</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Activity Overview</h2>
         <div className="flex gap-2">
           <Button
             onClick={handleRefresh}
@@ -250,7 +250,7 @@ export function StaffActivityTab() {
       </div>
 
       {/* Stats Cards - Top Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-0">
         {generateStats.map((stat, index) => {
           const IconComponent = stat.icon;
           return (
@@ -275,9 +275,9 @@ export function StaffActivityTab() {
       </div>
 
       {/* Filters and Recent Activity Summary - Middle Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
         {/* Activity Filters */}
-        <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+        {/* <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
               Activity Filters
@@ -336,10 +336,10 @@ export function StaffActivityTab() {
               Apply Filters
             </Button>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Recent Activity Summary */}
-        <div className="lg:col-span-2">
+        {/* <div className="lg:col-span-2">
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
@@ -379,35 +379,30 @@ export function StaffActivityTab() {
                     className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
                   >
                     <div className="grid grid-cols-12 gap-4 items-start">
-                      {/* Date & Time - 2 columns */}
                       <div className="col-span-2">
                         <div className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-600 text-center">
                           {formatTimestamp(activity.timestamp)}
                         </div>
                       </div>
                       
-                      {/* Activity Type - 2 columns */}
                       <div className="col-span-2">
                         <Badge className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs w-full justify-center`}>
                           {activity.activity_type?.replace('_', ' ') || "unknown"}
                         </Badge>
                       </div>
                       
-                      {/* Status - 1 column */}
                       <div className="col-span-1">
                         <Badge className={`${getStatusColor(activity.status)} text-xs w-full justify-center`}>
                           {activity.display_status || activity.status || "Pending"}
                         </Badge>
                       </div>
                       
-                      {/* Priority - 1 column */}
                       <div className="col-span-1">
                         <Badge className={`${getPriorityColor(activity.priority)} text-xs w-full justify-center`}>
                           {activity.display_priority || activity.priority || "Low"}
                         </Badge>
                       </div>
                       
-                      {/* Description - 4 columns */}
                       <div className="col-span-4">
                         <p className="text-sm text-gray-800 dark:text-white font-medium mb-1">
                           {formatActivityDescription(activity)}
@@ -436,7 +431,6 @@ export function StaffActivityTab() {
                         </div>
                       </div>
                       
-                      {/* Details - 2 columns */}
                       <div className="col-span-2">
                         <div className="text-xs text-gray-600 dark:text-gray-400">
                           {activity.task_note && (
@@ -457,13 +451,14 @@ export function StaffActivityTab() {
               )}
             </CardContent>
           </Card>
-        </div>
+        </div> */}
       </div>
 
       {/* Full Activity Table - Bottom Section */}
-      <div className="space-y-0">
-        <StaffActivityLogs />
-      </div>
+   <div className="space-y-5">
+      <StaffActivityLogs /> 
+    </div>
+
     </div>
   );
 }

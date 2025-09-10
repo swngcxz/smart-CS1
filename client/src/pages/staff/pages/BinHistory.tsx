@@ -214,8 +214,7 @@ export function BinHistory() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Bin History</h1>
-          <p className="text-gray-600 mt-1">Monitor all bin activity and sensor data</p>
+          <h1 className="text-2xl font-bold text-gray-900">Bin History</h1>
         </div>
         <Button onClick={exportToCSV} className="flex items-center gap-2">
           <Download className="w-4 h-4" />

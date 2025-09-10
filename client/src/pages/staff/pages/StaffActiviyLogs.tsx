@@ -195,7 +195,7 @@ export function StaffActivityLogs() {
   return (
     <ErrorBoundary>
       <Card className="bg-white dark:bg-gray-800 border-0 shadow-lg">
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-6 space-y-4">
         <div className="flex items-center justify-between mb-4">
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
            Activity Logs
@@ -338,7 +338,7 @@ export function StaffActivityLogs() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleSort('activity_type')}
-                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start"
                       >
                         Activity Type {getSortIcon('activity_type')}
                       </Button>
@@ -388,7 +388,7 @@ export function StaffActivityLogs() {
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <Badge 
-                        className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs px-2 py-1 transition-all duration-200 group-hover:scale-105`}
+                        className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs px-2 `}
                         title={`Activity Type: ${activity.activity_type?.replace('_', ' ') || "unknown"}`}
                       >
                         {activity.activity_type?.replace('_', ' ') || "unknown"}
@@ -431,7 +431,7 @@ export function StaffActivityLogs() {
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <Badge 
-                        className={`${getStatusColor(activity.status)} text-xs px-2 py-1 transition-all duration-200 group-hover:scale-105`}
+                        className={`${getStatusColor(activity.status)} text-xs px-2 py-1 `}
                         title={`Status: ${activity.display_status || activity.status || "Pending"}`}
                       >
                         {activity.display_status || activity.status || "Pending"}
@@ -439,7 +439,7 @@ export function StaffActivityLogs() {
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <Badge 
-                        className={`${getPriorityColor(activity.priority)} text-xs px-2 py-1 transition-all duration-200 group-hover:scale-105`}
+                        className={`${getPriorityColor(activity.priority)} text-xs px-2 py-1 `}
                         title={`Priority: ${activity.display_priority || activity.priority || "Low"}`}
                       >
                         {activity.display_priority || activity.priority || "Low"}
