@@ -9,16 +9,93 @@ import { useRealTimeData } from "../../hooks/useRealTimeData";
 export default function LocationBinsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { binLocations, loading, error } = useRealTimeData();
+  const { binLocations, wasteBins, loading, error } = useRealTimeData();
 
-  // Optionally filter bins by location if needed
-  const bins = id
-    ? (binLocations || []).filter(
+  // Get bins based on location
+  const getBinsForLocation = () => {
+    if (id === "central-plaza") {
+      // Central Plaza: 1 real-time bin + 3 static bins
+      const realTimeBins = wasteBins.filter((bin) => 
+        bin.location && bin.location.toLowerCase().includes("central")
+      );
+      
+      const staticBins = [
+        {
+          id: "central-static-1",
+          name: "Central Plaza Bin 2",
+          level: 45,
+          status: "normal" as const,
+          lastCollection: "2 hours ago",
+          route: "Route A - Central",
+          gps_valid: false,
+          satellites: 0,
+          weight_kg: 2.1,
+          distance_cm: 45,
+          position: [14.5995, 120.9842] as [number, number],
+          capacity: "100",
+          location: "Central Plaza"
+        },
+        {
+          id: "central-static-2", 
+          name: "Central Plaza Bin 3",
+          level: 78,
+          status: "warning" as const,
+          lastCollection: "1 hour ago",
+          route: "Route A - Central",
+          gps_valid: false,
+          satellites: 0,
+          weight_kg: 3.8,
+          distance_cm: 22,
+          position: [14.5996, 120.9843] as [number, number],
+          capacity: "100",
+          location: "Central Plaza"
+        },
+        {
+          id: "central-static-3",
+          name: "Central Plaza Bin 4", 
+          level: 32,
+          status: "normal" as const,
+          lastCollection: "3 hours ago",
+          route: "Route A - Central",
+          gps_valid: false,
+          satellites: 0,
+          weight_kg: 1.2,
+          distance_cm: 68,
+          position: [14.5997, 120.9844] as [number, number],
+          capacity: "100",
+          location: "Central Plaza"
+        }
+      ];
+
+      // Convert real-time bins to the expected format
+      const realTimeFormatted = realTimeBins.map((bin, index) => ({
+        id: bin.id,
+        name: `Central Plaza Bin ${index + 1} (Real-time)`,
+        level: bin.level,
+        status: bin.status,
+        lastCollection: bin.lastCollected,
+        route: "Route A - Central",
+        gps_valid: bin.binData?.gps_valid || false,
+        satellites: bin.binData?.satellites || 0,
+        weight_kg: bin.binData?.weight_kg || 0,
+        distance_cm: bin.binData?.distance_cm || 0,
+        position: bin.binData ? [bin.binData.latitude, bin.binData.longitude] as [number, number] : [14.5995, 120.9842] as [number, number],
+        capacity: bin.capacity || "100",
+        location: bin.location || "Central Plaza"
+      }));
+
+      return [...realTimeFormatted, ...staticBins];
+    } else {
+      // Other locations: use existing logic
+      return (binLocations || []).filter(
         (b) =>
           b.route &&
           b.route.toLowerCase().replace(/ /g, "-") === id
-      )
-    : (binLocations || []);
+      );
+    }
+  };
+
+  const bins = getBinsForLocation();
 
   const getStatusColor = (val: number) => {
     if (val >= 90) return "#f44336"; // red
@@ -72,7 +149,14 @@ export default function LocationBinsScreen() {
             >
               {/* Title row with badge */}
               <View style={styles.topRow}>
-                <Text style={styles.cardTitle}>{bin.name}</Text>
+                <View style={styles.binTitleContainer}>
+                  <Text style={styles.cardTitle}>{bin.name}</Text>
+                  {bin.name.includes("Real-time") && (
+                    <View style={styles.realTimeBadge}>
+                      <Text style={styles.realTimeText}>LIVE</Text>
+                    </View>
+                  )}
+                </View>
                 <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
                   <Text style={styles.badgeText}>{statusLabel}</Text>
                 </View>
@@ -84,10 +168,10 @@ export default function LocationBinsScreen() {
 
               {/* Details */}
               <View style={styles.row}>
-                <Text style={styles.info}>Capacity: {bin.capacity} L</Text>
-                <Text style={styles.info}>Last Collected: {bin.lastCollected}</Text>
+                <Text style={styles.info}>Capacity: {(bin as any).capacity || '100'} L</Text>
+                <Text style={styles.info}>Last Collected: {bin.lastCollection}</Text>
               </View>
-              <Text style={styles.info}>Area: {bin.location}</Text>
+              <Text style={styles.info}>Area: {(bin as any).location || bin.route}</Text>
             </TouchableOpacity>
           );
         })
@@ -115,7 +199,19 @@ const styles = StyleSheet.create({
     borderColor: "#ddd",
   },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cardTitle: { fontSize: 18, fontWeight: "700", color: "#333" },
+  binTitleContainer: { flexDirection: "row", alignItems: "center", flex: 1 },
+  cardTitle: { fontSize: 18, fontWeight: "700", color: "#333", marginRight: 8 },
+  realTimeBadge: { 
+    backgroundColor: "#00ff00", 
+    paddingHorizontal: 6, 
+    paddingVertical: 2, 
+    borderRadius: 4 
+  },
+  realTimeText: { 
+    fontSize: 10, 
+    color: "#000", 
+    fontWeight: "bold" 
+  },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   badgeText: { fontSize: 12, color: "#fff", fontWeight: "bold", textTransform: "capitalize" },
 

@@ -4,11 +4,45 @@ import { LogOut } from "lucide-react";
 import { NotificationPopover } from "@/components/modal/NotificationPopover";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNotifications } from "@/hooks/useNotifications";
+import api from "@/lib/api";
 
 export function StaffDashboardHeader() {
   const [open, setOpen] = useState(false);
   const { logout, loading } = useAuth();
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+  const [userLoading, setUserLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await api.get("/auth/me");
+        if (mounted) {
+          setCurrentUser({ id: res.data.id, role: res.data.role });
+        }
+      } catch (_) {
+        if (mounted) setCurrentUser(null);
+      } finally {
+        if (mounted) setUserLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Get notifications for staff users
+  const notificationBucket = currentUser?.role === "admin" ? "admin" : currentUser?.id || "none";
+  const { notifications } = useNotifications(notificationBucket);
+  const backendNotifications = Array.isArray(notifications) ? notifications : [];
+  
+  // Filter for bin collection completed notifications and activity logs with done status
+  const binCollectionNotifications = backendNotifications.filter(
+    (n) => (n.type === 'bin_collection_completed' || n.type === 'activity_completed') && !n.read
+  );
+  const unreadBinCollectionCount = binCollectionNotifications.length;
 
   const handleConfirmLogout = async () => {
     setOpen(false);
@@ -26,7 +60,14 @@ export function StaffDashboardHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-          <NotificationPopover />
+          <div className="relative">
+            <NotificationPopover />
+            {unreadBinCollectionCount > 0 && (
+              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                {unreadBinCollectionCount}
+              </div>
+            )}
+          </div>
 
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>

@@ -3,15 +3,18 @@ import React from "react";
 import Header from "@/components/Header";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
 
 import { useRealTimeData } from "../../hooks/useRealTimeData";
 import { ProgressBar } from "react-native-paper";
 import { useRouter } from "expo-router";
 import axiosInstance from "../../utils/axiosInstance";
+import { useAccount } from "../../hooks/useAccount";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { wasteBins, loading, error, isGPSValid } = useRealTimeData();
+  const { account } = useAccount();
 
   // Static locations (except Central Plaza, which is real-time)
   const staticLocations = [
@@ -21,28 +24,63 @@ export default function HomeScreen() {
     { id: "residential-area", name: "Residential Area", bins: [45, 60, 50, 70], lastCollected: "6 hours ago" },
   ];
 
-  // Central Plaza real-time - with proper null checks
-  const centralPlazaBins = wasteBins.filter((bin) => 
+  // Central Plaza - 1 real-time bin + 3 static bins
+  const centralPlazaRealTimeBins = wasteBins.filter((bin) => 
     bin.location && bin.location.toLowerCase().includes("central")
   );
-  const centralPlazaLevels = centralPlazaBins.map((bin) => bin.level);
+  
+  // Static bins for Central Plaza (3 additional bins)
+  const centralPlazaStaticBins = [
+    { level: 45, lastCollected: "2 hours ago", id: "central-static-1" },
+    { level: 78, lastCollected: "1 hour ago", id: "central-static-2" },
+    { level: 32, lastCollected: "3 hours ago", id: "central-static-3" }
+  ];
+  
+  // Combine real-time and static bins
+  const allCentralPlazaBins = [
+    ...centralPlazaRealTimeBins,
+    ...centralPlazaStaticBins
+  ];
+  
+  const centralPlazaLevels = allCentralPlazaBins.map((bin) => bin.level);
   const centralPlazaAvg = centralPlazaLevels.length > 0 ? centralPlazaLevels.reduce((s, v) => s + v, 0) / centralPlazaLevels.length : 0;
   const centralPlazaNearlyFull = centralPlazaLevels.filter((v) => v >= 80).length;
-  const centralPlazaLastCollected = centralPlazaBins.length > 0 ? centralPlazaBins[0].lastCollected : "Unknown";
+  const centralPlazaLastCollected = allCentralPlazaBins.length > 0 ? allCentralPlazaBins[0].lastCollected : "Unknown";
 
   // Activity logs from backend
   const [logs, setLogs] = useState<any[]>([]);
   useEffect(() => {
-    const janitorId = "Ogf04pQwTMAChaFm0Af8"; // Replace with dynamic user id if needed
-    axiosInstance
-      .get(`/api/activitylogs/assigned/${janitorId}`)
-      .then((res) => {
-        setLogs(res.data.activities || []);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch activity logs", err);
-      });
-  }, []);
+    const fetchActivityLogs = async () => {
+      if (!account?.id) return;
+
+      try {
+        console.log('📱 Mobile App - Fetching activity logs for user:', account.email, 'ID:', account.id);
+        
+        // Try multiple endpoints to get user's activity logs
+        let response;
+        try {
+          // First try: Get logs assigned to this user (as janitor)
+          response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
+          console.log('📱 Mobile App - Got assigned logs:', response.data);
+        } catch (assignedErr) {
+          console.log('📱 Mobile App - No assigned logs, trying user logs...');
+          // Second try: Get logs created by this user
+          response = await axiosInstance.get(`/api/activitylogs/${account.id}`);
+          console.log('📱 Mobile App - Got user logs:', response.data);
+        }
+
+        const activities = response.data.activities || response.data.activities || [];
+        setLogs(activities);
+        
+        console.log(`📱 Mobile App - Found ${activities.length} activity logs for ${account.email}`);
+      } catch (err: any) {
+        console.error("📱 Mobile App - Failed to fetch activity logs:", err);
+        setLogs([]);
+      }
+    };
+
+    fetchActivityLogs();
+  }, [account?.id, account?.email]);
 
   // Map backend fields to UI-expected fields
   const mappedLogs = logs.map((log) => ({
@@ -71,6 +109,34 @@ export default function HomeScreen() {
       case "emptied": return styles.badgeEmptied;
       case "error": return styles.badgeError;
       default: return styles.badgeDefault;
+    }
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case "done":
+        return styles.statusDone;
+      case "in_progress":
+        return styles.statusInProgress;
+      case "cancelled":
+        return styles.statusCancelled;
+      case "pending":
+      default:
+        return styles.statusPending;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "done":
+        return "checkmark-circle";
+      case "in_progress":
+        return "time";
+      case "cancelled":
+        return "close-circle";
+      case "pending":
+      default:
+        return "hourglass";
     }
   };
 
@@ -171,13 +237,41 @@ export default function HomeScreen() {
           }
         >
           <View style={styles.logCard}>
-            <View style={styles.logTextContainer}>
-              <Text style={styles.logMessage}>{log.message}</Text>
-              <Text style={styles.logTime}>{log.date} – {log.time}</Text>
-              <Text style={styles.logSubtext}>📍 Bin {log.bin} – {log.location}</Text>
+            {/* Title row with status and type badges */}
+            <View style={styles.logTitleRow}>
+              <Text style={styles.logTitle}>{`Bin ${log.bin}`}</Text>
+              <View style={{ flex: 1 }} />
+              <View style={styles.badgeContainer}>
+                <View style={[styles.statusBadge, getStatusBadgeStyle(log.status)]}>
+                  <Ionicons 
+                    name={getStatusIcon(log.status) as any} 
+                    size={12} 
+                    color="#fff" 
+                    style={styles.statusIcon}
+                  />
+                  <Text style={styles.statusText}>{log.status.toUpperCase()}</Text>
+                </View>
+                <View style={[styles.typeBadge, getBadgeStyle(log.type)]}>
+                  <Text style={styles.badgeText}>{String(log.type)}</Text>
+                </View>
+              </View>
             </View>
-            <View style={[styles.typeBadge, getBadgeStyle(log.type)]}>
-              <Text style={styles.badgeText}>{log.type.toUpperCase()}</Text>
+
+            {/* Message */}
+            <View style={styles.logMsgRow}>
+              <Text style={styles.logMessage}>{String(log.message)}</Text>
+            </View>
+
+            {/* Location and Time details */}
+            <View style={styles.logDetailsRow}>
+              <View style={styles.detailItem}>
+                <Ionicons name="location-outline" size={14} color="#666" />
+                <Text style={styles.logSubtext}>{log.location || "Unknown Location"}</Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Ionicons name="time-outline" size={14} color="#666" />
+                <Text style={styles.logTime}>{`${log.date} ${log.time}`}</Text>
+              </View>
             </View>
           </View>
         </TouchableOpacity>
@@ -194,10 +288,7 @@ const styles = StyleSheet.create({
   // Location cards
   locationCard: { backgroundColor: "#fafafa", borderRadius: 12, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#ddd", elevation: 2 },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  badgeContainer: { flexDirection: "row", gap: 8 },
   locationName: { fontSize: 16, fontWeight: "600", color: "#333" },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  badgeText: { fontSize: 12, color: "#fff", fontWeight: "bold", textTransform: "capitalize" },
   percentText: { fontSize: 22, fontWeight: "700", color: "#000", marginTop: 8 },
   progress: { height: 6, borderRadius: 6, marginVertical: 6 },
   subText: { fontSize: 12, color: "#555" },
@@ -205,11 +296,49 @@ const styles = StyleSheet.create({
   // Logs
   activityHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, marginTop: 20 },
   seeAllText: { color: "#2e7d32", fontWeight: "500", fontSize: 13, marginTop: 2 },
-  logCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 10, padding: 14, marginBottom: 12, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#ddd" },
-  logTextContainer: { flex: 1, paddingRight: 10 },
-  logMessage: { fontSize: 14, fontWeight: "600", color: "#333" },
-  logTime: { fontSize: 12, color: "#777", marginTop: 4 },
-  logSubtext: { fontSize: 13, color: "#555", marginTop: 4 },
+  logCard: { 
+    flexDirection: "column", 
+    borderRadius: 10, 
+    padding: 14, 
+    marginBottom: 12, 
+    backgroundColor: "#fafafa", 
+    borderWidth: 1, 
+    borderColor: "#ddd" 
+  },
+  logTitleRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    marginBottom: 8 
+  },
+  logTitle: { 
+    fontSize: 16, 
+    fontWeight: "bold", 
+    color: "#333", 
+    marginBottom: 2 
+  },
+  logMsgRow: { 
+    marginBottom: 8 
+  },
+  logMessage: { 
+    fontSize: 15, 
+    fontWeight: "600", 
+    color: "#333" 
+  },
+  logLocTimeRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    marginBottom: 2 
+  },
+  logTime: { 
+    fontSize: 12, 
+    color: "#777", 
+    marginTop: 4 
+  },
+  logSubtext: { 
+    fontSize: 13, 
+    color: "#555", 
+    marginTop: 4 
+  },
 
   // Badges
   typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: "center" },
@@ -218,6 +347,57 @@ const styles = StyleSheet.create({
   badgeEmptied: { backgroundColor: "#81c784" },
   badgeError: { backgroundColor: "#f44336" },
   badgeDefault: { backgroundColor: "#9e9e9e" },
+  badgeText: { fontSize: 11, fontWeight: "bold", color: "#fff", textTransform: "uppercase" },
+
+  // Badge container
+  badgeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  // Status indicator styles
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  statusIcon: {
+    marginRight: 3,
+  },
+  statusText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  statusDone: {
+    backgroundColor: '#4CAF50',
+  },
+  statusInProgress: {
+    backgroundColor: '#FF9800',
+  },
+  statusCancelled: {
+    backgroundColor: '#F44336',
+  },
+  statusPending: {
+    backgroundColor: '#9E9E9E',
+  },
+
+  // Details row styles
+  logDetailsRow: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    marginBottom: 8,
+    paddingVertical: 4,
+  },
+  detailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+
   // GPS Status styles
   gpsStatusContainer: {
     backgroundColor: '#fef3c7',
