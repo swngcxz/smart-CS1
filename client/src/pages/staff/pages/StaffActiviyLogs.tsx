@@ -63,7 +63,7 @@ export function StaffActivityLogs() {
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case "low":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "medium":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "high":
@@ -424,7 +424,7 @@ export function StaffActivityLogs() {
                         )}
                         {activity.bin_id && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
-                            <span className="font-medium">Bin:</span> {activity.bin_id}
+                            {/* <span className="font-medium"></span> {activity.bin_id} */}
                           </div>
                         )}
                       </div>
@@ -464,11 +464,7 @@ export function StaffActivityLogs() {
                             <span className="font-medium">Note:</span> {activity.status_notes}
                           </div>
                         )}
-                        {activity.task_note && (
-                          <div className="text-gray-500 italic text-xs leading-tight" title={activity.task_note}>
-                            <span className="font-medium">Task:</span> {activity.task_note}
-                          </div>
-                        )}
+
                       </div>
                     </TableCell>
                   </TableRow>

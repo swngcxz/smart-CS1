@@ -139,8 +139,7 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
           <TableHead>Route</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Last Activity</TableHead>
-          <TableHead>Source</TableHead>
-          <TableHead></TableHead>
+          <TableHead>Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -186,14 +185,14 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
               </Badge>
             </TableCell>
             <TableCell className="text-gray-500">{staff.lastActivity || ""}</TableCell>
-            <TableCell>
+            {/* <TableCell>
               <Badge 
                 variant="outline" 
                 className={staff.source === 'staff' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}
               >
                 {staff.source || 'Unknown'}
               </Badge>
-            </TableCell>
+            </TableCell> */}
             <TableCell>
               <button
                 onClick={(e) => { e.stopPropagation(); handleDeleteStaff(staff.id); }}
