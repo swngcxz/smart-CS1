@@ -39,7 +39,7 @@ export const HistoryLogsTab = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<keyof LoginHistoryLog>("loginTime");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const itemsPerPage = 5;
+  const itemsPerPage = 12;
 
   // Fetch login history from API
   const fetchLoginHistory = async () => {
@@ -53,9 +53,9 @@ export const HistoryLogsTab = () => {
       
       const loginLogs = response.data.logs || response.data;
       setLogs(loginLogs);
-      console.log(`✅ Loaded ${loginLogs.length} login history records`);
+      console.log(`Loaded ${loginLogs.length} login history records`);
     } catch (err: any) {
-      console.error("❌ Error fetching login history:", err);
+      console.error("Error fetching login history:", err);
       setError(err?.response?.data?.error || err?.message || "Failed to load login history");
     } finally {
       setLoading(false);
@@ -179,49 +179,51 @@ return (
     </h2>
 
     {/* Stats Grid */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-      {/* Active Sessions */}
-      <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
-        <CardHeader className="flex flex-col space-y-1 pb-2">
-          <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-            Active Sessions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {activeSessions}
-          </div>
-        </CardContent>
-      </Card>
+ {/* History Logs Summary Cards */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+  {/* Active History Logs */}
+  <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        Active History Logs
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+        {activeSessions}
+      </div>
+    </CardContent>
+  </Card>
 
-      {/* Completed Sessions */}
-      <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-            Completed Sessions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-            {completedSessions}
-          </div>
-        </CardContent>
-      </Card>
+  {/* Total History Logs */}
+  <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        Total History Logs
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+        {logs.length}
+      </div>
+    </CardContent>
+  </Card>
 
-      {/* Avg Session Duration */}
-      <Card className="transition-all hover:shadow-md sm:col-span-2 lg:col-span-1 dark:bg-gray-900 dark:border-gray-700">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-            Avg Session Duration
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">
-            {formatDuration(Math.round(averageSessionDuration))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+  {/* Avg Session Duration */}
+  <Card className="transition-all hover:shadow-md sm:col-span-2 lg:col-span-1 dark:bg-gray-900 dark:border-gray-700">
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        Avg Session Duration
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-gray-900 dark:text-white">
+        {formatDuration(Math.round(averageSessionDuration))}
+      </div>
+    </CardContent>
+  </Card>
+</div>
+
 
 
       {/* Filters and Search - Responsive Layout */}
