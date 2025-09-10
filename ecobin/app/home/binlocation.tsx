@@ -9,16 +9,16 @@ import { useRealTimeData } from "../../hooks/useRealTimeData";
 export default function LocationBinsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { wasteBins, loading, error } = useRealTimeData();
+  const { binLocations, loading, error } = useRealTimeData();
 
   // Optionally filter bins by location if needed
   const bins = id
-    ? wasteBins.filter(
+    ? (binLocations || []).filter(
         (b) =>
-          b.location &&
-          b.location.toLowerCase().replace(/ /g, "-") === id
+          b.route &&
+          b.route.toLowerCase().replace(/ /g, "-") === id
       )
-    : wasteBins;
+    : (binLocations || []);
 
   const getStatusColor = (val: number) => {
     if (val >= 90) return "#f44336"; // red
@@ -51,16 +51,20 @@ export default function LocationBinsScreen() {
                   pathname: "/home/bin-details",
                   params: {
                     binId: bin.id,
-                    location: bin.location,
-                    area: bin.location,
-                    capacity: String(bin.capacity),
-                    lastCollected: bin.lastCollected,
+                    binName: bin.name,
+                    binLevel: String(bin.level),
+                    binStatus: bin.status,
+                    binRoute: bin.route,
+                    location: bin.route,
+                    area: bin.route,
+                    capacity: "100", // Default capacity
+                    lastCollected: bin.lastCollection,
                     level: String(bin.level),
-                    latitude: String(bin.binData?.latitude ?? ""),
-                    longitude: String(bin.binData?.longitude ?? ""),
+                    latitude: String(bin.position[0]),
+                    longitude: String(bin.position[1]),
                     logs: JSON.stringify([
-                      `Bin ${bin.id} was last collected ${bin.lastCollected}`,
-                      `Inspection done at ${bin.location}`,
+                      `Bin ${bin.name} was last collected ${bin.lastCollection}`,
+                      `Inspection done at ${bin.route}`,
                     ]),
                   },
                 })
@@ -68,7 +72,7 @@ export default function LocationBinsScreen() {
             >
               {/* Title row with badge */}
               <View style={styles.topRow}>
-                <Text style={styles.cardTitle}>{bin.location}</Text>
+                <Text style={styles.cardTitle}>{bin.name}</Text>
                 <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
                   <Text style={styles.badgeText}>{statusLabel}</Text>
                 </View>

@@ -11,7 +11,7 @@ import axiosInstance from "../../utils/axiosInstance";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { wasteBins, loading } = useRealTimeData();
+  const { wasteBins, loading, error, isGPSValid } = useRealTimeData();
 
   // Static locations (except Central Plaza, which is real-time)
   const staticLocations = [
@@ -21,8 +21,10 @@ export default function HomeScreen() {
     { id: "residential-area", name: "Residential Area", bins: [45, 60, 50, 70], lastCollected: "6 hours ago" },
   ];
 
-  // Central Plaza real-time
-  const centralPlazaBins = wasteBins.filter((bin) => bin.location.toLowerCase() === "central plaza");
+  // Central Plaza real-time - with proper null checks
+  const centralPlazaBins = wasteBins.filter((bin) => 
+    bin.location && bin.location.toLowerCase().includes("central")
+  );
   const centralPlazaLevels = centralPlazaBins.map((bin) => bin.level);
   const centralPlazaAvg = centralPlazaLevels.length > 0 ? centralPlazaLevels.reduce((s, v) => s + v, 0) / centralPlazaLevels.length : 0;
   const centralPlazaNearlyFull = centralPlazaLevels.filter((v) => v >= 80).length;
@@ -75,6 +77,17 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
       <View style={styles.header}><Header /></View>
+      
+      {/* GPS Status Indicator */}
+      {!isGPSValid() && (
+        <View style={styles.gpsStatusContainer}>
+          <Text style={styles.gpsStatusText}>🛰️ GPS Not Connected</Text>
+          <Text style={styles.gpsStatusSubText}>
+            Real-time bin locations will appear when GPS is available
+          </Text>
+        </View>
+      )}
+      
       <Text style={styles.sectionTitle}>Bin Locations</Text>
       {/* Central Plaza (real-time) */}
       <TouchableOpacity
@@ -89,10 +102,17 @@ export default function HomeScreen() {
       >
         <View style={styles.topRow}>
           <Text style={styles.locationName}>Central Plaza</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(centralPlazaAvg) }]}> 
-            <Text style={styles.badgeText}>
-              {centralPlazaAvg >= 90 ? "critical" : centralPlazaAvg >= 60 ? "warning" : "normal"}
-            </Text>
+          <View style={styles.badgeContainer}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(centralPlazaAvg) }]}> 
+              <Text style={styles.badgeText}>
+                {centralPlazaAvg >= 90 ? "critical" : centralPlazaAvg >= 60 ? "warning" : "normal"}
+              </Text>
+            </View>
+            {!isGPSValid() && (
+              <View style={[styles.statusBadge, { backgroundColor: "#f44336" }]}>
+                <Text style={styles.badgeText}>GPS Offline</Text>
+              </View>
+            )}
           </View>
         </View>
         <Text style={styles.percentText}>{Math.round(centralPlazaAvg)}%</Text>
@@ -174,6 +194,7 @@ const styles = StyleSheet.create({
   // Location cards
   locationCard: { backgroundColor: "#fafafa", borderRadius: 12, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#ddd", elevation: 2 },
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  badgeContainer: { flexDirection: "row", gap: 8 },
   locationName: { fontSize: 16, fontWeight: "600", color: "#333" },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   badgeText: { fontSize: 12, color: "#fff", fontWeight: "bold", textTransform: "capitalize" },
@@ -197,4 +218,25 @@ const styles = StyleSheet.create({
   badgeEmptied: { backgroundColor: "#81c784" },
   badgeError: { backgroundColor: "#f44336" },
   badgeDefault: { backgroundColor: "#9e9e9e" },
+  // GPS Status styles
+  gpsStatusContainer: {
+    backgroundColor: '#fef3c7',
+    borderColor: '#f59e0b',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    margin: 16,
+    marginBottom: 8,
+  },
+  gpsStatusText: {
+    color: '#d97706',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  gpsStatusSubText: {
+    color: '#92400e',
+    fontSize: 12,
+    lineHeight: 16,
+  },
 });

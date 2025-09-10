@@ -6,19 +6,37 @@ import { useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { ProgressBar } from "react-native-paper";
 import { useRealTimeData } from "../../hooks/useRealTimeData";
 
-
 export default function BinDetailScreen() {
-  const params = useLocalSearchParams<{ binId: string }>();
+  const params = useLocalSearchParams<{ 
+    binId: string; 
+    binName?: string; 
+    binLevel?: string; 
+    binStatus?: string; 
+    binRoute?: string; 
+  }>();
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [images, setImages] = useState<string[]>([]);
-  const { wasteBins, loading, error } = useRealTimeData();
+  const { binLocations, loading, error } = useRealTimeData();
 
-  // Find the bin by binId param
-  const bin = wasteBins.find((b) => b.id === params.binId);
+  // Find the bin by binId param or use passed parameters
+  const bin = (binLocations || []).find((b) => b.id === params.binId);
+  
+  // Create bin data from params if not found in real-time data
+  const binData = bin || {
+    id: params.binId,
+    name: params.binName || 'Unknown Bin',
+    position: [10.2098, 123.758] as [number, number],
+    level: parseFloat(params.binLevel || '0'),
+    status: (params.binStatus as 'normal' | 'warning' | 'critical') || 'normal',
+    route: params.binRoute || 'Unknown Route',
+    lastCollection: new Date().toISOString(),
+    gps_valid: true,
+    satellites: 0
+  };
 
   const getStatusColor = (val: number) => {
     if (val >= 90) return "#f44336"; // red
@@ -45,55 +63,51 @@ export default function BinDetailScreen() {
       </View>
     );
   }
-  if (!bin) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <BackButton />
-        <Text>No data found for this bin.</Text>
-      </View>
-    );
-  }
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <BackButton />
-      <Text style={styles.sectionTitle}>Bin {bin.id} Location </Text>
+      <Text style={styles.sectionTitle}>{binData.name} Location</Text>
 
       <MapView
         style={styles.map}
+        provider={PROVIDER_GOOGLE}
         initialRegion={{
-          latitude: bin.binData?.latitude || 0,
-          longitude: bin.binData?.longitude || 0,
+          latitude: binData.position[0],
+          longitude: binData.position[1],
           latitudeDelta: 0.0008,
           longitudeDelta: 0.0008,
         }}
-        mapType="satellite"
+        mapType="hybrid"
         showsBuildings={true}
-        showsCompass={false}
-        showsScale={false}
+        showsCompass={true}
+        showsScale={true}
       >
-        <Marker coordinate={{ latitude: bin.binData?.latitude || 0, longitude: bin.binData?.longitude || 0 }}>
-          <View style={[styles.marker, { backgroundColor: getStatusColor(bin.level) }]}>
-            <Text style={styles.markerText}>{bin.level}%</Text>
+        <Marker coordinate={{ 
+          latitude: binData.position[0], 
+          longitude: binData.position[1] 
+        }}>
+          <View style={[styles.marker, { backgroundColor: getStatusColor(binData.level) }]}>
+            <Text style={styles.markerText}>{binData.level}%</Text>
           </View>
         </Marker>
       </MapView>
 
       <View style={styles.detailsHeader}>
-        <Text style={styles.title}>Details for {bin.id}</Text>
+        <Text style={styles.title}>Details for {binData.name}</Text>
         <TouchableOpacity onPress={() => setHistoryModalVisible(true)}>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.text}>Area: {bin.location}</Text>
-      <Text style={styles.text}>Capacity: {bin.capacity} L</Text>
-      <Text style={styles.text}>Current Level: {bin.level}%</Text>
+      <Text style={styles.text}>Route: {binData.route}</Text>
+      <Text style={styles.text}>GPS Status: {binData.gps_valid ? 'Valid' : 'Invalid'} ({binData.satellites} satellites)</Text>
+      <Text style={styles.text}>Current Level: {binData.level}%</Text>
       <ProgressBar
-        progress={bin.level / 100}
-        color={getStatusColor(bin.level)}
+        progress={binData.level / 100}
+        color={getStatusColor(binData.level)}
         style={{ height: 10, borderRadius: 5, marginBottom: 15 }}
       />
-      <Text style={styles.text}>Last Collected: {bin.lastCollected}</Text>
-      <Text style={[styles.text, styles.status]}>Status: {bin.status}</Text>
+      <Text style={styles.text}>Last Update: {new Date(binData.lastCollection).toLocaleString()}</Text>
+      <Text style={[styles.text, styles.status]}>Status: {binData.status.toUpperCase()}</Text>
 
       <Text style={styles.sectionTitle}>Proof of Pickup</Text>
       <View style={styles.imageContainer}>
