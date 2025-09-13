@@ -231,7 +231,7 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Total Records</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalRecords}</p>
               </div>
-              <Trash2 className="w-8 h-8 text-blue-600" />
+              
             </div>
           </CardContent>
         </Card>
@@ -243,7 +243,7 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Critical</p>
                 <p className="text-2xl font-bold text-red-600">{stats.criticalCount}</p>
               </div>
-              <AlertTriangle className="w-8 h-8 text-red-600" />
+             
             </div>
           </CardContent>
         </Card>
@@ -255,7 +255,7 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Warning</p>
                 <p className="text-2xl font-bold text-yellow-600">{stats.warningCount}</p>
               </div>
-              <AlertTriangle className="w-8 h-8 text-yellow-600" />
+              
             </div>
           </CardContent>
         </Card>
@@ -267,7 +267,7 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Normal</p>
                 <p className="text-2xl font-bold text-green-600">{stats.normalCount}</p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              
             </div>
           </CardContent>
         </Card>
@@ -279,7 +279,7 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Errors</p>
                 <p className="text-2xl font-bold text-gray-600">{stats.errorCount}</p>
               </div>
-              <XCircle className="w-8 h-8 text-gray-600" />
+         
             </div>
           </CardContent>
         </Card>
@@ -291,7 +291,7 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Malfunction</p>
                 <p className="text-2xl font-bold text-orange-600">{stats.malfunctionCount}</p>
               </div>
-              <XCircle className="w-8 h-8 text-orange-600" />
+            
             </div>
           </CardContent>
         </Card>
