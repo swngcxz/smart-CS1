@@ -312,9 +312,6 @@ export function MapSection() {
             <DynamicBinMarker key={bin.id} bin={bin} />
           ))}
 
-          {/* GPS Marker for real-time location */}
-          <GPSMarker gpsData={bin1Data || monitoringData} />
-
           {/* GPS Tracking Line */}
           <GPSTrackingLine gpsHistory={gpsHistory} visible={showGPSTracking} />
 

@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState, useMemo } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, Filter, RefreshCw } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-
+import { ActivityLog } from "@/hooks/useActivityLogs";
 type SortField = 'timestamp' | 'activity_type' | 'status' | 'priority';
 type SortDirection = 'asc' | 'desc';
 
@@ -31,7 +31,7 @@ export function StaffActivityLogs() {
   const getActivityTypeColor = (type: string) => {
     switch (type) {
       case "task_assignment":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+        return "bg-blue-100 text-blue-800 orange:bg-blue-900 orange:text-blue-200";
       case "bin_emptied":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "maintenance":
@@ -63,7 +63,7 @@ export function StaffActivityLogs() {
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
       case "low":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       case "medium":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "high":
@@ -328,7 +328,7 @@ export function StaffActivityLogs() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleSort('timestamp')}
-                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-slate-100/50 dark:hover:bg-slate-700/30"
                       >
                         Date & Time {getSortIcon('timestamp')}
                       </Button>
@@ -338,7 +338,7 @@ export function StaffActivityLogs() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleSort('activity_type')}
-                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-slate-100/50 dark:hover:bg-slate-700/30"
                       >
                         Activity Type {getSortIcon('activity_type')}
                       </Button>
@@ -351,7 +351,7 @@ export function StaffActivityLogs() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleSort('status')}
-                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-slate-100/50 dark:hover:bg-slate-700/30"
                       >
                         Status {getSortIcon('status')}
                       </Button>
@@ -361,7 +361,7 @@ export function StaffActivityLogs() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleSort('priority')}
-                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-slate-100/50 dark:hover:bg-slate-700/30"
                       >
                         Priority {getSortIcon('priority')}
                       </Button>
@@ -373,12 +373,12 @@ export function StaffActivityLogs() {
                 {filteredAndSortedLogs.map((activity) => (
                   <TableRow 
                     key={activity.id} 
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 cursor-pointer group"
+                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-200 cursor-pointer group border-b border-gray-100 dark:border-gray-700"
                     title={`Click to view details for ${activity.activity_type || 'activity'}`}
                   >
                     <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
                       <div className="space-y-1">
-                        <div className="font-semibold text-sm leading-tight">
+                        <div className="font-semibold text-sm leading-tight text-gray-800 dark:text-gray-100">
                           {activity.formatted_date || formatDisplayDate(activity.timestamp)}
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
@@ -388,20 +388,20 @@ export function StaffActivityLogs() {
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <Badge 
-                        className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs px-2 py-1 transition-all duration-200 group-hover:scale-105`}
-                        title={`Activity Type: ${activity.activity_type?.replace('_', ' ') || "unknown"}`}
+                        className={`${getActivityTypeColor(activity.activity_type || "Unknown")} text-xs px-3 py-1 font-medium`}
+                        title={`Activity Type: ${activity.activity_type || "Unknown"}`}
                       >
-                        {activity.activity_type?.replace('_', ' ') || "unknown"}
+                        {activity.activity_type || "Unknown"}
                       </Badge>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                      <div className="space-y-1">
-                        <div className="font-medium text-sm leading-tight" title={formatActivityDescription(activity)}>
+                      <div className="space-y-2">
+                        <div className="font-medium text-sm leading-tight text-gray-800 dark:text-gray-100" title={formatActivityDescription(activity)}>
                           {formatActivityDescription(activity)}
                         </div>
                         {activity.task_note && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400 italic leading-tight" title={activity.task_note}>
-                            <span className="font-medium">Note:</span> {activity.task_note}
+                          <div className="text-xs text-gray-600 dark:text-gray-400 italic leading-tight bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded" title={activity.task_note}>
+                            <span className="font-medium text-gray-700 dark:text-gray-300">Note:</span> {activity.task_note}
                           </div>
                         )}
                       </div>
@@ -424,14 +424,14 @@ export function StaffActivityLogs() {
                         )}
                         {activity.bin_id && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 leading-tight">
-                            <span className="font-medium">Bin:</span> {activity.bin_id}
+                            {/* <span className="font-medium"></span> {activity.bin_id} */}
                           </div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <Badge 
-                        className={`${getStatusColor(activity.status)} text-xs px-2 py-1 transition-all duration-200 group-hover:scale-105`}
+                        className={`${getStatusColor(activity.status)} text-xs px-3 py-1 font-medium transition-all duration-200`}
                         title={`Status: ${activity.display_status || activity.status || "Pending"}`}
                       >
                         {activity.display_status || activity.status || "Pending"}
@@ -439,7 +439,7 @@ export function StaffActivityLogs() {
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <Badge 
-                        className={`${getPriorityColor(activity.priority)} text-xs px-2 py-1 transition-all duration-200 group-hover:scale-105`}
+                        className={`${getPriorityColor(activity.priority)} text-xs px-3 py-1 font-medium`}
                         title={`Priority: ${activity.display_priority || activity.priority || "Low"}`}
                       >
                         {activity.display_priority || activity.priority || "Low"}
@@ -464,11 +464,7 @@ export function StaffActivityLogs() {
                             <span className="font-medium">Note:</span> {activity.status_notes}
                           </div>
                         )}
-                        {activity.task_note && (
-                          <div className="text-gray-500 italic text-xs leading-tight" title={activity.task_note}>
-                            <span className="font-medium">Task:</span> {activity.task_note}
-                          </div>
-                        )}
+
                       </div>
                     </TableCell>
                   </TableRow>
@@ -482,7 +478,7 @@ export function StaffActivityLogs() {
               {filteredAndSortedLogs.map((activity) => (
                 <div 
                   key={activity.id} 
-                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer"
                   title={`Click to view details for ${activity.activity_type || 'activity'}`}
                 >
                   <div className="flex items-start justify-between mb-3">

@@ -2,6 +2,7 @@ import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Alert,
   ScrollView,
@@ -9,32 +10,96 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 import axiosInstance from "../../utils/axiosInstance";
+import { useAccount } from "../../hooks/useAccount";
 
 export default function ActivityLogsScreen() {
   const router = useRouter();
+  const { account, loading: accountLoading } = useAccount();
   const [logs, setLogs] = useState<any[]>([]);
   const [archivedLogs, setArchivedLogs] = useState<any[]>([]);
   const [selectedLogs, setSelectedLogs] = useState<number[]>([]);
   const [showArchive, setShowArchive] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch logs from backend
+  const fetchActivityLogs = async () => {
+    if (!account?.id) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('📱 Mobile App - Fetching activity logs for user:', account.email, 'ID:', account.id);
+      
+      // Try multiple endpoints to get user's activity logs
+      let response;
+      try {
+        // First try: Get logs assigned to this user (as janitor)
+        response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
+        console.log('📱 Mobile App - Got assigned logs:', response.data);
+      } catch (assignedErr) {
+        console.log('📱 Mobile App - No assigned logs, trying user logs...');
+        // Second try: Get logs created by this user
+        response = await axiosInstance.get(`/api/activitylogs/${account.id}`);
+        console.log('📱 Mobile App - Got user logs:', response.data);
+      }
+
+      const activities = response.data.activities || response.data.activities || [];
+      setLogs(activities);
+      
+      console.log(`📱 Mobile App - Found ${activities.length} activity logs for ${account.email}`);
+      
+      // Log completed activities for debugging
+      const completedActivities = activities.filter((activity: any) => activity.status === 'done');
+      if (completedActivities.length > 0) {
+        console.log('📱 Mobile App - Completed activities found:', completedActivities);
+      }
+    } catch (err: any) {
+      console.error("📱 Mobile App - Failed to fetch activity logs:", err);
+      setError(err.response?.data?.error || 'Failed to fetch activity logs');
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch specific activity log by ID
+  const fetchActivityLogById = async (activityId: string) => {
+    try {
+      console.log('📱 Mobile App - Fetching specific activity log:', activityId);
+      const response = await axiosInstance.get(`/api/activitylogs/${activityId}`);
+      console.log('📱 Mobile App - Got specific activity log:', response.data);
+      return response.data;
+    } catch (err: any) {
+      console.error("📱 Mobile App - Failed to fetch specific activity log:", err);
+      return null;
+    }
+  };
 
   // Fetch logs from backend on mount
   useEffect(() => {
-    const janitorId = "Ogf04pQwTMAChaFm0Af8"; // Replace with dynamic user id if needed
-    axiosInstance
-      .get(`/api/activitylogs/assigned/${janitorId}`)
-      .then((res) => {
-        setLogs(res.data.activities || []);
-      })
-      .catch((err) => {
-        console.error("Failed to fetch activity logs", err);
-      });
-  }, []);
+    fetchActivityLogs();
+  }, [account?.id, account?.email]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('📱 Mobile App - Activity logs screen focused, refreshing data...');
+      fetchActivityLogs();
+    }, [account?.id, account?.email])
+  );
 
   // Map backend fields to UI-expected fields
-  const mappedLogs = (logs as any[]).map((log) => ({
+  const mappedLogs = (logs as any[]).map((log, index) => ({
     ...log,
+    id: log.id || log.activity_id || `log_${index}`, // Ensure we have an ID
     type: log.activity_type || "task_assignment",
     message:
       log.task_note && log.task_note.trim() !== ""
@@ -44,6 +109,22 @@ export default function ActivityLogsScreen() {
     location: log.bin_location,
     time: log.time,
     date: log.date,
+    status: log.status || "pending",
+    // Include completion details for done activities
+    completion_notes: log.completion_notes || log.status_notes,
+    bin_condition: log.bin_condition,
+    proof_image: log.proof_image || log.photos?.[0],
+    collection_time: log.collection_time || log.completed_at,
+    user_id: log.user_id,
+    user_name: log.user_name || log.completed_by?.user_name,
+    checklist: log.checklist,
+    pickup_location: log.pickup_location,
+    // Additional completion data
+    collected_weight: log.collected_weight,
+    completed_by: log.completed_by,
+    photos: log.photos || [],
+    created_at: log.created_at,
+    updated_at: log.updated_at,
   }));
 
   // ✅ Toggle selection (used in long press)
@@ -90,6 +171,30 @@ export default function ActivityLogsScreen() {
     ]);
   };
 
+
+  const handleUpdateComplete = () => {
+    // Refresh the logs after update
+    const fetchActivityLogs = async () => {
+      if (!account?.id) return;
+
+      try {
+        let response;
+        try {
+          response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
+        } catch (assignedErr) {
+          response = await axiosInstance.get(`/api/activitylogs/${account.id}`);
+        }
+
+        const activities = response.data.activities || [];
+        setLogs(activities);
+      } catch (err: any) {
+        console.error("📱 Mobile App - Failed to refresh activity logs:", err);
+      }
+    };
+
+    fetchActivityLogs();
+  };
+
   const getBadgeStyle = (type: string) => {
     switch (type) {
       case "login":
@@ -107,6 +212,34 @@ export default function ActivityLogsScreen() {
     }
   };
 
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case "done":
+        return styles.statusDone;
+      case "in_progress":
+        return styles.statusInProgress;
+      case "cancelled":
+        return styles.statusCancelled;
+      case "pending":
+      default:
+        return styles.statusPending;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "done":
+        return "checkmark-circle";
+      case "in_progress":
+        return "time";
+      case "cancelled":
+        return "close-circle";
+      case "pending":
+      default:
+        return "hourglass";
+    }
+  };
+
   const renderLogCard = (log: any, index: number, isArchived = false) => (
     <View
       key={index}
@@ -115,12 +248,23 @@ export default function ActivityLogsScreen() {
         selectedLogs.includes(index) && !isArchived && styles.selectedCard,
       ]}
     >
-      {/* Title row */}
+      {/* Title row with status and type badges */}
       <View style={styles.logTitleRow}>
         <Text style={styles.logTitle}>{`Bin ${log.bin}`}</Text>
         <View style={{ flex: 1 }} />
-        <View style={[styles.typeBadge, getBadgeStyle(log.type)]}>
-          <Text style={styles.badgeText}>{String(log.type)}</Text>
+        <View style={styles.badgeContainer}>
+          <View style={[styles.statusBadge, getStatusBadgeStyle(log.status)]}>
+            <Ionicons 
+              name={getStatusIcon(log.status) as any} 
+              size={12} 
+              color="#fff" 
+              style={styles.statusIcon}
+            />
+            <Text style={styles.statusText}>{log.status.toUpperCase()}</Text>
+          </View>
+          <View style={[styles.typeBadge, getBadgeStyle(log.type)]}>
+            <Text style={styles.badgeText}>{String(log.type)}</Text>
+          </View>
         </View>
       </View>
 
@@ -129,14 +273,60 @@ export default function ActivityLogsScreen() {
         <Text style={styles.logMessage}>{String(log.message)}</Text>
       </View>
 
-      {/* Location + Date/Time */}
-      <View style={styles.logLocTimeRow}>
-        {log.location && (
-          <Text style={styles.logSubtext}>{`📍 ${log.location}`}</Text>
-        )}
-        <View style={{ flex: 1 }} />
-        <Text style={styles.logTime}>{`${log.date} ${log.time}`}</Text>
+      {/* Location and Time details */}
+      <View style={styles.logDetailsRow}>
+        <View style={styles.detailItem}>
+          <Ionicons name="location-outline" size={14} color="#666" />
+          <Text style={styles.logSubtext}>{log.location || "Unknown Location"}</Text>
+        </View>
+        <View style={styles.detailItem}>
+          <Ionicons name="time-outline" size={14} color="#666" />
+          <Text style={styles.logTime}>{`${log.date} ${log.time}`}</Text>
+        </View>
       </View>
+
+      {/* Action buttons */}
+      {!isArchived && (
+        <View style={styles.cardActions}>
+          {log.status === "done" ? (
+            <TouchableOpacity
+              style={styles.detailsButton}
+              onPress={() => {
+                console.log('📱 Mobile App - Viewing completed activity:', log);
+                router.push({
+                  pathname: "/home/proof-of-pickup",
+                  params: { 
+                    binId: log.bin ?? "N/A",
+                    activityLog: JSON.stringify(log),
+                    isReadOnly: "true"
+                  },
+                });
+              }}
+            >
+              <Ionicons name="eye-outline" size={16} color="#666" />
+              <Text style={styles.detailsButtonText}>View Details</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.detailsButton}
+              onPress={() => {
+                console.log('📱 Mobile App - Viewing pending activity:', log);
+                router.push({
+                  pathname: "/home/proof-of-pickup",
+                  params: { 
+                    binId: log.bin ?? "N/A",
+                    activityLog: JSON.stringify(log),
+                    isReadOnly: "false"
+                  },
+                });
+              }}
+            >
+              <Ionicons name="eye-outline" size={16} color="#666" />
+              <Text style={styles.detailsButtonText}>View Details</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   );
 
@@ -167,25 +357,70 @@ export default function ActivityLogsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Loading state */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loadingText}>Loading activity logs...</Text>
+        </View>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Error: {error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => {
+              setError(null);
+              // Trigger refetch by updating a dependency
+              setLogs([]);
+            }}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+
       {/* Logs list */}
-      <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
-        {showArchive
-          ? archivedLogs.map((log, idx) => renderLogCard(log, idx, true))
-          : mappedLogs.map((log, idx) => (
-              <TouchableOpacity
-                key={idx}
-                onPress={() => {
-                  router.push({
-                    pathname: "/home/proof-of-pickup",
-                    params: { binId: log.bin ?? "N/A" }, // ✅ expo-router correct way
-                  });
-                }}
-                onLongPress={() => toggleSelection(idx)}
-              >
-                {renderLogCard(log, idx)}
-              </TouchableOpacity>
-            ))}
-      </ScrollView>
+      {!loading && !error && (
+        <ScrollView contentContainerStyle={{ paddingBottom: 80 }}>
+          {mappedLogs.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="document-outline" size={48} color="#ccc" />
+              <Text style={styles.emptyText}>No activity logs found</Text>
+              <Text style={styles.emptySubtext}>
+                Activity logs will appear here when tasks are assigned to you
+              </Text>
+            </View>
+          ) : (
+            <>
+              {showArchive
+                ? archivedLogs.map((log, idx) => renderLogCard(log, idx, true))
+                : mappedLogs.map((log, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      onPress={() => {
+                        console.log('📱 Mobile App - Clicking activity log:', log);
+                        router.push({
+                          pathname: "/home/proof-of-pickup",
+                          params: { 
+                            binId: log.bin ?? "N/A",
+                            activityLog: JSON.stringify(log),
+                            isReadOnly: log.status === "done" ? "true" : "false"
+                          },
+                        });
+                      }}
+                      onLongPress={() => toggleSelection(idx)}
+                    >
+                      {renderLogCard(log, idx)}
+                    </TouchableOpacity>
+                  ))}
+            </>
+          )}
+        </ScrollView>
+      )}
 
       {/* Action buttons */}
       {!showArchive && selectedLogs.length > 0 && (
@@ -205,6 +440,8 @@ export default function ActivityLogsScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Update Activity Modal */}
     </View>
   );
 }
@@ -242,8 +479,23 @@ const styles = StyleSheet.create({
   logTitle: { fontSize: 16, fontWeight: "bold", color: "#333", marginBottom: 2 },
   logTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   logMsgRow: { marginBottom: 8 },
-  logLocTimeRow: { flexDirection: "row", alignItems: "center", marginBottom: 2 },
+  logDetailsRow: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    marginBottom: 8,
+    paddingVertical: 4,
+  },
+  detailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
 
+  badgeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   typeBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -278,4 +530,140 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   actionText: { color: "#fff", fontWeight: "bold", marginLeft: 6 },
+
+  // Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
+
+  // Error styles
+  errorContainer: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 16,
+    margin: 16,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+
+  // Empty state styles
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // Card action styles
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  detailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  detailsButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginLeft: 4,
+  },
+  disabledButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  disabledButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ccc',
+    marginLeft: 4,
+  },
+
+  // Status indicator styles
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  statusIcon: {
+    marginRight: 3,
+  },
+  statusText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  statusDone: {
+    backgroundColor: '#4CAF50',
+  },
+  statusInProgress: {
+    backgroundColor: '#FF9800',
+  },
+  statusCancelled: {
+    backgroundColor: '#F44336',
+  },
+  statusPending: {
+    backgroundColor: '#9E9E9E',
+  },
 });

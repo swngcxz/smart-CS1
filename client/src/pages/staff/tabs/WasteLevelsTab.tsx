@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { WasteLevelCards } from "../pages/WasteLevelCards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -7,6 +7,55 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
 import { useJanitors, useActivityLogging } from "@/hooks/useStaffApi";
 import { toast } from "@/hooks/use-toast";
+import { Smartphone, Wifi, WifiOff } from "lucide-react";
+import api from "@/lib/api";
+
+// GSM Status Hook
+function useGSMStatus() {
+  const [gsmStatus, setGsmStatus] = useState<{
+    modemStatus: 'connected' | 'disconnected' | 'not initialized' | 'loading';
+    phoneNumber: string;
+    threshold: string;
+    autoSmsEnabled: boolean;
+  }>({
+    modemStatus: 'loading',
+    phoneNumber: '',
+    threshold: '',
+    autoSmsEnabled: false
+  });
+  const [gsmLoading, setGsmLoading] = useState(true);
+  const [gsmError, setGsmError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchGSMStatus = async () => {
+      try {
+        setGsmLoading(true);
+        const response = await api.get('/api/sms-status');
+        setGsmStatus({
+          modemStatus: response.data.modemStatus,
+          phoneNumber: response.data.phoneNumber,
+          threshold: response.data.threshold,
+          autoSmsEnabled: response.data.autoSmsEnabled
+        });
+        setGsmError(null);
+      } catch (error: any) {
+        console.error('Failed to fetch GSM status:', error);
+        setGsmError(error.message || 'Failed to fetch GSM status');
+        setGsmStatus(prev => ({ ...prev, modemStatus: 'not initialized' }));
+      } finally {
+        setGsmLoading(false);
+      }
+    };
+
+    fetchGSMStatus();
+    
+    // Poll GSM status every 30 seconds
+    const interval = setInterval(fetchGSMStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { gsmStatus, gsmLoading, gsmError };
+}
 
 // Fallback janitorial staff list (will be replaced by backend data)
 const fallbackJanitorialStaff = [
@@ -197,6 +246,7 @@ export function WasteLevelsTab() {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const { wasteBins, loading, error, bin1Data } = useRealTimeData();
+  const { gsmStatus, gsmLoading, gsmError } = useGSMStatus();
   
   // Debug logging
   console.log('🔍 WasteLevelsTab Debug:', { 
@@ -486,8 +536,34 @@ const handleAssignTask = async () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Level</h2>
         
-        {/* Debug Connection Status */}
+        {/* Status Indicators */}
         <div className="flex items-center gap-4 text-sm">
+          {/* GSM Connection Status */}
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+            gsmLoading ? 'bg-yellow-100 text-yellow-800' :
+            gsmError ? 'bg-red-100 text-red-800' :
+            gsmStatus.modemStatus === 'connected' ? 'bg-green-100 text-green-800' :
+            gsmStatus.modemStatus === 'disconnected' ? 'bg-red-100 text-red-800' :
+            'bg-gray-100 text-gray-800'
+          }`}>
+            <Smartphone className="w-3 h-3" />
+            <div className={`w-2 h-2 rounded-full ${
+              gsmLoading ? 'bg-yellow-500 animate-pulse' :
+              gsmError ? 'bg-red-500' :
+              gsmStatus.modemStatus === 'connected' ? 'bg-green-500 animate-pulse' :
+              gsmStatus.modemStatus === 'disconnected' ? 'bg-red-500' :
+              'bg-gray-500'
+            }`}></div>
+            <span className="text-xs font-medium">
+              {gsmLoading ? 'GSM Loading...' : 
+               gsmError ? 'GSM Error' :
+               gsmStatus.modemStatus === 'connected' ? 'GSM Connected' :
+               gsmStatus.modemStatus === 'disconnected' ? 'GSM Disconnected' :
+               'GSM Unknown'}
+            </span>
+          </div>
+
+          {/* Live Data Status */}
           <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
             loading ? 'bg-yellow-100 text-yellow-800' :
             error ? 'bg-red-100 text-red-800' :
@@ -508,6 +584,7 @@ const handleAssignTask = async () => {
             </span>
           </div>
           
+          {/* Data Details */}
           {bin1Data && (
             <div className="text-xs text-gray-600 dark:text-gray-400">
               Level: {bin1Data.bin_level}% | Updated: {new Date(bin1Data.timestamp || Date.now()).toLocaleTimeString()}

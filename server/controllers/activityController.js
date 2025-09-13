@@ -350,6 +350,91 @@ const updateActivityStatus = async (req, res, next) => {
   }
 };
 
+// Update activity log with completion details
+const updateActivityLog = async (req, res, next) => {
+  try {
+    const { activityId } = req.params;
+    const { 
+      status, 
+      completion_notes, 
+      collected_weight, 
+      collection_time,
+      bin_condition,
+      photos,
+      user_id,
+      user_name
+    } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: "Status is required" });
+    }
+
+    const validStatuses = ['pending', 'in_progress', 'done'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    // Get the original activity log
+    const activityDoc = await db.collection("activitylogs").doc(activityId).get();
+    if (!activityDoc.exists) {
+      return res.status(404).json({ error: "Activity log not found" });
+    }
+
+    const originalData = activityDoc.data();
+    const now = new Date().toISOString();
+
+    const updateData = {
+      status,
+      updated_at: now,
+      completed_at: status === 'done' ? now : null,
+      completion_notes: completion_notes || '',
+      collected_weight: collected_weight || null,
+      collection_time: collection_time || now,
+      bin_condition: bin_condition || 'good',
+      photos: photos || [],
+      completed_by: {
+        user_id: user_id || null,
+        user_name: user_name || 'Unknown',
+        completed_at: now
+      }
+    };
+
+    await db.collection("activitylogs").doc(activityId).update(updateData);
+
+    // If status is 'done', send notification to staff
+    if (status === 'done') {
+      try {
+        await sendActivityCompletedNotification({
+          activityId: activityId,
+          binId: originalData.bin_id,
+          binLocation: originalData.bin_location,
+          binLevel: originalData.bin_level,
+          completedBy: user_name || 'Unknown',
+          completionTime: now,
+          collectedWeight: collected_weight,
+          completionNotes: completion_notes,
+          binCondition: bin_condition,
+          activityType: originalData.activity_type || 'task_assignment'
+        });
+      } catch (notifyErr) {
+        console.error('[ACTIVITY UPDATE] Failed to send completion notification:', notifyErr);
+        // Don't fail the main operation if notification fails
+      }
+    }
+
+    res.status(200).json({ 
+      message: "Activity log updated successfully",
+      activityId,
+      status,
+      completed_at: status === 'done' ? now : null
+    });
+
+  } catch (err) {
+    console.error("Error updating activity log:", err);
+    next(err);
+  }
+};
+
 // Get all activity logs for any user (for testing/debugging)
 const getActivityLogsByUserId = async (req, res, next) => {
   try {
@@ -416,6 +501,156 @@ const getLoginHistory = async (req, res, next) => {
   } catch (err) {
     console.error('[LOGIN HISTORY] Error fetching login history:', err);
     next(err);
+  }
+};
+
+// Helper function to send activity completed notifications
+const sendActivityCompletedNotification = async (notificationData) => {
+  try {
+    const {
+      activityId,
+      binId,
+      binLocation,
+      binLevel,
+      completedBy,
+      completionTime,
+      collectedWeight,
+      completionNotes,
+      binCondition,
+      activityType
+    } = notificationData;
+
+    // Get all staff users to notify them
+    const staffSnapshot = await db.collection("users").where("role", "in", ["admin", "staff", "supervisor"]).get();
+    
+    if (staffSnapshot.empty) {
+      console.log('[ACTIVITY COMPLETED NOTIFICATION] No staff users found to notify');
+      return;
+    }
+
+    const title = '✅ Activity Completed';
+    const message = `Activity for bin ${binId} at ${binLocation} has been completed by ${completedBy}. Type: ${activityType}`;
+
+    const notificationPayload = {
+      binId: binId,
+      type: 'activity_completed',
+      title: title,
+      message: message,
+      status: 'COMPLETED',
+      binLevel: binLevel,
+      completedBy: completedBy,
+      completionTime: completionTime,
+      collectedWeight: collectedWeight,
+      binCondition: binCondition,
+      completionNotes: completionNotes,
+      activityType: activityType,
+      timestamp: new Date(),
+      activityId: activityId
+    };
+
+    // Send notifications to all staff
+    const notificationPromises = [];
+    staffSnapshot.forEach((doc) => {
+      const staff = doc.data();
+      if (staff.fcmToken) {
+        notificationPromises.push(
+          fcmService.sendToUser(staff.fcmToken, notificationPayload).catch(err => 
+            console.error(`[ACTIVITY COMPLETED NOTIFICATION] Failed to send to ${staff.email}:`, err)
+          )
+        );
+      }
+      
+      // Create in-app notification record
+      notificationPromises.push(
+        notificationModel.createNotification({
+          ...notificationPayload,
+          staffId: doc.id
+        }).catch(err => 
+          console.error(`[ACTIVITY COMPLETED NOTIFICATION] Failed to create in-app notification for ${staff.email}:`, err)
+        )
+      );
+    });
+
+    await Promise.all(notificationPromises);
+    console.log(`[ACTIVITY COMPLETED NOTIFICATION] Successfully notified ${staffSnapshot.size} staff members about activity completion`);
+
+  } catch (error) {
+    console.error('[ACTIVITY COMPLETED NOTIFICATION] Error sending activity completion notification:', error);
+    throw error;
+  }
+};
+
+// Helper function to send bin collection notifications
+const sendBinCollectionNotification = async (notificationData) => {
+  try {
+    const {
+      activityId,
+      binId,
+      binLocation,
+      binLevel,
+      collectedBy,
+      collectionTime,
+      collectedWeight,
+      completionNotes,
+      binCondition
+    } = notificationData;
+
+    // Get all staff users to notify them
+    const staffSnapshot = await db.collection("users").where("role", "in", ["admin", "staff", "supervisor"]).get();
+    
+    if (staffSnapshot.empty) {
+      console.log('[BIN COLLECTION NOTIFICATION] No staff users found to notify');
+      return;
+    }
+
+    const title = '🗑️ Bin Collection Completed';
+    const message = `Bin ${binId} at ${binLocation} has been collected by ${collectedBy}. Weight: ${collectedWeight || 'N/A'}kg, Condition: ${binCondition}`;
+
+    const notificationPayload = {
+      binId: binId,
+      type: 'bin_collection_completed',
+      title: title,
+      message: message,
+      status: 'COMPLETED',
+      binLevel: binLevel,
+      collectedBy: collectedBy,
+      collectionTime: collectionTime,
+      collectedWeight: collectedWeight,
+      binCondition: binCondition,
+      completionNotes: completionNotes,
+      timestamp: new Date(),
+      activityId: activityId
+    };
+
+    // Send notifications to all staff
+    const notificationPromises = [];
+    staffSnapshot.forEach((doc) => {
+      const staff = doc.data();
+      if (staff.fcmToken) {
+        notificationPromises.push(
+          fcmService.sendToUser(staff.fcmToken, notificationPayload).catch(err => 
+            console.error(`[BIN COLLECTION NOTIFICATION] Failed to send to ${staff.email}:`, err)
+          )
+        );
+      }
+      
+      // Create in-app notification record
+      notificationPromises.push(
+        notificationModel.createNotification({
+          ...notificationPayload,
+          staffId: doc.id
+        }).catch(err => 
+          console.error(`[BIN COLLECTION NOTIFICATION] Failed to create in-app notification for ${staff.email}:`, err)
+        )
+      );
+    });
+
+    await Promise.all(notificationPromises);
+    console.log(`[BIN COLLECTION NOTIFICATION] Successfully notified ${staffSnapshot.size} staff members about bin collection completion`);
+
+  } catch (error) {
+    console.error('[BIN COLLECTION NOTIFICATION] Error sending bin collection notification:', error);
+    throw error;
   }
 };
 
@@ -544,7 +779,10 @@ module.exports = {
   getActivityLogsByUserId,
   getAssignedActivityLogs,
   updateActivityStatus,
+  updateActivityLog,
   getLoginHistory,
   sendJanitorAssignmentNotification,
+  sendBinCollectionNotification,
+  sendActivityCompletedNotification,
   testJanitorNotification
 };

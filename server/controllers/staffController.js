@@ -1,12 +1,48 @@
 const StaffModel = require("../models/staffModel");
 const ScheduleModel = require("../models/scheduleModel");
+const { hashPassword } = require("../utils/authUtils");
+const { db } = require("../models/firebase");
 
 const staffController = {
   async create(req, res) {
     try {
-      const id = await StaffModel.createStaff(req.body);
-      res.status(201).json({ message: "Staff created", id });
+      const { fullName, email, password, contactNumber, role, location, status } = req.body;
+      
+      // Validate required fields
+      if (!fullName || !email || !password) {
+        return res.status(400).json({ error: "Full name, email, and password are required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await db.collection("users").where("email", "==", email).get();
+      if (!existingUser.empty) {
+        return res.status(409).json({ error: "User with this email already exists" });
+      }
+
+      // Hash the password
+      const hashedPassword = await hashPassword(password);
+
+      // Create user data for users collection
+      const userData = {
+        fullName,
+        email,
+        password: hashedPassword,
+        contactNumber: contactNumber || "",
+        role: role || "janitor",
+        location: location || "General",
+        status: status || "active",
+        emailVerified: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastActivity: "Recently active"
+      };
+
+      // Save to users collection instead of staff collection
+      const docRef = await db.collection("users").add(userData);
+      
+      res.status(201).json({ message: "Staff created successfully", id: docRef.id });
     } catch (error) {
+      console.error("Error creating staff:", error);
       res.status(500).json({ error: error.message });
     }
   },

@@ -3,7 +3,7 @@ module.exports = function (api) {
   return {
     presets: [
       ['babel-preset-expo', { 
-        jsxRuntime: 'classic'
+        jsxRuntime: 'automatic'
       }],
     ],
     plugins: [

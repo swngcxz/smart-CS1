@@ -39,7 +39,7 @@ export const HistoryLogsTab = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<keyof LoginHistoryLog>("loginTime");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const itemsPerPage = 5;
+  const itemsPerPage = 12;
 
   // Fetch login history from API
   const fetchLoginHistory = async () => {
@@ -53,9 +53,9 @@ export const HistoryLogsTab = () => {
       
       const loginLogs = response.data.logs || response.data;
       setLogs(loginLogs);
-      console.log(`✅ Loaded ${loginLogs.length} login history records`);
+      console.log(`Loaded ${loginLogs.length} login history records`);
     } catch (err: any) {
-      console.error("❌ Error fetching login history:", err);
+      console.error("Error fetching login history:", err);
       setError(err?.response?.data?.error || err?.message || "Failed to load login history");
     } finally {
       setLoading(false);
@@ -81,7 +81,7 @@ export const HistoryLogsTab = () => {
     const colors = {
       admin: "bg-purple-100 text-purple-800",
       staff: "bg-blue-100 text-blue-800",
-      user: "bg-gray-100 text-gray-800",
+      janitor: "bg-green-100 text-green-800",
     };
     return <Badge className={colors[role.toLowerCase() as keyof typeof colors] || "bg-gray-100 text-gray-800"}>{role}</Badge>;
   };
@@ -171,36 +171,60 @@ export const HistoryLogsTab = () => {
     .reduce((sum, log) => sum + (log.sessionDuration || 0), 0) / 
     Math.max(sortedLogs.filter((log) => log.sessionDuration !== null).length, 1);
 
-  return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">Active Sessions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{activeSessions}</div>
-          </CardContent>
-        </Card>
+return (
+  <div className="space-y-6 p-4 sm:p-2">
+    {/* Section Title */}
+    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+      History Logs
+    </h2>
 
-        <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">Completed Sessions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{completedSessions}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="transition-all hover:shadow-md sm:col-span-2 lg:col-span-1 dark:bg-gray-900 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">Avg Session Duration</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{formatDuration(Math.round(averageSessionDuration))}</div>
-          </CardContent>
-        </Card>
+    {/* Stats Grid */}
+ {/* History Logs Summary Cards */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+  {/* Active History Logs */}
+  <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        Active History Logs
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+        {activeSessions}
       </div>
+    </CardContent>
+  </Card>
+
+  {/* Total History Logs */}
+  <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        Total History Logs
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+        {logs.length}
+      </div>
+    </CardContent>
+  </Card>
+
+  {/* Avg Session Duration */}
+  <Card className="transition-all hover:shadow-md sm:col-span-2 lg:col-span-1 dark:bg-gray-900 dark:border-gray-700">
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+        Avg Session Duration
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold text-gray-900 dark:text-white">
+        {formatDuration(Math.round(averageSessionDuration))}
+      </div>
+    </CardContent>
+  </Card>
+</div>
+
+
 
       {/* Filters and Search - Responsive Layout */}
       <Card className=" dark:bg-gray-900 dark:border-gray-700">
@@ -263,7 +287,7 @@ export const HistoryLogsTab = () => {
                   <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="user">Janitor</SelectItem>
                 </SelectContent>
               </Select>
             </div>
