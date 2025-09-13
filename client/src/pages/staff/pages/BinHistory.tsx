@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Calendar, Clock, MapPin, Trash2, AlertTriangle, CheckCircle, XCircle, Filter, Download } from 'lucide-react';
-import api from '@/lib/api';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Calendar, Clock, MapPin, Trash2, AlertTriangle, CheckCircle, XCircle, Filter, Download } from "lucide-react";
+import api from "@/lib/api";
 
 interface BinHistoryRecord {
   id: string;
@@ -46,14 +46,14 @@ export function BinHistory() {
     warningCount: 0,
     normalCount: 0,
     errorCount: 0,
-    malfunctionCount: 0
+    malfunctionCount: 0,
   });
-  
+
   // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [binIdFilter, setBinIdFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [binIdFilter, setBinIdFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
 
@@ -68,41 +68,42 @@ export function BinHistory() {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(record =>
-        record.binId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.errorMessage?.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (record) =>
+          record.binId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          record.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          record.errorMessage?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(record => record.status.toLowerCase() === statusFilter.toLowerCase());
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((record) => record.status.toLowerCase() === statusFilter.toLowerCase());
     }
 
     // Bin ID filter
-    if (binIdFilter !== 'all') {
-      filtered = filtered.filter(record => record.binId === binIdFilter);
+    if (binIdFilter !== "all") {
+      filtered = filtered.filter((record) => record.binId === binIdFilter);
     }
 
     // Date filter
-    if (dateFilter !== 'all') {
+    if (dateFilter !== "all") {
       const now = new Date();
       const filterDate = new Date();
-      
+
       switch (dateFilter) {
-        case 'today':
+        case "today":
           filterDate.setHours(0, 0, 0, 0);
           break;
-        case 'week':
+        case "week":
           filterDate.setDate(now.getDate() - 7);
           break;
-        case 'month':
+        case "month":
           filterDate.setMonth(now.getMonth() - 1);
           break;
       }
-      
-      filtered = filtered.filter(record => new Date(record.timestamp) >= filterDate);
+
+      filtered = filtered.filter((record) => new Date(record.timestamp) >= filterDate);
     }
 
     setFilteredHistory(filtered);
@@ -112,26 +113,28 @@ export function BinHistory() {
   const fetchBinHistory = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/bin-history');
-      
+      const response = await api.get("/api/bin-history");
+
       if (response.data && response.data.success && response.data.records) {
         setBinHistory(response.data.records);
-        setStats(response.data.stats || {
-          totalRecords: response.data.records.length,
-          criticalCount: response.data.records.filter((r: BinHistoryRecord) => r.status === 'CRITICAL').length,
-          warningCount: response.data.records.filter((r: BinHistoryRecord) => r.status === 'WARNING').length,
-          normalCount: response.data.records.filter((r: BinHistoryRecord) => r.status === 'OK').length,
-          errorCount: response.data.records.filter((r: BinHistoryRecord) => r.status === 'ERROR').length,
-          malfunctionCount: response.data.records.filter((r: BinHistoryRecord) => r.status === 'MALFUNCTION').length
-        });
+        setStats(
+          response.data.stats || {
+            totalRecords: response.data.records.length,
+            criticalCount: response.data.records.filter((r: BinHistoryRecord) => r.status === "CRITICAL").length,
+            warningCount: response.data.records.filter((r: BinHistoryRecord) => r.status === "WARNING").length,
+            normalCount: response.data.records.filter((r: BinHistoryRecord) => r.status === "OK").length,
+            errorCount: response.data.records.filter((r: BinHistoryRecord) => r.status === "ERROR").length,
+            malfunctionCount: response.data.records.filter((r: BinHistoryRecord) => r.status === "MALFUNCTION").length,
+          }
+        );
       } else {
         setBinHistory([]);
-        setError(response.data?.message || 'No data received');
+        setError(response.data?.message || "No data received");
       }
       setError(null);
     } catch (err: any) {
-      console.error('Error fetching bin history:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to fetch bin history');
+      console.error("Error fetching bin history:", err);
+      setError(err.response?.data?.message || err.message || "Failed to fetch bin history");
     } finally {
       setLoading(false);
     }
@@ -139,16 +142,44 @@ export function BinHistory() {
 
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
-      case 'CRITICAL':
-        return <Badge variant="destructive" className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Critical</Badge>;
-      case 'WARNING':
-        return <Badge variant="outline" className="flex items-center gap-1 text-yellow-600 border-yellow-600"><AlertTriangle className="w-3 h-3" />Warning</Badge>;
-      case 'OK':
-        return <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-600"><CheckCircle className="w-3 h-3" />Normal</Badge>;
-      case 'ERROR':
-        return <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="w-3 h-3" />Error</Badge>;
-      case 'MALFUNCTION':
-        return <Badge variant="destructive" className="flex items-center gap-1 text-orange-600 bg-orange-100 border-orange-600"><XCircle className="w-3 h-3" />Malfunction</Badge>;
+      case "CRITICAL":
+        return (
+          <Badge variant="destructive" className="flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
+            Critical
+          </Badge>
+        );
+      case "WARNING":
+        return (
+          <Badge variant="outline" className="flex items-center gap-1 text-yellow-600 border-yellow-600">
+            <AlertTriangle className="w-3 h-3" />
+            Warning
+          </Badge>
+        );
+      case "OK":
+        return (
+          <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-600">
+            <CheckCircle className="w-3 h-3" />
+            Normal
+          </Badge>
+        );
+      case "ERROR":
+        return (
+          <Badge variant="destructive" className="flex items-center gap-1">
+            <XCircle className="w-3 h-3" />
+            Error
+          </Badge>
+        );
+      case "MALFUNCTION":
+        return (
+          <Badge
+            variant="destructive"
+            className="flex items-center gap-1 text-orange-600 bg-orange-100 border-orange-600"
+          >
+            <XCircle className="w-3 h-3" />
+            Malfunction
+          </Badge>
+        );
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -158,7 +189,7 @@ export function BinHistory() {
     const date = new Date(timestamp);
     return {
       date: date.toLocaleDateString(),
-      time: date.toLocaleTimeString()
+      time: date.toLocaleTimeString(),
     };
   };
 
@@ -167,8 +198,17 @@ export function BinHistory() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Bin ID', 'Timestamp', 'Weight (kg)', 'Distance (cm)', 'Bin Level (%)', 'GPS Coordinates', 'Status', 'Error Message'];
-    const csvData = filteredHistory.map(record => [
+    const headers = [
+      "Bin ID",
+      "Timestamp",
+      "Weight (kg)",
+      "Distance (cm)",
+      "Bin Level (%)",
+      "GPS Coordinates",
+      "Status",
+      "Error Message",
+    ];
+    const csvData = filteredHistory.map((record) => [
       record.binId,
       record.timestamp,
       record.weight,
@@ -176,15 +216,15 @@ export function BinHistory() {
       record.binLevel,
       formatCoordinates(record.gps),
       record.status,
-      record.errorMessage || ''
+      record.errorMessage || "",
     ]);
-    
-    const csvContent = [headers, ...csvData].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+
+    const csvContent = [headers, ...csvData].map((row) => row.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `bin-history-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `bin-history-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -196,7 +236,7 @@ export function BinHistory() {
   const currentData = filteredHistory.slice(startIndex, endIndex);
 
   // Get unique bin IDs for filter
-  const uniqueBinIds = Array.from(new Set(binHistory.map(record => record.binId)));
+  const uniqueBinIds = Array.from(new Set(binHistory.map((record) => record.binId)));
 
   if (loading) {
     return (
@@ -231,11 +271,10 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Total Records</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalRecords}</p>
               </div>
-              
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -243,11 +282,10 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Critical</p>
                 <p className="text-2xl font-bold text-red-600">{stats.criticalCount}</p>
               </div>
-             
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -255,11 +293,10 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Warning</p>
                 <p className="text-2xl font-bold text-yellow-600">{stats.warningCount}</p>
               </div>
-              
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -267,23 +304,21 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Normal</p>
                 <p className="text-2xl font-bold text-green-600">{stats.normalCount}</p>
               </div>
-              
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Errors</p>
-                <p className="text-2xl font-bold text-gray-600">{stats.errorCount}</p>
+                <p className="text-2xl font-bold text-red-600">{stats.errorCount}</p>
               </div>
-         
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -291,7 +326,6 @@ export function BinHistory() {
                 <p className="text-sm font-medium text-gray-600">Malfunction</p>
                 <p className="text-2xl font-bold text-orange-600">{stats.malfunctionCount}</p>
               </div>
-            
             </div>
           </CardContent>
         </Card>
@@ -300,10 +334,7 @@ export function BinHistory() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Filters
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2">Filters</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -315,7 +346,7 @@ export function BinHistory() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
+
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">Status</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -332,7 +363,7 @@ export function BinHistory() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">Bin ID</label>
               <Select value={binIdFilter} onValueChange={setBinIdFilter}>
@@ -341,13 +372,15 @@ export function BinHistory() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Bins</SelectItem>
-                  {uniqueBinIds.map(binId => (
-                    <SelectItem key={binId} value={binId}>{binId}</SelectItem>
+                  {uniqueBinIds.map((binId) => (
+                    <SelectItem key={binId} value={binId}>
+                      {binId}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
@@ -396,7 +429,6 @@ export function BinHistory() {
                       <TableHead>Bin Level (%)</TableHead>
                       <TableHead>GPS Coordinates</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Error Message</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -407,13 +439,12 @@ export function BinHistory() {
                           <TableCell className="font-medium">{record.binId}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-gray-400" />
                               <div>
                                 <div className="text-sm">{date}</div>
-                                <div className="text-xs text-gray-500 flex items-center gap-1">
+                                {/* <div className="text-xs text-gray-500 flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
                                   {time}
-                                </div>
+                                </div> */}
                               </div>
                             </div>
                           </TableCell>
@@ -422,10 +453,13 @@ export function BinHistory() {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div 
+                                <div
                                   className={`h-2 rounded-full ${
-                                    record.binLevel >= 85 ? 'bg-red-500' : 
-                                    record.binLevel >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+                                    record.binLevel >= 85
+                                      ? "bg-red-500"
+                                      : record.binLevel >= 70
+                                      ? "bg-yellow-500"
+                                      : "bg-green-500"
                                   }`}
                                   style={{ width: `${Math.min(record.binLevel, 100)}%` }}
                                 />
@@ -435,20 +469,12 @@ export function BinHistory() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4 text-gray-400" />
                               <span className="text-xs font-mono">
-                                {record.gpsValid ? formatCoordinates(record.gps) : 'Invalid GPS'}
+                                {record.gpsValid ? formatCoordinates(record.gps) : "Invalid GPS"}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell>{getStatusBadge(record.status)}</TableCell>
-                          <TableCell>
-                            {record.errorMessage ? (
-                              <span className="text-red-600 text-sm">{record.errorMessage}</span>
-                            ) : (
-                              <span className="text-gray-400 text-sm">-</span>
-                            )}
-                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -460,13 +486,14 @@ export function BinHistory() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-gray-600">
-                    Showing {startIndex + 1} to {Math.min(endIndex, filteredHistory.length)} of {filteredHistory.length} records
+                    Showing {startIndex + 1} to {Math.min(endIndex, filteredHistory.length)} of {filteredHistory.length}{" "}
+                    records
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                       disabled={currentPage === 1}
                     >
                       Previous
@@ -477,7 +504,7 @@ export function BinHistory() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                       disabled={currentPage === totalPages}
                     >
                       Next
