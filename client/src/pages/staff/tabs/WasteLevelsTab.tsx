@@ -13,15 +13,15 @@ import api from "@/lib/api";
 // GSM Status Hook
 function useGSMStatus() {
   const [gsmStatus, setGsmStatus] = useState<{
-    modemStatus: 'connected' | 'disconnected' | 'not initialized' | 'loading';
+    modemStatus: "connected" | "disconnected" | "not initialized" | "loading";
     phoneNumber: string;
     threshold: string;
     autoSmsEnabled: boolean;
   }>({
-    modemStatus: 'loading',
-    phoneNumber: '',
-    threshold: '',
-    autoSmsEnabled: false
+    modemStatus: "loading",
+    phoneNumber: "",
+    threshold: "",
+    autoSmsEnabled: false,
   });
   const [gsmLoading, setGsmLoading] = useState(true);
   const [gsmError, setGsmError] = useState<string | null>(null);
@@ -30,25 +30,25 @@ function useGSMStatus() {
     const fetchGSMStatus = async () => {
       try {
         setGsmLoading(true);
-        const response = await api.get('/api/sms-status');
+        const response = await api.get("/api/sms-status");
         setGsmStatus({
           modemStatus: response.data.modemStatus,
           phoneNumber: response.data.phoneNumber,
           threshold: response.data.threshold,
-          autoSmsEnabled: response.data.autoSmsEnabled
+          autoSmsEnabled: response.data.autoSmsEnabled,
         });
         setGsmError(null);
       } catch (error: any) {
-        console.error('Failed to fetch GSM status:', error);
-        setGsmError(error.message || 'Failed to fetch GSM status');
-        setGsmStatus(prev => ({ ...prev, modemStatus: 'not initialized' }));
+        console.error("Failed to fetch GSM status:", error);
+        setGsmError(error.message || "Failed to fetch GSM status");
+        setGsmStatus((prev) => ({ ...prev, modemStatus: "not initialized" }));
       } finally {
         setGsmLoading(false);
       }
     };
 
     fetchGSMStatus();
-    
+
     // Poll GSM status every 30 seconds
     const interval = setInterval(fetchGSMStatus, 30000);
     return () => clearInterval(interval);
@@ -236,7 +236,6 @@ const detailedWasteData: WasteBin[] = [
   },
 ];
 
-
 export function WasteLevelsTab() {
   const [selectedLocation, setSelectedLocation] = useState("Central Plaza");
   const [selectedBin, setSelectedBin] = useState<WasteBin | null>(null);
@@ -247,38 +246,40 @@ export function WasteLevelsTab() {
 
   const { wasteBins, loading, error, bin1Data } = useRealTimeData();
   const { gsmStatus, gsmLoading, gsmError } = useGSMStatus();
-  
+
   // Debug logging
-  console.log('🔍 WasteLevelsTab Debug:', { 
-    wasteBins, 
-    loading, 
-    error, 
+  console.log("🔍 WasteLevelsTab Debug:", {
+    wasteBins,
+    loading,
+    error,
     bin1Data,
     wasteBinsLength: wasteBins.length,
     isModalOpen,
-    selectedBin: selectedBin?.id
+    selectedBin: selectedBin?.id,
   });
   const { janitors, loading: janitorsLoading, error: janitorsError } = useJanitors();
   const { logActivity, loading: activityLoading, error: activityError } = useActivityLogging();
 
   // Debug logging to see what janitors data is being fetched
-  console.log('🔍 Janitors Debug:', {
+  console.log("🔍 Janitors Debug:", {
     janitors,
     janitorsLength: janitors.length,
     loading: janitorsLoading,
-    error: janitorsError
+    error: janitorsError,
   });
 
   // Create real-time data for each location
   const realTimeBins: WasteBin[] = [
     // Central Plaza - ONLY bin1 real-time data (as requested)
-    ...wasteBins.filter(wb => wb.location === "Central Plaza" && wb.id === "bin1").map((realTimeBin) => ({
-      ...realTimeBin,
-      id: realTimeBin.id,
-      wasteType: 'Mixed',
-      nextCollection: 'Today 3:00 PM',
-    })),
-    
+    ...wasteBins
+      .filter((wb) => wb.location === "Central Plaza" && wb.id === "bin1")
+      .map((realTimeBin) => ({
+        ...realTimeBin,
+        id: realTimeBin.id,
+        wasteType: "Mixed",
+        nextCollection: "Today 3:00 PM",
+      })),
+
     // Add static backup bins for Central Plaza to show 4 total bins
     {
       id: "2",
@@ -301,7 +302,7 @@ export function WasteLevelsTab() {
       nextCollection: "Today 5:30 PM",
     },
     {
-      id: "4", 
+      id: "4",
       location: "Central Plaza",
       level: 50,
       status: "normal" as const,
@@ -438,77 +439,73 @@ export function WasteLevelsTab() {
     },
   ];
 
-  const filteredBins = realTimeBins.filter(
-    (bin) => bin.location === selectedLocation
-  );
+  const filteredBins = realTimeBins.filter((bin) => bin.location === selectedLocation);
 
   const handleCardClick = (bin: WasteBin) => {
-    console.log('🖱️ Card clicked:', bin);
+    console.log("🖱️ Card clicked:", bin);
     setSelectedBin(bin);
     setSelectedJanitorId(null); // Reset selection on open
     setIsModalOpen(true);
-    console.log('📱 Modal should open now');
+    console.log("📱 Modal should open now");
   };
 
-const handleAssignTask = async () => {
-  if (!selectedJanitorId || !selectedBin) {
-    toast({
-      title: "Error",
-      description: "Please select a janitor and ensure bin data is available",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  try {
-    const selectedJanitor = janitors.find(j => j.id === selectedJanitorId);
-    if (!selectedJanitor) {
+  const handleAssignTask = async () => {
+    if (!selectedJanitorId || !selectedBin) {
       toast({
         title: "Error",
-        description: "Selected janitor not found",
+        description: "Please select a janitor and ensure bin data is available",
         variant: "destructive",
       });
       return;
     }
 
-    // Log the activity to the backend
-    await logActivity({
-      user_id: "staff-user", // You might want to get this from auth context
-      bin_id: selectedBin.id,
-      bin_location: selectedBin.location,
-      bin_status: selectedBin.status,
-      bin_level: selectedBin.level,
-      assigned_janitor_id: selectedJanitorId,
-      assigned_janitor_name: selectedJanitor.fullName,
-      task_note: taskNote,
-      activity_type: "task_assignment"
-    });
+    try {
+      const selectedJanitor = janitors.find((j) => j.id === selectedJanitorId);
+      if (!selectedJanitor) {
+        toast({
+          title: "Error",
+          description: "Selected janitor not found",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // Show success confirmation
-    setShowConfirmation(true);
-    
-    toast({
-      title: "Success",
-      description: `Task assigned to ${selectedJanitor.fullName}`,
-    });
+      // Log the activity to the backend
+      await logActivity({
+        user_id: "staff-user", // You might want to get this from auth context
+        bin_id: selectedBin.id,
+        bin_location: selectedBin.location,
+        bin_status: selectedBin.status,
+        bin_level: selectedBin.level,
+        assigned_janitor_id: selectedJanitorId,
+        assigned_janitor_name: selectedJanitor.fullName,
+        task_note: taskNote,
+        activity_type: "task_assignment",
+      });
 
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to assign task",
-      variant: "destructive",
-    });
-  }
-};
+      // Show success confirmation
+      setShowConfirmation(true);
 
+      toast({
+        title: "Success",
+        description: `Task assigned to ${selectedJanitor.fullName}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to assign task",
+        variant: "destructive",
+      });
+    }
+  };
 
   const filteredJanitors = selectedBin
     ? janitors.filter((j) => {
         // Ensure we only show janitors with the correct role
-        const hasValidRole = j.role && j.role.toLowerCase() === 'janitor';
+        const hasValidRole = j.role && j.role.toLowerCase() === "janitor";
         // For now, accept any janitor regardless of location to test the data
         const hasMatchingLocation = true; // Temporarily accept all janitors
-        
+
         // Debug logging to help verify role filtering
         console.log(`🔍 Janitor Filter: ${j.fullName}`, {
           role: j.role,
@@ -516,319 +513,359 @@ const handleAssignTask = async () => {
           selectedBinLocation: selectedBin.location,
           hasValidRole,
           hasMatchingLocation,
-          source: (j as any).source || 'unknown'
+          source: (j as any).source || "unknown",
         });
-        
+
         return hasValidRole && hasMatchingLocation;
       })
     : [];
-    
-  console.log('🔍 Filtered Janitors Result:', {
+
+  console.log("🔍 Filtered Janitors Result:", {
     totalJanitors: janitors.length,
     filteredCount: filteredJanitors.length,
     selectedBinLocation: selectedBin?.location,
-    filteredJanitors: filteredJanitors.map(j => ({ name: j.fullName, location: j.location }))
+    filteredJanitors: filteredJanitors.map((j) => ({ name: j.fullName, location: j.location })),
   });
 
   return (
     <>
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Level</h2>
-        
-        {/* Status Indicators */}
-        <div className="flex items-center gap-4 text-sm">
-          {/* GSM Connection Status */}
-          <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
-            gsmLoading ? 'bg-yellow-100 text-yellow-800' :
-            gsmError ? 'bg-red-100 text-red-800' :
-            gsmStatus.modemStatus === 'connected' ? 'bg-green-100 text-green-800' :
-            gsmStatus.modemStatus === 'disconnected' ? 'bg-red-100 text-red-800' :
-            'bg-gray-100 text-gray-800'
-          }`}>
-            <Smartphone className="w-3 h-3" />
-            <div className={`w-2 h-2 rounded-full ${
-              gsmLoading ? 'bg-yellow-500 animate-pulse' :
-              gsmError ? 'bg-red-500' :
-              gsmStatus.modemStatus === 'connected' ? 'bg-green-500 animate-pulse' :
-              gsmStatus.modemStatus === 'disconnected' ? 'bg-red-500' :
-              'bg-gray-500'
-            }`}></div>
-            <span className="text-xs font-medium">
-              {gsmLoading ? 'GSM Loading...' : 
-               gsmError ? 'GSM Error' :
-               gsmStatus.modemStatus === 'connected' ? 'GSM Connected' :
-               gsmStatus.modemStatus === 'disconnected' ? 'GSM Disconnected' :
-               'GSM Unknown'}
-            </span>
-          </div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Level</h2>
 
-          {/* Live Data Status */}
-          <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
-            loading ? 'bg-yellow-100 text-yellow-800' :
-            error ? 'bg-red-100 text-red-800' :
-            bin1Data ? 'bg-green-100 text-green-800' :
-            'bg-gray-100 text-gray-800'
-          }`}>
-            <div className={`w-2 h-2 rounded-full ${
-              loading ? 'bg-yellow-500 animate-pulse' :
-              error ? 'bg-red-500' :
-              bin1Data ? 'bg-green-500 animate-pulse' :
-              'bg-gray-500'
-            }`}></div>
-            <span className="text-xs font-medium">
-              {loading ? 'Connecting...' : 
-               error ? 'Connection Error' :
-               bin1Data ? 'Live Data' : 
-               'No Data'}
-            </span>
-          </div>
-          
-          {/* Data Details */}
-          {bin1Data && (
-            <div className="text-xs text-gray-600 dark:text-gray-400">
-              Level: {bin1Data.bin_level}% | Updated: {new Date(bin1Data.timestamp || Date.now()).toLocaleTimeString()}
+          {/* Status Indicators */}
+          <div className="flex items-center gap-4 text-sm">
+            {/* GSM Connection Status */}
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                gsmLoading
+                  ? "bg-yellow-100 text-yellow-800"
+                  : gsmError
+                  ? "bg-red-100 text-red-800"
+                  : gsmStatus.modemStatus === "connected"
+                  ? "bg-green-100 text-green-800"
+                  : gsmStatus.modemStatus === "disconnected"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-gray-100 text-gray-800"
+              }`}
+            >
+              <Smartphone className="w-3 h-3" />
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  gsmLoading
+                    ? "bg-yellow-500 animate-pulse"
+                    : gsmError
+                    ? "bg-red-500"
+                    : gsmStatus.modemStatus === "connected"
+                    ? "bg-green-500 animate-pulse"
+                    : gsmStatus.modemStatus === "disconnected"
+                    ? "bg-red-500"
+                    : "bg-gray-500"
+                }`}
+              ></div>
+              <span className="text-xs font-medium">
+                {gsmLoading
+                  ? "GSM Loading..."
+                  : gsmError
+                  ? "GSM Error"
+                  : gsmStatus.modemStatus === "connected"
+                  ? "GSM Connected"
+                  : gsmStatus.modemStatus === "disconnected"
+                  ? "GSM Disconnected"
+                  : "GSM Unknown"}
+              </span>
             </div>
-          )}
+
+            {/* Live Data Status */}
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                loading
+                  ? "bg-yellow-100 text-yellow-800"
+                  : error
+                  ? "bg-red-100 text-red-800"
+                  : bin1Data
+                  ? "bg-green-100 text-green-800"
+                  : "bg-gray-100 text-gray-800"
+              }`}
+            >
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  loading
+                    ? "bg-yellow-500 animate-pulse"
+                    : error
+                    ? "bg-red-500"
+                    : bin1Data
+                    ? "bg-green-500 animate-pulse"
+                    : "bg-gray-500"
+                }`}
+              ></div>
+              <span className="text-xs font-medium">
+                {loading ? "Connecting..." : error ? "Connection Error" : bin1Data ? "Live Data" : "No Data"}
+              </span>
+            </div>
+
+            {/* Data Details */}
+            {bin1Data && (
+              <div className="text-xs text-gray-600 dark:text-gray-400">
+                Level: {bin1Data.bin_level}% | Updated:{" "}
+                {new Date(bin1Data.timestamp || Date.now()).toLocaleTimeString()}
+              </div>
+            )}
+          </div>
         </div>
+
+        <WasteLevelCards onCardClick={setSelectedLocation} />
+
+        <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              Waste Information - {selectedLocation}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredBins.map((bin) => (
+                <Card
+                  key={bin.id}
+                  onClick={() => handleCardClick(bin)}
+                  className="cursor-pointer p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-gray-900 dark:text-white">{bin.location}</h3>
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          bin.status === "critical"
+                            ? "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100"
+                            : bin.status === "warning"
+                            ? "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100"
+                            : "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100"
+                        }`}
+                      >
+                        {bin.status}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
+                        <span>Fill Level:</span>
+                        <span className="font-medium">{bin.level}%</span>
+                      </div>
+                      <Progress value={bin.level} className="h-2" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                      <div>
+                        <span className="font-medium">Capacity:</span> {bin.capacity}
+                      </div>
+                      <div>
+                        <span className="font-medium">Type:</span> {bin.wasteType}
+                      </div>
+                      <div>
+                        <span className="font-medium">Last Collected:</span> {bin.lastCollected}
+                      </div>
+                      <div>
+                        <span className="font-medium">Next Collection:</span> {bin.nextCollection}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-
-
-      <WasteLevelCards onCardClick={setSelectedLocation} />
-
-      <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-            Waste Information - {selectedLocation}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredBins.map((bin) => (
-              <Card
-                key={bin.id}
-                onClick={() => handleCardClick(bin)}
-                className="cursor-pointer p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition"
+      {isModalOpen && selectedBin && (
+        <div className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
+          <div className="bg-white dark:bg-gray-900 rounded-md shadow-lg w-full max-w-xl p-8 relative">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center border-b pb-3 px-3">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Bin Information - {selectedBin.location}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-500 hover:text-gray-600 text-lg font-bold"
               >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{bin.location}</h3>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        bin.status === "critical"
-                          ? "bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100"
-                          : bin.status === "warning"
-                          ? "bg-yellow-100 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100"
-                          : "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100"
-                      }`}
-                    >
-                      {bin.status}
-                    </span>
-                  </div>
+                ×
+              </button>
+            </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm text-gray-700 dark:text-gray-300">
-                      <span>Fill Level:</span>
-                      <span className="font-medium">{bin.level}%</span>
-                    </div>
-                    <Progress value={bin.level} className="h-2" />
-                  </div>
+            {/* Bin Information */}
+            <div className="grid grid-cols-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-4 rounded-md border border-gray-200 dark:border-gray-700 mt-4">
+              <div>
+                <strong>{selectedBin.location} Bin:</strong> {selectedBin.id}
+              </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
-                    <div>
-                      <span className="font-medium">Capacity:</span> {bin.capacity}
-                    </div>
-                    <div>
-                      <span className="font-medium">Type:</span> {bin.wasteType}
-                    </div>
-                    <div>
-                      <span className="font-medium">Last Collected:</span> {bin.lastCollected}
-                    </div>
-                    <div>
-                      <span className="font-medium">Next Collection:</span> {bin.nextCollection}
-                    </div>
-                  </div>
+              {/* Fill Level with Progress Bar */}
+              <div className="col-span-2">
+                <div className="flex items-center justify-between">
+                  <strong>Fill Level:</strong>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      selectedBin.status === "critical"
+                        ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                        : selectedBin.status === "warning"
+                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                        : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                    }`}
+                  >
+                    {selectedBin.status.toUpperCase()}
+                  </span>
                 </div>
-              </Card>
-            ))}
+
+                <div className="flex items-center justify-between mt-2">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                    <div
+                      className={`h-3 rounded-full ${
+                        selectedBin.level >= 80
+                          ? "bg-red-500"
+                          : selectedBin.level >= 50
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }`}
+                      style={{ width: `${selectedBin.level}%` }}
+                    ></div>
+                  </div>
+                  <span className="ml-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+                    {selectedBin.level}%
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <strong>Last Collected:</strong> {selectedBin.lastCollected}
+              </div>
+
+              {selectedBin.binData && (
+                <>
+                  <div>
+                    <strong>Real-time Weight:</strong> {selectedBin.binData.weight_kg} kg
+                  </div>
+                  <div>
+                    <strong>Real-time Distance:</strong> {selectedBin.binData.distance_cm} cm
+                  </div>
+                  {selectedBin.binData.gps_valid && (
+                    <div>
+                      <strong>GPS:</strong> {selectedBin.binData.latitude?.toFixed(4)},{" "}
+                      {selectedBin.binData.longitude?.toFixed(4)}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Suggested Action directly under Bin Information */}
+            <div className="text-sm text-gray-600 dark:text-gray-400 rounded-md mt-2">
+              <strong>Suggested Action:</strong>{" "}
+              {selectedBin.status === "critical"
+                ? "Immediate collection required."
+                : selectedBin.status === "warning"
+                ? "Monitor closely and prepare for collection."
+                : "No action needed at the moment."}
+            </div>
+
+            {/* Assign Janitor */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                Assign to Janitor ({filteredJanitors.length} available)
+              </label>
+              {filteredJanitors.length > 0 && (
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                  Available janitors: {filteredJanitors.map((j) => j.fullName).join(", ")}
+                </div>
+              )}
+              <Select onValueChange={(val) => setSelectedJanitorId(val)}>
+                <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
+                  <SelectValue placeholder={janitorsLoading ? "Loading..." : "Select Janitor"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {janitorsLoading ? (
+                    <SelectItem disabled value="loading">
+                      Loading...
+                    </SelectItem>
+                  ) : filteredJanitors.length > 0 ? (
+                    filteredJanitors.map((janitor) => (
+                      <SelectItem key={janitor.id} value={janitor.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{janitor.fullName}</span>
+                          <span className="text-xs text-gray-500">
+                            {janitor.location && `${janitor.location}`} • Role: {janitor.role || "Janitor"}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem disabled value="none">
+                      No janitors available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              {janitorsError && <p className="text-sm text-red-600 mt-1">Error loading janitors: {janitorsError}</p>}
+              {!janitorsLoading && filteredJanitors.length === 0 && (
+                <p className="text-sm text-yellow-600 mt-1">
+                  No janitors available for {selectedBin?.location}. Consider assigning a general janitor.
+                </p>
+              )}
+            </div>
+
+            {/* Task Note */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                Task Notes (Optional)
+              </label>
+              <textarea
+                className="w-full h-15 rounded-md border bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-800 dark:text-white p-2"
+                placeholder="e.g, Clean the Bin."
+                value={taskNote}
+                onChange={(e) => setTaskNote(e.target.value)}
+              />
+            </div>
+
+            {/* Buttons */}
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                onClick={handleAssignTask}
+                disabled={activityLoading || !selectedJanitorId}
+                className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {activityLoading ? "Assigning..." : "Assign Task"}
+              </Button>
+            </div>
+            {activityError && <p className="text-sm text-red-600 mt-2">Error: {activityError}</p>}
           </div>
-        </CardContent>
-      </Card>
-
-
-    </div>
- {isModalOpen && selectedBin && (
-    <div className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center bg-gray-800 bg-opacity-50 ">
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-xl p-8 space-y-6 relative">
-      {/* Modal Header */}
-      <div className="flex justify-between items-center border-b pb-3">
-        <div className="flex items-center gap-3">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-            Bin Information - {selectedBin.location}
-          </h3>
-          <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
-            selectedBin.status === "critical"
-              ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
-              : selectedBin.status === "warning"
-              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
-              : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-          }`}>
-            {selectedBin.status.toUpperCase()}
-          </span>
         </div>
-        <button
-          onClick={() => setIsModalOpen(false)}
-          className="text-gray-500 hover:text-gray-600 text-lg font-bold"
-        >
-          ×
-        </button>
-      </div>
-
-      {/* Overview Section */}
-      <div className="grid grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300">
-        <div><strong>Bin ID:</strong> {selectedBin.id}</div>
-        <div><strong>Waste Type:</strong> {selectedBin.wasteType}</div>
-        <div><strong>Status:</strong> 
-          <span className={`ml-1 font-semibold ${
-            selectedBin.status === "critical"
-              ? "text-red-600"
-              : selectedBin.status === "warning"
-              ? "text-yellow-600"
-              : "text-green-600"
-          }`}>{selectedBin.status.toUpperCase()}</span>
-        </div>
-        <div><strong>Fill Level:</strong> {selectedBin.level}%</div>
-        <div><strong>Capacity:</strong> {selectedBin.capacity}</div>
-        <div><strong>Est. Waste Volume:</strong> {
-          Math.round(parseInt(selectedBin.capacity) * (selectedBin.level / 100))
-        }L</div>
-        <div><strong>Last Collected:</strong> {selectedBin.lastCollected}</div>
-        
-        {/* Real-time Data Display */}
-        {selectedBin.binData && (
-          <>
-            <div><strong>Real-time Weight:</strong> {selectedBin.binData.weight_kg} kg</div>
-            <div><strong>Real-time Distance:</strong> {selectedBin.binData.distance_cm} cm</div>
-            {selectedBin.binData.gps_valid && (
-              <>
-                <div><strong>GPS:</strong> {selectedBin.binData.latitude?.toFixed(4)}, {selectedBin.binData.longitude?.toFixed(4)}</div>
-                <div><strong>Satellites:</strong> {selectedBin.binData.satellites}</div>
-              </>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Suggested Action */}
-      <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 p-3 rounded-md">
-        <strong>Suggested Action:</strong> {
-          selectedBin.status === "critical"
-            ? "Immediate collection required."
-            : selectedBin.status === "warning"
-            ? "Monitor closely and prepare for collection."   
-            : "No action needed at the moment."
-        }
-      </div>
-
-      {/* Assign Janitor */}
-      <div>
-        <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-          Assign to Janitor ({filteredJanitors.length} available)
-        </label>
-        {filteredJanitors.length > 0 && (
-          <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-            Available janitors: {filteredJanitors.map(j => j.fullName).join(', ')}
-          </div>
-        )}
-        <Select onValueChange={(val) => setSelectedJanitorId(val)}>
-          <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
-            <SelectValue placeholder={janitorsLoading ? "Loading janitors..." : "Select Janitor"} />
-          </SelectTrigger>
-          <SelectContent>
-            {janitorsLoading ? (
-              <SelectItem disabled value="loading">Loading janitors...</SelectItem>
-            ) : filteredJanitors.length > 0 ? (
-                             filteredJanitors.map((janitor) => (
-                 <SelectItem key={janitor.id} value={janitor.id}>
-                   <div className="flex flex-col">
-                     <span className="font-medium">{janitor.fullName}</span>
-                     <span className="text-xs text-gray-500">
-                       {janitor.location && `${janitor.location}`} • Role: {janitor.role || 'Janitor'}
-                     </span>
-                   </div>
-                 </SelectItem>
-               ))
-            ) : (
-              <SelectItem disabled value="none">No janitors available</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-        {janitorsError && (
-          <p className="text-sm text-red-600 mt-1">Error loading janitors: {janitorsError}</p>
-        )}
-        {!janitorsLoading && filteredJanitors.length === 0 && (
-          <p className="text-sm text-yellow-600 mt-1">
-            No janitors available for {selectedBin?.location}. Consider assigning a general janitor.
-          </p>
-        )}
-      </div>
-
-      {/* Task Note */}
-      <div>
-        <label className="block text-sm font-medium text-gray-900 dark:text-white mt-4 mb-2">Task Notes (optional)</label>
-        <textarea
-          className="w-full h-24 rounded-md border bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-800 dark:text-white p-2"
-          placeholder="E.g., Prioritize recyclable waste. Use PPE."
-          value={taskNote}
-          onChange={(e) => setTaskNote(e.target.value)}
-        />
-      </div>
-
-      {/* Buttons */}
-      <div className="flex justify-end gap-2">
-        <Button
-          onClick={handleAssignTask}
-          disabled={activityLoading || !selectedJanitorId}
-          className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-        >
-          {activityLoading ? "Assigning..." : "Assign Task"}
-        </Button>
-      </div>
-      {activityError && (
-        <p className="text-sm text-red-600 mt-2">Error: {activityError}</p>
       )}
-    </div>
-  </div>
-)}
 
-{/* Confirmation Modal */}
-{showConfirmation && selectedJanitorId && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-6">
-      <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Task Assigned Successfully</h3>
-      <p className="text-sm text-gray-800 dark:text-gray-300 mb-4">
-        Task successfully assigned to <strong>{janitors.find(j => j.id === selectedJanitorId)?.fullName}</strong>
-        {taskNote && ` with note: "${taskNote}"`}
-      </p>
-      <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
-        Activity has been logged to the system.
-      </p>
-      <Button
-        onClick={() => {
-          setShowConfirmation(false);
-          setIsModalOpen(false);
-          setTaskNote("");
-          setSelectedJanitorId(null);
-        }}
-        className="w-full bg-green-600 text-white hover:bg-green-700"
-      >
-        OK
-      </Button>
-    </div>
-  </div>
-)}
-
+      {/* Confirmation Modal */}
+      {showConfirmation && selectedJanitorId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Task Assigned Successfully</h3>
+            <p className="text-sm text-gray-800 dark:text-gray-300 mb-4">
+              Task successfully assigned to{" "}
+              <strong>{janitors.find((j) => j.id === selectedJanitorId)?.fullName}</strong>
+              {taskNote && ` with note: "${taskNote}"`}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Activity has been logged to the system.</p>
+            <Button
+              onClick={() => {
+                setShowConfirmation(false);
+                setIsModalOpen(false);
+                setTaskNote("");
+                setSelectedJanitorId(null);
+              }}
+              className="w-full bg-green-600 text-white hover:bg-green-700"
+            >
+              OK
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
