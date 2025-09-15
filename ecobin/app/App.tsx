@@ -1,6 +1,6 @@
-import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import React from "react";
 import { Provider as PaperProvider } from "react-native-paper";
 import HomeScreen from "./(tabs)/home";
 import BinDetailScreen from "./home/bin-details";

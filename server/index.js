@@ -33,7 +33,15 @@ const bin1Ref = db.ref('monitoring/bin1');
 
 const app = express();
 app.use(cors({
-  origin: ['http://localhost:8081', 'http://localhost:8080', 'http://localhost:8000'],
+  origin: [
+    'http://localhost:8081', 
+    'http://localhost:8080', 
+    'http://localhost:8000',
+    'http://192.168.1.34:8000',
+    'http://192.168.1.0/24', // Allow all devices on the same network
+    'exp://192.168.1.34:8081', // Expo development server
+    'exp://localhost:8081'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
@@ -268,17 +276,48 @@ function connectModem(retryCount = 0) {
 // Start modem connection
 connectModem();
 
+// Periodic modem status check (every 30 seconds)
+setInterval(() => {
+  if (modem) {
+    console.log('[MODEM STATUS CHECK]', {
+      timestamp: new Date().toISOString(),
+      isOpen: modem.isOpen,
+      port: modem.port,
+      initialized: modem.initialized,
+      customInitialized: modemInitialized
+    });
+  } else {
+    console.log('[MODEM STATUS CHECK] Modem object not initialized');
+  }
+}, 30000);
+
 modem.on('open', data => {
   console.log('[SERIAL MONITOR] Port opened successfully');
   console.log('[SERIAL MONITOR] Modem status:', modem.isOpen ? 'OPEN' : 'CLOSED');
+  console.log('[SERIAL MONITOR] Modem port:', modem.port);
+  console.log('[SERIAL MONITOR] Modem details:', {
+    isOpen: modem.isOpen,
+    port: modem.port,
+    initialized: modem.initialized
+  });
   
   modem.initializeModem((result) => {
     if (!result || result.status !== 'success') {
       console.error('[SERIAL MONITOR] Error initializing modem:', result);
+      modemInitialized = false;
       return;
     }
     console.log('[SERIAL MONITOR] Modem is initialized:', result);
     console.log('[SERIAL MONITOR] Modem ready for SMS sending');
+    console.log('[SERIAL MONITOR] Final modem status check:', {
+      isOpen: modem.isOpen,
+      port: modem.port,
+      initialized: modem.initialized
+    });
+    
+    // Set our custom initialization flag
+    modemInitialized = true;
+    console.log('[SERIAL MONITOR] ✅ Custom modem initialization flag set to true');
     
     // Real-time data monitoring for both data paths
     setupRealTimeMonitoring();
@@ -311,7 +350,7 @@ function setupRealTimeMonitoring() {
         const smsMessage = `🚨 SMARTBIN ALERT 🚨\n\nBin S1Bin3 is at ${data.bin_level}% capacity!\nLocation: Central Plaza\nTime: ${new Date().toLocaleString()}\n\nPlease empty the bin immediately.`;
         
         try {
-          await sendSMS('+639953207865', smsMessage);
+          await sendSMS('+639309096606', smsMessage);
           smsSentData = true;
           console.log('✅ AUTOMATIC SMS sent successfully for S1Bin3');
         } catch (smsError) {
@@ -424,7 +463,7 @@ function setupRealTimeMonitoring() {
         const smsMessage = `🚨 SMARTBIN ALERT 🚨\n\nBin1 is at ${data.bin_level}% capacity!\nLocation: Central Plaza\nTime: ${new Date().toLocaleString()}\n\nPlease empty the bin immediately.`;
         
         try {
-          await sendSMS('+639953207865', smsMessage);
+          await sendSMS('+639309096606', smsMessage);
           smsSentBin1 = true;
           console.log('✅ AUTOMATIC SMS sent successfully for bin1');
         } catch (smsError) {
@@ -571,7 +610,7 @@ app.post('/api/send-sms', async (req, res) => {
     const data = snapshot.val();
     const binName = data.bin_name || 'SmartBin';
     const msg = `Alert: ${binName}\nWeight: ${data.weight_percent || 0}%\nHeight: ${data.height_percent || 0}%\nBin Level: ${data.bin_level || 0}%`;
-    const phoneNumber = req.body.phoneNumber || '+639953207865';
+    const phoneNumber = req.body.phoneNumber || '+639309096606';
     await sendSMS(phoneNumber, msg);
     res.json({ status: 'success', message: 'SMS sent.' });
   } catch (err) {
@@ -584,7 +623,7 @@ app.post('/api/send-sms', async (req, res) => {
 app.post('/api/test-sms', async (req, res) => {
   try {
     const { phoneNumber, message } = req.body;
-    const testPhoneNumber = phoneNumber || '+639953207865';
+    const testPhoneNumber = phoneNumber || '+639309096606';
     const testMessage = message || 'Test SMS from SmartBin System';
     
     console.log(`[TEST SMS] Sending test SMS to ${testPhoneNumber}`);
@@ -612,7 +651,7 @@ app.post('/api/test-sms', async (req, res) => {
 app.post('/api/force-sms-alert', async (req, res) => {
   try {
     const { binId, binLevel } = req.body;
-    const phoneNumber = '+639953207865';
+    const phoneNumber = '+639309096606';
     const level = binLevel || 90;
     const bin = binId || 'Bin1';
     
@@ -638,19 +677,71 @@ app.post('/api/force-sms-alert', async (req, res) => {
   }
 });
 
+// Track modem initialization status
+let modemInitialized = false;
+
 // SMS configuration status
 app.get('/api/sms-status', (req, res) => {
+  // Enhanced GSM status with more detailed information
+  let modemStatus = 'not initialized';
+  let modemDetails = {};
+  
+  if (modem) {
+    modemDetails = {
+      isOpen: modem.isOpen,
+      port: modem.port || 'COM12',
+      baudRate: options.baudRate,
+      initialized: modem.initialized || false,
+      customInitialized: modemInitialized
+    };
+    
+    // Check multiple conditions for connection status
+    if (modemInitialized || (modem.isOpen && modem.initialized)) {
+      modemStatus = 'connected';
+    } else if (modem.isOpen || modem.port) {
+      modemStatus = 'disconnected';
+    } else {
+      modemStatus = 'not initialized';
+    }
+  }
+  
   res.json({
-    phoneNumber: '+639953207865',
+    phoneNumber: '+639309096606',
     threshold: '85%',
-    modemStatus: modem ? (modem.isOpen ? 'connected' : 'disconnected') : 'not initialized',
+    modemStatus: modemStatus,
+    modemDetails: modemDetails,
     smsFlags: {
       smsSentData: smsSentData,
       smsSentBin1: smsSentBin1
     },
     autoSmsEnabled: true,
-    message: 'SMS notifications will be sent automatically when bin level exceeds 85%'
+    message: 'SMS notifications will be sent automatically when bin level exceeds 85%',
+    timestamp: new Date().toISOString()
   });
+});
+
+// Debug endpoint to test GSM modem connection
+app.get('/api/gsm-debug', (req, res) => {
+  const debugInfo = {
+    timestamp: new Date().toISOString(),
+    modem: {
+      exists: !!modem,
+      isOpen: modem ? modem.isOpen : false,
+      port: modem ? modem.port : null,
+      initialized: modem ? modem.initialized : false
+    },
+    options: options,
+    connectionAttempts: 'Check server logs for connection attempts',
+    recommendations: [
+      '1. Check if COM12 is available in Device Manager',
+      '2. Ensure no other application is using COM12',
+      '3. Try running server as Administrator',
+      '4. Check USB-SERIAL CH340 driver installation',
+      '5. Unplug and reconnect the GSM modem'
+    ]
+  };
+  
+  res.json(debugInfo);
 });
 
 // Firebase quota status
