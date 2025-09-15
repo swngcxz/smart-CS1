@@ -13,21 +13,21 @@ export function StaffActivityTab() {
   const [activityTypeFilter, setActivityTypeFilter] = useState("all");
   const [dateRangeFilter, setDateRangeFilter] = useState("all");
   const [selectedBinId, setSelectedBinId] = useState("bin1"); // Default bin ID
-  
+
   // Get user ID from auth context or localStorage, fallback to 'staff-user' for testing
   const storedUserId = localStorage.getItem("userId");
   const userId = storedUserId || "staff-user"; // Use the user ID from your saved data
-  
+
   const { logs, user, loading, error, refetch } = useActivityLogs(userId);
-  const { 
-    history: binHistory, 
-    errorRecords: binErrorRecords, 
-    stats: binStats, 
-    loading: binHistoryLoading, 
-    error: binHistoryError, 
-    fetchBinHistory, 
-    fetchErrorRecords, 
-    fetchBinStats 
+  const {
+    history: binHistory,
+    errorRecords: binErrorRecords,
+    stats: binStats,
+    loading: binHistoryLoading,
+    error: binHistoryError,
+    fetchBinHistory,
+    fetchErrorRecords,
+    fetchBinStats,
   } = useBinHistory(selectedBinId);
 
   // Debug logging
@@ -38,7 +38,7 @@ export function StaffActivityTab() {
       logsCount: logs?.length || 0,
       logs: logs,
       loading,
-      error
+      error,
     });
   }, [storedUserId, userId, logs, loading, error]);
 
@@ -68,19 +68,17 @@ export function StaffActivityTab() {
       ];
     }
 
-    const collections = logs.filter(log => 
-      log.activity_type === 'bin_emptied' || log.activity_type === 'task_assignment'
+    const collections = logs.filter(
+      (log) => log.activity_type === "bin_emptied" || log.activity_type === "task_assignment"
     ).length;
 
     // Use bin history error records for alerts count
     const alerts = binErrorRecords?.length || 0;
 
-    const maintenance = logs.filter(log => 
-      log.activity_type === 'maintenance'
-    ).length;
+    const maintenance = logs.filter((log) => log.activity_type === "maintenance").length;
 
-    const routeChanges = logs.filter(log => 
-      log.activity_type === 'route_change' || log.activity_type === 'schedule_update'
+    const routeChanges = logs.filter(
+      (log) => log.activity_type === "route_change" || log.activity_type === "schedule_update"
     ).length;
 
     return [
@@ -96,13 +94,13 @@ export function StaffActivityTab() {
     // If "Alerts" is selected, show bin history error records instead of activity logs
     if (activityTypeFilter === "alerts") {
       if (!binErrorRecords || binErrorRecords.length === 0) return [];
-      
+
       // Convert bin history records to activity-like format for display
-      return binErrorRecords.map(record => ({
+      return binErrorRecords.map((record) => ({
         id: record.id,
-        activity_type: 'bin_alert',
+        activity_type: "bin_alert",
         timestamp: record.timestamp,
-        date: new Date(record.timestamp).toISOString().split('T')[0],
+        date: new Date(record.timestamp).toISOString().split("T")[0],
         bin_id: record.binId,
         bin_location: `GPS: ${record.gps.lat}, ${record.gps.lng}`,
         bin_status: record.status.toLowerCase(),
@@ -111,7 +109,7 @@ export function StaffActivityTab() {
         height_percent: record.distance,
         bin_level: record.binLevel,
         gps_valid: record.gpsValid,
-        satellites: record.satellites
+        satellites: record.satellites,
       }));
     }
 
@@ -124,13 +122,12 @@ export function StaffActivityTab() {
       filtered = filtered.filter((activity) => activity.activity_type === activityTypeFilter);
     }
 
-
     // Filter by date range - show all records by default
     if (dateRangeFilter !== "all") {
-      const today = new Date().toISOString().split('T')[0];
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
       if (dateRangeFilter === "today") {
         filtered = filtered.filter((activity) => activity.date === today);
@@ -147,7 +144,7 @@ export function StaffActivityTab() {
       originalCount: logs.length,
       filteredCount: filtered.length,
       dateRangeFilter,
-      activityTypeFilter
+      activityTypeFilter,
     });
 
     return filtered;
@@ -155,7 +152,7 @@ export function StaffActivityTab() {
 
   const handleApplyFilters = () => {
     console.log("Filters applied:", { activityTypeFilter, dateRangeFilter });
-    
+
     // If alerts are selected, fetch bin history error records
     if (activityTypeFilter === "alerts") {
       fetchErrorRecords(selectedBinId);
@@ -235,18 +232,7 @@ export function StaffActivityTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Activity Overview</h2>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleRefresh}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-            disabled={loading}
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        <div className="flex gap-2"></div>
       </div>
 
       {/* Stats Cards - Top Section */}
@@ -455,10 +441,9 @@ export function StaffActivityTab() {
       </div>
 
       {/* Full Activity Table - Bottom Section */}
-   <div className="space-y-5">
-      <StaffActivityLogs /> 
-    </div>
-
+      <div className="space-y-5">
+        <StaffActivityLogs />
+      </div>
     </div>
   );
 }

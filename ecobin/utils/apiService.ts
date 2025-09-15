@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Try multiple endpoints for mobile development
 const API_ENDPOINTS = [
-  'http://192.168.1.34:8000', // Computer's IP address
+  'http://192.168.254.190:8000', // Computer's IP address
   'http://localhost:8000',     // Fallback for simulator
   'http://10.0.2.2:8000',     // Android emulator host
 ];

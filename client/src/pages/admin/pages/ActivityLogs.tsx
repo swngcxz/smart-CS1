@@ -13,8 +13,8 @@ interface ActivityLogsProps {
   onRefresh?: () => void;
 }
 
-type SortField = 'timestamp' | 'activity_type' | 'status' | 'priority';
-type SortDirection = 'asc' | 'desc';
+type SortField = "timestamp" | "activity_type" | "status" | "priority";
+type SortDirection = "asc" | "desc";
 
 export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
   const [activityType, setActivityType] = useState<string>("all");
@@ -22,10 +22,14 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [sortField, setSortField] = useState<SortField>('timestamp');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  
-  const { logs, loading, error, totalCount } = useAllActivityLogs(100, 0, activityType !== "all" ? activityType : undefined);
+  const [sortField, setSortField] = useState<SortField>("timestamp");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  const { logs, loading, error, totalCount } = useAllActivityLogs(
+    100,
+    0,
+    activityType !== "all" ? activityType : undefined
+  );
 
   const getActivityTypeColor = (type: string) => {
     switch (type) {
@@ -86,41 +90,42 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
     let filtered = [...logs];
 
     if (activityType && activityType !== "all") {
-      filtered = filtered.filter(log => log.activity_type === activityType);
+      filtered = filtered.filter((log) => log.activity_type === activityType);
     }
     if (statusFilter && statusFilter !== "all") {
-      filtered = filtered.filter(log => log.status?.toLowerCase() === statusFilter.toLowerCase());
+      filtered = filtered.filter((log) => log.status?.toLowerCase() === statusFilter.toLowerCase());
     }
     if (priorityFilter && priorityFilter !== "all") {
-      filtered = filtered.filter(log => log.priority?.toLowerCase() === priorityFilter.toLowerCase());
+      filtered = filtered.filter((log) => log.priority?.toLowerCase() === priorityFilter.toLowerCase());
     }
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(log => 
-        log.bin_id?.toLowerCase().includes(searchLower) ||
-        log.bin_location?.toLowerCase().includes(searchLower) ||
-        log.task_note?.toLowerCase().includes(searchLower) ||
-        log.assigned_janitor_name?.toLowerCase().includes(searchLower) ||
-        log.activity_type?.toLowerCase().includes(searchLower)
+      filtered = filtered.filter(
+        (log) =>
+          log.bin_id?.toLowerCase().includes(searchLower) ||
+          log.bin_location?.toLowerCase().includes(searchLower) ||
+          log.task_note?.toLowerCase().includes(searchLower) ||
+          log.assigned_janitor_name?.toLowerCase().includes(searchLower) ||
+          log.activity_type?.toLowerCase().includes(searchLower)
       );
     }
     if (dateRange && dateRange !== "all") {
       const now = new Date();
       const filterDate = new Date();
-      
+
       switch (dateRange) {
-        case 'today':
+        case "today":
           filterDate.setHours(0, 0, 0, 0);
           break;
-        case 'week':
+        case "week":
           filterDate.setDate(now.getDate() - 7);
           break;
-        case 'month':
+        case "month":
           filterDate.setMonth(now.getMonth() - 1);
           break;
       }
-      
-      filtered = filtered.filter(log => {
+
+      filtered = filtered.filter((log) => {
         const logDate = new Date(log.timestamp);
         return logDate >= filterDate;
       });
@@ -129,27 +134,27 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
     filtered.sort((a, b) => {
       let aValue: any, bValue: any;
       switch (sortField) {
-        case 'timestamp':
+        case "timestamp":
           aValue = new Date(a.timestamp).getTime();
           bValue = new Date(b.timestamp).getTime();
           break;
-        case 'activity_type':
-          aValue = a.activity_type || '';
-          bValue = b.activity_type || '';
+        case "activity_type":
+          aValue = a.activity_type || "";
+          bValue = b.activity_type || "";
           break;
-        case 'status':
-          aValue = a.status || '';
-          bValue = b.status || '';
+        case "status":
+          aValue = a.status || "";
+          bValue = b.status || "";
           break;
-        case 'priority':
-          aValue = a.priority || '';
-          bValue = b.priority || '';
+        case "priority":
+          aValue = a.priority || "";
+          bValue = b.priority || "";
           break;
         default:
           return 0;
       }
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
 
@@ -158,16 +163,16 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) return <ArrowUpDown className="w-4 h-4" />;
-    return sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
+    return sortDirection === "asc" ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />;
   };
 
   const clearFilters = () => {
@@ -176,8 +181,8 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
     setPriorityFilter("all");
     setDateRange("all");
     setSearchTerm("");
-    setSortField('timestamp');
-    setSortDirection('desc');
+    setSortField("timestamp");
+    setSortDirection("desc");
   };
 
   return (
@@ -185,22 +190,11 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
       <Card className="bg-white dark:bg-gray-800 border-0 shadow-lg">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between mb-4">
-            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-              Activity Logs
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">Activity Logs</CardTitle>
             <div className="flex items-center ml-auto space-x-2">
               <Badge variant="secondary">
                 {filteredAndSortedLogs.length} of {totalCount} Logs
               </Badge>
-              <Button
-                onClick={onRefresh}
-                variant="outline"
-                size="sm"
-                className="text-black-600 hover:text-green-800"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -225,20 +219,20 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSort('timestamp')}
+                          onClick={() => handleSort("timestamp")}
                           className="flex items-center gap-1 p-0 h-auto font-semibold text-left"
                         >
-                          Date & Time {getSortIcon('timestamp')}
+                          Date & Time {getSortIcon("timestamp")}
                         </Button>
                       </TableHead>
                       <TableHead className="w-[10%]">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSort('activity_type')}
+                          onClick={() => handleSort("activity_type")}
                           className="flex items-center gap-1 p-0 h-auto font-semibold text-left"
                         >
-                          Activity Type {getSortIcon('activity_type')}
+                          Activity Type {getSortIcon("activity_type")}
                         </Button>
                       </TableHead>
                       <TableHead className="w-[25%]">Description</TableHead>
@@ -248,20 +242,20 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSort('status')}
+                          onClick={() => handleSort("status")}
                           className="flex items-center gap-1 p-0 h-auto font-semibold text-left"
                         >
-                          Status {getSortIcon('status')}
+                          Status {getSortIcon("status")}
                         </Button>
                       </TableHead>
                       <TableHead className="w-[8%]">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSort('priority')}
+                          onClick={() => handleSort("priority")}
                           className="flex items-center gap-1 p-0 h-auto font-semibold text-left"
                         >
-                          Priority {getSortIcon('priority')}
+                          Priority {getSortIcon("priority")}
                         </Button>
                       </TableHead>
                       <TableHead className="w-[10%]">Details</TableHead>
@@ -271,11 +265,11 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                   <TableBody>
                     {filteredAndSortedLogs.map((activity) => (
                       <TableRow key={activity.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <TableCell>{formatTimestamp(activity.timestamp)}</TableCell>
                         <TableCell>
-                          {formatTimestamp(activity.timestamp)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs px-2 py-1`}>
+                          <Badge
+                            className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs px-2 py-1`}
+                          >
                             {activity.activity_type || "unknown"}
                           </Badge>
                         </TableCell>
@@ -298,9 +292,7 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                             </Badge>
                           )}
                         </TableCell>
-                        <TableCell>
-                          {activity.bin_level !== undefined && `Level: ${activity.bin_level}%`}
-                        </TableCell>
+                        <TableCell>{activity.bin_level !== undefined && `Level: ${activity.bin_level}%`}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -312,7 +304,9 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                 {filteredAndSortedLogs.map((activity) => (
                   <div key={activity.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border">
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs px-2 py-1`}>
+                      <Badge
+                        className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs px-2 py-1`}
+                      >
                         {activity.activity_type || "unknown"}
                       </Badge>
                       {activity.status && (
