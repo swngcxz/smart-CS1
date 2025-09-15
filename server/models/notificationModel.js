@@ -1,4 +1,5 @@
 const { db } = require('./firebase');
+const withRetry = require('../utils/retryHandler');
 
 class NotificationModel {
   constructor() {
@@ -17,9 +18,9 @@ class NotificationModel {
    */
   async getBinAssignment(binId) {
     try {
-      const doc = await db.collection(this.collections.binAssignments)
-        .doc(binId)
-        .get();
+      const doc = await withRetry(() =>
+        db.collection(this.collections.binAssignments).doc(binId).get()
+      );
 
       if (doc.exists) {
         return {
@@ -41,9 +42,9 @@ class NotificationModel {
    */
   async getUserById(userId) {
     try {
-      const doc = await db.collection(this.collections.users)
-        .doc(userId)
-        .get();
+      const doc = await withRetry(() =>
+        db.collection(this.collections.users).doc(userId).get()
+      );
 
       if (doc.exists) {
         return {
@@ -67,9 +68,9 @@ class NotificationModel {
     try {
       if (!roles.length) return [];
       // Firestore doesn't support "in" on different fields, so query by role field
-      const snapshot = await db.collection(this.collections.users)
-        .where('role', 'in', roles)
-        .get();
+      const snapshot = await withRetry(() =>
+        db.collection(this.collections.users).where('role', 'in', roles).get()
+      );
 
       const users = [];
       snapshot.forEach(doc => {
@@ -79,9 +80,9 @@ class NotificationModel {
       // Some records might use an alternate field like acc_type; include them via a second pass
       // Note: This requires a separate query per role because Firestore doesn't support 'in' on different fields
       for (const role of roles) {
-        const altSnapshot = await db.collection(this.collections.users)
-          .where('acc_type', '==', role)
-          .get();
+        const altSnapshot = await withRetry(() =>
+          db.collection(this.collections.users).where('acc_type', '==', role).get()
+        );
         altSnapshot.forEach(doc => {
           const user = { id: doc.id, ...doc.data() };
           if (!users.find(u => u.id === user.id)) users.push(user);
@@ -101,7 +102,9 @@ class NotificationModel {
    */
   async getAllBinAssignments() {
     try {
-      const snapshot = await db.collection(this.collections.binAssignments).get();
+      const snapshot = await withRetry(() =>
+        db.collection(this.collections.binAssignments).get()
+      );
       const assignments = [];
 
       snapshot.forEach(doc => {
@@ -152,7 +155,9 @@ class NotificationModel {
         createdAt: new Date()
       };
 
-      const docRef = await db.collection(this.collections.notifications).add(notification);
+      const docRef = await withRetry(() =>
+        db.collection(this.collections.notifications).add(notification)
+      );
       
       console.log(`[NOTIFICATION MODEL] Created notification for bin ${binId} to janitor ${janitorId}`);
       
@@ -174,11 +179,13 @@ class NotificationModel {
    */
   async getNotificationsForJanitor(janitorId, limit = 50) {
     try {
-      const snapshot = await db.collection(this.collections.notifications)
-        .where('janitorId', '==', janitorId)
-        .orderBy('timestamp', 'desc')
-        .limit(limit)
-        .get();
+      const snapshot = await withRetry(() =>
+        db.collection(this.collections.notifications)
+          .where('janitorId', '==', janitorId)
+          .orderBy('timestamp', 'desc')
+          .limit(limit)
+          .get()
+      );
 
       const notifications = [];
       snapshot.forEach(doc => {
@@ -202,12 +209,14 @@ class NotificationModel {
    */
   async markNotificationAsRead(notificationId) {
     try {
-      await db.collection(this.collections.notifications)
-        .doc(notificationId)
-        .update({
-          read: true,
-          readAt: new Date()
-        });
+      await withRetry(() =>
+        db.collection(this.collections.notifications)
+          .doc(notificationId)
+          .update({
+            read: true,
+            readAt: new Date()
+          })
+      );
 
       console.log(`[NOTIFICATION MODEL] Marked notification ${notificationId} as read`);
       return true;
@@ -224,10 +233,12 @@ class NotificationModel {
    */
   async getUnreadNotificationCount(janitorId) {
     try {
-      const snapshot = await db.collection(this.collections.notifications)
-        .where('janitorId', '==', janitorId)
-        .where('read', '==', false)
-        .get();
+      const snapshot = await withRetry(() =>
+        db.collection(this.collections.notifications)
+          .where('janitorId', '==', janitorId)
+          .where('read', '==', false)
+          .get()
+      );
 
       return snapshot.size;
     } catch (error) {
@@ -246,9 +257,11 @@ class NotificationModel {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
-      const snapshot = await db.collection(this.collections.notifications)
-        .where('timestamp', '<', cutoffDate)
-        .get();
+      const snapshot = await withRetry(() =>
+        db.collection(this.collections.notifications)
+          .where('timestamp', '<', cutoffDate)
+          .get()
+      );
 
       const batch = db.batch();
       let deletedCount = 0;
@@ -259,7 +272,7 @@ class NotificationModel {
       });
 
       if (deletedCount > 0) {
-        await batch.commit();
+        await withRetry(() => batch.commit());
         console.log(`[NOTIFICATION MODEL] Cleaned up ${deletedCount} old notifications`);
       }
 

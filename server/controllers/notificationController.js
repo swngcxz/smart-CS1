@@ -51,6 +51,14 @@ exports.deleteNotification = async (req, res) => {
 exports.sendCriticalBinNotification = async (binId, binLevel, location) => {
   try {
     const adminUserId = 'admin';
+    
+    // Check rate limit before sending notification
+    const rateLimitStatus = rateLimitService.checkNotificationUploadLimit(adminUserId);
+    if (!rateLimitStatus.allowed) {
+      console.log(`[NOTIFICATION CONTROLLER] Rate limit exceeded for admin notifications. Current: ${rateLimitStatus.currentCount}/${rateLimitStatus.maxCount}`);
+      return false;
+    }
+    
     const notification = {
       title: 'Critical Bin Alert',
       message: `Bin ${binId} at ${location} is at ${binLevel}% capacity and needs immediate attention!`,
@@ -62,6 +70,10 @@ exports.sendCriticalBinNotification = async (binId, binLevel, location) => {
       location
     };
     await db.ref(`notifications/${adminUserId}`).push(notification);
+    
+    // Record the notification upload
+    rateLimitService.recordNotificationUpload(adminUserId);
+    
     console.log(`🚨 Critical bin notification sent: Bin ${binId} at ${binLevel}%`);
     return true;
   } catch (error) {
@@ -74,6 +86,14 @@ exports.sendCriticalBinNotification = async (binId, binLevel, location) => {
 exports.sendWarningBinNotification = async (binId, binLevel, location) => {
   try {
     const adminUserId = 'admin';
+    
+    // Check rate limit before sending notification
+    const rateLimitStatus = rateLimitService.checkNotificationUploadLimit(adminUserId);
+    if (!rateLimitStatus.allowed) {
+      console.log(`[NOTIFICATION CONTROLLER] Rate limit exceeded for admin notifications. Current: ${rateLimitStatus.currentCount}/${rateLimitStatus.maxCount}`);
+      return false;
+    }
+    
     const notification = {
       title: 'Bin Warning Alert',
       message: `Bin ${binId} at ${location} is at ${binLevel}% capacity and should be monitored.`,
@@ -85,6 +105,10 @@ exports.sendWarningBinNotification = async (binId, binLevel, location) => {
       location
     };
     await db.ref(`notifications/${adminUserId}`).push(notification);
+    
+    // Record the notification upload
+    rateLimitService.recordNotificationUpload(adminUserId);
+    
     console.log(`⚠️ Warning bin notification sent: Bin ${binId} at ${binLevel}%`);
     return true;
   } catch (error) {
@@ -97,6 +121,14 @@ exports.sendWarningBinNotification = async (binId, binLevel, location) => {
 exports.sendAdminLoginNotification = async (userData) => {
   try {
     const adminUserId = 'admin';
+    
+    // Check rate limit before sending notification
+    const rateLimitStatus = rateLimitService.checkNotificationUploadLimit(adminUserId);
+    if (!rateLimitStatus.allowed) {
+      console.log(`[NOTIFICATION CONTROLLER] Rate limit exceeded for admin notifications. Current: ${rateLimitStatus.currentCount}/${rateLimitStatus.maxCount}`);
+      return false;
+    }
+    
     const notification = {
       title: 'User Login',
       message: `${userData.fullName || userData.firstName || 'Unknown User'} (${userData.role || 'user'})`,
@@ -109,6 +141,10 @@ exports.sendAdminLoginNotification = async (userData) => {
       userFullName: userData.fullName || userData.firstName || 'Unknown'
     };
     await db.ref(`notifications/${adminUserId}`).push(notification);
+    
+    // Record the notification upload
+    rateLimitService.recordNotificationUpload(adminUserId);
+    
     console.log(`📧 Admin login notification sent: ${userData.email} (${userData.role || 'user'}) logged in`);
     return true;
   } catch (error) {
@@ -118,6 +154,7 @@ exports.sendAdminLoginNotification = async (userData) => {
 };
 const admin = require('firebase-admin');
 const db = admin.database();
+const rateLimitService = require('../services/rateLimitService');
 
 // Send a notification to a user or group
 exports.sendNotification = async (req, res) => {
@@ -126,6 +163,22 @@ exports.sendNotification = async (req, res) => {
     if (!userId || !title || !message) {
       return res.status(400).json({ error: 'userId, title, and message are required' });
     }
+
+    // Check rate limit before sending notification
+    const rateLimitStatus = rateLimitService.checkNotificationUploadLimit(userId);
+    if (!rateLimitStatus.allowed) {
+      console.log(`[NOTIFICATION CONTROLLER] Rate limit exceeded for user ${userId}. Current: ${rateLimitStatus.currentCount}/${rateLimitStatus.maxCount}`);
+      return res.status(429).json({ 
+        error: 'Daily notification limit exceeded for this user',
+        rateLimit: {
+          currentCount: rateLimitStatus.currentCount,
+          maxCount: rateLimitStatus.maxCount,
+          remaining: rateLimitStatus.remaining,
+          resetTime: rateLimitStatus.resetTime
+        }
+      });
+    }
+
     const notification = {
       title,
       message,
@@ -135,8 +188,15 @@ exports.sendNotification = async (req, res) => {
       ...metadata
     };
     await db.ref(`notifications/${userId}`).push(notification);
+    
+    // Record the notification upload
+    rateLimitService.recordNotificationUpload(userId);
+    
     console.log(`📧 Notification sent to ${userId}: ${title}`);
-    res.status(200).json({ success: true });
+    res.status(200).json({ 
+      success: true,
+      rateLimit: rateLimitService.checkNotificationUploadLimit(userId)
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -190,5 +250,23 @@ exports.getAdminNotifications = async (req, res) => {
     res.status(200).json({ notifications });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+// Get rate limit statistics for notifications
+exports.getNotificationRateLimitStats = async (req, res) => {
+  try {
+    const stats = rateLimitService.getStats();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Notification rate limit statistics retrieved successfully',
+      data: stats
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
   }
 };

@@ -1,7 +1,8 @@
 // app/(auth)/login.tsx
+import React from "react";
 import { AntDesign, FontAwesome, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 import {

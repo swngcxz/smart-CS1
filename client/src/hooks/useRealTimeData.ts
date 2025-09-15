@@ -34,19 +34,20 @@ export function useRealTimeData() {
   const [error, setError] = useState<string | null>(null);
   const [gpsHistory, setGpsHistory] = useState<Array<{lat: number, lng: number, timestamp: number}>>([]);
 
-  // Fetch initial data
+  // Fetch initial data - ONLY bin1 as requested
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
+        console.log('🔄 Fetching initial data from Firebase...');
         
-        // Fetch both data paths
-        const [bin1Response, monitoringResponse] = await Promise.all([
-          api.get('/api/bin1'),
-          api.get('/api/bin')
-        ]);
+        // Only fetch bin1 data as requested
+        const bin1Response = await api.get('/api/bin1');
 
+        console.log('📡 API Response:', bin1Response);
         if (bin1Response.data) {
+          console.log('🔥 Real-time bin1 data received:', bin1Response.data);
+          console.log('📊 Bin Level:', bin1Response.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.data.bin_level));
           setBin1Data(bin1Response.data);
           // Track GPS history if valid
           if (bin1Response.data.gps_valid && bin1Response.data.latitude && bin1Response.data.longitude) {
@@ -56,23 +57,13 @@ export function useRealTimeData() {
               timestamp: bin1Response.data.timestamp
             }].slice(-50)); // Keep last 50 points
           }
-        }
-        
-        if (monitoringResponse.data) {
-          setMonitoringData(monitoringResponse.data);
-          // Track GPS history if valid
-          if (monitoringResponse.data.gps_valid && monitoringResponse.data.latitude && monitoringResponse.data.longitude) {
-            setGpsHistory(prev => [...prev, {
-              lat: monitoringResponse.data.latitude,
-              lng: monitoringResponse.data.longitude,
-              timestamp: monitoringResponse.data.timestamp
-            }].slice(-50)); // Keep last 50 points
-          }
+        } else {
+          console.log('⚠️ No bin1 data received from API');
         }
         
         setError(null);
       } catch (err: any) {
-        console.error('Error fetching initial data:', err);
+        console.error('❌ Error fetching initial data:', err);
         setError(err.message || 'Failed to fetch data');
       } finally {
         setLoading(false);
@@ -82,16 +73,15 @@ export function useRealTimeData() {
     fetchInitialData();
   }, []);
 
-  // Set up real-time updates using polling (since we don't have Firebase SDK in client)
+  // Set up real-time updates using polling - only bin1 data as requested
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const [bin1Response, monitoringResponse] = await Promise.all([
-          api.get('/api/bin1'),
-          api.get('/api/bin')
-        ]);
+        const bin1Response = await api.get('/api/bin1');
 
         if (bin1Response.data) {
+          console.log('🔄 Polling update - bin1 data:', bin1Response.data);
+          console.log('📊 Bin Level:', bin1Response.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.data.bin_level));
           setBin1Data(bin1Response.data);
           // Track GPS history if valid
           if (bin1Response.data.gps_valid && bin1Response.data.latitude && bin1Response.data.longitude) {
@@ -103,21 +93,9 @@ export function useRealTimeData() {
           }
         }
         
-        if (monitoringResponse.data) {
-          setMonitoringData(monitoringResponse.data);
-          // Track GPS history if valid
-          if (monitoringResponse.data.gps_valid && monitoringResponse.data.latitude && monitoringResponse.data.longitude) {
-            setGpsHistory(prev => [...prev, {
-              lat: monitoringResponse.data.latitude,
-              lng: monitoringResponse.data.longitude,
-              timestamp: monitoringResponse.data.timestamp
-            }].slice(-50)); // Keep last 50 points
-          }
-        }
-        
         setError(null);
       } catch (err: any) {
-        console.error('Error fetching real-time data:', err);
+        console.error('❌ Error fetching real-time data:', err);
         setError(err.message || 'Failed to fetch real-time data');
       }
     }, 5000); // Poll every 5 seconds
@@ -125,11 +103,11 @@ export function useRealTimeData() {
     return () => clearInterval(interval);
   }, []);
 
-  // Convert Firebase data to waste bin format
+  // Convert Firebase data to waste bin format - ONLY use bin1 for Central Plaza
   const getWasteBins = (): WasteBin[] => {
     const bins: WasteBin[] = [];
     
-    // Add bin1 data if available
+    // ONLY use bin1 data for Central Plaza as requested
     if (bin1Data) {
       bins.push({
         id: 'bin1',
@@ -144,28 +122,39 @@ export function useRealTimeData() {
       });
     }
     
-    // Add monitoring data if available
-    if (monitoringData) {
-      bins.push({
-        id: 'monitoring',
-        location: 'Central Plaza', // Map to Central Plaza for integration
-        level: monitoringData.bin_level || 0,
-        status: getStatusFromLevel(monitoringData.bin_level || 0),
-        lastCollected: getTimeAgo(monitoringData.timestamp),
-        capacity: '500L',
-        wasteType: 'Mixed',
-        nextCollection: getNextCollectionTime(monitoringData.bin_level || 0),
-        binData: monitoringData
+    return bins;
+  };
+
+  // Create dynamic bin locations with live coordinates
+  const getDynamicBinLocations = () => {
+    const locations = [];
+    
+    // Add bin1 with live coordinates from real-time database
+    if (bin1Data && bin1Data.gps_valid && bin1Data.latitude && bin1Data.longitude) {
+      locations.push({
+        id: 'bin1',
+        name: 'Central Plaza',
+        position: [bin1Data.latitude, bin1Data.longitude] as [number, number],
+        level: bin1Data.bin_level || 0,
+        status: getStatusFromLevel(bin1Data.bin_level || 0),
+        lastCollection: getTimeAgo(bin1Data.timestamp),
+        route: 'Route A - Central',
+        gps_valid: bin1Data.gps_valid,
+        satellites: bin1Data.satellites,
+        timestamp: bin1Data.timestamp,
+        weight_kg: bin1Data.weight_kg,
+        distance_cm: bin1Data.distance_cm
       });
     }
     
-    return bins;
+    return locations;
   };
 
   return {
     bin1Data,
     monitoringData,
     wasteBins: getWasteBins(),
+    dynamicBinLocations: getDynamicBinLocations(),
     gpsHistory,
     loading,
     error,
@@ -191,11 +180,12 @@ export function useRealTimeData() {
 function getStatusFromLevel(level: number): 'normal' | 'warning' | 'critical' {
   if (level >= 85) return 'critical';
   if (level >= 70) return 'warning';
-  return 'normal';
+  if (level > 0) return 'normal';
+  return 'normal'; // Handle 0 level as normal
 }
 
 function getTimeAgo(timestamp: number): string {
-  if (!timestamp) return 'Unknown';
+  if (!timestamp) return 'Just now';
   
   const now = Date.now();
   const diff = now - timestamp;

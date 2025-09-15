@@ -1,5 +1,6 @@
 const notificationModel = require('../models/notificationModel');
 const fcmService = require('../services/fcmService');
+const withRetry = require('../utils/retryHandler');
 
 class BinNotificationController {
   /**
@@ -37,7 +38,7 @@ class BinNotificationController {
       }
 
       // Get janitor assignment for this bin
-      const assignment = await notificationModel.getBinAssignment(binId);
+      const assignment = await withRetry(() => notificationModel.getBinAssignment(binId));
 
       // Create notification payload
       const notificationData = this.createNotificationData(binData, shouldNotify.type);
@@ -47,7 +48,9 @@ class BinNotificationController {
         console.log(`[BIN NOTIFICATION] No janitor assigned to bin ${binId}. Broadcasting to all janitors...`);
 
         // Fetch all users with janitor-like roles
-        const janitorCandidates = await notificationModel.getUsersByRoles(['janitor', 'staff']);
+        const janitorCandidates = await withRetry(() =>
+          notificationModel.getUsersByRoles(['janitor', 'staff'])
+        );
 
         // Send to each janitor if they have FCM and create per-user notification records for ALL
         const results = [];
@@ -62,11 +65,13 @@ class BinNotificationController {
               }
             }
 
-            const created = await notificationModel.createNotification({
-              ...notificationData,
-              janitorId: user.id,
-              timestamp: timestamp || new Date()
-            });
+            const created = await withRetry(() =>
+              notificationModel.createNotification({
+                ...notificationData,
+                janitorId: user.id,
+                timestamp: timestamp || new Date()
+              })
+            );
             results.push({ userId: user.id, fcmMessageId, notificationId: created.id, hadFcmToken: !!user.fcmToken });
           } catch (err) {
             console.error(`[BIN NOTIFICATION] Failed processing janitor ${user.id}:`, err);
@@ -85,7 +90,7 @@ class BinNotificationController {
       const { janitorId } = assignment;
 
       // Get janitor's FCM token
-      const janitor = await notificationModel.getUserById(janitorId);
+      const janitor = await withRetry(() => notificationModel.getUserById(janitorId));
       
       if (!janitor || !janitor.fcmToken) {
         console.log(`[BIN NOTIFICATION] Janitor ${janitorId} has no FCM token`);
@@ -100,11 +105,13 @@ class BinNotificationController {
       const fcmResult = await fcmService.sendToUser(janitor.fcmToken, notificationData);
       
       // Save notification to Firestore
-      const savedNotification = await notificationModel.createNotification({
-        ...notificationData,
-        janitorId,
-        timestamp: timestamp || new Date()
-      });
+      const savedNotification = await withRetry(() =>
+        notificationModel.createNotification({
+          ...notificationData,
+          janitorId,
+          timestamp: timestamp || new Date()
+        })
+      );
 
       console.log(`[BIN NOTIFICATION] Successfully sent notification to janitor ${janitorId} for bin ${binId}`);
 
@@ -244,7 +251,7 @@ class BinNotificationController {
   async sendManualNotification(binId, message) {
     try {
       // Get janitor assignment for this bin
-      const assignment = await notificationModel.getBinAssignment(binId);
+      const assignment = await withRetry(() => notificationModel.getBinAssignment(binId));
       
       if (!assignment) {
         return {
@@ -257,7 +264,7 @@ class BinNotificationController {
       const { janitorId } = assignment;
 
       // Get janitor's FCM token
-      const janitor = await notificationModel.getUserById(janitorId);
+      const janitor = await withRetry(() => notificationModel.getUserById(janitorId));
       
       if (!janitor || !janitor.fcmToken) {
         return {
@@ -283,11 +290,13 @@ class BinNotificationController {
       const fcmResult = await fcmService.sendToUser(janitor.fcmToken, notificationData);
       
       // Save notification to Firestore
-      const savedNotification = await notificationModel.createNotification({
-        ...notificationData,
-        janitorId,
-        timestamp: new Date()
-      });
+      const savedNotification = await withRetry(() =>
+        notificationModel.createNotification({
+          ...notificationData,
+          janitorId,
+          timestamp: new Date()
+        })
+      );
 
       return {
         success: true,
@@ -315,8 +324,12 @@ class BinNotificationController {
    */
   async getJanitorNotifications(janitorId, limit = 50) {
     try {
-      const notifications = await notificationModel.getNotificationsForJanitor(janitorId, limit);
-      const unreadCount = await notificationModel.getUnreadNotificationCount(janitorId);
+      const notifications = await withRetry(() =>
+        notificationModel.getNotificationsForJanitor(janitorId, limit)
+      );
+      const unreadCount = await withRetry(() =>
+        notificationModel.getUnreadNotificationCount(janitorId)
+      );
 
       return {
         success: true,
@@ -340,7 +353,9 @@ class BinNotificationController {
    */
   async markNotificationAsRead(notificationId) {
     try {
-      await notificationModel.markNotificationAsRead(notificationId);
+      await withRetry(() =>
+        notificationModel.markNotificationAsRead(notificationId)
+      );
       
       return {
         success: true,

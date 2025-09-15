@@ -10,7 +10,7 @@ const updateCurrentUser = async (req, res) => {
       return res.status(401).json({ error: 'Invalid token' });
     }
     // Find user by email
-    const snapshot = await db.collection('users').where('email', '==', decoded.email).get();
+    const snapshot = await withRetry(() => db.collection('users').where('email', '==', decoded.email).get());
     if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
     const userDoc = snapshot.docs[0];
     const updates = {};
@@ -23,7 +23,7 @@ const updateCurrentUser = async (req, res) => {
       }
     }
     updates.updatedAt = new Date().toISOString();
-    await userDoc.ref.update(updates);
+    await withRetry(() => userDoc.ref.update(updates));
     return res.json({ message: 'Profile updated' });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to update user info' });
@@ -32,16 +32,28 @@ const updateCurrentUser = async (req, res) => {
 // Get current user info from JWT token
 const getCurrentUser = async (req, res) => {
   try {
+    console.log('[AUTH] getCurrentUser called');
+    console.log('[AUTH] Cookies:', req.cookies);
+    console.log('[AUTH] Authorization header:', req.headers.authorization);
+    
     const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    console.log('[AUTH] Token found:', !!token);
+    
+    if (!token) {
+      console.log('[AUTH] No token provided');
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
     let decoded;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
+      console.log('[AUTH] Token verified for user:', decoded.email);
     } catch (err) {
+      console.log('[AUTH] Token verification failed:', err.message);
       return res.status(401).json({ error: 'Invalid token' });
     }
     // Find user by email
-    const snapshot = await db.collection('users').where('email', '==', decoded.email).get();
+    const snapshot = await withRetry(() => db.collection('users').where('email', '==', decoded.email).get());
     if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
     const userDoc = snapshot.docs[0];
     const user = userDoc.data();
@@ -74,6 +86,7 @@ const nodemailer = require("nodemailer");
 const crypto = require("crypto");
 const zxcvbn = require("zxcvbn"); // For password strength validation
 const rateLimitMap = new Map(); // For rate limiting
+const withRetry = require('../utils/retryHandler');
 
 const JWT_SECRET = process.env.TOKEN_SECRET || "your_jwt_secret";
 const EMAIL_VERIFICATION_SECRET = process.env.EMAIL_VERIFICATION_SECRET || "verify_secret";
@@ -102,7 +115,7 @@ async function signup(req, res) {
 
   try {
     // check if user already exists
-    const snapshot = await db.collection("users").where("email", "==", email).get();
+    const snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
 
     if (!snapshot.empty) {
       return res.status(409).json({ error: "User already exists" });
@@ -125,12 +138,9 @@ async function signup(req, res) {
 
     try {
       console.log("Saving user to Firestore collection: users");
-      const docRef = await db.collection("users").add(userData);
-      const token = jwt.sign({ email, role: userData.role }, JWT_SECRET, { expiresIn: "1d" });
-
-      res.cookie("token", token, { httpOnly: true, secure: false });
-
-      return res.status(201).json({ id: docRef.id, message: "Signup successful." });
+      const docRef = await withRetry(() => db.collection("users").add(userData));
+      // No need to create a token or set a cookie on signup, just redirect to login
+      return res.status(201).json({ message: "Signup successful. Please log in.", redirectTo: '/login' });
     } catch (err) {
       return res.status(500).json({ error: "Failed to create user" });
     }
@@ -157,28 +167,36 @@ async function login(req, res) {
   }
 
   try {
+    console.log('[AUTH] Looking for user with email:', email);
     // find user by email
-    const snapshot = await db.collection("users").where("email", "==", email).get();
+    const snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
 
+    console.log('[AUTH] Found', snapshot.docs.length, 'users with email:', email);
     if (snapshot.empty) {
+      console.log('[AUTH] No user found with email:', email);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const userDoc = snapshot.docs[0];
     const user = userDoc.data();
+    console.log('[AUTH] User found:', { id: userDoc.id, email: user.email, role: user.role, emailVerified: user.emailVerified });
 
     // Check if email is verified
     if (!user.emailVerified) {
       return res.status(403).json({ error: "Please verify your email before logging in." });
     }
 
+    console.log('[AUTH] Comparing password for user:', user.email);
     const match = await comparePassword(password, user.password);
+    console.log('[AUTH] Password match result:', match);
     if (!match) {
+      console.log('[AUTH] Password does not match for user:', user.email);
       // Add failed attempt
       recentAttempts.push(now);
       rateLimitMap.set(email, recentAttempts);
       return res.status(401).json({ error: "Invalid credentials" });
     }
+    console.log('[AUTH] Password verified for user:', user.email);
     // Reset attempts on successful login
     rateLimitMap.set(email, []);
 
@@ -191,7 +209,7 @@ async function login(req, res) {
     };
 
     console.log("Saving login log to Firestore collection: logs");
-    const logRef = await db.collection("logs").add(loginLog);
+    const logRef = await withRetry(() => db.collection("logs").add(loginLog));
 
     // generate JWT with log ID included
     const loginToken = jwt.sign(
@@ -200,28 +218,62 @@ async function login(req, res) {
       { expiresIn: "1d" }
     );
 
-    res.cookie("token", loginToken, { httpOnly: true, secure: false });
+    console.log('[AUTH] Setting cookie with token');
+    res.cookie("token", loginToken, { 
+      httpOnly: false, // Allow JS access for debugging
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/'
+    });
+    console.log('[AUTH] Cookie set successfully');
 
 
 
-    // Send login notification to admin dashboard for staff user logins only
-    try {
-      // Only send notification if the user is NOT an admin (i.e., is a staff user)
-      if (user.role !== 'admin' && user.acc_type !== 'admin') {
-        const { sendAdminLoginNotification } = require('./notificationController');
-        await sendAdminLoginNotification({
-          id: userDoc.id,
-          fullName: user.fullName || user.firstName,
-          firstName: user.firstName,
-          role: user.acc_type || user.role || 'user',
-          email: user.email
-        });
-      }
-    } catch (notifyErr) {
-      console.error('Failed to send admin login notification:', notifyErr);
+    // Send login notification to admin dashboard for staff user logins only (non-blocking)
+    if (user.role !== 'admin' && user.acc_type !== 'admin') {
+      // Don't await this - let it run in background
+      setImmediate(async () => {
+        try {
+          const { sendAdminLoginNotification } = require('./notificationController');
+          await sendAdminLoginNotification({
+            id: userDoc.id,
+            fullName: user.fullName || user.firstName,
+            firstName: user.firstName,
+            role: user.acc_type || user.role || 'user',
+            email: user.email
+          });
+        } catch (notifyErr) {
+          console.error('Failed to send admin login notification:', notifyErr);
+        }
+      });
     }
 
-    return res.status(200).json({ message: "Login successful", token: loginToken });
+    // Determine redirect based on user role
+    let redirectTo = '/staff'; // default fallback
+    if (user.role === 'admin' || user.acc_type === 'admin') {
+      redirectTo = '/admin';
+    } else if (user.role === 'staff' || user.acc_type === 'staff') {
+      redirectTo = '/staff';
+    }
+
+    const responseData = { 
+      message: "Login successful", 
+      token: loginToken, 
+      user: {
+        id: userDoc.id,
+        fullName: user.fullName || user.firstName || '',
+        email: user.email,
+        role: user.role || user.acc_type || 'user'
+      },
+      redirectTo 
+    };
+    
+    console.log('[AUTH] About to send response...');
+    console.log('[AUTH] Sending response:', responseData);
+    console.log('[AUTH] Response status will be 200');
+    
+    return res.status(200).json(responseData);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message });
@@ -233,11 +285,11 @@ async function login(req, res) {
 async function requestPasswordReset(req, res) {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email required" });
-  const snapshot = await db.collection("users").where("email", "==", email).get();
+  const snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
   if (snapshot.empty) return res.status(404).json({ error: "User not found" });
   const userDoc = snapshot.docs[0];
   const resetToken = jwt.sign({ email }, PASSWORD_RESET_SECRET, { expiresIn: "1h" });
-  await userDoc.ref.update({ resetToken });
+  await withRetry(() => userDoc.ref.update({ resetToken }));
   const resetUrl = `${req.protocol}://${req.get("host")}/auth/reset-password?token=${resetToken}`;
   await transporter.sendMail({
     from: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
@@ -262,11 +314,11 @@ async function resetPassword(req, res) {
 
   try {
     const decoded = jwt.verify(resetToken, PASSWORD_RESET_SECRET);
-    const snapshot = await db.collection("users").where("email", "==", decoded.email).get();
+    const snapshot = await withRetry(() => db.collection("users").where("email", "==", decoded.email).get());
     if (snapshot.empty) return res.status(400).json({ error: "Invalid token" });
     const userDoc = snapshot.docs[0];
     const hashed = await hashPassword(newPassword);
-    await userDoc.ref.update({ password: hashed, resetToken: null });
+    await withRetry(() => userDoc.ref.update({ password: hashed, resetToken: null }));
     return res.json({ message: "Password reset successful. You can now log in." });
   } catch (err) {
     return res.status(400).json({ error: "Invalid or expired token" });
@@ -297,7 +349,7 @@ async function changePassword(req, res) {
     }
 
     // Find user by email
-    const snapshot = await db.collection('users').where('email', '==', decoded.email).get();
+    const snapshot = await withRetry(() => db.collection('users').where('email', '==', decoded.email).get());
     if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
     const userDoc = snapshot.docs[0];
     const user = userDoc.data();
@@ -306,7 +358,7 @@ async function changePassword(req, res) {
     if (!matches) return res.status(401).json({ error: 'Current password is incorrect' });
 
     const hashed = await hashPassword(newPassword);
-    await userDoc.ref.update({ password: hashed, updatedAt: new Date().toISOString() });
+    await withRetry(() => userDoc.ref.update({ password: hashed, updatedAt: new Date().toISOString() }));
 
     return res.json({ message: 'Password changed successfully' });
   } catch (err) {
@@ -333,7 +385,7 @@ async function signout(req, res) {
     // Update logoutTime in logs if logId exists
     if (decoded.logId) {
       const logRef = db.collection("logs").doc(decoded.logId);
-      await logRef.update({ logoutTime: new Date().toISOString() });
+      await withRetry(() => logRef.update({ logoutTime: new Date().toISOString() }));
     }
     // Clear the token cookie
     res.clearCookie("token");

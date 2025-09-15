@@ -9,7 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 
 import { Recycle } from "lucide-react";
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 type RegisterProps = {
   onOpenLogin?: () => void;
@@ -47,7 +47,12 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       });
       return;
     }
-    await signup(name, email, password);
+    try {
+      await signup(name, email, password);
+    } catch (error) {
+      // Error handling is done in the context
+      console.error('Signup failed:', error);
+    }
   };
 
   return (

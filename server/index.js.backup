@@ -1,0 +1,521 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
+const express = require('express');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const session = require('express-session');
+const passport = require('./utils/googleAuth');
+const authRouter = require('./routers/authRouter');
+const staffRouter = require('./routers/staffRoutes');
+const scheduleRouter = require('./routers/scheduleRouter');
+const truckScheduleRoutes = require('./routers/truckScheduleRoutes');
+const binRoutes = require('./routers/binRoutes');
+const errorHandler = require('./middlewares/errorHandler');
+const activityRoutes = require('./routers/activityRoutes');
+const analyticsRoutes = require('./routers/analyticsRoutes');
+const wasteRoutes = require('./routers/wasteRoutes');
+const { admin } = require('./models/firebase');
+const serialportgsm = require('serialport-gsm');
+const GSMController = require('./controllers/gsmController');
+
+const notificationRoutes = require('./routers/notificationRoutes');
+const binHistoryRoutes = require('./routers/binHistoryRoutes');
+const binNotificationRoutes = require('./routers/binNotificationRoutes');
+const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
+const BinHistoryProcessor = require('./utils/binHistoryProcessor');
+const binNotificationController = require('./controllers/binNotificationController');
+
+
+const db = admin.database();
+const dataRef = db.ref('monitoring/data');
+const bin1Ref = db.ref('monitoring/bin1');
+
+const app = express();
+app.use(cors({
+  origin: ['http://localhost:8081', 'http://localhost:8080', 'http://localhost:8000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+}));
+app.use(bodyParser.json());
+app.use(express.json());
+app.use(cookieParser());
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || "defaultsecret",
+  resave: false,
+  saveUninitialized: false,
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.use('/auth', authRouter);
+app.use('/api/staff', staffRouter);  
+app.use("/api/schedules", scheduleRouter);
+app.use("/api/truck-schedules", truckScheduleRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/waste", wasteRoutes);
+console.log('[INDEX] Mounting binRoutes at /api');
+app.use("/api", binRoutes);
+console.log('[INDEX] binRoutes mounted successfully');
+app.use("/api", activityRoutes);
+
+app.use('/api/notifications', notificationRoutes);
+app.use('/api', binHistoryRoutes);
+app.use('/api', binNotificationRoutes);
+
+app.use(errorHandler);
+
+app.get('/', (req, res) => {
+  res.send('API is running');
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Google OAuth routes
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+pp.get('/auth/google/callback',\n  passport.authenticate('google', { failureRedirect: '/login' }),\n  (req, res) => {\n    res.redirect('/');\n  }\n);
+let warningNotificationSent = false; // For the automatic threshold check
+
+// Quota monitoring
+let firebaseOperationsCount = 0;
+let lastQuotaReset = Date.now();
+const QUOTA_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+
+
+
+// Real-time data monitoring function
+function setupRealTimeMonitoring() {
+  console.log('🔍 Setting up real-time data monitoring...');
+  
+  // Monitor monitoring/data (original path)
+  dataRef.on('value', async (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      console.log('\n === REAL-TIME DATA UPDATE (monitoring/data) ===');
+      console.log(`Timestamp: ${new Date().toLocaleString()}`);
+      console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
+      console.log(` Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
+      console.log(` Bin Level: ${data.bin_level || 0}%`);
+      console.log(` GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
+      console.log(` GPS Valid: ${data.gps_valid || false}`);
+      console.log(` Satellites: ${data.satellites || 0}`);
+      console.log('==========================================\n');
+      
+      // SMS alert logic for monitoring/data - AUTOMATIC SMS when bin exceeds 85%
+      if (data.bin_level >= 85 && !smsSentData) {
+        console.log(`🚨 S1BIN3 ALERT: Level ${data.bin_level}% exceeds 85% threshold!`);
+        console.log('📱 Sending automatic SMS notification...');
+        
+        const smsMessage = `🚨 SMARTBIN ALERT 🚨\n\nBin S1Bin3 is at ${data.bin_level}% capacity!\nLocation: Central Plaza\nTime: ${new Date().toLocaleString()}\n\nPlease empty the bin immediately.`;
+        
+        try {
+          await GSMController.sendSMS('+639953207865', smsMessage);
+          smsSentData = true;
+          console.log('✅ AUTOMATIC SMS sent successfully for S1Bin3');
+        } catch (smsError) {
+          console.error('❌ FAILED to send automatic SMS for S1Bin3:', smsError);
+          // Reset flag to retry on next data update
+          smsSentData = false;
+        }
+      } else if (data.bin_level < 85) {
+        smsSentData = false; // Reset flag if bin level drops below threshold
+        console.log(`📊 S1Bin3 level ${data.bin_level}% is below 85% threshold - SMS flag reset`);
+      }
+
+      // Notification logic for monitoring/data
+      try {
+        if (data.bin_level >= 85 && !criticalNotificationSent) {
+          console.log('🚨 Sending critical bin notification...');
+          await sendCriticalBinNotification('S1Bin3', data.bin_level, 'Central Plaza');
+          criticalNotificationSent = true;
+          warningNotificationSent = false; // Reset warning flag
+        } else if (data.bin_level >= 70 && data.bin_level < 85 && !warningNotificationSent) {
+          console.log('⚠️ Sending warning bin notification...');
+          await sendWarningBinNotification('S1Bin3', data.bin_level, 'Central Plaza');
+          warningNotificationSent = true;
+        } else if (data.bin_level < 70) {
+          // Reset flags when bin level drops below warning threshold
+          criticalNotificationSent = false;
+          warningNotificationSent = false;
+        }
+      } catch (notifyErr) {
+        console.error('Failed to send bin notification for monitoring/data:', notifyErr);
+      }
+    }
+  });
+  
+  // Monitor monitoring/bin1 (new path)
+  bin1Ref.on('value', async (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      console.log('\n === REAL-TIME DATA UPDATE (monitoring/bin1) ===');
+      console.log(` Timestamp: ${new Date().toLocaleString()}`);
+      console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
+      console.log(` Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
+      console.log(` Bin Level: ${data.bin_level || 0}%`);
+      console.log(` GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
+      console.log(` GPS Valid: ${data.gps_valid || false}`);
+      console.log(` Satellites: ${data.satellites || 0}`);
+      console.log('==========================================\n');
+      
+      // Process data through bin history system (with quota protection)
+      try {
+        // Only process if bin level is significant to reduce Firebase calls
+        if (data.bin_level >= 70 || data.bin_level <= 10) {
+          const historyResult = await BinHistoryProcessor.processExistingMonitoringData({
+            weight: data.weight_percent || 0,
+            distance: data.height_percent || 0,
+            binLevel: data.bin_level || 0,
+            gps: {
+              lat: data.latitude || 0,
+              lng: data.longitude || 0
+            },
+            gpsValid: data.gps_valid || false,
+            satellites: data.satellites || 0,
+            errorMessage: null
+          });
+          
+          if (historyResult.success) {
+            console.log(`[BIN HISTORY] Recorded monitoring data for bin1: Status=${historyResult.status}`);
+            
+            // Only check notifications for critical levels to reduce Firebase calls
+            if (data.bin_level >= 85) {
+              try {
+                const notificationResult = await binNotificationController.checkBinAndNotify({
+                  binId: 'bin1',
+                  binLevel: data.bin_level || 0,
+                  status: historyResult.status,
+                  gps: {
+                    lat: data.latitude || 0,
+                    lng: data.longitude || 0
+                  },
+                  timestamp: new Date(),
+                  weight: data.weight_percent || 0,
+                  distance: data.height_percent || 0,
+                  gpsValid: data.gps_valid || false,
+                  satellites: data.satellites || 0,
+                  errorMessage: null
+                });
+                
+                if (notificationResult.notificationSent) {
+                  console.log(`[BIN NOTIFICATION] Sent notification to janitor: ${notificationResult.type}`);
+                }
+              } catch (notifyErr) {
+                console.error('[BIN NOTIFICATION] Error sending notification:', notifyErr);
+              }
+            }
+          } else {
+            console.error('[BIN HISTORY] Failed to record monitoring data:', historyResult.error);
+          }
+        } else {
+          console.log(`[BIN HISTORY] Skipping database write for normal bin level: ${data.bin_level}%`);
+        }
+      } catch (historyErr) {
+        console.error('[BIN HISTORY] Error processing monitoring data:', historyErr);
+      }
+      
+      // SMS alert logic for bin1 - AUTOMATIC SMS when bin exceeds 85%
+      if (data.bin_level >= 85 && !smsSentBin1) {
+        console.log(`🚨 BIN1 ALERT: Level ${data.bin_level}% exceeds 85% threshold!`);
+        console.log('📱 Sending automatic SMS notification...');
+        
+        const smsMessage = `🚨 SMARTBIN ALERT 🚨\n\nBin1 is at ${data.bin_level}% capacity!\nLocation: Central Plaza\nTime: ${new Date().toLocaleString()}\n\nPlease empty the bin immediately.`;
+        
+        try {
+          await GSMController.sendSMS('+639953207865', smsMessage);
+          smsSentBin1 = true;
+          console.log('✅ AUTOMATIC SMS sent successfully for bin1');
+        } catch (smsError) {
+          console.error('❌ FAILED to send automatic SMS for bin1:', smsError);
+          // Reset flag to retry on next data update
+          smsSentBin1 = false;
+        }
+      } else if (data.bin_level < 85) {
+        smsSentBin1 = false; // Reset flag if bin level drops below threshold
+        console.log(`📊 Bin1 level ${data.bin_level}% is below 85% threshold - SMS flag reset`);
+      }
+
+      // Notification logic for monitoring/bin1
+      try {
+        if (data.bin_level >= 85 && !criticalNotificationSent) {
+          console.log('🚨 Sending critical bin1 notification...');
+          await sendCriticalBinNotification('Bin1', data.bin_level, 'Central Plaza');
+          criticalNotificationSent = true;
+          warningNotificationSent = false; // Reset warning flag
+        } else if (data.bin_level >= 70 && data.bin_level < 85 && !warningNotificationSent) {
+          console.log('⚠️ Sending warning bin1 notification...');
+          await sendWarningBinNotification('Bin1', data.bin_level, 'Central Plaza');
+          warningNotificationSent = true;
+        } else if (data.bin_level < 70) {
+          // Reset flags when bin level drops below warning threshold
+          criticalNotificationSent = false;
+          warningNotificationSent = false;
+        }
+      } catch (notifyErr) {
+        console.error('Failed to send bin notification for monitoring/bin1:', notifyErr);
+      }
+    }
+  });
+  
+  console.log('✅ Real-time monitoring active for both data paths');
+}
+
+app.get('/api/bin', async (req, res) => {
+  try {
+    const snapshot = await dataRef.once('value');
+    const data = snapshot.val();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch bin data', details: err.message });
+  }
+});
+
+// bin1 endpoint moved to binRoutes.js
+
+// Helper function to determine bin status
+function getBinStatus(level) {
+  if (level >= 85) return 'critical';
+  if (level >= 70) return 'warning';
+  return 'normal';
+}
+
+// Test endpoint
+app.get('/api/test-locations', (req, res) => {
+  res.json({ message: 'Test endpoint working' });
+});
+
+// New API endpoint for dynamic bin locations
+app.get('/api/bin-locations', async (req, res) => {
+  console.log('[API] bin-locations endpoint called');
+  try {
+    const [dataSnapshot, bin1Snapshot] = await Promise.all([
+      dataRef.once('value'),
+      bin1Ref.once('value')
+    ]);
+    
+    const data = dataSnapshot.val();
+    const bin1Data = bin1Snapshot.val();
+    
+    const binLocations = [];
+    
+    // Add monitoring/data bin if it has valid coordinates
+    if (data && data.latitude && data.longitude && data.latitude !== 0 && data.longitude !== 0) {
+      binLocations.push({
+        id: 'monitoring-data',
+        name: 'S1Bin3',
+        position: [parseFloat(data.latitude), parseFloat(data.longitude)],
+        level: parseFloat(data.bin_level) || 0,
+        status: getBinStatus(parseFloat(data.bin_level) || 0),
+        lastCollection: data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
+        route: 'Route A - Central',
+        gps_valid: Boolean(data.gps_valid),
+        satellites: parseInt(data.satellites) || 0
+      });
+    }
+    
+    // Add monitoring/bin1 bin if it has valid coordinates
+    if (bin1Data && bin1Data.latitude && bin1Data.longitude && bin1Data.latitude !== 0 && bin1Data.longitude !== 0) {
+      binLocations.push({
+        id: 'monitoring-bin1',
+        name: 'Central Plaza',
+        position: [parseFloat(bin1Data.latitude), parseFloat(bin1Data.longitude)],
+        level: parseFloat(bin1Data.bin_level) || 0,
+        status: getBinStatus(parseFloat(bin1Data.bin_level) || 0),
+        lastCollection: bin1Data.timestamp ? new Date(bin1Data.timestamp).toISOString() : new Date().toISOString(),
+        route: 'Route A - Central',
+        gps_valid: Boolean(bin1Data.gps_valid),
+        satellites: parseInt(bin1Data.satellites) || 0
+      });
+    }
+    
+    console.log(`[API] Serving ${binLocations.length} dynamic bin locations`);
+    res.json({
+      bins: binLocations,
+      center: binLocations.length > 0 ? binLocations[0].position : [10.2105, 123.7583],
+      totalBins: binLocations.length,
+      lastUpdate: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('[API] Error fetching bin locations:', err);
+    res.status(500).json({ error: 'Failed to fetch bin locations', details: err.message });
+  }
+});
+
+app.get('/api/status', async (req, res) => {
+  try {
+    const [dataSnapshot, bin1Snapshot] = await Promise.all([
+      dataRef.once('value'),
+      bin1Ref.once('value')
+    ]);
+    
+    const data = dataSnapshot.val();
+    const bin1Data = bin1Snapshot.val();
+    
+    res.json({
+      timestamp: new Date().toISOString(),
+      monitoring_data: data,
+      bin1_data: bin1Data,
+      server_status: 'running'
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch status', details: err.message });
+  }
+});
+
+app.post('/api/send-sms', async (req, res) => {
+  try {
+    console.log('[SERVER] Manual SMS request received!');
+    const snapshot = await dataRef.once('value');
+    const data = snapshot.val();
+    const binName = data.bin_name || 'SmartBin';
+    const msg = `Alert: ${binName}\nWeight: ${data.weight_percent || 0}%\nHeight: ${data.height_percent || 0}%\nBin Level: ${data.bin_level || 0}%`;
+    const phoneNumber = req.body.phoneNumber || '+639953207865';
+    await GSMController.sendSMS(phoneNumber, msg);
+    res.json({ status: 'success', message: 'SMS sent.' });
+  } catch (err) {
+    console.error('[SERVER] Error sending manual SMS:', err);
+    res.status(500).json({ error: 'Failed to send SMS', details: err.message });
+  }
+});
+
+// Test SMS endpoint
+app.post('/api/test-sms', async (req, res) => {
+  try {
+    const { phoneNumber, message } = req.body;
+    const testPhoneNumber = phoneNumber || '+639953207865';
+    const testMessage = message || 'Test SMS from SmartBin System';
+    
+    console.log(`[TEST SMS] Sending test SMS to ${testPhoneNumber}`);
+    console.log(`[TEST SMS] Message: ${testMessage}`);
+    
+    await GSMController.sendSMS(testPhoneNumber, testMessage);
+    
+    res.json({ 
+      status: 'success', 
+      message: 'Test SMS sent successfully',
+      phoneNumber: testPhoneNumber,
+      message: testMessage
+    });
+  } catch (err) {
+    console.error('[TEST SMS] Error sending test SMS:', err);
+    res.status(500).json({ 
+      error: 'Failed to send test SMS', 
+      details: err.message,
+      modemStatus: modem ? (modem.isOpen ? 'connected' : 'disconnected') : 'not initialized'
+    });
+  }
+});
+
+// Force SMS alert for testing
+app.post('/api/force-sms-alert', async (req, res) => {
+  try {
+    const { binId, binLevel } = req.body;
+    const phoneNumber = '+639953207865';
+    const level = binLevel || 90;
+    const bin = binId || 'Bin1';
+    
+    const smsMessage = `🚨 SMARTBIN ALERT 🚨\n\n${bin} is at ${level}% capacity!\nLocation: Central Plaza\nTime: ${new Date().toLocaleString()}\n\nPlease empty the bin immediately.`;
+    
+    console.log(`[FORCE SMS] Sending forced SMS alert for ${bin} at ${level}%`);
+    
+    await GSMController.sendSMS(phoneNumber, smsMessage);
+    
+    res.json({ 
+      status: 'success', 
+      message: 'Forced SMS alert sent successfully',
+      binId: bin,
+      binLevel: level,
+      phoneNumber: phoneNumber
+    });
+  } catch (err) {
+    console.error('[FORCE SMS] Error sending forced SMS alert:', err);
+    res.status(500).json({ 
+      error: 'Failed to send forced SMS alert', 
+      details: err.message
+    });
+  }
+});
+
+// SMS configuration status
+app.get('/api/sms-status', (req, res) => {
+  res.json(GSMController.getGSMStatus());
+});
+
+// Firebase quota status
+app.get('/api/quota-status', (req, res) => {
+  const timeSinceReset = Date.now() - lastQuotaReset;
+  const hoursSinceReset = Math.floor(timeSinceReset / (1000 * 60 * 60));
+  
+  res.json({
+    firebaseOperations: firebaseOperationsCount,
+    hoursSinceReset: hoursSinceReset,
+    quotaResetIn: Math.max(0, 24 - hoursSinceReset),
+    status: firebaseOperationsCount > 15000 ? 'WARNING' : 'OK',
+    recommendations: [
+      'Check Firebase Console for exact usage',
+      'Consider upgrading to Blaze plan if needed',
+      'Database writes are now optimized for critical levels only'
+    ]
+  });
+});
+
+// Note: The /api/bin-history endpoint is now handled by binHistoryRoutes
+// which uses the binHistoryController.getAllBinHistory method
+
+// Test endpoint to update coordinates for testing
+app.post('/api/test-coordinates', async (req, res) => {
+  try {
+    const { latitude, longitude, binId = 'bin1' } = req.body;
+    
+    if (!latitude || !longitude) {
+      return res.status(400).json({ 
+        error: 'latitude and longitude are required',
+        example: { latitude: 10.2105, longitude: 123.7583, binId: 'bin1' }
+      });
+    }
+
+    const targetRef = binId === 'bin1' ? bin1Ref : dataRef;
+    
+    // Update coordinates in Firebase
+    await targetRef.update({
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+      gps_valid: true,
+      satellites: 8,
+      timestamp: Date.now()
+    });
+
+    console.log(`[TEST COORDINATES] Updated ${binId} coordinates to: ${latitude}, ${longitude}`);
+    
+    res.json({
+      success: true,
+      message: `Updated ${binId} coordinates successfully`,
+      coordinates: {
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        gps_valid: true,
+        satellites: 8
+      },
+      binId: binId
+    });
+  } catch (err) {
+    console.error('[TEST COORDINATES] Error updating coordinates:', err);
+    res.status(500).json({ 
+      error: 'Failed to update coordinates', 
+      details: err.message 
+    });
+  }
+});
+
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

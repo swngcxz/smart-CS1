@@ -7,7 +7,7 @@ const wasteData = [
   {
     id: 1,
     location: "Central Plaza",
-    level: 85,
+    level: 85, // Will be overridden by real-time data
     status: "critical",
     lastCollected: "2 hours ago",
     icon: AlertTriangle,
@@ -106,9 +106,17 @@ export function WasteLevelCards({
           >
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                  {bin.location}
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    {bin.location}
+                  </CardTitle>
+                  {wasteBins.some(wb => wb.location === bin.location) && (
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-green-600 dark:text-green-400">Live</span>
+                    </div>
+                  )}
+                </div>
                 <div
                   className={`p-2 rounded-full ${
                     bin.status === "critical"

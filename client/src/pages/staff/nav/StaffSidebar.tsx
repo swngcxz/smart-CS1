@@ -1,4 +1,4 @@
-import { Home, BarChart3, Users, MapPin, Activity, Settings, Recycle, History, LogOut } from "lucide-react";
+import { Home, BarChart3, Users, MapPin, Activity, Settings, Recycle, History, LogOut, Database } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Calendar, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 type StaffSidebarProps = {
@@ -27,12 +27,13 @@ const menuItems = [
   { title: "Schedule", tab: "schedule", icon: Calendar },
   { title: "Staff", tab: "staff", icon: Users },
   { title: "Activity Logs", tab: "activity", icon: Activity },
+  { title: "Bin History", tab: "bin-history", icon: Database },
   { title: "Feedback", tab: "feedback", icon: MessageCircle },
   { title: "Settings", tab: "settings", icon: Settings },
 ];
 
 export function StaffSidebar({ currentTab, onTabChange }: StaffSidebarProps) {
-  const { signout, loading } = useAuth();
+  const { logout, loading } = useAuth();
   const { user } = useCurrentUser();
   return (
     <Sidebar className="border-r border-gray-200 dark:border-slate-700 bg-background dark:bg-gray-900 text-gray-900 dark:text-white">

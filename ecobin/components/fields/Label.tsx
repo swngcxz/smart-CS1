@@ -2,10 +2,10 @@ import React from "react";
 import { StyleSheet, Text, TextProps } from "react-native";
 
 interface LabelProps extends TextProps {
-  children: React.ReactNode;
+  children: string | number | boolean | null | undefined;
 }
 
-const Label: React.FC<LabelProps> = ({ children, style, ...props }) => {
+const Label = ({ children, style, ...props }: LabelProps) => {
   return (
     <Text style={[styles.label, style]} {...props}>
       {children}

@@ -7,15 +7,19 @@ import { useState } from "react";
 export function AddStaffModal({ isOpen, onClose, onAdd }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
+  const [password, setPassword] = useState("");
+  const [contactNumber, setContactNumber] = useState("");
+  const [role, setRole] = useState("janitor");
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState("active");
 
   const handleSubmit = () => {
-    if (!name || !email || !role) return;
+    if (!name || !email || !password || !contactNumber || !role) return;
     onAdd({
       fullName: name,
       email,
+      password,
+      contactNumber,
       role,
       location: zone,
       status,
@@ -23,7 +27,9 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
     });
     setName("");
     setEmail("");
-    setRole("");
+    setPassword("");
+    setContactNumber("");
+    setRole("janitor");
     setZone("");
     setStatus("active");
   };
@@ -32,12 +38,24 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Staff</DialogTitle>
+          <DialogTitle>Add New Janitor</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input placeholder="Role" value={role} onChange={(e) => setRole(e.target.value)} />
+          <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input placeholder="Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} />
+          
+          <Select value={role} onValueChange={setRole}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="janitor">Janitor</SelectItem>
+              <SelectItem value="driver">Driver</SelectItem>
+              <SelectItem value="maintenance">Maintenance</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Select value={zone} onValueChange={setZone}>
             <SelectTrigger>
@@ -63,7 +81,7 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
           </Select>
 
           <Button onClick={handleSubmit} className="w-full">
-            Add Staff
+            Add Janitor
           </Button>
         </div>
       </DialogContent>

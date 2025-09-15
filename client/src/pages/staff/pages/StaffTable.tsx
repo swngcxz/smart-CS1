@@ -13,13 +13,19 @@ type StaffRecord = {
   id: string;
   fullName: string;
   email: string;
+  contactNumber?: string;
   role: string;
   location?: string;
   status?: string;
   lastActivity?: string;
+  source?: string;
 };
 
-export function StaffTable() {
+interface StaffTableProps {
+  onStaffUpdate?: () => void;
+}
+
+export function StaffTable({ onStaffUpdate }: StaffTableProps) {
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState("all");
@@ -32,10 +38,12 @@ export function StaffTable() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get("/api/staff");
-      setStaffList(res.data);
+      const res = await api.get("/api/staff/all-with-counts");
+      setStaffList(res.data.staff);
+      console.log("Loaded staff data:", res.data);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Failed to load staff");
+      console.error("Error loading staff:", err);
     } finally {
       setLoading(false);
     }
@@ -55,6 +63,7 @@ export function StaffTable() {
       status: staff.status || "active",
       lastActivity: staff.lastActivity || "",
       email: staff.email,
+      contactNumber: staff.contactNumber,
     };
     setSelectedStaff(modalStaff);
     setIsModalOpen(true);
@@ -66,6 +75,7 @@ export function StaffTable() {
       toast({ title: "Staff added", description: `${payload.fullName} created.` });
       setAddModalOpen(false);
       await loadStaff();
+      onStaffUpdate?.(); // Trigger parent refresh
     } catch (err: any) {
       toast({ title: "Failed to add staff", description: err?.response?.data?.error || "Error", variant: "destructive" });
     } finally {
@@ -79,6 +89,7 @@ export function StaffTable() {
       await api.delete(`/api/staff/${staffId}`);
       toast({ title: "Staff deleted", description: `Record removed.` });
       await loadStaff();
+      onStaffUpdate?.(); // Trigger parent refresh
     } catch (err: any) {
       toast({ title: "Failed to delete staff", description: err?.response?.data?.error || "Error", variant: "destructive" });
     } finally {
@@ -111,7 +122,7 @@ export function StaffTable() {
         </div>
 
         <button onClick={() => setAddModalOpen(true)} className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">
-          + Add Staff
+          + Add Janitor
         </button>
       </div>
 
@@ -122,22 +133,24 @@ export function StaffTable() {
       <TableHeader>
         <TableRow>
           <TableHead>Name</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Contact Number</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Route</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Last Activity</TableHead>
-          <TableHead></TableHead>
+          <TableHead>Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {loading && (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-sm text-gray-500">Loading...</TableCell>
+            <TableCell colSpan={9} className="text-center text-sm text-gray-500">Loading...</TableCell>
           </TableRow>
         )}
         {error && (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-sm text-red-600">{error}</TableCell>
+            <TableCell colSpan={9} className="text-center text-sm text-red-600">{error}</TableCell>
           </TableRow>
         )}
         {!loading && !error && filteredStaff.map((staff) => (
@@ -147,6 +160,8 @@ export function StaffTable() {
             className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition"
           >
             <TableCell className="font-medium">{staff.fullName}</TableCell>
+            <TableCell>{staff.email}</TableCell>
+            <TableCell>{staff.contactNumber || "N/A"}</TableCell>
             <TableCell>{staff.role}</TableCell>
             <TableCell>{staff.location || ""}</TableCell>
             <TableCell>
@@ -170,6 +185,14 @@ export function StaffTable() {
               </Badge>
             </TableCell>
             <TableCell className="text-gray-500">{staff.lastActivity || ""}</TableCell>
+            {/* <TableCell>
+              <Badge 
+                variant="outline" 
+                className={staff.source === 'staff' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}
+              >
+                {staff.source || 'Unknown'}
+              </Badge>
+            </TableCell> */}
             <TableCell>
               <button
                 onClick={(e) => { e.stopPropagation(); handleDeleteStaff(staff.id); }}
@@ -186,7 +209,12 @@ export function StaffTable() {
 </Card>
 
 
-      <StaffManagementModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} staff={selectedStaff} />
+      <StaffManagementModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        staff={selectedStaff} 
+        onStaffUpdate={loadStaff}
+      />
       <AddStaffModal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} onAdd={handleAddStaff} />
     </>
   );

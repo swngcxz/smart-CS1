@@ -4,30 +4,31 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Navigation, Route } from "lucide-react";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
 
-const locationData = [
-  { id: 1, name: "Central Plaza", lat: "40.7128", lng: "-74.0060", status: "critical", level: 85 },
-  { id: 2, name: "Park Avenue", lat: "40.7589", lng: "-73.9851", status: "normal", level: 45 },
-  { id: 3, name: "Mall District", lat: "40.7505", lng: "-73.9934", status: "warning", level: 70 },
-  { id: 4, name: "Residential Area", lat: "40.7282", lng: "-73.7949", status: "normal", level: 30 },
-];
-
 export function MapTab() {
-  const { wasteBins, loading, error } = useRealTimeData();
+  const { wasteBins, loading, error, dynamicBinLocations } = useRealTimeData();
 
-  // Update location data with real-time information
-  const updatedLocationData = locationData.map((location) => {
-    const realTimeBin = wasteBins.find(wb => wb.location === location.name);
-    
-    if (realTimeBin) {
-      return {
-        ...location,
-        level: realTimeBin.level,
-        status: realTimeBin.status,
-      };
-    }
-    
-    return location;
-  });
+  // Use dynamic bin locations from API or fallback to static data
+  const updatedLocationData = dynamicBinLocations.length > 0 
+    ? dynamicBinLocations.map((bin) => ({
+        id: bin.id,
+        name: bin.name,
+        lat: bin.position[0].toString(),
+        lng: bin.position[1].toString(),
+        status: bin.status,
+        level: bin.level,
+        lastCollected: bin.lastCollection,
+        binData: bin
+      }))
+    : wasteBins.map((bin) => ({
+        id: bin.id,
+        name: bin.location,
+        lat: "10.2105", // Default coordinates
+        lng: "123.7583",
+        status: bin.status,
+        level: bin.level,
+        lastCollected: bin.lastCollected,
+        binData: bin
+      }));
 
   return (
     <div className="space-y-6">
@@ -38,6 +39,14 @@ export function MapTab() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <MapSection />
+          {/* Additional space below the map */}
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Map Information</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              This map shows real-time waste bin locations and their current fill levels. 
+              Use the location finder button to center the map on your current position.
+            </p>
+          </div>
         </div>
 
         <div className="space-y-4">

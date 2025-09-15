@@ -1,12 +1,48 @@
 const StaffModel = require("../models/staffModel");
 const ScheduleModel = require("../models/scheduleModel");
+const { hashPassword } = require("../utils/authUtils");
+const { db } = require("../models/firebase");
 
 const staffController = {
   async create(req, res) {
     try {
-      const id = await StaffModel.createStaff(req.body);
-      res.status(201).json({ message: "Staff created", id });
+      const { fullName, email, password, contactNumber, role, location, status } = req.body;
+      
+      // Validate required fields
+      if (!fullName || !email || !password) {
+        return res.status(400).json({ error: "Full name, email, and password are required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await db.collection("users").where("email", "==", email).get();
+      if (!existingUser.empty) {
+        return res.status(409).json({ error: "User with this email already exists" });
+      }
+
+      // Hash the password
+      const hashedPassword = await hashPassword(password);
+
+      // Create user data for users collection
+      const userData = {
+        fullName,
+        email,
+        password: hashedPassword,
+        contactNumber: contactNumber || "",
+        role: role || "janitor",
+        location: location || "General",
+        status: status || "active",
+        emailVerified: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastActivity: "Recently active"
+      };
+
+      // Save to users collection instead of staff collection
+      const docRef = await db.collection("users").add(userData);
+      
+      res.status(201).json({ message: "Staff created successfully", id: docRef.id });
     } catch (error) {
+      console.error("Error creating staff:", error);
       res.status(500).json({ error: error.message });
     }
   },
@@ -14,7 +50,13 @@ const staffController = {
   async getAll(req, res) {
     try {
       const staff = await StaffModel.getAllStaff();
-      res.json(staff);
+      // Filter out admin roles
+      const filteredStaff = staff.filter(member => 
+        member.role && 
+        member.role.toLowerCase() !== 'admin' && 
+        member.role.toLowerCase() !== 'administrator'
+      );
+      res.json(filteredStaff);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -26,10 +68,20 @@ const staffController = {
       const staff = await StaffModel.getAllStaff();
       const users = await StaffModel.getAllUsers();
       
-             // Combine and filter janitors from both collections (case-insensitive)
+             // Combine and filter janitors from both collections (case-insensitive), excluding admin roles
        const allJanitors = [
-         ...staff.filter(member => member.role && member.role.toLowerCase() === 'janitor').map(m => ({ ...m, source: 'staff' })),
-         ...users.filter(user => user.role && user.role.toLowerCase() === 'janitor').map(u => ({ ...u, source: 'users' }))
+         ...staff.filter(member => 
+           member.role && 
+           member.role.toLowerCase() === 'janitor' &&
+           member.role.toLowerCase() !== 'admin' &&
+           member.role.toLowerCase() !== 'administrator'
+         ).map(m => ({ ...m, source: 'staff' })),
+         ...users.filter(user => 
+           user.role && 
+           user.role.toLowerCase() === 'janitor' &&
+           user.role.toLowerCase() !== 'admin' &&
+           user.role.toLowerCase() !== 'administrator'
+         ).map(u => ({ ...u, source: 'users' }))
        ];
       
       // Normalize the data structure to ensure consistency
@@ -37,6 +89,7 @@ const staffController = {
         id: janitor.id,
         fullName: janitor.fullName,
         email: janitor.email,
+        contactNumber: janitor.contactNumber,
         role: janitor.role,
         // Preserve original location; do not force a default here
         location: janitor.location,
@@ -74,6 +127,7 @@ const staffController = {
         await StaffModel.createStaff({
           fullName: currentUser.fullName,
           email: currentUser.email,
+          contactNumber: currentUser.contactNumber || '',
           role: 'janitor',
           location: 'General',
           status: 'active',
@@ -110,25 +164,111 @@ const staffController = {
 
   async getStatusSummary(req, res) {
     try {
-      const allStaff = await StaffModel.getAllStaff();
+      // Get all staff from both collections
+      const staff = await StaffModel.getAllStaff();
+      const users = await StaffModel.getAllUsers();
+      
+      // Combine all staff members and filter out admin roles
+      const allStaff = [
+        ...staff.map(s => ({ ...s, source: 'staff' })),
+        ...users.map(u => ({ ...u, source: 'users' }))
+      ].filter(member => 
+        member.role && 
+        member.role.toLowerCase() !== 'admin' && 
+        member.role.toLowerCase() !== 'administrator'
+      );
+
       const totalStaff = allStaff.length;
 
-      const activeSchedules = await ScheduleModel.getSchedules({ status: "active" });
-      const onBreakSchedules = await ScheduleModel.getSchedules({ status: "on_break" });
-      const offlineSchedules = await ScheduleModel.getSchedules({ status: "offline" });
-
-      const activeNow = activeSchedules.length;
-      const onBreak = onBreakSchedules.length;
-      const offline = offlineSchedules.length;
+      // Count by status (using status field or defaulting to 'active')
+      const activeNow = allStaff.filter(s => (s.status || 'active') === 'active').length;
+      const onBreak = allStaff.filter(s => (s.status || 'active') === 'break' || (s.status || 'active') === 'on_break').length;
+      const offline = allStaff.filter(s => (s.status || 'active') === 'offline').length;
 
       res.json({
         totalStaff,
         activeNow,
         onBreak,
-        offline
+        offline,
+        staff: allStaff // Include the full staff list
       });
     } catch (error) {
       console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async getAllStaffWithCounts(req, res) {
+    try {
+      // Get all staff from both collections
+      const staff = await StaffModel.getAllStaff();
+      const users = await StaffModel.getAllUsers();
+      
+      // Debug logging
+      console.log('Raw staff data:', staff.map(s => ({ id: s.id, fullName: s.fullName, contactNumber: s.contactNumber })));
+      console.log('Raw users data:', users.map(u => ({ id: u.id, fullName: u.fullName, contactNumber: u.contactNumber })));
+      
+      // Combine and normalize all staff members, filtering out admin roles
+      const allStaff = [
+        ...staff.map(s => ({ ...s, source: 'staff' })),
+        ...users.map(u => ({ ...u, source: 'users' }))
+      ].filter(member => 
+        member.role && 
+        member.role.toLowerCase() !== 'admin' && 
+        member.role.toLowerCase() !== 'administrator'
+      ).map(member => {
+        const mapped = {
+          id: member.id,
+          fullName: member.fullName,
+          email: member.email,
+          contactNumber: member.contactNumber ? member.contactNumber : 'N/A',
+          role: member.role,
+          location: member.location || 'General',
+          status: member.status || 'active',
+          lastActivity: member.lastActivity || 'Recently active',
+          source: member.source
+        };
+        console.log('Mapping member:', { 
+          input: { id: member.id, fullName: member.fullName, contactNumber: member.contactNumber },
+          output: { id: mapped.id, fullName: mapped.fullName, contactNumber: mapped.contactNumber }
+        });
+        return mapped;
+      });
+      
+      console.log('Final allStaff before response:', allStaff.map(s => ({ id: s.id, fullName: s.fullName, contactNumber: s.contactNumber })));
+
+      const totalStaff = allStaff.length;
+      const activeNow = allStaff.filter(s => s.status === 'active').length;
+      const onBreak = allStaff.filter(s => s.status === 'break' || s.status === 'on_break').length;
+      const offline = allStaff.filter(s => s.status === 'offline').length;
+
+      res.json({
+        staff: allStaff,
+        counts: {
+          totalStaff,
+          activeNow,
+          onBreak,
+          offline
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // Test endpoint to debug the issue
+  async testContactNumber(req, res) {
+    try {
+      const staff = await StaffModel.getAllStaff();
+      const testData = staff.map(s => ({
+        id: s.id,
+        fullName: s.fullName,
+        contactNumber: s.contactNumber,
+        hasContactNumber: !!s.contactNumber
+      }));
+      res.json({ message: "Test endpoint", data: testData });
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }

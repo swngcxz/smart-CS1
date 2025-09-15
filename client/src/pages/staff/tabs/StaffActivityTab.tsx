@@ -6,28 +6,28 @@ import { Activity, Calendar, Filter, RefreshCw, AlertTriangle, MapPin, Satellite
 import { StaffActivityLogs } from "../pages/StaffActiviyLogs";
 import { useState, useMemo, useEffect } from "react";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { useBinHistory } from "@/hooks/useBinHistory";
 
 export function StaffActivityTab() {
   const [activityTypeFilter, setActivityTypeFilter] = useState("all");
   const [dateRangeFilter, setDateRangeFilter] = useState("all");
   const [selectedBinId, setSelectedBinId] = useState("bin1"); // Default bin ID
-  
+
   // Get user ID from auth context or localStorage, fallback to 'staff-user' for testing
   const storedUserId = localStorage.getItem("userId");
   const userId = storedUserId || "staff-user"; // Use the user ID from your saved data
-  
+
   const { logs, user, loading, error, refetch } = useActivityLogs(userId);
-  const { 
-    history: binHistory, 
-    errorRecords: binErrorRecords, 
-    stats: binStats, 
-    loading: binHistoryLoading, 
-    error: binHistoryError, 
-    fetchBinHistory, 
-    fetchErrorRecords, 
-    fetchBinStats 
+  const {
+    history: binHistory,
+    errorRecords: binErrorRecords,
+    stats: binStats,
+    loading: binHistoryLoading,
+    error: binHistoryError,
+    fetchBinHistory,
+    fetchErrorRecords,
+    fetchBinStats,
   } = useBinHistory(selectedBinId);
 
   // Debug logging
@@ -38,7 +38,7 @@ export function StaffActivityTab() {
       logsCount: logs?.length || 0,
       logs: logs,
       loading,
-      error
+      error,
     });
   }, [storedUserId, userId, logs, loading, error]);
 
@@ -68,19 +68,17 @@ export function StaffActivityTab() {
       ];
     }
 
-    const collections = logs.filter(log => 
-      log.activity_type === 'bin_emptied' || log.activity_type === 'task_assignment'
+    const collections = logs.filter(
+      (log) => log.activity_type === "bin_emptied" || log.activity_type === "task_assignment"
     ).length;
 
     // Use bin history error records for alerts count
     const alerts = binErrorRecords?.length || 0;
 
-    const maintenance = logs.filter(log => 
-      log.activity_type === 'maintenance'
-    ).length;
+    const maintenance = logs.filter((log) => log.activity_type === "maintenance").length;
 
-    const routeChanges = logs.filter(log => 
-      log.activity_type === 'route_change' || log.activity_type === 'schedule_update'
+    const routeChanges = logs.filter(
+      (log) => log.activity_type === "route_change" || log.activity_type === "schedule_update"
     ).length;
 
     return [
@@ -96,13 +94,13 @@ export function StaffActivityTab() {
     // If "Alerts" is selected, show bin history error records instead of activity logs
     if (activityTypeFilter === "alerts") {
       if (!binErrorRecords || binErrorRecords.length === 0) return [];
-      
+
       // Convert bin history records to activity-like format for display
-      return binErrorRecords.map(record => ({
+      return binErrorRecords.map((record) => ({
         id: record.id,
-        activity_type: 'bin_alert',
+        activity_type: "bin_alert",
         timestamp: record.timestamp,
-        date: new Date(record.timestamp).toISOString().split('T')[0],
+        date: new Date(record.timestamp).toISOString().split("T")[0],
         bin_id: record.binId,
         bin_location: `GPS: ${record.gps.lat}, ${record.gps.lng}`,
         bin_status: record.status.toLowerCase(),
@@ -111,7 +109,7 @@ export function StaffActivityTab() {
         height_percent: record.distance,
         bin_level: record.binLevel,
         gps_valid: record.gpsValid,
-        satellites: record.satellites
+        satellites: record.satellites,
       }));
     }
 
@@ -126,10 +124,10 @@ export function StaffActivityTab() {
 
     // Filter by date range - show all records by default
     if (dateRangeFilter !== "all") {
-      const today = new Date().toISOString().split('T')[0];
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
       if (dateRangeFilter === "today") {
         filtered = filtered.filter((activity) => activity.date === today);
@@ -146,7 +144,7 @@ export function StaffActivityTab() {
       originalCount: logs.length,
       filteredCount: filtered.length,
       dateRangeFilter,
-      activityTypeFilter
+      activityTypeFilter,
     });
 
     return filtered;
@@ -154,7 +152,7 @@ export function StaffActivityTab() {
 
   const handleApplyFilters = () => {
     console.log("Filters applied:", { activityTypeFilter, dateRangeFilter });
-    
+
     // If alerts are selected, fetch bin history error records
     if (activityTypeFilter === "alerts") {
       fetchErrorRecords(selectedBinId);
@@ -186,6 +184,34 @@ export function StaffActivityTab() {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "in_progress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "done":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority?.toLowerCase()) {
+      case "low":
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "high":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "urgent":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
   const formatTimestamp = (timestamp: string) => {
     if (!timestamp) return "N/A";
     const date = new Date(timestamp);
@@ -203,25 +229,14 @@ export function StaffActivityTab() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Activity Overview</h2>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleRefresh}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-            disabled={loading}
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Activity Overview</h2>
+        <div className="flex gap-2"></div>
       </div>
 
       {/* Stats Cards - Top Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-0">
         {generateStats.map((stat, index) => {
           const IconComponent = stat.icon;
           return (
@@ -246,9 +261,9 @@ export function StaffActivityTab() {
       </div>
 
       {/* Filters and Recent Activity Summary - Middle Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
         {/* Activity Filters */}
-        <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+        {/* <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
               Activity Filters
@@ -307,10 +322,10 @@ export function StaffActivityTab() {
               Apply Filters
             </Button>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Recent Activity Summary */}
-        <div className="lg:col-span-2">
+        {/* <div className="lg:col-span-2">
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-3 text-gray-900 dark:text-white">
@@ -347,55 +362,86 @@ export function StaffActivityTab() {
                 filteredActivities.slice(0, 3).map((activity, index) => (
                   <div
                     key={activity.id || index}
-                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
+                    className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-600">
+                    <div className="grid grid-cols-12 gap-4 items-start">
+                      <div className="col-span-2">
+                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-600 text-center">
                           {formatTimestamp(activity.timestamp)}
-                        </span>
-                        <Badge className={getActivityTypeColor(activity.activity_type || "unknown")}>
-                          {activity.activity_type || "unknown"}
+                        </div>
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <Badge className={`${getActivityTypeColor(activity.activity_type || "unknown")} text-xs w-full justify-center`}>
+                          {activity.activity_type?.replace('_', ' ') || "unknown"}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-800 dark:text-white font-medium">
-                        {formatActivityDescription(activity)}
-                      </p>
-                      {activity.bin_id && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                          Bin: {activity.bin_id} - {activity.bin_location || "Unknown Location"}
+                      
+                      <div className="col-span-1">
+                        <Badge className={`${getStatusColor(activity.status)} text-xs w-full justify-center`}>
+                          {activity.display_status || activity.status || "Pending"}
+                        </Badge>
+                      </div>
+                      
+                      <div className="col-span-1">
+                        <Badge className={`${getPriorityColor(activity.priority)} text-xs w-full justify-center`}>
+                          {activity.display_priority || activity.priority || "Low"}
+                        </Badge>
+                      </div>
+                      
+                      <div className="col-span-4">
+                        <p className="text-sm text-gray-800 dark:text-white font-medium mb-1">
+                          {formatActivityDescription(activity)}
                         </p>
-                      )}
-                      {activity.activity_type === 'bin_alert' && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {activity.bin_status}
-                          </Badge>
-                          {activity.gps_valid !== undefined && (
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                              <Wifi className="w-3 h-3" />
-                              GPS: {activity.gps_valid ? 'Valid' : 'Invalid'}
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                          {activity.bin_id && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              Bin: {activity.bin_id}
                             </span>
                           )}
-                          {activity.satellites !== undefined && (
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                              <Satellite className="w-3 h-3" />
-                              {activity.satellites} satellites
+                          {activity.bin_location && (
+                            <span>{activity.bin_location}</span>
+                          )}
+                          {activity.assigned_janitor_name && (
+                            <span className="text-blue-600 dark:text-blue-400">
+                              Assigned: {activity.assigned_janitor_name}
+                            </span>
+                          )}
+                          {activity.bin_level !== undefined && (
+                            <span className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              Level: {activity.bin_level}%
                             </span>
                           )}
                         </div>
-                      )}
+                      </div>
+                      
+                      <div className="col-span-2">
+                        <div className="text-xs text-gray-600 dark:text-gray-400">
+                          {activity.task_note && (
+                            <div className="mb-1">
+                              <span className="font-medium">Note:</span> {activity.task_note}
+                            </div>
+                          )}
+                          {activity.bin_status && activity.bin_status !== activity.status && (
+                            <div>
+                              <span className="font-medium">Bin Status:</span> {activity.bin_status}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
-        </div>
+        </div> */}
       </div>
 
       {/* Full Activity Table - Bottom Section */}
-      <div className="space-y-0">
+      <div className="space-y-5">
         <StaffActivityLogs />
       </div>
     </div>

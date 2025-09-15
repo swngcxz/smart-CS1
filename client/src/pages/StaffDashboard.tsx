@@ -9,6 +9,7 @@ import { StaffDashboardHeader } from "./staff/nav/StaffDashboardHeader";
 import { StaffActivityTab } from "./staff/tabs/StaffActivityTab";
 import { ScheduleCollectionTabs } from "./staff/tabs/SchedulecollectionTabs";
 import Feedback from "./staff/tabs/FeedbackView";
+import { BinHistory } from "./staff/pages/BinHistory";
 
 
 const StaffDashboard = () => {
@@ -24,6 +25,8 @@ const StaffDashboard = () => {
       return <ScheduleCollectionTabs/>
       case "activity":
         return <StaffActivityTab />;
+      case "bin-history":
+        return <BinHistory />;
       case "staff":
         return <StaffTab/>;
       case "feedback":

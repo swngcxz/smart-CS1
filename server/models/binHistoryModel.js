@@ -121,6 +121,34 @@ class BinHistoryModel {
   }
 
   /**
+   * Get all bin history records
+   * @param {number} limit - Maximum number of records to return (default: 1000)
+   * @returns {Promise<Array>} Array of bin history records
+   */
+  async getAllBinHistory(limit = 1000) {
+    try {
+      const snapshot = await db.collection(this.collection)
+        .orderBy('timestamp', 'desc')
+        .limit(limit)
+        .get();
+
+      const records = [];
+      snapshot.forEach(doc => {
+        records.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      console.log(`[BIN HISTORY] Retrieved ${records.length} total records`);
+      return records;
+    } catch (error) {
+      console.error('[BIN HISTORY MODEL] Error retrieving all bin history:', error);
+      throw new Error(`Failed to retrieve all bin history: ${error.message}`);
+    }
+  }
+
+  /**
    * Get bin history statistics
    * @param {string} binId - Bin identifier
    * @param {Date} startDate - Start date for statistics

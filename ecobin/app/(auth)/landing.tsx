@@ -1,5 +1,6 @@
 import { router } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React from "react";
+import { useEffect, useRef } from "react";
 import { Animated, Image, Platform, Pressable, SafeAreaView, Text, View, useWindowDimensions } from "react-native";
 
 // ✅ Load Poppins here

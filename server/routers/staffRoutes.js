@@ -12,5 +12,7 @@ router.put("/:id", staffController.update);
 router.delete("/:id", staffController.delete);
 
 router.get("/status-summary", staffController.getStatusSummary);
+router.get("/all-with-counts", staffController.getAllStaffWithCounts);
+router.get("/test-contact", staffController.testContactNumber);
 
 module.exports = router;

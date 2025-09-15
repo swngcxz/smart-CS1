@@ -21,4 +21,7 @@ router.patch('/:userId/mark-all-read', notificationController.markAllNotificatio
 // Delete a notification
 router.delete('/:userId/:key', notificationController.deleteNotification);
 
+// Get rate limit statistics for notifications
+router.get('/rate-limit/stats', notificationController.getNotificationRateLimitStats);
+
 module.exports = router;
