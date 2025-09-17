@@ -23,6 +23,7 @@ const serialportgsm = require('serialport-gsm');
 const notificationRoutes = require('./routers/notificationRoutes');
 const binHistoryRoutes = require('./routers/binHistoryRoutes');
 const binNotificationRoutes = require('./routers/binNotificationRoutes');
+const pickupRequestRoutes = require('./routers/pickupRequestRoutes');
 const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
 const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
@@ -61,9 +62,9 @@ app.use(cors({
     'http://localhost:8081', 
     'http://localhost:8080', 
     'http://localhost:8000',
-    'http://192.168.1.34:8000',
+    'http://192.168.1.2:8000',
     'http://192.168.1.0/24', // Allow all devices on the same network
-    'exp://192.168.1.34:8081', // Expo development server
+    'exp://192.168.1.2:8081', // Expo development server
     'exp://localhost:8081'
   ],
   credentials: true,
@@ -98,6 +99,7 @@ app.use("/api", activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api', binHistoryRoutes);
 app.use('/api', binNotificationRoutes);
+app.use('/api', pickupRequestRoutes);
 
 app.use(errorHandler);
 

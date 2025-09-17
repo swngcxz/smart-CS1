@@ -2,6 +2,7 @@
 import React from "react";
 import BackButton from "@/components/BackButton";
 import PickupHistoryModal from "@/components/modals/PickupHistoryModal";
+import PickupWorkflowModal from "@/components/PickupWorkflowModal";
 import { useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
@@ -19,28 +20,30 @@ export default function BinDetailScreen() {
     binRoute?: string; 
   }>();
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [pickupModalVisible, setPickupModalVisible] = useState(false);
   const [images, setImages] = useState<string[]>([]);
-  const { binLocations, loading, error } = useRealTimeData();
+  const { binLocations, loading, error, getSafeCoordinates, getTimeSinceLastGPS } = useRealTimeData();
 
-  // Find the bin by binId param or use passed parameters
-  const bin = (binLocations || []).find((b) => b.id === params.binId);
+  // SIMPLIFIED: Focus only on bin1
+  const bin = (binLocations || []).find((b) => b && b.id === 'bin1');
   
-  // Create bin data from params if not found in real-time data
-  const binData = bin || {
-    id: params.binId,
-    name: params.binName || 'Unknown Bin',
-    position: [10.2098, 123.758] as [number, number],
-    level: parseFloat(params.binLevel || '0'),
-    status: (params.binStatus as 'normal' | 'warning' | 'critical') || 'normal',
-    route: params.binRoute || 'Unknown Route',
-    lastCollection: new Date().toISOString(),
-    gps_valid: true,
-    satellites: 0
+  // Create safe bin data with defaults
+  const safeBinData = {
+    id: bin?.id || params.binId || 'bin1',
+    name: bin?.name || params.binName || 'Central Plaza Bin 1',
+    position: bin?.position || [10.2098, 123.758] as [number, number],
+    level: typeof bin?.level === 'number' && !isNaN(bin.level) ? bin.level : parseFloat(params.binLevel || '0'),
+    status: bin?.status || (params.binStatus as 'normal' | 'warning' | 'critical') || 'normal',
+    route: bin?.route || params.binRoute || 'Central Plaza Route',
+    lastCollection: bin?.lastCollection || new Date().toISOString(),
+    gps_valid: Boolean(bin?.gps_valid),
+    satellites: typeof bin?.satellites === 'number' ? bin.satellites : 0
   };
 
   const getStatusColor = (val: number) => {
-    if (val >= 90) return "#f44336"; // red
-    if (val >= 60) return "#ff9800"; // orange
+    const safeVal = typeof val === 'number' && !isNaN(val) ? val : 0;
+    if (safeVal >= 90) return "#f44336"; // red
+    if (safeVal >= 60) return "#ff9800"; // orange
     return "#4caf50"; // green
   };
 
@@ -66,14 +69,14 @@ export default function BinDetailScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <BackButton />
-      <Text style={styles.sectionTitle}>{binData.name} Location</Text>
+      <Text style={styles.sectionTitle}>{safeBinData.name} Location</Text>
 
       <MapView
         style={styles.map}
         provider={PROVIDER_GOOGLE}
         initialRegion={{
-          latitude: binData.position[0],
-          longitude: binData.position[1],
+          latitude: safeBinData.position[0],
+          longitude: safeBinData.position[1],
           latitudeDelta: 0.0008,
           longitudeDelta: 0.0008,
         }}
@@ -83,31 +86,31 @@ export default function BinDetailScreen() {
         showsScale={true}
       >
         <Marker coordinate={{ 
-          latitude: binData.position[0], 
-          longitude: binData.position[1] 
+          latitude: safeBinData.position[0], 
+          longitude: safeBinData.position[1] 
         }}>
-          <View style={[styles.marker, { backgroundColor: getStatusColor(binData.level) }]}>
-            <Text style={styles.markerText}>{binData.level}%</Text>
+          <View style={[styles.marker, { backgroundColor: getStatusColor(safeBinData.level) }]}>
+            <Text style={styles.markerText}>{safeBinData.level}%</Text>
           </View>
         </Marker>
       </MapView>
 
       <View style={styles.detailsHeader}>
-        <Text style={styles.title}>Details for {binData.name}</Text>
+        <Text style={styles.title}>Details for {safeBinData.name}</Text>
         <TouchableOpacity onPress={() => setHistoryModalVisible(true)}>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.text}>Route: {binData.route}</Text>
-      <Text style={styles.text}>GPS Status: {binData.gps_valid ? 'Valid' : 'Invalid'} ({binData.satellites} satellites)</Text>
-      <Text style={styles.text}>Current Level: {binData.level}%</Text>
+      <Text style={styles.text}>Route: {safeBinData.route}</Text>
+      <Text style={styles.text}>GPS Status: {safeBinData.gps_valid ? 'Valid' : 'Invalid'} ({safeBinData.satellites} satellites)</Text>
+      <Text style={styles.text}>Current Level: {safeBinData.level}%</Text>
       <ProgressBar
-        progress={binData.level / 100}
-        color={getStatusColor(binData.level)}
+        progress={safeBinData.level / 100}
+        color={getStatusColor(safeBinData.level)}
         style={{ height: 10, borderRadius: 5, marginBottom: 15 }}
       />
-      <Text style={styles.text}>Last Update: {new Date(binData.lastCollection).toLocaleString()}</Text>
-      <Text style={[styles.text, styles.status]}>Status: {binData.status.toUpperCase()}</Text>
+      <Text style={styles.text}>Last Update: {new Date(safeBinData.lastCollection).toLocaleString()}</Text>
+      <Text style={[styles.text, styles.status]}>Status: {safeBinData.status.toUpperCase()}</Text>
 
       <Text style={styles.sectionTitle}>Proof of Pickup</Text>
       <View style={styles.imageContainer}>
@@ -122,14 +125,14 @@ export default function BinDetailScreen() {
       <TouchableOpacity
         style={[
           {
-            backgroundColor: bin.level < 80 ? "#ccc" : "#2e7d32",
+            backgroundColor: safeBinData.level < 80 ? "#ccc" : "#2e7d32",
             padding: 14,
             borderRadius: 10,
             alignItems: "center",
           },
         ]}
-        disabled={bin.level < 80}
-        onPress={() => alert("Marked as Picked Up!")}
+        disabled={safeBinData.level < 80}
+        onPress={() => setPickupModalVisible(true)}
       >
         <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>Pick Up</Text>
       </TouchableOpacity>
@@ -137,8 +140,22 @@ export default function BinDetailScreen() {
       <PickupHistoryModal
         visible={historyModalVisible}
         onClose={() => setHistoryModalVisible(false)}
-        binId={bin.id}
+        binId={safeBinData.id}
         logs={[]}
+      />
+
+      <PickupWorkflowModal
+        visible={pickupModalVisible}
+        onClose={() => setPickupModalVisible(false)}
+        binData={safeBinData}
+        onPickupComplete={() => {
+          setPickupModalVisible(false);
+          alert("Pickup completed successfully!");
+        }}
+        onAcknowledge={() => {
+          setPickupModalVisible(false);
+          alert("Pickup acknowledged and added to pending tasks.");
+        }}
       />
     </ScrollView>
   );

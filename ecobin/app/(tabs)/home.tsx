@@ -10,11 +10,18 @@ import { ProgressBar } from "react-native-paper";
 import { useRouter } from "expo-router";
 import axiosInstance from "../../utils/axiosInstance";
 import { useAccount } from "../../hooks/useAccount";
+import PickupWorkflowModal from "@/components/PickupWorkflowModal";
+import BinAlertModal from "@/components/BinAlertModal";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { wasteBins, loading, error, isGPSValid } = useRealTimeData();
+  const { wasteBins, loading, error, isGPSValid, getSafeCoordinates } = useRealTimeData();
   const { account } = useAccount();
+  
+  // Pickup modal state
+  const [alertModalVisible, setAlertModalVisible] = useState(false);
+  const [pickupModalVisible, setPickupModalVisible] = useState(false);
+  const [alertedBins, setAlertedBins] = useState<Set<string>>(new Set());
 
   // Static locations (except Central Plaza, which is real-time)
   const staticLocations = [
@@ -25,8 +32,8 @@ export default function HomeScreen() {
   ];
 
   // Central Plaza - 1 real-time bin + 3 static bins
-  const centralPlazaRealTimeBins = wasteBins.filter((bin) => 
-    bin.location && bin.location.toLowerCase().includes("central")
+  const centralPlazaRealTimeBins = (wasteBins || []).filter((bin) =>
+    bin && bin.location && bin.location.toLowerCase().includes("central") && typeof bin.level === 'number'
   );
   
   // Static bins for Central Plaza (3 additional bins)
@@ -42,10 +49,67 @@ export default function HomeScreen() {
     ...centralPlazaStaticBins
   ];
   
-  const centralPlazaLevels = allCentralPlazaBins.map((bin) => bin.level);
+  const centralPlazaLevels = allCentralPlazaBins
+    .filter((bin) => bin && typeof bin.level === 'number')
+    .map((bin) => bin.level);
   const centralPlazaAvg = centralPlazaLevels.length > 0 ? centralPlazaLevels.reduce((s, v) => s + v, 0) / centralPlazaLevels.length : 0;
   const centralPlazaNearlyFull = centralPlazaLevels.filter((v) => v >= 80).length;
   const centralPlazaLastCollected = allCentralPlazaBins.length > 0 ? allCentralPlazaBins[0].lastCollected : "Unknown";
+
+  // SIMPLIFIED: Check only bin1 for 85% threshold
+  const bin1 = centralPlazaRealTimeBins.find(bin => bin.id === 'bin1');
+  
+  useEffect(() => {
+    if (!bin1 || typeof bin1.level !== 'number') return;
+    
+    if (bin1.level >= 85 && !alertedBins.has('bin1')) {
+      console.log(`🚨 BIN1 CRITICAL: ${bin1.level}%`);
+      setAlertModalVisible(true);
+      setAlertedBins(prev => new Set([...prev, 'bin1']));
+    } else if (bin1.level < 85 && alertedBins.has('bin1')) {
+      setAlertedBins(prev => {
+        const newSet = new Set(prev);
+        newSet.delete('bin1');
+        return newSet;
+      });
+    }
+  }, [bin1?.level]); // Only watch bin1 level changes
+
+  // Alert modal handlers
+  const handleOptionA = () => {
+    setAlertModalVisible(false);
+    setPickupModalVisible(true);
+  };
+
+  const handleOptionB = () => {
+    setAlertModalVisible(false);
+    if (alertBin) {
+      router.push({
+        pathname: '/home/bin-details',
+        params: {
+          binId: alertBin.id,
+          binName: alertBin.name,
+          binLevel: alertBin.level.toString(),
+          binStatus: alertBin.status,
+          binRoute: alertBin.route
+        }
+      });
+    }
+  };
+
+  // Pickup modal handlers
+  const handlePickupConfirm = () => {
+    setPickupModalVisible(false);
+    // Additional logic for pickup confirmation can be added here
+  };
+
+  const handleAcknowledge = () => {
+    setPickupModalVisible(false);
+    // Additional logic for acknowledgment can be added here
+  };
+
+  // Get bin1 for alerts
+  const alertBin = bin1;
 
   // Activity logs from backend
   const [logs, setLogs] = useState<any[]>([]);
@@ -141,8 +205,9 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
-      <View style={styles.header}><Header /></View>
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
+        <View style={styles.header}><Header /></View>
       
       {/* GPS Status Indicator */}
       {!isGPSValid() && (
@@ -277,6 +342,25 @@ export default function HomeScreen() {
         </TouchableOpacity>
       ))}
     </ScrollView>
+
+    {/* Bin Alert Modal */}
+    <BinAlertModal
+      visible={alertModalVisible}
+      onClose={() => setAlertModalVisible(false)}
+      binData={alertBin}
+      onOptionA={handleOptionA}
+      onOptionB={handleOptionB}
+    />
+
+    {/* Pickup Workflow Modal */}
+    <PickupWorkflowModal
+      visible={pickupModalVisible}
+      onClose={() => setPickupModalVisible(false)}
+      binData={alertBin}
+      onPickupComplete={handlePickupConfirm}
+      onAcknowledge={handleAcknowledge}
+    />
+    </>
   );
 }
 

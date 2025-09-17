@@ -39,6 +39,8 @@ export interface UseRealTimeDataReturn {
   refetch: () => Promise<void>;
   isGPSValid: () => boolean;
   getCurrentGPSLocation: () => BinData | null;
+  getSafeCoordinates: () => { latitude: number; longitude: number; isOffline: boolean; timeSinceLastGPS: string };
+  getTimeSinceLastGPS: (timestamp: number) => string;
 }
 
 export const useRealTimeData = (refreshInterval: number = 5000): UseRealTimeDataReturn => {
@@ -48,6 +50,64 @@ export const useRealTimeData = (refreshInterval: number = 5000): UseRealTimeData
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [gpsHistory, setGpsHistory] = useState<Array<{lat: number, lng: number, timestamp: number}>>([]);
+  const [lastKnownGPS, setLastKnownGPS] = useState<{
+    latitude: number;
+    longitude: number;
+    timestamp: number;
+  } | null>(null);
+
+  // GPS fallback functions
+  const getTimeSinceLastGPS = (timestamp: number) => {
+    if (!timestamp) return 'Unknown';
+    
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    return 'Just now';
+  };
+
+  const getSafeCoordinates = () => {
+    // Check if we have valid GPS data
+    if (bin1Data?.gps_valid && bin1Data?.latitude && bin1Data?.longitude) {
+      // Update last known GPS
+      setLastKnownGPS({
+        latitude: bin1Data.latitude,
+        longitude: bin1Data.longitude,
+        timestamp: bin1Data.timestamp
+      });
+      
+      return {
+        latitude: bin1Data.latitude,
+        longitude: bin1Data.longitude,
+        isOffline: false,
+        timeSinceLastGPS: 'Live'
+      };
+    }
+    
+    // Use last known GPS if available
+    if (lastKnownGPS) {
+      return {
+        latitude: lastKnownGPS.latitude,
+        longitude: lastKnownGPS.longitude,
+        isOffline: true,
+        timeSinceLastGPS: getTimeSinceLastGPS(lastKnownGPS.timestamp)
+      };
+    }
+    
+    // Fallback to default coordinates
+    return {
+      latitude: 10.2098,
+      longitude: 123.758,
+      isOffline: true,
+      timeSinceLastGPS: 'No GPS data'
+    };
+  };
 
   // Fetch initial data - ONLY bin1 as requested
   const fetchInitialData = useCallback(async () => {
@@ -198,7 +258,9 @@ export const useRealTimeData = (refreshInterval: number = 5000): UseRealTimeData
     lastUpdate,
     refetch,
     isGPSValid,
-    getCurrentGPSLocation
+    getCurrentGPSLocation,
+    getSafeCoordinates,
+    getTimeSinceLastGPS
   };
 };
 
