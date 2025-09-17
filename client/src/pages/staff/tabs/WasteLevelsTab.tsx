@@ -736,26 +736,9 @@ export function WasteLevelsTab() {
                 </div>
               </div>
 
-              <div>
+              <div className="mt-2">
                 <strong>Last Collected:</strong> {selectedBin.lastCollected}
               </div>
-
-              {selectedBin.binData && (
-                <>
-                  <div>
-                    <strong>Real-time Weight:</strong> {selectedBin.binData.weight_kg} kg
-                  </div>
-                  <div>
-                    <strong>Real-time Distance:</strong> {selectedBin.binData.distance_cm} cm
-                  </div>
-                  {selectedBin.binData.gps_valid && (
-                    <div>
-                      <strong>GPS:</strong> {selectedBin.binData.latitude?.toFixed(4)},{" "}
-                      {selectedBin.binData.longitude?.toFixed(4)}
-                    </div>
-                  )}
-                </>
-              )}
             </div>
 
             {/* Suggested Action directly under Bin Information */}
@@ -773,11 +756,11 @@ export function WasteLevelsTab() {
               <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                 Assign to Janitor ({filteredJanitors.length} available)
               </label>
-              {filteredJanitors.length > 0 && (
+              {/* {filteredJanitors.length > 0 && (
                 <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                   Available janitors: {filteredJanitors.map((j) => j.fullName).join(", ")}
                 </div>
-              )}
+              )} */}
               <Select onValueChange={(val) => setSelectedJanitorId(val)}>
                 <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
                   <SelectValue placeholder={janitorsLoading ? "Loading..." : "Select Janitor"} />

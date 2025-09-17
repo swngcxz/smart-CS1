@@ -1,21 +1,9 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -51,7 +39,7 @@ export interface Schedule {
 interface AddScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddSchedule: (schedule: Omit<Schedule, 'id'>) => void;
+  onAddSchedule: (schedule: Omit<Schedule, "id">) => void;
   collectors?: Collector[];
   drivers?: Collector[];
   maintenanceWorkers?: Collector[];
@@ -78,11 +66,9 @@ export function AddScheduleDialog({
   const [contactPerson, setContactPerson] = useState("");
   const [priority, setPriority] = useState<"Low" | "Normal" | "High">("Normal");
 
-  const availableCollectors: Collector[] = (collectors
-    ? collectors
-    : serviceType === "collection"
-    ? (drivers || [])
-    : (maintenanceWorkers || [])) as Collector[];
+  const availableCollectors: Collector[] = (
+    collectors ? collectors : serviceType === "collection" ? drivers || [] : maintenanceWorkers || []
+  ) as Collector[];
   const selectedCollector = availableCollectors.find((c) => c.id === collectorId);
 
   const resetForm = () => {
@@ -116,7 +102,7 @@ export function AddScheduleDialog({
       }
     }
 
-    const newSchedule: Omit<Schedule, 'id'> = {
+    const newSchedule: Omit<Schedule, "id"> = {
       serviceType,
       location: location.trim(),
       type,
@@ -168,7 +154,7 @@ export function AddScheduleDialog({
           <div className="grid gap-3">
             <Label>Service Type</Label>
             <div className="grid grid-cols-2 gap-3">
-              <Card 
+              <Card
                 className={cn(
                   "cursor-pointer transition-all hover:shadow-md",
                   serviceType === "collection" ? "ring-2 ring-primary bg-primary/5" : "border-border"
@@ -181,8 +167,8 @@ export function AddScheduleDialog({
                   </div>
                 </CardContent>
               </Card>
-              
-              <Card 
+
+              <Card
                 className={cn(
                   "cursor-pointer transition-all hover:shadow-md",
                   serviceType === "maintenance" ? "ring-2 ring-primary bg-primary/5" : "border-border"
@@ -209,24 +195,22 @@ export function AddScheduleDialog({
                 required
               />
             </div>
-
+            {/* 
             <div className="grid gap-2">
-              <Label htmlFor="type">
-                {serviceType === "collection" ? "Waste Type" : "Service Type"}
-              </Label>
+              <Label htmlFor="type">{serviceType === "collection" ? "Waste Type" : "Service Type"}</Label>
               <Select value={type} onValueChange={setType} required>
                 <SelectTrigger id="type">
                   <SelectValue placeholder={`Select ${serviceType === "collection" ? "waste" : "service"} type`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {getTypeOptions().map(option => (
+                  {getTypeOptions().map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
 
             <div className="grid gap-2">
               <Label htmlFor="date">Date</Label>
@@ -235,10 +219,7 @@ export function AddScheduleDialog({
                   <Button
                     id="date"
                     variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
+                    className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {date ? format(date, "PPP") : <span>Pick a date</span>}
@@ -257,7 +238,7 @@ export function AddScheduleDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="startTime">Start Time</Label>
+              <Label htmlFor="startTime">Time</Label>
               <Input
                 id="startTime"
                 type="time"
@@ -266,29 +247,6 @@ export function AddScheduleDialog({
                 required
               />
             </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="endTime">End Time</Label>
-              <Input
-                id="endTime"
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                required
-              />
-            </div>
-
-            {serviceType === "collection" && (
-              <div className="grid gap-2">
-                <Label htmlFor="capacity">Expected Capacity (%)</Label>
-                <Input
-                  id="capacity"
-                  placeholder="75"
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                />
-              </div>
-            )}
 
             <div className="grid gap-2">
               <Label htmlFor="collector">{serviceType === "collection" ? "Assign Driver" : "Assign Maintenance"}</Label>
@@ -302,20 +260,6 @@ export function AddScheduleDialog({
                       {c.name} {c.phone ? `• ${c.phone}` : ""}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="priority">Priority</Label>
-              <Select value={priority} onValueChange={(v) => setPriority(v as any)}>
-                <SelectTrigger id="priority">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Normal">Normal</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -346,7 +290,9 @@ export function AddScheduleDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">Add Schedule</Button>
+            <Button type="submit" className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">
+              Add Schedule
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

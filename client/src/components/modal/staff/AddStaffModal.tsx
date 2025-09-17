@@ -43,9 +43,18 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
         <div className="space-y-4">
           <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
           <Input placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <Input placeholder="Contact Number" value={contactNumber} onChange={(e) => setContactNumber(e.target.value)} />
-          
+          <Input
+            placeholder="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <Input
+            placeholder="Contact Number"
+            value={contactNumber}
+            onChange={(e) => setContactNumber(e.target.value)}
+          />
+
           <Select value={role} onValueChange={setRole}>
             <SelectTrigger>
               <SelectValue placeholder="Select Role" />
@@ -69,18 +78,7 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
             </SelectContent>
           </Select>
 
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger>
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="break">On Break</SelectItem>
-              <SelectItem value="offline">Offline</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button onClick={handleSubmit} className="w-full">
+          <Button onClick={handleSubmit} className="w-full bg-green-500 hover:bg-green-600 text-white">
             Add Janitor
           </Button>
         </div>

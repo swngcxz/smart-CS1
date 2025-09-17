@@ -196,7 +196,7 @@ export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: 
         </Card>
 
         {/* Task Assignment */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="text-lg">Task Assignment</CardTitle>
           </CardHeader>
@@ -227,7 +227,7 @@ export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: 
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Save Button */}
         <div className="pt-4">
