@@ -232,11 +232,8 @@ export function StaffActivityLogs() {
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="task_assignment">Task Assignment</SelectItem>
-                  <SelectItem value="bin_emptied">Bin Emptied</SelectItem>
+                  <SelectItem value="bin_emptied">Trash Collection</SelectItem>
                   <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="route_change">Route Change</SelectItem>
-                  <SelectItem value="schedule_update">Schedule Update</SelectItem>
-                  <SelectItem value="bin_alert">Bin Alert</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -268,20 +265,6 @@ export function StaffActivityLogs() {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Clear Filters */}
-            {(activityType !== "all" || statusFilter !== "all" || priorityFilter !== "all" || searchTerm) && (
-              <div className="flex justify-end">
-                <Button
-                  onClick={clearFilters}
-                  variant="outline"
-                  size="sm"
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  Clear All Filters
-                </Button>
-              </div>
-            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -303,9 +286,8 @@ export function StaffActivityLogs() {
             </div>
           ) : (
             <>
-              {/* Desktop Table View */}
-              <div className="hidden lg:block overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
-                <Table className="w-full table-fixed">
+              <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                <Table className="min-w-[800px] table-auto">
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[12%]">
