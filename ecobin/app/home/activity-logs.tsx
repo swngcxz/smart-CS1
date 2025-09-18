@@ -40,24 +40,76 @@ export default function ActivityLogsScreen() {
       
       // Try multiple endpoints to get user's activity logs
       let response;
+      let allActivities = [];
+      
       try {
         // First try: Get logs assigned to this user (as janitor)
+        console.log('📱 Mobile App - Trying assigned logs for user:', account.id);
         response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
         console.log('📱 Mobile App - Got assigned logs:', response.data);
-      } catch (assignedErr) {
-        console.log('📱 Mobile App - No assigned logs, trying user logs...');
-        // Second try: Get logs created by this user
+        
+        const assignedActivities = response.data.activities || [];
+        console.log('📱 Mobile App - Assigned activities count:', assignedActivities.length);
+        allActivities = [...assignedActivities];
+        
+        // Always try to get all logs created by this user as well
+        console.log('📱 Mobile App - Trying user logs for user:', account.id);
         response = await axiosInstance.get(`/api/activitylogs/${account.id}`);
         console.log('📱 Mobile App - Got user logs:', response.data);
+        
+        const userActivities = response.data.activities || [];
+        console.log('📱 Mobile App - User activities count:', userActivities.length);
+        
+        // Combine both arrays and remove duplicates
+        const combinedActivities = [...assignedActivities, ...userActivities];
+        const uniqueActivities = combinedActivities.filter((activity, index, self) => 
+          index === self.findIndex(a => a.id === activity.id)
+        );
+        
+        allActivities = uniqueActivities;
+        console.log('📱 Mobile App - Combined activities count:', allActivities.length);
+        
+      } catch (err) {
+        console.log('📱 Mobile App - API calls failed, trying fallback...');
+        // Fallback: Try to get all activity logs and filter on frontend
+        try {
+          response = await axiosInstance.get(`/api/activitylogs`);
+          console.log('📱 Mobile App - Got all logs:', response.data);
+          const allLogs = response.data.activities || [];
+          // Filter logs that belong to this user
+          allActivities = allLogs.filter((log: any) => 
+            log.user_id === account.id || log.assigned_janitor_id === account.id
+          );
+          console.log('📱 Mobile App - Filtered activities count:', allActivities.length);
+        } catch (fallbackErr) {
+          console.error('📱 Mobile App - All API calls failed:', fallbackErr);
+          allActivities = [];
+        }
       }
 
-      const activities = response.data.activities || response.data.activities || [];
-      setLogs(activities);
+      console.log('📱 Mobile App - Final activities to display:', allActivities);
       
-      console.log(`📱 Mobile App - Found ${activities.length} activity logs for ${account.email}`);
+      // Debug: Log each activity's status fields
+      allActivities.forEach((activity: any, index: number) => {
+        console.log(`📱 Mobile App - Activity ${index}:`, {
+          bin_id: activity.bin_id,
+          status: activity.status,
+          bin_status: activity.bin_status,
+          assigned_janitor_id: activity.assigned_janitor_id,
+          assigned_janitor_name: activity.assigned_janitor_name,
+          completed_at: activity.completed_at,
+          proof_image: activity.proof_image,
+          photos: activity.photos,
+          user_id: activity.user_id
+        });
+      });
+      
+      setLogs(allActivities);
+      
+      console.log(`📱 Mobile App - Found ${allActivities.length} activity logs for ${account.email}`);
       
       // Log completed activities for debugging
-      const completedActivities = activities.filter((activity: any) => activity.status === 'done');
+      const completedActivities = allActivities.filter((activity: any) => activity.status === 'done');
       if (completedActivities.length > 0) {
         console.log('📱 Mobile App - Completed activities found:', completedActivities);
       }
@@ -109,7 +161,26 @@ export default function ActivityLogsScreen() {
     location: log.bin_location,
     time: log.time,
     date: log.date,
-    status: log.status || "pending",
+    status: (() => {
+      // Proper status logic: completed > in_progress > pending
+      if (log.status === "done" || log.completed_at || log.proof_image || log.photos?.length > 0) {
+        return "done"; // Task is completed (has proof)
+      } else if (log.assigned_janitor_id) {
+        return "in_progress"; // Janitor assigned but not completed
+      } else {
+        return "pending"; // No janitor assigned
+      }
+    })(),
+    bin_status: (() => {
+      // Same logic for bin_status
+      if (log.bin_status === "done" || log.completed_at || log.proof_image || log.photos?.length > 0) {
+        return "done";
+      } else if (log.assigned_janitor_id) {
+        return "in_progress";
+      } else {
+        return "pending";
+      }
+    })(),
     // Include completion details for done activities
     completion_notes: log.completion_notes || log.status_notes,
     bin_condition: log.bin_condition,
@@ -294,7 +365,7 @@ export default function ActivityLogsScreen() {
               onPress={() => {
                 console.log('📱 Mobile App - Viewing completed activity:', log);
                 router.push({
-                  pathname: "/home/proof-of-pickup",
+                  pathname: "/home/activity-details",
                   params: { 
                     binId: log.bin ?? "N/A",
                     activityLog: JSON.stringify(log),
@@ -312,7 +383,7 @@ export default function ActivityLogsScreen() {
               onPress={() => {
                 console.log('📱 Mobile App - Viewing pending activity:', log);
                 router.push({
-                  pathname: "/home/proof-of-pickup",
+                  pathname: "/home/activity-details",
                   params: { 
                     binId: log.bin ?? "N/A",
                     activityLog: JSON.stringify(log),
@@ -403,14 +474,14 @@ export default function ActivityLogsScreen() {
                       key={idx}
                       onPress={() => {
                         console.log('📱 Mobile App - Clicking activity log:', log);
-                        router.push({
-                          pathname: "/home/proof-of-pickup",
-                          params: { 
-                            binId: log.bin ?? "N/A",
-                            activityLog: JSON.stringify(log),
-                            isReadOnly: log.status === "done" ? "true" : "false"
-                          },
-                        });
+                          router.push({
+                            pathname: "/home/activity-details",
+                            params: { 
+                              binId: log.bin ?? "N/A",
+                              activityLog: JSON.stringify(log),
+                              isReadOnly: log.status === "done" ? "true" : "false"
+                            },
+                          });
                       }}
                       onLongPress={() => toggleSelection(idx)}
                     >

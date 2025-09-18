@@ -6,7 +6,7 @@ export type RootStackParamList = {
   ProfileScreen: undefined;
   MapScreen: undefined;
   BinDetailScreen: { binId: string };
-  ProofOfPickupScreen: { binId: string };
+  ActivityDetailsScreen: { binId: string; activityLog?: string; isReadOnly?: string };
 };
 
 // Optional: Add global declaration to use navigation types globally

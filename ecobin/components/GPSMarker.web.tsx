@@ -1,25 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
-// Platform-specific imports
-let Marker: any, Callout: any;
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  Marker = Maps.Marker;
-  Callout = Maps.Callout;
-} else {
-  // Web fallback components
-  Marker = ({ children, coordinate }: any) => (
-    <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
-      {children}
-    </View>
-  );
-  Callout = ({ children, style }: any) => (
-    <View style={[styles.gpsCallout, style]}>
-      {children}
-    </View>
-  );
-}
+// Web fallback components
+const Marker = ({ children, coordinate }: any) => (
+  <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
+    {children}
+  </View>
+);
+
+const Callout = ({ children, style }: any) => (
+  <View style={[styles.gpsCallout, style]}>
+    {children}
+  </View>
+);
 
 interface GPSMarkerProps {
   gpsData: {

@@ -15,36 +15,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProgressBar } from 'react-native-paper';
+import * as ImagePicker from 'expo-image-picker';
 import { useRealTimeData } from '../hooks/useRealTimeData';
 import { useAccount } from '../hooks/useAccount';
 import axiosInstance from '../utils/axiosInstance';
-
-// Platform-specific imports
-let MapView: any, Marker: any, Polyline: any, PROVIDER_GOOGLE: any;
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-  Polyline = Maps.Polyline;
-  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
-} else {
-  // Web fallback components
-  MapView = ({ children, style, region, ...props }: any) => (
-    <View style={[style, { backgroundColor: '#e5e7eb' }]}>
-      <Text style={{ textAlign: 'center', padding: 20, color: '#6b7280' }}>
-        Map not available on web platform
-      </Text>
-      {children}
-    </View>
-  );
-  Marker = ({ children, coordinate, title, description }: any) => (
-    <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
-      {children}
-    </View>
-  );
-  Polyline = ({ coordinates, strokeColor, strokeWidth }: any) => null; // No-op for web
-  PROVIDER_GOOGLE = 'google';
-}
 
 interface PickupWorkflowModalProps {
   visible: boolean;
@@ -88,6 +62,12 @@ export default function PickupWorkflowModal({
     }
   }, [visible, binData?.id, wasteBins?.length]); // Only depend on length, not the entire wasteBins array
 
+  // Get user location when modal opens
+  useEffect(() => {
+    if (visible && workflowStep === 'route') {
+      getCurrentLocation();
+    }
+  }, [visible, workflowStep]);
 
   // Toggle map expansion
   const toggleMap = () => {
@@ -101,6 +81,18 @@ export default function PickupWorkflowModal({
     }).start();
   };
 
+  const getCurrentLocation = async () => {
+    try {
+      // In a real app, you'd use Location.getCurrentPositionAsync()
+      // For now, we'll use a mock location
+      setUserLocation({
+        latitude: 10.3157,
+        longitude: 123.8854
+      });
+    } catch (error) {
+      console.error('Error getting location:', error);
+    }
+  };
 
   const getStatusColor = (level: number) => {
     if (level >= 90) return "#f44336";
@@ -299,7 +291,7 @@ export default function PickupWorkflowModal({
           </Text>
         </View>
 
-        {/* Collapsible Map Section */}
+        {/* Collapsible Map Section - Web Fallback */}
         <View style={styles.mapSection}>
           <TouchableOpacity style={styles.mapToggle} onPress={toggleMap}>
             <View style={styles.mapToggleContent}>
@@ -319,38 +311,24 @@ export default function PickupWorkflowModal({
               {
                 height: mapAnimation.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, 250],
+                  outputRange: [0, 200],
                 }),
                 opacity: mapAnimation,
               }
             ]}
           >
             <View style={styles.mapContainer}>
-              <MapView
-                provider={PROVIDER_GOOGLE}
-                style={styles.map}
-                region={{
-                  latitude: safeCoords.latitude || 10.3157,
-                  longitude: safeCoords.longitude || 123.8854,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-                showsUserLocation={true}
-                showsMyLocationButton={true}
-              >
-                <Marker
-                  coordinate={{
-                    latitude: safeCoords.latitude || 10.3157,
-                    longitude: safeCoords.longitude || 123.8854,
-                  }}
-                  title={currentBinData?.name || 'Smart Bin'}
-                  description={`Level: ${currentBinData?.level || 0}%`}
-                >
-                  <View style={[styles.markerContainer, { backgroundColor: getStatusColor(currentBinData?.level || 0) }]}>
-                    <Ionicons name="trash" size={20} color="white" />
-                  </View>
-                </Marker>
-              </MapView>
+              <View style={[styles.map, { backgroundColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ textAlign: 'center', color: '#6b7280', fontSize: 16 }}>
+                  🗺️ Interactive Map
+                </Text>
+                <Text style={{ textAlign: 'center', color: '#6b7280', fontSize: 12, marginTop: 8 }}>
+                  Bin Location: {safeCoords.latitude?.toFixed(6)}, {safeCoords.longitude?.toFixed(6)}
+                </Text>
+                <Text style={{ textAlign: 'center', color: '#6b7280', fontSize: 12, marginTop: 4 }}>
+                  Level: {currentBinData?.level || 0}% - {getStatusText(currentBinData?.level || 0)}
+                </Text>
+              </View>
             </View>
           </Animated.View>
         </View>
@@ -368,7 +346,74 @@ export default function PickupWorkflowModal({
     );
   };
 
+  const renderRouteStep = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>Navigate to Bin</Text>
+      <Text style={styles.stepDescription}>
+        Follow the route to reach the bin location
+      </Text>
 
+      <View style={styles.mapContainer}>
+        <View style={[styles.map, { backgroundColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center' }]}>
+          <Text style={{ textAlign: 'center', color: '#6b7280' }}>
+            Navigation Map - Web Platform
+          </Text>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.button, styles.pickupButton]}
+        onPress={handleRouteComplete}
+      >
+        <Ionicons name="checkmark-circle" size={20} color="white" />
+        <Text style={styles.buttonText}>Arrived at Bin</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderPhotoStep = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>Document Pickup</Text>
+      <Text style={styles.stepDescription}>
+        Take photos as proof of pickup completion
+      </Text>
+
+      <View style={styles.photoContainer}>
+        {photos.map((photo, index) => (
+          <Image key={index} source={{ uri: photo }} style={styles.photo} />
+        ))}
+      </View>
+
+      <View style={styles.photoButtons}>
+        <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
+          <Ionicons name="camera" size={20} color="#4caf50" />
+          <Text style={styles.photoButtonText}>Take Photo</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+          <Ionicons name="images" size={20} color="#4caf50" />
+          <Text style={styles.photoButtonText}>Choose from Gallery</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, styles.pickupButton]}
+          onPress={handlePickupComplete}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" size="small" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={20} color="white" />
+              <Text style={styles.buttonText}>Done</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <Modal
@@ -613,17 +658,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   map: {
-    height: 250,
+    height: 200,
     borderRadius: 8,
-  },
-  markerContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'white',
   },
   photoContainer: {
     flexDirection: 'row',

@@ -1,4 +1,3 @@
-
 import React from "react";
 import BackButton from "@/components/BackButton";
 import PickupHistoryModal from "@/components/modals/PickupHistoryModal";
@@ -6,34 +5,30 @@ import PickupWorkflowModal from "@/components/PickupWorkflowModal";
 import { useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import { useRealTimeData } from "../../hooks/useRealTimeData";
 
-// Platform-specific imports
-let MapView: any, Marker: any, PROVIDER_GOOGLE: any;
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
-} else {
-  // Web fallback components
-  MapView = ({ children, style, region, ...props }: any) => (
-    <View style={[style, { backgroundColor: '#e5e7eb' }]}>
-      <Text style={{ textAlign: 'center', padding: 20, color: '#6b7280' }}>
-        Map not available on web platform
-      </Text>
-      {children}
-    </View>
-  );
-  Marker = ({ children, coordinate, title, description }: any) => (
-    <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
-      {children}
-    </View>
-  );
-  PROVIDER_GOOGLE = 'google';
-}
+// Web fallback components
+const MapView = ({ children, style, region, ...props }: any) => (
+  <View style={[style, { backgroundColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center' }]}>
+    <Text style={{ textAlign: 'center', padding: 20, color: '#6b7280', fontSize: 16 }}>
+      🗺️ Map not available on web platform
+    </Text>
+    <Text style={{ textAlign: 'center', padding: 10, color: '#9ca3af', fontSize: 14 }}>
+      Please use the mobile app for full map functionality
+    </Text>
+    {children}
+  </View>
+);
+
+const Marker = ({ children, coordinate, title, description }: any) => (
+  <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
+    {children}
+  </View>
+);
+
+const PROVIDER_GOOGLE = 'google';
 
 export default function BinDetailScreen() {
   const params = useLocalSearchParams<{ 
@@ -93,7 +88,7 @@ export default function BinDetailScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <BackButton />
-      <Text style={styles.sectionTitle}>{safeBinData.name} Location</Text>
+      <Text style={styles.sectionTitle}>{safeBinData.name} Location (Web)</Text>
 
       <MapView
         style={styles.map}

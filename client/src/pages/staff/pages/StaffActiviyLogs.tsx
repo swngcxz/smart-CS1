@@ -9,16 +9,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState, useMemo } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, Filter, RefreshCw } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ActivityLog } from "@/hooks/useActivityLogs";
 type SortField = "timestamp" | "activity_type" | "status" | "priority";
 type SortDirection = "asc" | "desc";
 
 export function StaffActivityLogs() {
-  // Get userId from auth context or localStorage, fallback to 'staff-user' for testing
-  const storedUserId = localStorage.getItem("userId");
-  const userId = storedUserId || "staff-user"; // Use the user ID from your saved data
+  // Get userId from auth context
+  const { user: authUser } = useAuth();
+  const userId = authUser?.id;
 
-  const { logs, user, loading, error, refetch } = useActivityLogs(userId);
+  const { logs, user, loading, error, refetch } = useActivityLogs(userId, 10000); // Auto-refresh every 10 seconds
 
   // Filter and sort states
   const [activityType, setActivityType] = useState<string>("all");

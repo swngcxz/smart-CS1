@@ -1,32 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { ProgressBar } from 'react-native-paper';
 import { BinLocation } from '../utils/apiService';
-
-// Platform-specific imports
-let Marker: any, Callout: any;
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  Marker = Maps.Marker;
-  Callout = Maps.Callout;
-} else {
-  // Web fallback components
-  Marker = ({ children, coordinate, onPress }: any) => (
-    <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
-      {children}
-    </View>
-  );
-  Callout = ({ children, style }: any) => (
-    <View style={[styles.callout, style]}>
-      {children}
-    </View>
-  );
-}
 
 interface DynamicBinMarkerProps {
   bin: BinLocation;
   onPress?: (bin: BinLocation) => void;
 }
+
+// Web fallback components
+const Marker = ({ children, coordinate, onPress }: any) => (
+  <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
+    {children}
+  </View>
+);
+
+const Callout = ({ children, style }: any) => (
+  <View style={[styles.callout, style]}>
+    {children}
+  </View>
+);
 
 export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress }) => {
   const getMarkerColor = (status: string) => {

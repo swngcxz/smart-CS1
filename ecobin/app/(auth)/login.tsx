@@ -51,10 +51,16 @@ export default function LoginScreen() {
   const { login, loading, error } = useAuth();
 
   const handleLogin = async () => {
+    console.log('🔐 Mobile App - Attempting login with:', { email });
     const res = await login(email, password);
-    // Accept login success if res exists and has either id or token or message
-    if (res && (res.id || res.token || res.message)) {
+    console.log('🔐 Mobile App - Login response:', res);
+    
+    // Check for successful login response
+    if (res && (res.user?.id || res.token || res.message)) {
+      console.log('✅ Mobile App - Login successful, redirecting to home');
       router.replace("/(tabs)/home");
+    } else {
+      console.log('❌ Mobile App - Login failed, response:', res);
     }
     // else error is handled by hook
   };

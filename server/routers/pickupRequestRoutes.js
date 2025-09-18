@@ -15,3 +15,4 @@ router.put('/:requestId/assign', pickupRequestController.assignJanitor);
 router.put('/:requestId/status', pickupRequestController.updateStatus);
 
 module.exports = router;
+

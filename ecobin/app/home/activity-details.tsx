@@ -46,7 +46,25 @@ export default function ProofOfPickupScreen() {
       try {
         const parsed = JSON.parse(activityLog as string);
         setParsedActivityLog(parsed);
+        
+        // Set the actual status from the activity log data
+        // Proper status logic: completed > in_progress > pending
+        const actualStatus = (() => {
+          if (parsed.bin_status === "done" || parsed.status === "done" || parsed.completed_at || parsed.proof_image || parsed.photos?.length > 0) {
+            return "done"; // Task is completed (has proof)
+          } else if (parsed.assigned_janitor_id) {
+            return "in_progress"; // Janitor assigned but not completed
+          } else {
+            return "pending"; // No janitor assigned
+          }
+        })();
+        setCurrentStatus(actualStatus);
+        setSelectedStatus(actualStatus);
+        
         console.log('📱 Mobile App - Successfully parsed activity log:', parsed);
+        console.log('📱 Mobile App - Parsed bin_status:', parsed.bin_status);
+        console.log('📱 Mobile App - Parsed status:', parsed.status);
+        console.log('📱 Mobile App - Setting status to:', actualStatus);
       } catch (error) {
         console.error('📱 Mobile App - Failed to parse activity log:', error);
         setParsedActivityLog(null);
@@ -82,6 +100,15 @@ export default function ProofOfPickupScreen() {
     }
   }, [isReadOnlyMode, parsedActivityLog]);
 
+  // Save state when component unmounts (modal closes)
+  useEffect(() => {
+    return () => {
+      // This cleanup function runs when the component unmounts
+      // The database update should already be persisted from the pickup action
+      console.log('📱 Mobile App - Activity details modal closing, state should be persisted');
+    };
+  }, []);
+
   // Fetch activity log data if not provided
   useEffect(() => {
     const fetchActivityLogData = async () => {
@@ -97,6 +124,23 @@ export default function ProofOfPickupScreen() {
             console.log('📱 Mobile App - Found matching activity log:', matchingLog);
             // Update the parsedActivityLog state
             setParsedActivityLog(matchingLog);
+            
+            // Set the actual status from the fetched activity log data
+            // Proper status logic: completed > in_progress > pending
+            const actualStatus = (() => {
+              if (matchingLog.bin_status === "done" || matchingLog.status === "done" || matchingLog.completed_at || matchingLog.proof_image || matchingLog.photos?.length > 0) {
+                return "done"; // Task is completed (has proof)
+              } else if (matchingLog.assigned_janitor_id) {
+                return "in_progress"; // Janitor assigned but not completed
+              } else {
+                return "pending"; // No janitor assigned
+              }
+            })();
+            setCurrentStatus(actualStatus);
+            setSelectedStatus(actualStatus);
+            console.log('📱 Mobile App - API matchingLog bin_status:', matchingLog.bin_status);
+            console.log('📱 Mobile App - API matchingLog status:', matchingLog.status);
+            console.log('📱 Mobile App - Setting status from API to:', actualStatus);
           } else {
             console.log('📱 Mobile App - No matching activity log found for bin:', binId);
           }
@@ -173,6 +217,65 @@ export default function ProofOfPickupScreen() {
       case "pending":
       default:
         return "PENDING";
+    }
+  };
+
+  const handlePickup = async () => {
+    setSubmitting(true);
+    try {
+      console.log('📱 Mobile App - Claiming pickup task for user:', account?.id);
+      
+      // Update the activity log to assign current user as janitor
+      const updateData = {
+        assigned_janitor_id: account?.id,
+        assigned_janitor_name: account?.fullName || account?.email || 'Unknown User',
+        bin_status: 'in_progress',
+        status: 'in_progress',
+        updated_at: new Date().toISOString()
+      };
+
+      // Find the activity log ID from the parsed data
+      const activityId = parsedActivityLog?.id;
+      if (!activityId) {
+        throw new Error('Activity log ID not found');
+      }
+
+      console.log('📱 Mobile App - Updating activity log:', activityId, 'with data:', updateData);
+      const response = await axiosInstance.put(`/api/activitylogs/${activityId}`, updateData);
+      console.log('📱 Mobile App - Update response:', response.data);
+      
+      if (response.data.message && response.data.message.includes('successfully')) {
+        console.log('✅ Activity log updated - Task claimed by user');
+        
+        // Update local state immediately
+        setParsedActivityLog(prev => ({
+          ...prev,
+          assigned_janitor_id: account?.id,
+          assigned_janitor_name: account?.fullName || account?.email || 'Unknown User',
+          bin_status: 'in_progress',
+          status: 'in_progress'
+        }));
+        
+        setCurrentStatus('in_progress');
+        setSelectedStatus('in_progress');
+        
+        Alert.alert(
+          "Task Claimed",
+          "You have successfully claimed this pickup task. The task status has been updated to 'In Progress'.",
+          [{ text: "OK" }]
+        );
+      } else {
+        throw new Error(response.data.message || 'Failed to claim task');
+      }
+    } catch (error) {
+      console.error('Error claiming pickup task:', error);
+      Alert.alert(
+        "Error",
+        "Failed to claim pickup task. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -316,6 +419,15 @@ export default function ProofOfPickupScreen() {
             </View>
           </View>
 
+          {/* Janitor Assignment Info */}
+          {parsedActivityLog?.assigned_janitor_name && (
+            <View style={styles.janitorInfoContainer}>
+              <Ionicons name="person" size={16} color="#666" />
+              <Text style={styles.janitorLabel}>Assigned Janitor:</Text>
+              <Text style={styles.janitorName}>{parsedActivityLog.assigned_janitor_name}</Text>
+            </View>
+          )}
+
           {/* Bin details */}
           <View style={styles.detailsBox}>
             <Text style={styles.detail}><Text style={styles.label}>Bin ID:</Text> {binId ?? "N/A"}</Text>
@@ -362,30 +474,62 @@ export default function ProofOfPickupScreen() {
           <View style={styles.selectionContainer}>
             <Text style={styles.selectionLabel}>Status *</Text>
             <View style={styles.buttonRow}>
-              {['pending', 'in_progress', 'done'].map((status) => (
-                <TouchableOpacity
-                  key={status}
-                  style={[
-                    styles.statusButton,
-                    selectedStatus === status && styles.statusButtonSelected,
-                    isReadOnlyMode && styles.readOnlyButton
-                  ]}
-                  onPress={() => !isReadOnlyMode && setSelectedStatus(status)}
-                  disabled={isReadOnlyMode}
-                >
-                  <Text style={[
-                    styles.statusButtonText,
-                    selectedStatus === status && styles.statusButtonTextSelected,
-                    isReadOnlyMode && styles.readOnlyButtonText
-                  ]}>
-                    {status.toUpperCase().replace('_', ' ')}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {['pending', 'in_progress', 'done'].map((status) => {
+                // Status selection restrictions based on current status
+                let isDisabled = isReadOnlyMode;
+                
+                if (currentStatus === 'pending') {
+                  // Pending: Only allow pending selection, disable others
+                  isDisabled = status !== 'pending';
+                } else if (currentStatus === 'in_progress') {
+                  // In progress: Allow in_progress and done, disable pending
+                  isDisabled = status === 'pending';
+                } else if (currentStatus === 'done') {
+                  // Done: Only allow done selection, disable others
+                  isDisabled = status !== 'done';
+                }
+                
+                return (
+                  <TouchableOpacity
+                    key={status}
+                    style={[
+                      styles.statusButton,
+                      selectedStatus === status && styles.statusButtonSelected,
+                      isDisabled && styles.disabledButton
+                    ]}
+                    onPress={() => !isDisabled && setSelectedStatus(status)}
+                    disabled={isDisabled}
+                  >
+                    <Text style={[
+                      styles.statusButtonText,
+                      selectedStatus === status && styles.statusButtonTextSelected,
+                      isDisabled && styles.disabledButtonText
+                    ]}>
+                      {status.toUpperCase().replace('_', ' ')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+            {/* Status validation message */}
+            {currentStatus === 'pending' && (
+              <Text style={styles.validationMessage}>
+                ⚠️ Pending task - Click "Pick-up" to claim and change status
+              </Text>
+            )}
+            {currentStatus === 'in_progress' && (
+              <Text style={styles.validationMessage}>
+                ✅ Task in progress - Can be marked as done when completed
+              </Text>
+            )}
+            {currentStatus === 'done' && (
+              <Text style={styles.validationMessage}>
+                ✅ Task is completed - status cannot be changed
+              </Text>
+            )}
           </View>
 
-          {/* Bin Condition Selection */}
+          {/* Bin Condition Selection - Disabled for pending tasks */}
           <View style={styles.selectionContainer}>
             <Text style={styles.selectionLabel}>Bin Condition</Text>
             <View style={styles.buttonRow}>
@@ -393,42 +537,53 @@ export default function ProofOfPickupScreen() {
                 { value: 'good', label: 'Good', color: '#4CAF50' },
                 { value: 'fair', label: 'Fair', color: '#FF9800' },
                 { value: 'poor', label: 'Poor', color: '#F44336' }
-              ].map((condition) => (
-                <TouchableOpacity
-                  key={condition.value}
-                  style={[
-                    styles.conditionButton,
-                    selectedBinCondition === condition.value && styles.conditionButtonSelected,
-                    isReadOnlyMode && styles.readOnlyButton
-                  ]}
-                  onPress={() => !isReadOnlyMode && setSelectedBinCondition(condition.value)}
-                  disabled={isReadOnlyMode}
-                >
-                  <View style={[
-                    styles.conditionDot,
-                    { backgroundColor: condition.color }
-                  ]} />
-                  <Text style={[
-                    styles.conditionButtonText,
-                    selectedBinCondition === condition.value && styles.conditionButtonTextSelected,
-                    isReadOnlyMode && styles.readOnlyButtonText
-                  ]}>
-                    {condition.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              ].map((condition) => {
+                const isDisabled = isReadOnlyMode || currentStatus === 'pending';
+                return (
+                  <TouchableOpacity
+                    key={condition.value}
+                    style={[
+                      styles.conditionButton,
+                      selectedBinCondition === condition.value && styles.conditionButtonSelected,
+                      isDisabled && styles.disabledButton
+                    ]}
+                    onPress={() => !isDisabled && setSelectedBinCondition(condition.value)}
+                    disabled={isDisabled}
+                  >
+                    <View style={[
+                      styles.conditionDot,
+                      { backgroundColor: condition.color }
+                    ]} />
+                    <Text style={[
+                      styles.conditionButtonText,
+                      selectedBinCondition === condition.value && styles.conditionButtonTextSelected,
+                      isDisabled && styles.disabledButtonText
+                    ]}>
+                      {condition.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+            {currentStatus === 'pending' && (
+              <Text style={styles.validationMessage}>
+                ⚠️ Bin condition can only be set after claiming the task
+              </Text>
+            )}
           </View>
 
           <Text style={styles.instructions}>
             {isReadOnlyMode ? "Proof of pickup image:" : "Upload a clear photo after marking this bin as collected."}
           </Text>
 
-          {/* Upload Image */}
+          {/* Upload Image - Disabled for pending tasks */}
           <TouchableOpacity 
-            style={[styles.imageBox, isReadOnlyMode && styles.readOnlyImageBox]} 
-            onPress={!isReadOnlyMode ? pickImage : undefined}
-            disabled={isReadOnlyMode}
+            style={[
+              styles.imageBox, 
+              (isReadOnlyMode || currentStatus === 'pending') && styles.readOnlyImageBox
+            ]} 
+            onPress={(!isReadOnlyMode && currentStatus !== 'pending') ? pickImage : undefined}
+            disabled={isReadOnlyMode || currentStatus === 'pending'}
           >
             {image ? (
               <Image 
@@ -452,36 +607,67 @@ export default function ProofOfPickupScreen() {
               </View>
             )}
           </TouchableOpacity>
+          
+          {currentStatus === 'pending' && (
+            <Text style={styles.validationMessage}>
+              ⚠️ Photo can only be uploaded after claiming the task
+            </Text>
+          )}
 
 
-          {/* Remarks Textbox */}
+          {/* Remarks Textbox - Disabled for pending tasks */}
           <TextInput
-            style={[styles.textInput, isReadOnlyMode && styles.readOnlyTextInput]}
-            placeholder={isReadOnlyMode ? "No remarks provided" : "Write any messages..."}
+            style={[
+              styles.textInput, 
+              (isReadOnlyMode || currentStatus === 'pending') && styles.readOnlyTextInput
+            ]}
+            placeholder={
+              isReadOnlyMode ? "No remarks provided" : 
+              currentStatus === 'pending' ? "Remarks can only be added after claiming the task..." :
+              "Write any messages..."
+            }
             placeholderTextColor="#888"
             value={remarks}
-            onChangeText={!isReadOnlyMode ? setRemarks : undefined}
+            onChangeText={(!isReadOnlyMode && currentStatus !== 'pending') ? setRemarks : undefined}
             multiline
             returnKeyType="done"
             onSubmitEditing={dismissKeyboard}
             blurOnSubmit={true}
-            editable={!isReadOnlyMode}
+            editable={!isReadOnlyMode && currentStatus !== 'pending'}
           />
 
-          {/* Submit button - only show if not in read-only mode */}
+          {/* Action buttons - only show if not in read-only mode */}
           {!isReadOnlyMode && (
-            <TouchableOpacity
-              style={[
-                styles.button, 
-                (!image || submitting) && styles.disabled
-              ]}
-              onPress={handleSubmit}
-              disabled={!image || submitting}
-            >
-              <Text style={styles.buttonText}>
-                {submitting ? 'Submitting...' : 'Confirm'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.buttonContainer}>
+              {/* Pick-up button - only show for pending tasks */}
+              {currentStatus === 'pending' && (
+                <TouchableOpacity
+                  style={[
+                    styles.pickupButton,
+                    submitting && styles.disabled
+                  ]}
+                  onPress={handlePickup}
+                  disabled={submitting}
+                >
+                  <Ionicons name="checkmark-circle" size={20} color="white" />
+                  <Text style={styles.pickupButtonText}>Pick-up</Text>
+                </TouchableOpacity>
+              )}
+              
+              {/* Confirm button */}
+              <TouchableOpacity
+                style={[
+                  styles.button, 
+                  (!image || submitting) && styles.disabled
+                ]}
+                onPress={handleSubmit}
+                disabled={!image || submitting}
+              >
+                <Text style={styles.buttonText}>
+                  {submitting ? 'Submitting...' : 'Confirm'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           )}
           </ScrollView>
         </TouchableOpacity>
@@ -572,12 +758,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 12,
+  },
   button: {
     backgroundColor: "#2e7d32",
     paddingHorizontal: 40,
     paddingVertical: 14,
     borderRadius: 12,
-    alignSelf: "center",
+    flex: 1,
+    alignItems: 'center',
+  },
+  pickupButton: {
+    backgroundColor: "#007bff",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 120,
+  },
+  pickupButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
   },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   disabled: { backgroundColor: "#bbb" },
@@ -587,6 +797,28 @@ const styles = StyleSheet.create({
   statusContainer: {
     alignItems: 'center',
     marginBottom: 15,
+  },
+  janitorInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007bff',
+  },
+  janitorLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginLeft: 8,
+  },
+  janitorName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 4,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -652,6 +884,21 @@ const styles = StyleSheet.create({
   },
   statusButtonTextSelected: {
     color: '#fff',
+  },
+  disabledButton: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#e0e0e0',
+    opacity: 0.6,
+  },
+  disabledButtonText: {
+    color: '#999',
+  },
+  validationMessage: {
+    fontSize: 12,
+    color: '#ff9800',
+    marginTop: 8,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
   conditionButton: {
     flex: 1,

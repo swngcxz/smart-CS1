@@ -356,6 +356,9 @@ const updateActivityLog = async (req, res, next) => {
     const { activityId } = req.params;
     const { 
       status, 
+      bin_status,
+      assigned_janitor_id,
+      assigned_janitor_name,
       completion_notes, 
       collected_weight, 
       collection_time,
@@ -385,6 +388,9 @@ const updateActivityLog = async (req, res, next) => {
 
     const updateData = {
       status,
+      bin_status: bin_status || status,
+      assigned_janitor_id: assigned_janitor_id || originalData.assigned_janitor_id,
+      assigned_janitor_name: assigned_janitor_name || originalData.assigned_janitor_name,
       updated_at: now,
       completed_at: status === 'done' ? now : null,
       completion_notes: completion_notes || '',

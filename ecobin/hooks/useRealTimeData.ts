@@ -43,7 +43,7 @@ export interface UseRealTimeDataReturn {
   getTimeSinceLastGPS: (timestamp: number) => string;
 }
 
-export const useRealTimeData = (refreshInterval: number = 5000): UseRealTimeDataReturn => {
+export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeDataReturn => {
   const [bin1Data, setBin1Data] = useState<BinData | null>(null);
   const [monitoringData, setMonitoringData] = useState<BinData | null>(null);
   const [loading, setLoading] = useState(true);

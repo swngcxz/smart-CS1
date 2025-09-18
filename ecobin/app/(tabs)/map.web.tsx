@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { ProgressBar } from "react-native-paper";
 import * as Location from 'expo-location';
@@ -8,36 +8,32 @@ import { DynamicBinMarker } from '../../components/DynamicBinMarker';
 import { GPSMarker } from '../../components/GPSMarker';
 import { BinLocation } from '../../utils/apiService';
 
-// Platform-specific imports
-let MapView: any, Marker: any, Callout: any, PROVIDER_GOOGLE: any;
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-  Callout = Maps.Callout;
-  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
-} else {
-  // Web fallback components
-  MapView = ({ children, style, region, ...props }: any) => (
-    <View style={[style, { backgroundColor: '#e5e7eb' }]}>
-      <Text style={{ textAlign: 'center', padding: 20, color: '#6b7280' }}>
-        Map not available on web platform
-      </Text>
-      {children}
-    </View>
-  );
-  Marker = ({ children, coordinate, title, description }: any) => (
-    <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
-      {children}
-    </View>
-  );
-  Callout = ({ children, style }: any) => (
-    <View style={[style]}>
-      {children}
-    </View>
-  );
-  PROVIDER_GOOGLE = 'google';
-}
+// Web fallback components
+const MapView = ({ children, style, region, ...props }: any) => (
+  <View style={[style, { backgroundColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center' }]}>
+    <Text style={{ textAlign: 'center', padding: 20, color: '#6b7280', fontSize: 16 }}>
+      🗺️ Map not available on web platform
+    </Text>
+    <Text style={{ textAlign: 'center', padding: 10, color: '#9ca3af', fontSize: 14 }}>
+      Please use the mobile app for full map functionality
+    </Text>
+    {children}
+  </View>
+);
+
+const Marker = ({ children, coordinate, title, description }: any) => (
+  <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
+    {children}
+  </View>
+);
+
+const Callout = ({ children, style }: any) => (
+  <View style={[style]}>
+    {children}
+  </View>
+);
+
+const PROVIDER_GOOGLE = 'google';
 
 export default function MapScreen() {
   const { binLocations, bin1Data, loading, error, lastUpdate, refetch, isGPSValid } = useRealTimeData(5000);
@@ -50,7 +46,7 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [selectedBin, setSelectedBin] = useState<BinLocation | null>(null);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
   const router = useRouter();
 
@@ -144,7 +140,7 @@ export default function MapScreen() {
     <View style={styles.container}>
       {/* Header with statistics */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Smart Bin Map</Text>
+        <Text style={styles.headerTitle}>Smart Bin Map (Web)</Text>
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
             <View style={[styles.statDot, { backgroundColor: '#10b981' }]} />

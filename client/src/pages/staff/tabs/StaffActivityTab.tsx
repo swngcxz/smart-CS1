@@ -14,11 +14,11 @@ export function StaffActivityTab() {
   const [dateRangeFilter, setDateRangeFilter] = useState("all");
   const [selectedBinId, setSelectedBinId] = useState("bin1"); // Default bin ID
 
-  // Get user ID from auth context or localStorage, fallback to 'staff-user' for testing
-  const storedUserId = localStorage.getItem("userId");
-  const userId = storedUserId || "staff-user"; // Use the user ID from your saved data
+  // Get user ID from auth context
+  const { user: authUser } = useAuth();
+  const userId = authUser?.id;
 
-  const { logs, user, loading, error, refetch } = useActivityLogs(userId);
+  const { logs, user, loading, error, refetch } = useActivityLogs(userId, 10000); // Auto-refresh every 10 seconds
   const {
     history: binHistory,
     errorRecords: binErrorRecords,

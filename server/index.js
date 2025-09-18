@@ -62,9 +62,9 @@ app.use(cors({
     'http://localhost:8081', 
     'http://localhost:8080', 
     'http://localhost:8000',
-    'http://192.168.1.2:8000',
+    'http://192.168.1.17:8000',
     'http://192.168.1.0/24', // Allow all devices on the same network
-    'exp://192.168.1.2:8081', // Expo development server
+    'exp://192.168.1.17:8081', // Expo development server
     'exp://localhost:8081'
   ],
   credentials: true,
@@ -837,6 +837,10 @@ app.post('/api/test-coordinates', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Server accessible at:`);
+  console.log(`  - http://localhost:${PORT}`);
+  console.log(`  - http://192.168.1.2:${PORT}`);
+  console.log(`  - http://0.0.0.0:${PORT}`);
 });

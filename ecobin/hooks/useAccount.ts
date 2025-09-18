@@ -19,12 +19,16 @@ export function useAccount() {
     const fetchAccount = async () => {
       setLoading(true);
       try {
+        console.log('👤 Mobile App - Fetching account info...');
         // This assumes you have a /auth/me endpoint that returns the current user's info
         const res = await axiosInstance.get('/auth/me');
+        console.log('👤 Mobile App - Account response:', res.data);
         setAccount(res.data);
         setError(null);
       } catch (err: any) {
+        console.error('👤 Mobile App - Failed to fetch account:', err);
         setError(err.response?.data?.error || 'Failed to fetch account');
+        setAccount(null); // Clear account on error
       } finally {
         setLoading(false);
       }

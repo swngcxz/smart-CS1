@@ -9,12 +9,37 @@ import {
   ActivityIndicator,
   Dimensions,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ProgressBar } from 'react-native-paper';
 import { useRealTimeData } from '../hooks/useRealTimeData';
 import axiosInstance from '../utils/axiosInstance';
+
+// Platform-specific imports
+let MapView: any, Marker: any, PROVIDER_GOOGLE: any;
+if (Platform.OS !== 'web') {
+  const Maps = require('react-native-maps');
+  MapView = Maps.default;
+  Marker = Maps.Marker;
+  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+} else {
+  // Web fallback components
+  MapView = ({ children, style, region, ...props }: any) => (
+    <View style={[style, { backgroundColor: '#e5e7eb' }]}>
+      <Text style={{ textAlign: 'center', padding: 20, color: '#6b7280' }}>
+        Map not available on web platform
+      </Text>
+      {children}
+    </View>
+  );
+  Marker = ({ children, coordinate, title, description }: any) => (
+    <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
+      {children}
+    </View>
+  );
+  PROVIDER_GOOGLE = 'google';
+}
 
 interface PickupRequestModalProps {
   visible: boolean;
@@ -495,3 +520,4 @@ const styles = StyleSheet.create({
     color: 'white',
   },
 });
+

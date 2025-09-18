@@ -1,5 +1,5 @@
 // app/(tabs)/home.tsx
-import React from "react";
+import React, { useCallback } from "react";
 import Header from "@/components/Header";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -8,20 +8,184 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRealTimeData } from "../../hooks/useRealTimeData";
 import { ProgressBar } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from '@react-navigation/native';
 import axiosInstance from "../../utils/axiosInstance";
 import { useAccount } from "../../hooks/useAccount";
 import PickupWorkflowModal from "@/components/PickupWorkflowModal";
-import BinAlertModal from "@/components/BinAlertModal";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { wasteBins, loading, error, isGPSValid, getSafeCoordinates } = useRealTimeData();
-  const { account } = useAccount();
+  const { account, loading: accountLoading } = useAccount();
   
-  // Pickup modal state
-  const [alertModalVisible, setAlertModalVisible] = useState(false);
+  // Pickup modal state - MOVED TO TOP to avoid hooks after early return
   const [pickupModalVisible, setPickupModalVisible] = useState(false);
   const [alertedBins, setAlertedBins] = useState<Set<string>>(new Set());
+  
+  // Activity logs from backend - MOVED TO TOP to avoid hooks after early return
+  const [logs, setLogs] = useState<any[]>([]);
+  
+  // Get bin1 data - MOVED TO TOP to avoid issues with alertBin
+  const centralPlazaRealTimeBins = (wasteBins || []).filter((bin) =>
+    bin && bin.location && bin.location.toLowerCase().includes("central") && typeof bin.level === 'number'
+  );
+  const bin1 = centralPlazaRealTimeBins.find(bin => bin.id === 'bin1');
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!accountLoading && !account) {
+      console.log('🔐 Mobile App - Not authenticated, redirecting to login');
+      router.replace('/(auth)/login');
+    }
+  }, [account, accountLoading]);
+
+  // Fetch activity logs function
+  const fetchActivityLogs = async () => {
+      if (!account?.id) return;
+
+      try {
+        console.log('📱 Mobile App - Fetching activity logs for user:', account.email, 'ID:', account.id);
+        
+        // Try multiple endpoints to get user's activity logs
+        let response;
+        let allActivities = [];
+        
+        try {
+          // First try: Get logs assigned to this user (as janitor)
+          console.log('📱 Mobile App - Trying assigned logs for user:', account.id);
+          response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
+          console.log('📱 Mobile App - Got assigned logs:', response.data);
+          
+          const assignedActivities = response.data.activities || [];
+          console.log('📱 Mobile App - Assigned activities count:', assignedActivities.length);
+          allActivities = [...assignedActivities];
+          
+          // Always try to get all logs created by this user as well
+          console.log('📱 Mobile App - Trying user logs for user:', account.id);
+          response = await axiosInstance.get(`/api/activitylogs/${account.id}`);
+          console.log('📱 Mobile App - Got user logs:', response.data);
+          
+          const userActivities = response.data.activities || [];
+          console.log('📱 Mobile App - User activities count:', userActivities.length);
+          
+          // Combine both arrays and remove duplicates
+          const combinedActivities = [...assignedActivities, ...userActivities];
+          const uniqueActivities = combinedActivities.filter((activity, index, self) => 
+            index === self.findIndex(a => a.id === activity.id)
+          );
+          
+          allActivities = uniqueActivities;
+          console.log('📱 Mobile App - Combined activities count:', allActivities.length);
+          
+        } catch (err) {
+          console.log('📱 Mobile App - API calls failed, trying fallback...');
+          // Fallback: Try to get all activity logs and filter on frontend
+          try {
+            response = await axiosInstance.get(`/api/activitylogs`);
+            console.log('📱 Mobile App - Got all logs:', response.data);
+            const allLogs = response.data.activities || [];
+            // Filter logs that belong to this user
+            allActivities = allLogs.filter((log: any) => 
+              log.user_id === account.id || log.assigned_janitor_id === account.id
+            );
+            console.log('📱 Mobile App - Filtered activities count:', allActivities.length);
+          } catch (fallbackErr) {
+            console.error('📱 Mobile App - All API calls failed:', fallbackErr);
+            allActivities = [];
+          }
+        }
+
+        console.log('📱 Mobile App - Final activities to display:', allActivities);
+        
+        // Debug: Log each activity's status fields
+        allActivities.forEach((activity: any, index: number) => {
+          console.log(`📱 Mobile App - Activity ${index}:`, {
+            bin_id: activity.bin_id,
+            status: activity.status,
+            bin_status: activity.bin_status,
+            assigned_janitor_id: activity.assigned_janitor_id,
+            assigned_janitor_name: activity.assigned_janitor_name,
+            completed_at: activity.completed_at,
+            proof_image: activity.proof_image,
+            photos: activity.photos,
+            user_id: activity.user_id
+          });
+        });
+        
+        setLogs(allActivities);
+        
+        console.log(`📱 Mobile App - Found ${allActivities.length} activity logs for ${account.email}`);
+      } catch (err) {
+        console.error("📱 Mobile App - Failed to fetch activity logs:", err);
+        setLogs([]);
+      }
+    };
+
+  // Fetch activity logs on component mount
+  useEffect(() => {
+    fetchActivityLogs();
+  }, [account?.id, account?.email]);
+
+  // Refresh activity logs when screen comes back into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('📱 Mobile App - Screen focused, refreshing activity logs...');
+      if (account?.id) {
+        fetchActivityLogs();
+      }
+    }, [account?.id, account?.email])
+  );
+
+  // Bin alert effect - MOVED TO TOP to avoid hooks after early return
+  useEffect(() => {
+    // Only run this effect after authentication is loaded
+    if (accountLoading) return;
+    
+    console.log('🔍 DEBUG - Checking bin alert logic:');
+    console.log('🔍 DEBUG - wasteBins:', wasteBins);
+    console.log('🔍 DEBUG - wasteBins length:', wasteBins?.length);
+    console.log('🔍 DEBUG - centralPlazaRealTimeBins:', centralPlazaRealTimeBins);
+    console.log('🔍 DEBUG - bin1 found:', bin1);
+    console.log('🔍 DEBUG - bin1 level:', bin1?.level);
+    console.log('🔍 DEBUG - bin1 binData:', bin1?.binData);
+    console.log('🔍 DEBUG - alertedBins:', Array.from(alertedBins));
+    console.log('🔍 DEBUG - pickupModalVisible:', pickupModalVisible);
+    
+    if (!bin1 || typeof bin1.level !== 'number') {
+      console.log('🔍 DEBUG - No valid bin1 found or level not a number');
+      return;
+    }
+
+    // Don't show alert if modal is already visible
+    if (pickupModalVisible) {
+      console.log('🔍 DEBUG - Pickup modal already visible, skipping alert logic');
+      return;
+    }
+    
+    if (bin1.level >= 85 && !alertedBins.has('bin1')) {
+      console.log(`🚨 BIN1 CRITICAL: ${bin1.level}% - SHOWING PICKUP WORKFLOW MODAL`);
+      setPickupModalVisible(true);
+      setAlertedBins(prev => new Set([...prev, 'bin1']));
+    } else if (bin1.level < 85 && alertedBins.has('bin1')) {
+      console.log(`🔍 DEBUG - Bin1 level ${bin1.level}% is below 85%, removing from alerted bins`);
+      setAlertedBins(prev => {
+        const newSet = new Set(prev);
+        newSet.delete('bin1');
+        return newSet;
+      });
+    } else {
+      console.log(`🔍 DEBUG - Bin1 level ${bin1.level}%, already alerted: ${alertedBins.has('bin1')}`);
+    }
+  }, [accountLoading, wasteBins, alertedBins, bin1, pickupModalVisible]);
+
+  // Show loading while checking authentication
+  if (accountLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Checking authentication...</Text>
+      </View>
+    );
+  }
 
   // Static locations (except Central Plaza, which is real-time)
   const staticLocations = [
@@ -31,10 +195,7 @@ export default function HomeScreen() {
     { id: "residential-area", name: "Residential Area", bins: [45, 60, 50, 70], lastCollected: "6 hours ago" },
   ];
 
-  // Central Plaza - 1 real-time bin + 3 static bins
-  const centralPlazaRealTimeBins = (wasteBins || []).filter((bin) =>
-    bin && bin.location && bin.location.toLowerCase().includes("central") && typeof bin.level === 'number'
-  );
+  // Central Plaza - 1 real-time bin + 3 static bins (centralPlazaRealTimeBins already defined at top)
   
   // Static bins for Central Plaza (3 additional bins)
   const centralPlazaStaticBins = [
@@ -56,95 +217,34 @@ export default function HomeScreen() {
   const centralPlazaNearlyFull = centralPlazaLevels.filter((v) => v >= 80).length;
   const centralPlazaLastCollected = allCentralPlazaBins.length > 0 ? allCentralPlazaBins[0].lastCollected : "Unknown";
 
-  // SIMPLIFIED: Check only bin1 for 85% threshold
-  const bin1 = centralPlazaRealTimeBins.find(bin => bin.id === 'bin1');
-  
-  useEffect(() => {
-    if (!bin1 || typeof bin1.level !== 'number') return;
-    
-    if (bin1.level >= 85 && !alertedBins.has('bin1')) {
-      console.log(`🚨 BIN1 CRITICAL: ${bin1.level}%`);
-      setAlertModalVisible(true);
-      setAlertedBins(prev => new Set([...prev, 'bin1']));
-    } else if (bin1.level < 85 && alertedBins.has('bin1')) {
-      setAlertedBins(prev => {
-        const newSet = new Set(prev);
-        newSet.delete('bin1');
-        return newSet;
-      });
-    }
-  }, [bin1?.level]); // Only watch bin1 level changes
 
-  // Alert modal handlers
-  const handleOptionA = () => {
-    setAlertModalVisible(false);
+  // Pickup modal handler
+  const handlePickupRequest = () => {
     setPickupModalVisible(true);
-  };
-
-  const handleOptionB = () => {
-    setAlertModalVisible(false);
-    if (alertBin) {
-      router.push({
-        pathname: '/home/bin-details',
-        params: {
-          binId: alertBin.id,
-          binName: alertBin.name,
-          binLevel: alertBin.level.toString(),
-          binStatus: alertBin.status,
-          binRoute: alertBin.route
-        }
-      });
-    }
   };
 
   // Pickup modal handlers
   const handlePickupConfirm = () => {
     setPickupModalVisible(false);
+    // Reset the alerted bins when pickup is completed
+    setAlertedBins(prev => {
+      const newSet = new Set(prev);
+      newSet.delete('bin1');
+      return newSet;
+    });
     // Additional logic for pickup confirmation can be added here
   };
 
   const handleAcknowledge = () => {
     setPickupModalVisible(false);
+    // Don't reset alerted bins when modal is closed without completion
+    // This allows the alert to show again if bin level is still high
     // Additional logic for acknowledgment can be added here
   };
 
-  // Get bin1 for alerts
+  // Get bin1 for alerts - bin1 is already defined at the top
   const alertBin = bin1;
 
-  // Activity logs from backend
-  const [logs, setLogs] = useState<any[]>([]);
-  useEffect(() => {
-    const fetchActivityLogs = async () => {
-      if (!account?.id) return;
-
-      try {
-        console.log('📱 Mobile App - Fetching activity logs for user:', account.email, 'ID:', account.id);
-        
-        // Try multiple endpoints to get user's activity logs
-        let response;
-        try {
-          // First try: Get logs assigned to this user (as janitor)
-          response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
-          console.log('📱 Mobile App - Got assigned logs:', response.data);
-        } catch (assignedErr) {
-          console.log('📱 Mobile App - No assigned logs, trying user logs...');
-          // Second try: Get logs created by this user
-          response = await axiosInstance.get(`/api/activitylogs/${account.id}`);
-          console.log('📱 Mobile App - Got user logs:', response.data);
-        }
-
-        const activities = response.data.activities || response.data.activities || [];
-        setLogs(activities);
-        
-        console.log(`📱 Mobile App - Found ${activities.length} activity logs for ${account.email}`);
-      } catch (err: any) {
-        console.error("📱 Mobile App - Failed to fetch activity logs:", err);
-        setLogs([]);
-      }
-    };
-
-    fetchActivityLogs();
-  }, [account?.id, account?.email]);
 
   // Map backend fields to UI-expected fields
   const mappedLogs = logs.map((log) => ({
@@ -158,7 +258,68 @@ export default function HomeScreen() {
     location: log.bin_location,
     time: log.time,
     date: log.date,
+    // Apply proper status logic: completed > in_progress > pending
+    status: (() => {
+      const hasProof = log.status === "done" || log.completed_at || log.proof_image || log.photos?.length > 0;
+      const hasJanitor = log.assigned_janitor_id;
+      
+      console.log('🔍 Homepage Status Debug:', {
+        bin_id: log.bin_id,
+        original_status: log.status,
+        assigned_janitor_id: log.assigned_janitor_id,
+        hasProof,
+        hasJanitor,
+        completed_at: log.completed_at,
+        proof_image: log.proof_image,
+        photos_length: log.photos?.length
+      });
+      
+      if (hasProof) {
+        console.log('✅ Status: done (has proof)');
+        return "done"; // Task is completed (has proof)
+      } else if (hasJanitor) {
+        console.log('🔄 Status: in_progress (janitor assigned)');
+        return "in_progress"; // Janitor assigned but not completed
+      } else {
+        console.log('⏳ Status: pending (no janitor)');
+        return "pending"; // No janitor assigned
+      }
+    })(),
   }));
+
+  // Filter and sort activity logs
+  const filteredAndSortedLogs = mappedLogs
+    .filter((log) => {
+      const shouldShow = log.status === "pending" || log.status === "in_progress";
+      console.log('🔍 Filter Debug:', {
+        bin_id: log.bin_id,
+        status: log.status,
+        shouldShow
+      });
+      return shouldShow;
+    }) // Only show pending and in_progress
+    .sort((a, b) => {
+      // First sort by status: pending first, then in_progress
+      if (a.status !== b.status) {
+        if (a.status === "pending" && b.status === "in_progress") return -1;
+        if (a.status === "in_progress" && b.status === "pending") return 1;
+      }
+      
+      // Then sort by date: most recent first
+      const dateA = new Date(a.created_at || a.timestamp || 0);
+      const dateB = new Date(b.created_at || b.timestamp || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+  console.log('📊 Homepage Filtered Logs:', {
+    total: mappedLogs.length,
+    filtered: filteredAndSortedLogs.length,
+    logs: filteredAndSortedLogs.map(log => ({
+      bin_id: log.bin_id,
+      status: log.status,
+      assigned_janitor_id: log.assigned_janitor_id
+    }))
+  });
 
   const getStatusColor = (val: number) => {
     if (val >= 90) return "#f44336";
@@ -206,8 +367,8 @@ export default function HomeScreen() {
 
   return (
     <>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
-        <View style={styles.header}><Header /></View>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
+      <View style={styles.header}><Header /></View>
       
       {/* GPS Status Indicator */}
       {!isGPSValid() && (
@@ -286,18 +447,61 @@ export default function HomeScreen() {
         );
       })}
       <View style={styles.activityHeader}>
+        <View style={styles.activityTitleRow}>
         <Text style={styles.sectionTitle}>Activity Logs</Text>
+          <TouchableOpacity 
+            onPress={() => {
+              // Refresh activity logs
+              const fetchActivityLogs = async () => {
+                if (!account?.id) return;
+
+                try {
+                  console.log('🔄 Mobile App - Refreshing activity logs for user:', account.email, 'ID:', account.id);
+
+                  // Try multiple endpoints to get user's activity logs
+                  let response;
+                  try {
+                    // First try: Get logs assigned to this user (as janitor)
+                    response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
+                    console.log('🔄 Mobile App - Got assigned logs:', response.data);
+                  } catch (assignedErr) {
+                    console.log('🔄 Mobile App - No assigned logs, trying user logs...');
+                    // Second try: Get logs created by this user
+                    response = await axiosInstance.get(`/api/activitylogs/${account.id}`);
+                    console.log('🔄 Mobile App - Got user logs:', response.data);
+                  }
+
+                  const activities = response.data.activities || response.data.activities || [];
+                  setLogs(activities);
+
+                  console.log(`🔄 Mobile App - Refreshed ${activities.length} activity logs for ${account.email}`);
+                } catch (err: any) {
+                  console.error("🔄 Mobile App - Failed to refresh activity logs:", err);
+                }
+              };
+
+              fetchActivityLogs();
+            }}
+            style={styles.refreshButton}
+          >
+            <Ionicons name="refresh" size={20} color="#2e7d32" />
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity onPress={() => router.push("/home/activity-logs")}> 
           <Text style={styles.seeAllText}>See All</Text>
         </TouchableOpacity>
       </View>
-  {mappedLogs.slice(0, 3).map((log, i) => (
+  {filteredAndSortedLogs.slice(0, 3).map((log, i) => (
         <TouchableOpacity
           key={i}
           onPress={() =>
             router.push({
-              pathname: "/home/proof-of-pickup",
-              params: { binId: log.bin ?? "N/A" },
+              pathname: "/home/activity-details",
+              params: { 
+                binId: log.bin ?? "N/A",
+                activityLog: JSON.stringify(log),
+                isReadOnly: log.status === "done" ? "true" : "false"
+              },
             })
           }
         >
@@ -343,23 +547,14 @@ export default function HomeScreen() {
       ))}
     </ScrollView>
 
-    {/* Bin Alert Modal */}
-    <BinAlertModal
-      visible={alertModalVisible}
-      onClose={() => setAlertModalVisible(false)}
-      binData={alertBin}
-      onOptionA={handleOptionA}
-      onOptionB={handleOptionB}
-    />
-
     {/* Pickup Workflow Modal */}
-    <PickupWorkflowModal
-      visible={pickupModalVisible}
-      onClose={() => setPickupModalVisible(false)}
-      binData={alertBin}
-      onPickupComplete={handlePickupConfirm}
-      onAcknowledge={handleAcknowledge}
-    />
+        <PickupWorkflowModal
+          visible={pickupModalVisible}
+          onClose={handleAcknowledge}
+          binData={alertBin}
+          onPickupComplete={handlePickupConfirm}
+          onAcknowledge={handleAcknowledge}
+        />
     </>
   );
 }
@@ -379,6 +574,15 @@ const styles = StyleSheet.create({
 
   // Logs
   activityHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10, marginTop: 20 },
+  activityTitleRow: { flexDirection: "row", alignItems: "center" },
+  refreshButton: { 
+    marginLeft: 10, 
+    padding: 5, 
+    borderRadius: 15, 
+    backgroundColor: "#f0f8f0",
+    borderWidth: 1,
+    borderColor: "#e0e0e0"
+  },
   seeAllText: { color: "#2e7d32", fontWeight: "500", fontSize: 13, marginTop: 2 },
   logCard: { 
     flexDirection: "column", 
