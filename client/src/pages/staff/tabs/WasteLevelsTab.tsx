@@ -549,7 +549,6 @@ export function WasteLevelsTab() {
                   : "bg-gray-100 text-gray-800"
               }`}
             >
-              <Smartphone className="w-3 h-3" />
               <div
                 className={`w-2 h-2 rounded-full ${
                   gsmLoading
@@ -607,8 +606,7 @@ export function WasteLevelsTab() {
             {/* Data Details */}
             {bin1Data && (
               <div className="text-xs text-gray-600 dark:text-gray-400">
-                Level: {bin1Data.bin_level}% | Updated:{" "}
-                {new Date(bin1Data.timestamp || Date.now()).toLocaleTimeString()}
+                | Updated: {new Date(bin1Data.timestamp || Date.now()).toLocaleTimeString()}
               </div>
             )}
           </div>
