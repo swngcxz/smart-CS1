@@ -385,12 +385,33 @@ const updateActivityLog = async (req, res, next) => {
 
     const originalData = activityDoc.data();
     const now = new Date().toISOString();
+    
+    console.log("🔍 Update Activity Debug:", {
+      activityId,
+      originalData: {
+        assigned_janitor_id: originalData.assigned_janitor_id,
+        assigned_janitor_name: originalData.assigned_janitor_name,
+        status: originalData.status
+      },
+      requestBody: {
+        assigned_janitor_id: req.body.assigned_janitor_id,
+        assigned_janitor_name: req.body.assigned_janitor_name,
+        status: req.body.status,
+        fullBody: req.body
+      },
+      updateLogic: {
+        assigned_janitor_id_undefined: req.body.assigned_janitor_id !== undefined,
+        assigned_janitor_name_undefined: req.body.assigned_janitor_name !== undefined,
+        assigned_janitor_id_value: req.body.assigned_janitor_id,
+        assigned_janitor_name_value: req.body.assigned_janitor_name
+      }
+    });
 
     const updateData = {
       status,
       bin_status: bin_status || status,
-      assigned_janitor_id: assigned_janitor_id || originalData.assigned_janitor_id,
-      assigned_janitor_name: assigned_janitor_name || originalData.assigned_janitor_name,
+      task_note: req.body.task_note !== undefined ? req.body.task_note : originalData.task_note,
+      priority: req.body.priority !== undefined ? req.body.priority : originalData.priority,
       updated_at: now,
       completed_at: status === 'done' ? now : null,
       completion_notes: completion_notes || '',
@@ -405,7 +426,30 @@ const updateActivityLog = async (req, res, next) => {
       }
     };
 
+    // Handle assigned_janitor_id and assigned_janitor_name separately to properly handle null values
+    if (req.body.assigned_janitor_id !== undefined) {
+      if (req.body.assigned_janitor_id === null || req.body.assigned_janitor_id === "") {
+        updateData.assigned_janitor_id = null;
+      } else {
+        updateData.assigned_janitor_id = req.body.assigned_janitor_id;
+      }
+    } else {
+      updateData.assigned_janitor_id = originalData.assigned_janitor_id;
+    }
+
+    if (req.body.assigned_janitor_name !== undefined) {
+      if (req.body.assigned_janitor_name === null || req.body.assigned_janitor_name === "") {
+        updateData.assigned_janitor_name = null;
+      } else {
+        updateData.assigned_janitor_name = req.body.assigned_janitor_name;
+      }
+    } else {
+      updateData.assigned_janitor_name = originalData.assigned_janitor_name;
+    }
+
+    console.log("🔧 Final Update Data:", updateData);
     await db.collection("activitylogs").doc(activityId).update(updateData);
+    console.log("✅ Update completed successfully");
 
     // If status is 'done', send notification to staff
     if (status === 'done') {
@@ -506,6 +550,31 @@ const getLoginHistory = async (req, res, next) => {
     });
   } catch (err) {
     console.error('[LOGIN HISTORY] Error fetching login history:', err);
+    next(err);
+  }
+};
+
+// Delete activity log
+const deleteActivityLog = async (req, res, next) => {
+  try {
+    const { activityId } = req.params;
+
+    // Check if activity exists
+    const activityDoc = await db.collection("activitylogs").doc(activityId).get();
+    if (!activityDoc.exists) {
+      return res.status(404).json({ error: "Activity log not found" });
+    }
+
+    // Delete the activity log
+    await db.collection("activitylogs").doc(activityId).delete();
+
+    res.status(200).json({ 
+      message: "Activity log deleted successfully",
+      activityId
+    });
+
+  } catch (err) {
+    console.error("Error in deleteActivityLog:", err);
     next(err);
   }
 };
@@ -786,6 +855,7 @@ module.exports = {
   getAssignedActivityLogs,
   updateActivityStatus,
   updateActivityLog,
+  deleteActivityLog,
   getLoginHistory,
   sendJanitorAssignmentNotification,
   sendBinCollectionNotification,

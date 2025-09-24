@@ -2,17 +2,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Activity, Calendar, Filter, RefreshCw, AlertTriangle, MapPin, Satellite, Wifi } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Activity, Calendar, Filter, RefreshCw, AlertTriangle, MapPin, Satellite, Wifi, Plus, User } from "lucide-react";
 import { StaffActivityLogs } from "../pages/StaffActiviyLogs";
 import { useState, useMemo, useEffect } from "react";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBinHistory } from "@/hooks/useBinHistory";
+import api from "@/lib/api";
 
 export function StaffActivityTab() {
   const [activityTypeFilter, setActivityTypeFilter] = useState("all");
   const [dateRangeFilter, setDateRangeFilter] = useState("all");
   const [selectedBinId, setSelectedBinId] = useState("bin1"); // Default bin ID
+
+  // Assignment modal states
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assigningActivity, setAssigningActivity] = useState<any>(null);
+  const [selectedJanitorId, setSelectedJanitorId] = useState("");
+
+  // Mock staff list - in real app, this would come from an API
+  const staffList = [
+    { id: "E5299pi1fFCIKVzwAhGq", name: "Jeralyn Peritos" },
+    { id: "6uprP4efGeffBN5aEJGx", name: "Glendon Rose Marie" },
+    { id: "s0raQJrggtUexsLkUqgZ", name: "John Dave Laparan" },
+  ];
 
   // Get user ID from auth context
   const { user: authUser } = useAuth();
@@ -33,14 +48,13 @@ export function StaffActivityTab() {
   // Debug logging
   useEffect(() => {
     console.log("StaffActivityTab Debug Info:", {
-      storedUserId,
       userId,
       logsCount: logs?.length || 0,
       logs: logs,
       loading,
       error,
     });
-  }, [storedUserId, userId, logs, loading, error]);
+  }, [userId, logs, loading, error]);
 
   // Fetch bin history data when selected bin changes
   useEffect(() => {
@@ -162,6 +176,43 @@ export function StaffActivityTab() {
   const handleRefresh = () => {
     if (refetch) {
       refetch();
+    }
+  };
+
+  // Assignment handlers
+  const handleAssignJanitor = (activity: any) => {
+    setAssigningActivity(activity);
+    setSelectedJanitorId("");
+    setAssignModalOpen(true);
+  };
+
+  const handleConfirmAssignment = async () => {
+    if (!assigningActivity || !selectedJanitorId) return;
+
+    try {
+      const selectedStaff = staffList.find(staff => staff.id === selectedJanitorId);
+      
+      const updatedData = {
+        assigned_janitor_id: selectedJanitorId,
+        assigned_janitor_name: selectedStaff?.name || "",
+        status: "in_progress" // Auto-change status to in_progress when assigning
+      };
+
+      await api.put(`/api/activitylogs/${assigningActivity.id}`, updatedData);
+      
+      setAssignModalOpen(false);
+      setAssigningActivity(null);
+      setSelectedJanitorId("");
+      
+      // Refresh the data
+      if (refetch) {
+        refetch();
+      }
+      
+      alert("Janitor assigned successfully!");
+    } catch (error) {
+      console.error("Error assigning janitor:", error);
+      alert("Failed to assign janitor. Please try again.");
     }
   };
 
@@ -444,6 +495,64 @@ export function StaffActivityTab() {
       <div className="space-y-5">
         <StaffActivityLogs />
       </div>
+
+      {/* Assignment Modal */}
+      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Assign Janitor</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {assigningActivity && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-gray-900 dark:text-white">Task Details:</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div>Type: {assigningActivity.activity_type?.replace('_', ' ') || 'Unknown'}</div>
+                  <div>Location: {assigningActivity.bin_location || 'Unknown'}</div>
+                  <div>Priority: {assigningActivity.priority || 'Low'}</div>
+                </div>
+              </div>
+            )}
+            <div className="grid gap-2">
+              <Label htmlFor="janitor_select">Select Janitor</Label>
+              <Select value={selectedJanitorId} onValueChange={setSelectedJanitorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a janitor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffList.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.id}>
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        {staff.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                <strong>Note:</strong> Assigning a janitor will automatically change the status to "In Progress"
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAssignModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmAssignment}
+              disabled={!selectedJanitorId}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Assign Janitor
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

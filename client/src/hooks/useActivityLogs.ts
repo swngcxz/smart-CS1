@@ -11,7 +11,7 @@ export interface ActivityLog {
   [key: string]: any;
 }
 
-export function useActivityLogs(userId?: string, autoRefreshInterval: number = 30000) {
+export function useActivityLogs(userId?: string, autoRefreshInterval: number = 0) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,7 @@ export function useActivityLogs(userId?: string, autoRefreshInterval: number = 3
     fetchLogs();
   }, [fetchLogs]);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh only if autoRefreshInterval > 0
   useEffect(() => {
     if (autoRefreshInterval > 0) {
       const interval = setInterval(() => {

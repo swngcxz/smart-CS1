@@ -4,10 +4,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useActivityLogs } from "@/hooks/useActivityLogs";
 import { useAuth } from "@/contexts/AuthContext";
+import api from "@/lib/api";
 import { useState, useMemo } from "react";
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, Filter, RefreshCw } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Search, Filter, RefreshCw, Edit, Trash2, MoreHorizontal, Plus, User } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 type SortField = "timestamp" | "activity_type" | "status" | "priority";
 type SortDirection = "asc" | "desc";
@@ -17,7 +22,7 @@ export function StaffActivityLogs() {
   const { user: authUser } = useAuth();
   const userId = authUser?.id;
 
-  const { logs, user, loading, error, refetch } = useActivityLogs(userId, 10000); // Auto-refresh every 10 seconds
+  const { logs, user, loading, error, refetch } = useActivityLogs(userId); // No auto-refresh, only manual refresh
 
   // Filter and sort states
   const [activityType, setActivityType] = useState<string>("all");
@@ -26,6 +31,29 @@ export function StaffActivityLogs() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sortField, setSortField] = useState<SortField>("timestamp");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  // Edit modal states
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState({
+    task_note: "",
+    assigned_janitor_id: "",
+    assigned_janitor_name: "",
+    status: "",
+    priority: ""
+  });
+
+  // Assignment modal states
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assigningActivity, setAssigningActivity] = useState<any>(null);
+  const [selectedJanitorId, setSelectedJanitorId] = useState("");
+
+  // Mock staff list - in real app, this would come from an API
+  const staffList = [
+    { id: "E5299pi1fFCIKVzwAhGq", name: "Jeralyn Peritos" },
+    { id: "6uprP4efGeffBN5aEJGx", name: "Glendon Rose Marie" },
+    { id: "s0raQJrggtUexsLkUqgZ", name: "John Dave Laparan" },
+  ];
 
   const getActivityTypeColor = (type: string) => {
     switch (type) {
@@ -98,6 +126,120 @@ export function StaffActivityLogs() {
       minute: "2-digit",
       hour12: true,
     });
+  };
+
+  // Edit and Delete handlers
+  const handleEditActivity = (activity: any) => {
+    setEditingActivity(activity);
+    setEditFormData({
+      task_note: activity.task_note || "",
+      assigned_janitor_id: activity.assigned_janitor_id || "",
+      assigned_janitor_name: activity.assigned_janitor_name || "",
+      status: activity.status || "",
+      priority: activity.priority || ""
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingActivity) return;
+    
+    try {
+      // Update the assigned janitor name based on selected ID
+      const selectedStaff = staffList.find(staff => staff.id === editFormData.assigned_janitor_id);
+      
+      // Determine the final status based on assignment logic
+      let newStatus = editFormData.status;
+      
+      // If janitor is being assigned and task was pending/unassigned
+      if (editFormData.assigned_janitor_id && 
+          (editingActivity.status === "pending" || !editingActivity.assigned_janitor_id)) {
+        newStatus = "in_progress";
+      }
+      // If janitor is being unassigned and task was in_progress
+      else if (!editFormData.assigned_janitor_id && 
+               editingActivity.assigned_janitor_id && 
+               editingActivity.status === "in_progress") {
+        newStatus = "pending";
+      }
+      
+      const updatedData = {
+        task_note: editFormData.task_note,
+        assigned_janitor_id: editFormData.assigned_janitor_id || null,
+        assigned_janitor_name: editFormData.assigned_janitor_id 
+          ? (selectedStaff?.name || editFormData.assigned_janitor_name || null)
+          : null,
+        status: newStatus,
+        priority: editFormData.priority
+      };
+
+      // Call API to update the activity
+      await api.put(`/api/activitylogs/${editingActivity.id}`, updatedData);
+      
+      // Close the modal and refresh
+      setEditModalOpen(false);
+      setEditingActivity(null);
+      refetch(); // Refresh the data
+      
+      alert("Activity updated successfully!");
+    } catch (error) {
+      console.error("Error updating activity:", error);
+      alert("Error updating activity. Please try again.");
+    }
+  };
+
+  // Assignment handlers
+  const handleAssignJanitor = (activity: any) => {
+    setAssigningActivity(activity);
+    setSelectedJanitorId("");
+    setAssignModalOpen(true);
+  };
+
+  const handleConfirmAssignment = async () => {
+    if (!assigningActivity || !selectedJanitorId) return;
+    
+    try {
+      const selectedStaff = staffList.find(staff => staff.id === selectedJanitorId);
+      
+      const updatedData = {
+        assigned_janitor_id: selectedJanitorId,
+        assigned_janitor_name: selectedStaff?.name || "",
+        status: "in_progress" // Automatically change to in_progress when assigned
+      };
+
+      // Call API to update the activity
+      await api.put(`/api/activitylogs/${assigningActivity.id}`, updatedData);
+      
+      // Close the modal and refresh
+      setAssignModalOpen(false);
+      setAssigningActivity(null);
+      setSelectedJanitorId("");
+      refetch(); // Refresh the data
+      
+      alert("Janitor assigned successfully!");
+    } catch (error) {
+      console.error("Error assigning janitor:", error);
+      alert("Error assigning janitor. Please try again.");
+    }
+  };
+
+  const handleDeleteActivity = async (activityId: string) => {
+    if (!confirm("Are you sure you want to delete this activity? This action cannot be undone.")) {
+      return;
+    }
+    
+    try {
+      // Call API to delete the activity
+      await api.delete(`/api/activitylogs/${activityId}`);
+      
+      // Refresh the data
+      refetch();
+      
+      alert("Activity deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting activity:", error);
+      alert("Error deleting activity. Please try again.");
+    }
   };
 
   const formatActivityDescription = (activity: any) => {
@@ -202,6 +344,15 @@ export function StaffActivityLogs() {
               <div className="text-xs text-gray-500">
                 {filteredAndSortedLogs.length} of {logs?.length || 0} logs
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refetch}
+                disabled={loading}
+                className="p-1 h-auto hover:bg-gray-100 dark:hover:bg-gray-800 ml-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
           </div>
 
@@ -333,6 +484,7 @@ export function StaffActivityLogs() {
                         </Button>
                       </TableHead>
                       <TableHead className="w-[10%]">Details</TableHead>
+                      <TableHead className="w-[10%]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -382,15 +534,26 @@ export function StaffActivityLogs() {
                           </div>
                         </TableCell>
                         <TableCell className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                          {activity.assigned_janitor_name ? (
-                            <div
-                              className="font-medium text-sm"
-                              title={`Assigned to: ${activity.assigned_janitor_name}`}
-                            >
-                              {activity.assigned_janitor_name}
+                          {activity.assigned_janitor_name && activity.assigned_janitor_name.trim() !== "" ? (
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-gray-500" />
+                              <div
+                                className="font-medium text-sm"
+                                title={`Assigned to: ${activity.assigned_janitor_name}`}
+                              >
+                                {activity.assigned_janitor_name}
+                              </div>
                             </div>
                           ) : (
-                            <div className="text-gray-400 italic text-sm">Unassigned</div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-3 text-xs bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
+                              onClick={() => handleAssignJanitor(activity)}
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              Assign
+                            </Button>
                           )}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-sm text-gray-900 dark:text-white">
@@ -446,6 +609,29 @@ export function StaffActivityLogs() {
                             )}
                           </div>
                         </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditActivity(activity)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteActivity(activity.id)}
+                                className="text-red-600 dark:text-red-400"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -500,7 +686,9 @@ export function StaffActivityLogs() {
                       <div>
                         <span className="font-medium text-gray-500 dark:text-gray-400">Assigned To:</span>
                         <div className="text-gray-900 dark:text-white">
-                          {activity.assigned_janitor_name || "Unassigned"}
+                          {activity.assigned_janitor_name && activity.assigned_janitor_name.trim() !== "" 
+                            ? activity.assigned_janitor_name 
+                            : "Unassigned"}
                         </div>
                       </div>
 
@@ -535,6 +723,204 @@ export function StaffActivityLogs() {
           )}
         </CardContent>
       </Card>
+
+      {/* Assignment Modal */}
+      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Assign Janitor</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Select a janitor to assign to this task:
+              </p>
+              {assigningActivity && (
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p className="font-medium text-sm">{assigningActivity.task_note || "Task assignment"}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {assigningActivity.bin_location} • {assigningActivity.activity_type}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="janitor_select">Select Janitor</Label>
+              <Select value={selectedJanitorId} onValueChange={setSelectedJanitorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a janitor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffList.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.id}>
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        {staff.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                <strong>Note:</strong> Assigning a janitor will automatically change the status to "In Progress"
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAssignModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleConfirmAssignment}
+              disabled={!selectedJanitorId}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Assign Janitor
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Activity Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Activity</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="task_note">Description / Task Note</Label>
+              <Textarea
+                id="task_note"
+                value={editFormData.task_note}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, task_note: e.target.value }))}
+                placeholder="Enter task description or notes..."
+                className="min-h-[80px]"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="assigned_janitor">Assigned Janitor</Label>
+              <Select 
+                value={editFormData.assigned_janitor_id} 
+                onValueChange={(value) => {
+                  const selectedStaff = staffList.find(staff => staff.id === value);
+                  
+                  // Handle deselection (value === "none")
+                  if (value === "none") {
+                    setEditFormData(prev => ({ 
+                      ...prev, 
+                      assigned_janitor_id: "",
+                      assigned_janitor_name: "",
+                      // Auto-change status to pending when deselecting if currently in_progress
+                      status: (editingActivity?.status === "in_progress" && editingActivity?.assigned_janitor_id) 
+                        ? "pending" 
+                        : prev.status
+                    }));
+                    return;
+                  }
+                  
+                  // Handle assignment
+                  setEditFormData(prev => ({ 
+                    ...prev, 
+                    assigned_janitor_id: value,
+                    assigned_janitor_name: selectedStaff?.name || "",
+                    // Auto-change status to in_progress if assigning to pending task
+                    status: (value && (editingActivity?.status === "pending" || !editingActivity?.assigned_janitor_id)) 
+                      ? "in_progress" 
+                      : prev.status
+                  }));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a janitor" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-500">None (Unassigned)</span>
+                    </div>
+                  </SelectItem>
+                  {staffList.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.id}>
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        {staff.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {editFormData.assigned_janitor_id && 
+               (editingActivity?.status === "pending" || !editingActivity?.assigned_janitor_id) && (
+                <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  Status will automatically change to "In Progress" when janitor is assigned
+                </div>
+              )}
+              {!editFormData.assigned_janitor_id && 
+               editingActivity?.assigned_janitor_id && 
+               editingActivity?.status === "in_progress" && (
+                <div className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  Status will automatically change to "Pending" when janitor is unassigned
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="status">Status</Label>
+                <Select 
+                  value={editFormData.status} 
+                  onValueChange={(value) => setEditFormData(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="priority">Priority</Label>
+                <Select 
+                  value={editFormData.priority} 
+                  onValueChange={(value) => setEditFormData(prev => ({ ...prev, priority: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSaveEdit}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ErrorBoundary>
   );
 }
