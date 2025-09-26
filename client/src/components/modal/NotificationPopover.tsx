@@ -70,8 +70,8 @@ export function NotificationPopover() {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5" />
+        <Button variant="ghost" size="icon" className="relative"  >
+          <Bell className="w-6 h-6" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
               {unreadCount}
@@ -111,9 +111,6 @@ export function NotificationPopover() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-sm text-gray-900 dark:text-white">{notification.title}</h4>
-                      <Badge className={getTypeBadge(notification.type || "info")}>
-                        {notification.type || "info"}
-                      </Badge>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{notification.message}</p>
                     {notification.userRole && (

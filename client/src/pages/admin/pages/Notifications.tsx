@@ -38,9 +38,9 @@ const Notifications = () => {
       // Refresh notifications after marking as read
       window.location.reload();
       
-      console.log('✅ Admin notification marked as read:', key);
+      console.log('Admin notification marked as read:', key);
     } catch (err) {
-      console.error('❌ Failed to mark admin notification as read:', err);
+      console.error('Failed to mark admin notification as read:', err);
     }
   };
 
@@ -52,9 +52,9 @@ const Notifications = () => {
       // Refresh notifications after marking all as read
       window.location.reload();
       
-      console.log('✅ All admin notifications marked as read');
+      console.log('All admin notifications marked as read');
     } catch (err) {
-      console.error('❌ Failed to mark all admin notifications as read:', err);
+      console.error('Failed to mark all admin notifications as read:', err);
     }
   };
 

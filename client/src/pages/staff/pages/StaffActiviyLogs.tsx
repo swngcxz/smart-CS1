@@ -351,7 +351,6 @@ export function StaffActivityLogs() {
                 disabled={loading}
                 className="p-1 h-auto hover:bg-gray-100 dark:hover:bg-gray-800 ml-2"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </Button>
             </div>
           </div>
