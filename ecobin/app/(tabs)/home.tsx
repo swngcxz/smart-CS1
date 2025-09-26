@@ -46,57 +46,34 @@ export default function HomeScreen() {
     try {
       console.log("📱 Mobile App - Fetching activity logs for user:", account.email, "ID:", account.id);
 
-      // Try multiple endpoints to get user's activity logs
-      let response;
-      let allActivities = [];
-
-      try {
-        // First try: Get logs assigned to this user (as janitor)
-        console.log("📱 Mobile App - Trying assigned logs for user:", account.id);
-        response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
-        console.log("📱 Mobile App - Got assigned logs:", response.data);
-
-        const assignedActivities = response.data.activities || [];
-        console.log("📱 Mobile App - Assigned activities count:", assignedActivities.length);
-        allActivities = [...assignedActivities];
-
-        // Always try to get all logs created by this user as well
-        console.log("📱 Mobile App - Trying user logs for user:", account.id);
-        response = await axiosInstance.get(`/api/activitylogs/${account.id}`);
-        console.log("📱 Mobile App - Got user logs:", response.data);
-
-        const userActivities = response.data.activities || [];
-        console.log("📱 Mobile App - User activities count:", userActivities.length);
-
-        // Combine both arrays and remove duplicates
-        const combinedActivities = [...assignedActivities, ...userActivities];
-        const uniqueActivities = combinedActivities.filter(
-          (activity, index, self) => index === self.findIndex((a) => a.id === activity.id)
-        );
-
-        allActivities = uniqueActivities;
-        console.log("📱 Mobile App - Combined activities count:", allActivities.length);
-      } catch (err) {
-        console.log("📱 Mobile App - API calls failed, trying fallback...");
-        // Fallback: Try to get all activity logs and filter on frontend
-        try {
-          response = await axiosInstance.get(`/api/activitylogs`);
-          console.log("📱 Mobile App - Got all logs:", response.data);
-          const allLogs = response.data.activities || [];
-          // Filter logs that belong to this user
-          allActivities = allLogs.filter(
-            (log: any) => log.user_id === account.id || log.assigned_janitor_id === account.id
-          );
-          console.log("📱 Mobile App - Filtered activities count:", allActivities.length);
-        } catch (fallbackErr) {
-          console.error("📱 Mobile App - All API calls failed:", fallbackErr);
-          allActivities = [];
+      // Get all activity logs from the server
+      const response = await axiosInstance.get('/api/activitylogs');
+      const allActivities = response.data.activities || [];
+      
+      console.log("📱 Mobile App - Total activities from server:", allActivities.length);
+      
+      // Filter activities based on status and assignment
+      const filteredActivities = allActivities.filter((activity: any) => {
+        // Show all pending tasks to all janitors (no assigned janitor)
+        if (activity.status === 'pending' && !activity.assigned_janitor_id) {
+          console.log("📱 Mobile App - Including pending task:", activity.id, "for all janitors");
+          return true;
         }
-      }
-
-      console.log("📱 Mobile App - Final activities to display:", allActivities);
-
-      // Debug: Log each activity's status fields
+        
+        // Show in-progress and done tasks only to assigned janitor
+        if ((activity.status === 'in_progress' || activity.status === 'done') && 
+            activity.assigned_janitor_id === account.id) {
+          console.log("📱 Mobile App - Including assigned task:", activity.id, "for user:", account.id);
+          return true;
+        }
+        
+        return false;
+      });
+      
+      console.log("📱 Mobile App - Filtered activities count:", filteredActivities.length);
+      
+      // Update state with filtered activities
+      setLogs(filteredActivities);
       allActivities.forEach((activity: any, index: number) => {
         console.log(`📱 Mobile App - Activity ${index}:`, {
           bin_id: activity.bin_id,

@@ -56,17 +56,45 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
     if (!selectedActivity || !selectedJanitor || selectedJanitor === "loading" || selectedJanitor === "no-janitors") return;
 
     try {
-      await api.put(`/api/activitylogs/${selectedActivity.id}`, {
+      // Find the selected janitor's name
+      const selectedJanitorData = janitors.find(j => j.id === selectedJanitor);
+      const janitorName = selectedJanitorData ? `${selectedJanitorData.fullName}` : "Unknown Janitor";
+
+      const response = await api.put(`/api/activitylogs/${selectedActivity.id}`, {
         assigned_janitor_id: selectedJanitor,
+        assigned_janitor_name: janitorName,
         status: "in_progress"
       });
       
-      setAssignModalOpen(false);
-      setSelectedActivity(null);
-      setSelectedJanitor("");
-      onRefresh(); // Refresh the data
-    } catch (err) {
+      // Handle different response types
+      if (response.data.warning) {
+        // Task already assigned to this janitor
+        console.log("ℹ️ Task already assigned to this janitor");
+        // Still close modal and refresh
+        setAssignModalOpen(false);
+        setSelectedActivity(null);
+        setSelectedJanitor("");
+        onRefresh();
+      } else {
+        // Successful assignment
+        setAssignModalOpen(false);
+        setSelectedActivity(null);
+        setSelectedJanitor("");
+        onRefresh();
+      }
+    } catch (err: any) {
       console.error("Error assigning task:", err);
+      
+      // Handle assignment conflict specifically
+      if (err.response?.status === 409 && err.response?.data?.error === 'Task assignment conflict') {
+        const conflictData = err.response.data;
+        console.log("🚫 Assignment conflict:", conflictData);
+        // Close modal and refresh to show updated state
+        setAssignModalOpen(false);
+        setSelectedActivity(null);
+        setSelectedJanitor("");
+        onRefresh();
+      }
     }
   };
 
@@ -283,8 +311,12 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-gray-400" />
                           <div>
-                            <div className="font-medium">{new Date(log.timestamp).toLocaleDateString()}</div>
-                            <div className="text-xs text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</div>
+                            <div className="font-medium">
+                              {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleDateString()}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleTimeString()}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
@@ -297,14 +329,14 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                         </div>
                       </TableCell>
                       <TableCell>
-                        {log.assigned_janitor_name ? (
+                        {log.assigned_janitor_name && log.status !== 'pending' ? (
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-gray-400" />
                             <span className="text-sm text-gray-900 dark:text-white">
                               {log.assigned_janitor_name}
                             </span>
                           </div>
-                        ) : (
+                        ) : log.status === 'pending' ? (
                           <Button
                             variant="outline"
                             size="sm"
@@ -314,6 +346,13 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                             <UserPlus className="h-3 w-3 mr-1" />
                             Assign Task
                           </Button>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              Unassigned
+                            </span>
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-gray-900 dark:text-white">

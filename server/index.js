@@ -28,6 +28,7 @@ const pickupRequestRoutes = require('./routers/pickupRequestRoutes');
 const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
 const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
+const automaticTaskService = require('./services/automaticTaskService');
 
 
 const db = admin.database();
@@ -305,8 +306,7 @@ function connectModem(retryCount = 0) {
   });
 }
 
-// Start modem connection
-connectModem();
+// Start modem connection - moved to after server startup
 
 // Periodic modem status check (every 30 seconds)
 setInterval(() => {
@@ -454,6 +454,21 @@ function setupRealTimeMonitoring() {
             // Only check notifications for critical levels to reduce Firebase calls
             if (data.bin_level >= 85) {
               try {
+                // 1. Create automatic task assignment FIRST
+                const taskResult = await automaticTaskService.createAutomaticTask({
+                  binId: 'bin1',
+                  binLevel: data.bin_level || 0,
+                  binLocation: 'Central Plaza',
+                  timestamp: new Date()
+                });
+
+                if (taskResult.success) {
+                  console.log(`[AUTOMATIC TASK] ✅ ${taskResult.message}`);
+                } else {
+                  console.log(`[AUTOMATIC TASK] ❌ ${taskResult.message} - ${taskResult.reason || taskResult.error}`);
+                }
+
+                // 2. Then send notifications
                 const notificationResult = await binNotificationController.checkBinAndNotify({
                   binId: 'bin1',
                   binLevel: data.bin_level || 0,
@@ -512,6 +527,10 @@ function setupRealTimeMonitoring() {
       try {
         if (data.bin_level >= 85 && !criticalNotificationSent) {
           console.log('🚨 Sending critical bin1 notification...');
+          
+          // Automatic task creation is already handled in the main monitoring loop above
+          // No need to create duplicate tasks here
+          
           await sendCriticalBinNotification('Bin1', data.bin_level, 'Central Plaza');
           criticalNotificationSent = true;
           warningNotificationSent = false; // Reset warning flag
@@ -540,6 +559,51 @@ app.get('/api/bin', async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch bin data', details: err.message });
+  }
+});
+
+// Test endpoint to manually trigger automatic task creation
+app.post('/api/test/automatic-task', async (req, res) => {
+  try {
+    const { binLevel = 90, binId = 'bin1', binLocation = 'Central Plaza' } = req.body;
+    
+    const taskResult = await automaticTaskService.createAutomaticTask({
+      binId,
+      binLevel,
+      binLocation,
+      timestamp: new Date()
+    });
+
+    res.json({
+      success: taskResult.success,
+      message: taskResult.message,
+      taskId: taskResult.taskId,
+      taskData: taskResult.taskData
+    });
+  } catch (error) {
+    console.error('Error testing automatic task creation:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message,
+      message: 'Failed to test automatic task creation'
+    });
+  }
+});
+
+// Get automatic task service status
+app.get('/api/test/automatic-task/status', async (req, res) => {
+  try {
+    const status = automaticTaskService.getStatus();
+    res.json({
+      success: true,
+      status: status
+    });
+  } catch (error) {
+    console.error('Error getting automatic task status:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message
+    });
   }
 });
 
@@ -842,6 +906,7 @@ app.post('/api/test-coordinates', async (req, res) => {
   }
 });
 
+// Start HTTP server immediately
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
@@ -850,3 +915,9 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`  - http://192.168.1.2:${PORT}`);
   console.log(`  - http://0.0.0.0:${PORT}`);
 });
+
+// Move modem initialization to after server startup
+// Start modem connection after server is running
+setTimeout(() => {
+  connectModem();
+}, 1000); // Wait 1 second after server starts

@@ -10,10 +10,14 @@ import { StaffActivityTab } from "./staff/tabs/StaffActivityTab";
 import { ScheduleCollectionTabs } from "./staff/tabs/SchedulecollectionTabs";
 import Feedback from "./staff/tabs/FeedbackView";
 import { BinHistory } from "./staff/pages/BinHistory";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 
 const StaffDashboard = () => {
   const [activePage, setActivePage] = useState("overview");
+  
+  // Enable real-time notifications
+  useRealtimeNotifications();
 
   const renderContent = () => {
     switch (activePage) {

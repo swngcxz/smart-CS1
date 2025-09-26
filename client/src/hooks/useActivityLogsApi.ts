@@ -52,6 +52,11 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
     };
 
     fetchLogs();
+    
+    // Set up periodic refresh every 30 seconds to catch new automatic tasks
+    const interval = setInterval(fetchLogs, 30000);
+    
+    return () => clearInterval(interval);
   }, [limit, offset, type, user_id]);
 
   const refetch = async () => {

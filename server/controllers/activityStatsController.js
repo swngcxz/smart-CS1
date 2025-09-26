@@ -7,17 +7,17 @@ const getActivityStats = async (req, res, next) => {
     
     console.log(`[ACTIVITY STATS] Fetching activity statistics for ${today}`);
     
-    // Get all activities for today
-    const snapshot = await db.collection("activitylogs")
-      .where("date", "==", today)
-      .get();
+    // Use the same approach as getAllActivityLogs to avoid Firestore index issues
+    const snapshot = await db.collection("activitylogs").get();
+    console.log(`[ACTIVITY STATS] Firestore query completed. Snapshot size: ${snapshot.size}`);
 
     const activities = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
 
-    console.log(`[ACTIVITY STATS] Found ${activities.length} activities for today`);
+    console.log(`[ACTIVITY STATS] Found ${activities.length} total activities`);
+    console.log(`[ACTIVITY STATS] First activity sample:`, activities[0] || 'No activities found');
 
     // Calculate statistics based on status
     const alerts = activities.filter(activity => 
@@ -61,6 +61,13 @@ const getActivityStats = async (req, res, next) => {
     };
 
     console.log(`[ACTIVITY STATS] Calculated stats:`, stats);
+
+    console.log(`[ACTIVITY STATS] Activity breakdown:`, activities.map(a => ({
+      id: a.id,
+      status: a.status,
+      activity_type: a.activity_type,
+      assigned_janitor_name: a.assigned_janitor_name
+    })));
 
     res.status(200).json({
       success: true,

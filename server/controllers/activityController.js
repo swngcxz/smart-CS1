@@ -20,6 +20,189 @@ const { db } = require("../models/firebase");
 const notificationModel = require('../models/notificationModel');
 const fcmService = require('../services/fcmService');
 
+// Get activity statistics for overview cards
+const getActivityStatsSimple = async (req, res, next) => {
+  try {
+    console.log(`[ACTIVITY STATS SIMPLE] Fetching activity statistics...`);
+    
+    // Get all activities using the same approach as getAllActivityLogs
+    const snapshot = await db.collection("activitylogs").get();
+    console.log(`[ACTIVITY STATS SIMPLE] Found ${snapshot.size} activities`);
+
+    const activities = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Calculate statistics based on status
+    const alerts = activities.filter(activity => 
+      activity.status === 'pending'
+    ).length;
+
+    const inProgress = activities.filter(activity => 
+      activity.status === 'in_progress'
+    ).length;
+
+    const collections = activities.filter(activity => 
+      activity.status === 'done' && (
+        activity.activity_type === 'collection' || 
+        activity.activity_type === 'task_assignment' ||
+        activity.activity_type === 'bin_collection' ||
+        activity.activity_type === 'bin_emptied'
+      )
+    ).length;
+
+    const maintenance = activities.filter(activity => 
+      activity.activity_type === 'maintenance' || 
+      activity.activity_type === 'repair' ||
+      activity.activity_type === 'cleaning'
+    ).length;
+
+    const routeChanges = activities.filter(activity => 
+      activity.activity_type === 'route_change' || 
+      activity.activity_type === 'schedule_update' ||
+      activity.activity_type === 'route_update'
+    ).length;
+
+    const stats = {
+      collections,
+      alerts,
+      maintenance,
+      routeChanges,
+      inProgress,
+      totalActivities: activities.length,
+      date: new Date().toISOString().split('T')[0],
+      lastUpdated: new Date().toISOString()
+    };
+
+    console.log(`[ACTIVITY STATS SIMPLE] Calculated stats:`, stats);
+
+    res.status(200).json({
+      success: true,
+      stats
+    });
+
+  } catch (err) {
+    console.error('[ACTIVITY STATS SIMPLE] Error fetching activity statistics:', err);
+    next(err);
+  }
+};
+
+// Atomic task assignment using Firestore transactions
+const assignTaskAtomically = async (req, res, next) => {
+  try {
+    const { activityId } = req.params;
+    const { assigned_janitor_id, assigned_janitor_name, status = 'in_progress' } = req.body;
+
+    if (!assigned_janitor_id) {
+      return res.status(400).json({ error: "assigned_janitor_id is required" });
+    }
+
+    const activityRef = db.collection("activitylogs").doc(activityId);
+    
+    // Use Firestore transaction to ensure atomic assignment
+    const result = await db.runTransaction(async (transaction) => {
+      const activityDoc = await transaction.get(activityRef);
+      
+      if (!activityDoc.exists) {
+        throw new Error("Activity log not found");
+      }
+      
+      const originalData = activityDoc.data();
+      
+      // Check if task is already assigned to a different janitor
+      if (originalData.assigned_janitor_id && 
+          originalData.assigned_janitor_id !== assigned_janitor_id) {
+        
+        console.log("🚫 TRANSACTION CONFLICT:", {
+          activityId,
+          currentAssignee: originalData.assigned_janitor_name,
+          currentAssigneeId: originalData.assigned_janitor_id,
+          attemptedAssignee: assigned_janitor_name,
+          attemptedAssigneeId: assigned_janitor_id
+        });
+        
+        throw new Error(`CONFLICT: Task already assigned to ${originalData.assigned_janitor_name}`);
+      }
+      
+      // Check if task is already assigned to the same janitor
+      if (originalData.assigned_janitor_id === assigned_janitor_id && 
+          originalData.status === 'in_progress') {
+        
+        console.log("ℹ️ TRANSACTION REDUNDANT:", {
+          activityId,
+          janitor: originalData.assigned_janitor_name,
+          janitorId: originalData.assigned_janitor_id
+        });
+        
+        return {
+          success: true,
+          redundant: true,
+          message: "Task already assigned to this janitor",
+          data: originalData
+        };
+      }
+      
+      // Perform the assignment
+      const updateData = {
+        assigned_janitor_id,
+        assigned_janitor_name,
+        status,
+        bin_status: status,
+        updated_at: new Date().toISOString()
+      };
+      
+      transaction.update(activityRef, updateData);
+      
+      console.log("✅ TRANSACTION SUCCESS:", {
+        activityId,
+        assignedTo: assigned_janitor_name,
+        assignedToId: assigned_janitor_id,
+        status
+      });
+      
+      return {
+        success: true,
+        redundant: false,
+        message: "Task assigned successfully",
+        data: { ...originalData, ...updateData }
+      };
+    });
+    
+    if (result.redundant) {
+      return res.status(200).json({
+        message: result.message,
+        activityId,
+        status: result.data.status,
+        assigned_janitor_name: result.data.assigned_janitor_name,
+        assigned_janitor_id: result.data.assigned_janitor_id,
+        warning: "No changes made - task already assigned to this janitor"
+      });
+    }
+    
+    res.status(200).json({
+      message: result.message,
+      activityId,
+      status,
+      assigned_janitor_name,
+      assigned_janitor_id
+    });
+    
+  } catch (error) {
+    console.error("❌ TRANSACTION ERROR:", error);
+    
+    if (error.message.includes("CONFLICT:")) {
+      return res.status(409).json({
+        error: "Task assignment conflict",
+        message: error.message.replace("CONFLICT: ", ""),
+        conflict: true
+      });
+    }
+    
+    next(error);
+  }
+};
+
 // Save an activity log
 const saveActivityLog = async (req, res, next) => {
   try {
@@ -218,27 +401,10 @@ const getAllActivityLogs = async (req, res, next) => {
   try {
     const { limit = 100, offset = 0, type, user_id, status } = req.query;
     
-    let query = db.collection("activitylogs");
+    // Fetch all logs without complex Firestore filtering to avoid index issues
+    const snapshot = await db.collection("activitylogs").get();
     
-    // Apply filters if provided
-    if (type) {
-      query = query.where("activity_type", "==", type);
-    }
-    if (user_id) {
-      query = query.where("user_id", "==", user_id);
-    }
-    if (status) {
-      query = query.where("status", "==", status);
-    }
-    
-    // Get logs with pagination
-    const snapshot = await query
-      .orderBy("timestamp", "desc")
-      .limit(parseInt(limit))
-      .offset(parseInt(offset))
-      .get();
-
-    const logs = snapshot.docs.map(doc => {
+    let allLogs = snapshot.docs.map(doc => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -254,12 +420,30 @@ const getAllActivityLogs = async (req, res, next) => {
       };
     });
 
-    // Get total count for pagination
-    const totalSnapshot = await query.get();
-    const totalCount = totalSnapshot.size;
+    // Apply filters in-memory
+    if (type) {
+      allLogs = allLogs.filter(log => log.activity_type === type);
+    }
+    if (user_id) {
+      allLogs = allLogs.filter(log => log.user_id === user_id);
+    }
+    if (status) {
+      allLogs = allLogs.filter(log => log.status === status);
+    }
+
+    // Sort by timestamp (descending)
+    allLogs.sort((a, b) => {
+      const timestampA = a.timestamp || a.created_at || 0;
+      const timestampB = b.timestamp || b.created_at || 0;
+      return new Date(timestampB) - new Date(timestampA);
+    });
+
+    // Apply pagination
+    const totalCount = allLogs.length;
+    const paginatedLogs = allLogs.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
 
     res.status(200).json({
-      activities: logs,
+      activities: paginatedLogs,
       totalCount,
       limit: parseInt(limit),
       offset: parseInt(offset)
@@ -385,6 +569,69 @@ const updateActivityLog = async (req, res, next) => {
 
     const originalData = activityDoc.data();
     const now = new Date().toISOString();
+    
+    // ASSIGNMENT VALIDATION: Prevent conflicts when assigning janitors
+    console.log("🔍 VALIDATION DEBUG:", {
+      activityId,
+      hasAssignedJanitorId: req.body.assigned_janitor_id !== undefined,
+      assignedJanitorId: req.body.assigned_janitor_id,
+      assignedJanitorName: req.body.assigned_janitor_name,
+      originalAssignedJanitorId: originalData.assigned_janitor_id,
+      originalAssignedJanitorName: originalData.assigned_janitor_name,
+      originalStatus: originalData.status
+    });
+    
+    if (req.body.assigned_janitor_id !== undefined && req.body.assigned_janitor_id !== null && req.body.assigned_janitor_id !== "") {
+      console.log("🔍 VALIDATION CHECK: assigned_janitor_id is defined and not empty");
+      
+      // Check if task is already assigned to a different janitor
+      if (originalData.assigned_janitor_id && 
+          originalData.assigned_janitor_id !== req.body.assigned_janitor_id) {
+        
+        console.log("🚫 ASSIGNMENT CONFLICT DETECTED:", {
+          activityId,
+          currentAssignee: originalData.assigned_janitor_name,
+          currentAssigneeId: originalData.assigned_janitor_id,
+          attemptedAssignee: req.body.assigned_janitor_name,
+          attemptedAssigneeId: req.body.assigned_janitor_id,
+          currentStatus: originalData.status
+        });
+        
+        return res.status(409).json({ 
+          error: "Task assignment conflict",
+          message: `This task is already assigned to ${originalData.assigned_janitor_name}. Cannot reassign to ${req.body.assigned_janitor_name || 'another janitor'}.`,
+          currentAssignee: originalData.assigned_janitor_name,
+          currentAssigneeId: originalData.assigned_janitor_id,
+          attemptedAssignee: req.body.assigned_janitor_name,
+          attemptedAssigneeId: req.body.assigned_janitor_id
+        });
+      }
+      
+      // Check if task is already assigned to the same janitor (redundant assignment)
+      if (originalData.assigned_janitor_id === req.body.assigned_janitor_id && 
+          originalData.status === 'in_progress') {
+        
+        console.log("ℹ️ REDUNDANT ASSIGNMENT DETECTED:", {
+          activityId,
+          janitor: originalData.assigned_janitor_name,
+          janitorId: originalData.assigned_janitor_id,
+          status: originalData.status
+        });
+        
+        return res.status(200).json({ 
+          message: "Task already assigned to this janitor",
+          activityId,
+          status: originalData.status,
+          assigned_janitor_name: originalData.assigned_janitor_name,
+          assigned_janitor_id: originalData.assigned_janitor_id,
+          warning: "No changes made - task already assigned to this janitor"
+        });
+      }
+      
+      console.log("✅ VALIDATION PASSED: No conflicts detected");
+    } else {
+      console.log("🔍 VALIDATION SKIPPED: assigned_janitor_id not provided or empty");
+    }
     
     console.log("🔍 Update Activity Debug:", {
       activityId,
@@ -856,6 +1103,8 @@ module.exports = {
   updateActivityStatus,
   updateActivityLog,
   deleteActivityLog,
+  assignTaskAtomically,
+  getActivityStatsSimple,
   getLoginHistory,
   sendJanitorAssignmentNotification,
   sendBinCollectionNotification,

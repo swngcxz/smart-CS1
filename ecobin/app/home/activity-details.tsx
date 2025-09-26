@@ -115,8 +115,8 @@ export default function ProofOfPickupScreen() {
       if (!parsedActivityLog && binId && account?.id) {
         console.log('📱 Mobile App - No activity log data provided, fetching from API...');
         try {
-          // Try to get the activity log by bin_id
-          const response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
+          // Try to get the activity log by bin_id from all logs
+          const response = await axiosInstance.get('/api/activitylogs');
           const activities = response.data.activities || [];
           const matchingLog = activities.find((log: any) => log.bin_id === binId);
           

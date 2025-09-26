@@ -111,40 +111,75 @@ export default function PickupWorkflowModal({
   const handlePickupStart = async () => {
     setLoading(true);
     try {
-      // Create activity log with user as assigned janitor and status in_progress
-      const activityData = {
-        user_id: account?.id || 'unknown_user',
-        bin_id: binData.id,
-        bin_location: binData.location || 'Central Plaza',
-        bin_status: 'in_progress',
-        bin_level: binData.level,
-        assigned_janitor_id: account?.id || 'unknown_user',
-        assigned_janitor_name: account?.fullName || 'Unknown User',
-        task_note: 'Bin pickup task claimed by user - in progress',
-        activity_type: 'task_assignment',
-        priority: 'high',
-        timestamp: new Date().toISOString()
-      };
+      // Find existing pending task for this bin
+      const response = await axiosInstance.get('/api/activitylogs');
+      const allLogs = response.data.activities || [];
+      
+      // Find pending task for this bin
+      const pendingTask = allLogs.find(log => 
+        log.bin_id === binData.id && 
+        log.status === 'pending' && 
+        log.activity_type === 'task_assignment' &&
+        log.source === 'automatic_monitoring'
+      );
 
-      const response = await axiosInstance.post('/api/activitylogs', activityData);
+      if (pendingTask) {
+        // Update existing task to assign it to current user
+        const updateData = {
+          assigned_janitor_id: account?.id || 'unknown_user',
+          assigned_janitor_name: account?.fullName || 'Unknown User',
+          status: 'in_progress',
+          bin_status: 'in_progress',
+          task_note: 'Bin pickup task claimed by user - in progress',
+          updated_at: new Date().toISOString()
+        };
 
-      if (response.data.message && response.data.message.includes('successfully')) {
-        console.log('✅ Activity log created - Pickup claimed by user');
+        const updateResponse = await axiosInstance.put(`/api/activitylogs/${pendingTask.id}`, updateData);
+
+        if (updateResponse.data.message && updateResponse.data.message.includes('successfully')) {
+          console.log('✅ Existing task claimed by user');
+          Alert.alert(
+            "Pickup Claimed",
+            "You have successfully claimed this pickup task. The task has been updated in your activity logs.",
+            [{ text: "OK", onPress: onPickupComplete }]
+          );
+        } else if (updateResponse.data.warning) {
+          // Handle redundant assignment (already assigned to this user)
+          console.log('ℹ️ Task already assigned to this user');
+          Alert.alert(
+            "Task Already Assigned",
+            "This task is already assigned to you. You can continue working on it.",
+            [{ text: "OK", onPress: onPickupComplete }]
+          );
+        } else {
+          throw new Error(updateResponse.data.message || 'Failed to update activity log');
+        }
+      } else {
+        // No automatic task exists - inform user and close modal
         Alert.alert(
-          "Pickup Claimed",
-          "You have successfully claimed this pickup task. The task has been added to your activity logs.",
-          [{ text: "OK", onPress: onPickupComplete }]
+          "No Task Available",
+          "No automatic task assignment exists for this bin. Please wait for the system to create one when the bin level exceeds 85%.",
+          [{ text: "OK", onPress: onClose }]
+        );
+      }
+    } catch (error: any) {
+      console.error('Error claiming pickup task:', error);
+      
+      // Handle assignment conflict specifically
+      if (error.response?.status === 409 && error.response?.data?.error === 'Task assignment conflict') {
+        const conflictData = error.response.data;
+        Alert.alert(
+          "Task Already Assigned",
+          `This task has already been assigned to ${conflictData.currentAssignee}. Please check for other available tasks.`,
+          [{ text: "OK", onPress: onClose }]
         );
       } else {
-        throw new Error(response.data.message || 'Failed to create activity log');
+        Alert.alert(
+          "Error",
+          "Failed to claim pickup task. Please try again.",
+          [{ text: "OK" }]
+        );
       }
-    } catch (error) {
-      console.error('Error creating pickup activity log:', error);
-      Alert.alert(
-        "Error",
-        "Failed to claim pickup task. Please try again.",
-        [{ text: "OK" }]
-      );
     } finally {
       setLoading(false);
     }
@@ -154,39 +189,38 @@ export default function PickupWorkflowModal({
   const handleModalClose = async () => {
     setLoading(true);
     try {
-      // Create pending activity log when modal is closed
-      const pendingData = {
-        user_id: account?.id || 'unknown_user',
-        bin_id: binData.id,
-        bin_location: binData.location || 'Central Plaza',
-        bin_status: 'pending',
-        bin_level: binData.level,
-        assigned_janitor_id: null,
-        assigned_janitor_name: null,
-        task_note: 'Bin pickup task created - waiting for janitor assignment',
-        activity_type: 'task_assignment',
-        priority: 'high',
-        timestamp: new Date().toISOString()
-      };
+      // Check if automatic task already exists
+      const response = await axiosInstance.get('/api/activitylogs');
+      const allLogs = response.data.activities || [];
+      
+      const existingTask = allLogs.find(log => 
+        log.bin_id === binData.id && 
+        log.status === 'pending' && 
+        log.activity_type === 'task_assignment' &&
+        log.source === 'automatic_monitoring'
+      );
 
-      const response = await axiosInstance.post('/api/activitylogs', pendingData);
-
-      if (response.data.message && response.data.message.includes('successfully')) {
-        console.log('✅ Activity log created - Task pending assignment');
+      if (existingTask) {
+        console.log('✅ Automatic task already exists - No need to create new one');
         Alert.alert(
-          "Task Created",
-          "A pickup task has been created and added to the pending tasks list.",
+          "Task Acknowledged",
+          "The pickup task has been acknowledged. A janitor will be assigned soon.",
           [{ text: "OK", onPress: onClose }]
         );
       } else {
-        throw new Error(response.data.message || 'Failed to create activity log');
+        // No automatic task exists - inform user
+        Alert.alert(
+          "No Task Available",
+          "No automatic task assignment exists for this bin. Please wait for the system to create one when the bin level exceeds 85%.",
+          [{ text: "OK", onPress: onClose }]
+        );
       }
     } catch (error) {
-      console.error('Error creating pending activity log:', error);
+      console.error('Error handling modal close:', error);
       Alert.alert(
-        "Error",
-        "Failed to create task. Please try again.",
-        [{ text: "OK" }]
+        "Task Acknowledged",
+        "The pickup task has been acknowledged. A janitor will be assigned soon.",
+        [{ text: "OK", onPress: onClose }]
       );
     } finally {
       setLoading(false);

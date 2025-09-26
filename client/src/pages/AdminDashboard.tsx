@@ -10,9 +10,13 @@ import { ActivityTab } from "./admin/tabs/ActivityTab";
 import { HistoryLogsTab } from "./admin/tabs/HistoryLogsTab";
 import { SettingsTab } from "./admin/tabs/SettingsTab";
 import { ScheduleCollectionTabs } from "./admin/tabs/ScheduleCollectionTabs";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 const AdminDashboard = () => {
   const [activePage, setActivePage] = useState("overview");
+  
+  // Enable real-time notifications
+  useRealtimeNotifications();
 
   const renderContent = () => {
     switch (activePage) {

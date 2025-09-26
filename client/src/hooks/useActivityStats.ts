@@ -35,21 +35,55 @@ export function useActivityStats(autoRefreshInterval: number = 30000) {
     setError(null);
     
     try {
-      const response = await api.get("/api/activity-stats");
+      // Fetch activity logs instead of activity-stats endpoint
+      const response = await api.get("/api/activitylogs");
       
-      if (response.data.success && response.data.stats) {
+      if (response.data.activities) {
+        const activities = response.data.activities;
+        
+        // Calculate statistics from activity logs
+        const alerts = activities.filter(activity => 
+          activity.status === 'pending'
+        ).length;
+
+        const inProgress = activities.filter(activity => 
+          activity.status === 'in_progress'
+        ).length;
+
+        const collections = activities.filter(activity => 
+          activity.status === 'done' && (
+            activity.activity_type === 'collection' || 
+            activity.activity_type === 'task_assignment' ||
+            activity.activity_type === 'bin_collection' ||
+            activity.activity_type === 'bin_emptied'
+          )
+        ).length;
+
+        const maintenance = activities.filter(activity => 
+          activity.activity_type === 'maintenance' || 
+          activity.activity_type === 'repair' ||
+          activity.activity_type === 'cleaning'
+        ).length;
+
+        const routeChanges = activities.filter(activity => 
+          activity.activity_type === 'route_change' || 
+          activity.activity_type === 'schedule_update' ||
+          activity.activity_type === 'route_update'
+        ).length;
+
         const newStats = {
-          collections: response.data.stats.collections,
-          alerts: response.data.stats.alerts,
-          maintenance: response.data.stats.maintenance,
-          routeChanges: response.data.stats.routeChanges,
-          inProgress: response.data.stats.inProgress,
-          totalActivities: response.data.stats.totalActivities
+          collections,
+          alerts,
+          maintenance,
+          routeChanges,
+          inProgress,
+          totalActivities: activities.length
         };
 
+        console.log('[ACTIVITY STATS] Calculated from activity logs:', newStats);
         setStats(newStats);
       } else {
-        throw new Error("Invalid response format");
+        throw new Error('No activities data received');
       }
     } catch (err: any) {
       setError(err?.response?.data?.message || err.message || "Failed to fetch activity statistics");

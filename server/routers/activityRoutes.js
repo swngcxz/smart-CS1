@@ -1,7 +1,7 @@
 
 const express = require("express");
 const router = express.Router();
-const { saveActivityLog, saveTaskAssignment, getUserActivityLogs, getDailyActivitySummary, getAllActivityLogs, getActivityLogsByUserId, getAssignedActivityLogs, updateActivityStatus, updateActivityLog, deleteActivityLog, getLoginHistory, testJanitorNotification } = require("../controllers/activityController");
+const { saveActivityLog, saveTaskAssignment, getUserActivityLogs, getDailyActivitySummary, getAllActivityLogs, getActivityLogsByUserId, getAssignedActivityLogs, updateActivityStatus, updateActivityLog, deleteActivityLog, assignTaskAtomically, getActivityStatsSimple, getLoginHistory, testJanitorNotification } = require("../controllers/activityController");
 
 // Get all activity logs assigned to a janitor
 router.get("/activitylogs/assigned/:janitorId", getAssignedActivityLogs);
@@ -26,11 +26,17 @@ router.get("/activity/daily-summary", getDailyActivitySummary);
 // Get login history logs
 router.get("/login-history", getLoginHistory);
 
+// Get activity statistics (simple version)
+router.get("/activity-stats-simple", getActivityStatsSimple);
+
 // Update activity status
 router.put("/activitylogs/:activityId/status", updateActivityStatus);
 
 // Update activity log with completion details
 router.put("/activitylogs/:activityId", updateActivityLog);
+
+// Atomic task assignment (prevents conflicts)
+router.put("/activitylogs/:activityId/assign", assignTaskAtomically);
 
 // Delete activity log
 router.delete("/activitylogs/:activityId", deleteActivityLog);
