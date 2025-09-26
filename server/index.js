@@ -14,6 +14,7 @@ const truckScheduleRoutes = require('./routers/truckScheduleRoutes');
 const binRoutes = require('./routers/binRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 const activityRoutes = require('./routers/activityRoutes');
+const activityStatsRoutes = require('./routers/activityStatsRoutes');
 const analyticsRoutes = require('./routers/analyticsRoutes');
 const wasteRoutes = require('./routers/wasteRoutes');
 const { admin } = require('./models/firebase');
@@ -59,6 +60,8 @@ console.log('✅ Firebase initialized successfully');
 const app = express();
 app.use(cors({
   origin: [
+    'http://localhost:3000', // React development server
+    'http://localhost:5173', // Vite development server
     'http://localhost:8081', 
     'http://localhost:8080', 
     'http://localhost:8000',
@@ -97,6 +100,7 @@ console.log('[INDEX] Mounting binRoutes at /api');
 app.use("/api", binRoutes);
 console.log('[INDEX] binRoutes mounted successfully');
 app.use("/api", activityRoutes);
+app.use("/api", activityStatsRoutes);
 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api', binHistoryRoutes);

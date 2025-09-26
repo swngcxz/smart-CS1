@@ -64,45 +64,23 @@ const staffController = {
 
   async getJanitors(req, res) {
     try {
-      // Get janitors from both staff and users collections
-      const staff = await StaffModel.getAllStaff();
-      const users = await StaffModel.getAllUsers();
-      
-             // Combine and filter janitors from both collections (case-insensitive), excluding admin roles
-       const allJanitors = [
-         ...staff.filter(member => 
-           member.role && 
-           member.role.toLowerCase() === 'janitor' &&
-           member.role.toLowerCase() !== 'admin' &&
-           member.role.toLowerCase() !== 'administrator'
-         ).map(m => ({ ...m, source: 'staff' })),
-         ...users.filter(user => 
-           user.role && 
-           user.role.toLowerCase() === 'janitor' &&
-           user.role.toLowerCase() !== 'admin' &&
-           user.role.toLowerCase() !== 'administrator'
-         ).map(u => ({ ...u, source: 'users' }))
-       ];
+      // Get janitors using role-based filtering from users collection
+      const janitors = await StaffModel.getUsersByRole('janitor');
       
       // Normalize the data structure to ensure consistency
-      const normalizedJanitors = allJanitors.map(janitor => ({
+      const normalizedJanitors = janitors.map(janitor => ({
         id: janitor.id,
         fullName: janitor.fullName,
         email: janitor.email,
-        contactNumber: janitor.contactNumber,
+        contactNumber: janitor.contactNumber || 'N/A',
         role: janitor.role,
-        // Preserve original location; do not force a default here
-        location: janitor.location,
+        location: janitor.location || 'General',
         status: janitor.status || 'active',
         lastActivity: janitor.lastActivity || 'Recently active'
       }));
       
-             console.log(`Found ${normalizedJanitors.length} janitors (${staff.filter(m => m.role && m.role.toLowerCase() === 'janitor').length} from staff, ${users.filter(u => u.role && u.role.toLowerCase() === 'janitor').length} from users)`);
-       
-       // Detailed logging for debugging
-       console.log('All staff members:', staff.map(s => ({ name: s.fullName, role: s.role })));
-       console.log('All users:', users.map(u => ({ name: u.fullName, role: u.role })));
-       console.log('Filtered janitors:', allJanitors.map(j => ({ name: j.fullName, role: j.role, source: j.source })));
+      console.log(`Found ${normalizedJanitors.length} janitors from users collection`);
+      console.log('Janitors:', normalizedJanitors.map(j => ({ name: j.fullName, role: j.role, contactNumber: j.contactNumber })));
       
       res.json(normalizedJanitors);
     } catch (error) {

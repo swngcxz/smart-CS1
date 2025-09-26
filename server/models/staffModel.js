@@ -2,21 +2,42 @@
 
 const { db, admin } = require("./firebase");
 
-const STAFF_COLLECTION = "janitor";
-
 const StaffModel = {
   // Create a new staff member
   async createStaff(data) {
-    const docRef = await db.collection(STAFF_COLLECTION).add(data);
+    const docRef = await db.collection("users").add(data);
     return docRef.id;
   },
 
-  // Get all staff
+  // Get all staff from users collection with role filtering
   async getAllStaff() {
-    const snapshot = await db.collection(STAFF_COLLECTION).get();
-    const staff = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snapshot = await db.collection("users").get();
+    const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Filter out admin roles to get only staff (janitors, staff, etc.)
+    const staff = allUsers.filter(user => 
+      user.role && 
+      user.role.toLowerCase() !== 'admin' && 
+      user.role.toLowerCase() !== 'administrator'
+    );
+    
     console.log('StaffModel.getAllStaff() - Raw data from Firestore:', staff.map(s => ({ id: s.id, fullName: s.fullName, contactNumber: s.contactNumber })));
     return staff;
+  },
+
+  // Get users by specific role
+  async getUsersByRole(role) {
+    const snapshot = await db.collection("users").get();
+    const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Filter users by role
+    const usersByRole = allUsers.filter(user => 
+      user.role && 
+      user.role.toLowerCase() === role.toLowerCase()
+    );
+    
+    console.log(`StaffModel.getUsersByRole('${role}') - Found ${usersByRole.length} users`);
+    return usersByRole;
   },
 
   // Get all users (to include janitor users)
@@ -27,19 +48,19 @@ const StaffModel = {
 
   // Update a staff member by ID
   async updateStaff(id, data) {
-    await db.collection(STAFF_COLLECTION).doc(id).update(data);
+    await db.collection("users").doc(id).update(data);
     return true;
   },
 
   // Delete a staff member by ID
   async deleteStaff(id) {
-    await db.collection(STAFF_COLLECTION).doc(id).delete();
+    await db.collection("users").doc(id).delete();
     return true;
   },
 
   // Get a staff member by ID
   async getStaffById(id) {
-    const staffDoc = await db.collection(STAFF_COLLECTION).doc(id).get();
+    const staffDoc = await db.collection("users").doc(id).get();
     if (staffDoc.exists) {
       return { id: staffDoc.id, ...staffDoc.data() };
     }
