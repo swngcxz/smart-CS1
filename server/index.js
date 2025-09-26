@@ -62,9 +62,11 @@ app.use(cors({
     'http://localhost:8081', 
     'http://localhost:8080', 
     'http://localhost:8000',
+    'http://192.168.1.13:8000', // Current server IP
     'http://192.168.1.17:8000',
     'http://192.168.1.0/24', // Allow all devices on the same network
     'exp://192.168.1.17:8081', // Expo development server
+    'exp://192.168.1.13:8081', // Expo development server with current IP
     'exp://localhost:8081'
   ],
   credentials: true,
