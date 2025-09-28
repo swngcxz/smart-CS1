@@ -103,19 +103,19 @@ export function MapTab() {
             <CardContent>
               <div className="space-y-3 text-gray-600 dark:text-gray-300">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">Route A</span>
+                  <span className="text-sm">Central Plaza</span>
                   <span className="font-medium">5 Mins</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">Route B</span>
+                  <span className="text-sm">Park Avenue</span>
                   <span className="font-medium">7 Mins</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm">Route C</span>
+                  <span className="text-sm">Mall District</span>
                   <span className="font-medium">10 Mins</span>
                 </div>
                  <div className="flex justify-between items-center">
-                  <span className="text-sm">Route D</span>
+                  <span className="text-sm">Residential</span>
                   <span className="font-medium">9 Mins</span>
                 </div>
               </div>

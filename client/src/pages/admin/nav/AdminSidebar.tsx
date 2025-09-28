@@ -1,4 +1,4 @@
-import { Home, BarChart3, Users, MapPin, Activity, Settings, Recycle, History, LogOut } from "lucide-react";
+import { Home, BarChart3, Users, MapPin, Activity, Settings, Recycle, History, LogOut, Trash2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +28,7 @@ const menuItems = [
   { title: "Staff", tab: "staff", icon: Users },
   { title: "Activity Logs", tab: "activity", icon: Activity },
   { title: "History Logs", tab: "history", icon: History },
+  { title: "Bin History", tab: "bin-history", icon: Trash2 },
   { title: "Settings", tab: "settings", icon: Settings },
 ];
 

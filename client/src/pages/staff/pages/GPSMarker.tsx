@@ -111,7 +111,10 @@ export function GPSMarker({ gpsData }: GPSMarkerProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Last Update:</span>
               <span className="text-sm text-gray-700">
-                {gpsData.timestamp ? new Date(gpsData.timestamp).toLocaleTimeString() : 'Unknown'}
+                {gpsData.timestamp ? (() => {
+                    const date = new Date(gpsData.timestamp);
+                    return isNaN(date.getTime()) ? 'Invalid timestamp' : date.toLocaleTimeString();
+                  })() : 'Unknown'}
               </span>
             </div>
           </div>

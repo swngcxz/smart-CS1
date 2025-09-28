@@ -1,124 +1,190 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import FeedbackList from "@/pages/staff/pages/FeedbackList"
 import FeedbackStats from "@/pages/staff/pages/FeedbackStats"
-import ArchivedView from "@/pages/staff/pages/ArchivedView"
 import { Button } from "@/components/ui/button";
+import { useFeedback } from "@/hooks/useFeedback";
+import api from "@/lib/api";
 
 interface FeedbackItem {
-  id: number
+  id: string
+  content: string
   name: string
   email: string
-  subject: string
-  message: string
+  userId?: string
+  timestamp: string
+  createdAt: string
+  status: 'pending' | 'reviewed' | 'resolved'
+  category: 'general' | 'bug' | 'feature' | 'complaint' | 'praise'
+  userAgent?: string
+  ipAddress?: string
+}
+
+interface RatingItem {
+  id: string
   rating: number
-  date: string
-  status: 'new' | 'archived'
-  category: 'complaint' | 'suggestion' | 'compliment' | 'bug'
+  userId?: string
+  userEmail?: string
+  timestamp: string
+  createdAt: string
+  userAgent?: string
+  ipAddress?: string
 }
 
 const Feedback = () => {
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([
-    {
-      id: 1,
-      name: "Maria Santos",
-      email: "maria.santos@email.com",
-      subject: "Missed Collection Schedule",
-      message: "The waste collection truck missed our street again this week. This is the third time this month. Please improve the scheduling system.",
-      rating: 2,
-      date: "2024-01-15",
-      status: 'new',
-      category: 'complaint'
-    },
-    {
-      id: 2,
-      name: "John Doe",
-      email: "john.doe@email.com",
-      subject: "Great Service Improvement",
-      message: "I've noticed significant improvements in the waste collection efficiency in our area. The new smart bins are working great!",
-      rating: 5,
-      date: "2024-01-14",
-      status: 'new',
-      category: 'compliment'
-    },
-    {
-      id: 3,
-      name: "Lisa Chen",
-      email: "lisa.chen@email.com",
-      subject: "Mobile App Suggestion",
-      message: "It would be great if we could get push notifications when bins are full or when collection is scheduled. Also, a map view would be helpful.",
-      rating: 4,
-      date: "2024-01-13",
-      status: 'new',
-      category: 'suggestion'
-    },
-    {
-      id: 4,
-      name: "Robert Kim",
-      email: "robert.kim@email.com",
-      subject: "Bin Sensor Malfunction",
-      message: "The smart bin on Park Avenue seems to be showing incorrect readings. It shows 100% full but was emptied yesterday.",
-      rating: 3,
-      date: "2024-01-12",
-      status: 'archived',
-      category: 'bug'
-    },
-    {
-      id: 5,
-      name: "Sarah Wilson",
-      email: "sarah.wilson@email.com",
-      subject: "Excellent Route Optimization",
-      message: "The new route optimization has reduced noise in our neighborhood significantly. Thank you for listening to our previous feedback!",
-      rating: 5,
-      date: "2024-01-11",
-      status: 'new',
-      category: 'compliment'
-    }
-  ])
-
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([])
+  const [ratings, setRatings] = useState<RatingItem[]>([])
   const [filter, setFilter] = useState<'all' | 'new'>('all')
   const [showArchived, setShowArchived] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { fetchFeedback, fetchStats } = useFeedback()
 
-  const deleteFeedback = (id: number) => {
-    setFeedbacks(prev => prev.filter(feedback => feedback.id !== id))
-    toast.success("Feedback deleted successfully")
+  // Fetch feedback and ratings data
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true)
+      setError(null)
+      
+      try {
+        // Fetch feedback data
+        const feedbackResponse = await api.get('/api/feedback')
+        setFeedbacks(feedbackResponse.data.feedback || [])
+        
+        // Fetch ratings data
+        const ratingsResponse = await api.get('/api/ratings')
+        setRatings(ratingsResponse.data.ratings || [])
+        
+      } catch (err: any) {
+        setError(err?.response?.data?.error || 'Failed to load feedback data')
+        console.error('Error loading feedback data:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
+  const deleteFeedback = async (id: string) => {
+    try {
+      await api.delete(`/api/feedback/${id}`)
+      setFeedbacks(prev => prev.filter(feedback => feedback.id !== id))
+      toast.success("Feedback deleted successfully")
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to delete feedback')
+    }
   }
 
-  const archiveFeedback = (id: number) => {
-    setFeedbacks(prev => 
-      prev.map(feedback => 
-        feedback.id === id 
-          ? { ...feedback, status: feedback.status === 'archived' ? 'new' : 'archived' as const }
-          : feedback
+  const archiveFeedback = async (id: string) => {
+    try {
+      await api.put(`/api/feedback/${id}/status`, { status: 'resolved' })
+      setFeedbacks(prev => 
+        prev.map(feedback => 
+          feedback.id === id ? { ...feedback, status: 'resolved' as const } : feedback
+        )
       )
-    )
-    const feedback = feedbacks.find(f => f.id === id)
-    const action = feedback?.status === 'archived' ? 'unarchived' : 'archived'
-    toast.success(`Feedback ${action} successfully`)
+      toast.success("Feedback archived successfully")
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to archive feedback')
+    }
   }
 
-  const activeFeedbacks = feedbacks.filter(feedback => feedback.status !== 'archived')
-  const archivedFeedbacks = feedbacks.filter(feedback => feedback.status === 'archived')
-  
+  // Calculate filtered feedback - only show active (non-resolved) feedback
+  const activeFeedbacks = feedbacks.filter(feedback => feedback.status !== 'resolved')
   const filteredFeedbacks = filter === 'all' 
     ? activeFeedbacks 
-    : activeFeedbacks.filter(feedback => feedback.status === 'new')
+    : activeFeedbacks.filter(feedback => feedback.status === 'pending')
+
+  // Calculate stats to match original design
+  const totalActive = activeFeedbacks.length
+  const newFeedbacks = activeFeedbacks.filter(f => f.status === 'pending').length
+  const archivedFeedbacks = feedbacks.filter(f => f.status === 'resolved').length
+  
+  // Calculate average rating from ALL ratings data (as requested)
+  const avgRating = ratings.length > 0 
+    ? ratings.reduce((acc, r) => acc + r.rating, 0) / ratings.length 
+    : 0
 
   const stats = {
-    total: activeFeedbacks.length,
-    new: activeFeedbacks.filter(f => f.status === 'new').length,
-    archived: archivedFeedbacks.length,
-    avgRating: activeFeedbacks.length > 0 ? activeFeedbacks.reduce((acc, f) => acc + f.rating, 0) / activeFeedbacks.length : 0
+    total: totalActive,
+    new: newFeedbacks,
+    archived: archivedFeedbacks,
+    avgRating: avgRating
   }
 
   if (showArchived) {
+    const resolvedFeedbacks = feedbacks.filter(f => f.status === 'resolved')
     return (
-      <ArchivedView
-        archivedFeedbacks={archivedFeedbacks}
-        onBack={() => setShowArchived(false)}
-        onUnarchive={archiveFeedback}
-        onDelete={deleteFeedback}
-      />
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Resolved Feedback</h1>
+            <p className="text-gray-600">Previously resolved feedback items</p>
+          </div>
+          <Button onClick={() => setShowArchived(false)}>
+            Back to Active
+          </Button>
+        </div>
+        
+        <div className="space-y-4">
+          {resolvedFeedbacks.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No resolved feedback found.
+            </div>
+          ) : (
+            resolvedFeedbacks.map((feedback) => (
+              <div key={feedback.id} className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-2">
+                      {feedback.content.length > 50 
+                        ? `${feedback.content.substring(0, 50)}...` 
+                        : feedback.content
+                      }
+                    </h3>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span>{feedback.name}</span>
+                      <span>{feedback.email}</span>
+                      <span>{new Date(feedback.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => archiveFeedback(feedback.id)}
+                    >
+                      Reopen
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => deleteFeedback(feedback.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
     )
   }
 
@@ -128,21 +194,22 @@ const Feedback = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Feedback</h1>
         </div>
-       <button
+        <Button
           onClick={() => setShowArchived(true)}
-          className="px-4 py-2 border border-gray-100 text-green hover:text-red-800 hover:border-red-800 rounded-md transition-colors"
+          variant="outline"
         >
           View Archived ({stats.archived})
-        </button>
-
+        </Button>
       </div>
 
-      <FeedbackStats stats={stats} />
+      <FeedbackStats stats={stats} loading={loading} />
 
       <FeedbackList
         feedbacks={filteredFeedbacks}
+        ratings={ratings}
         filter={filter}
         stats={stats}
+        loading={loading}
         onFilterChange={setFilter}
         onArchive={archiveFeedback}
         onDelete={deleteFeedback}

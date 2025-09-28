@@ -606,7 +606,10 @@ export function WasteLevelsTab() {
             {/* Data Details */}
             {bin1Data && (
               <div className="text-xs text-gray-600 dark:text-gray-400">
-                | Updated: {new Date(bin1Data.timestamp || Date.now()).toLocaleTimeString()}
+                | Updated: {(() => {
+                    const date = new Date(bin1Data.timestamp || Date.now());
+                    return isNaN(date.getTime()) ? 'Invalid timestamp' : date.toLocaleTimeString();
+                  })()}
               </div>
             )}
           </div>

@@ -18,9 +18,7 @@ export function DashboardOverview() {
         <p className="text-gray-600 dark:text-gray-400">Get a quick overview of your waste management system.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <DataAnalytics />
-      </div>
+      <DataAnalytics />
     </div>
   );
 }

@@ -142,33 +142,45 @@ const staffController = {
 
   async getStatusSummary(req, res) {
     try {
-      // Get all staff from both collections
-      const staff = await StaffModel.getAllStaff();
+      // Get current user from JWT token
+      const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+      let currentUserEmail = null;
+      
+      if (token) {
+        try {
+          const jwt = require('jsonwebtoken');
+          const JWT_SECRET = process.env.TOKEN_SECRET || "your_jwt_secret";
+          const decoded = jwt.verify(token, JWT_SECRET);
+          currentUserEmail = decoded.email;
+        } catch (err) {
+          console.log('Token verification failed for status summary:', err.message);
+        }
+      }
+
+      // Get all users and filter for staff roles (janitors, drivers, maintenance), excluding current user
       const users = await StaffModel.getAllUsers();
       
-      // Combine all staff members and filter out admin roles
-      const allStaff = [
-        ...staff.map(s => ({ ...s, source: 'staff' })),
-        ...users.map(u => ({ ...u, source: 'users' }))
-      ].filter(member => 
-        member.role && 
-        member.role.toLowerCase() !== 'admin' && 
-        member.role.toLowerCase() !== 'administrator'
-      );
+      // Filter for janitors, drivers, and maintenance staff, excluding current user
+      const staffMembers = users.filter(user => {
+        const role = user.role && user.role.toLowerCase();
+        const isStaffRole = role === 'janitor' || role === 'driver' || role === 'maintenance';
+        const isNotCurrentUser = !currentUserEmail || user.email !== currentUserEmail;
+        return isStaffRole && isNotCurrentUser;
+      });
 
-      const totalStaff = allStaff.length;
+      const totalStaff = staffMembers.length;
 
       // Count by status (using status field or defaulting to 'active')
-      const activeNow = allStaff.filter(s => (s.status || 'active') === 'active').length;
-      const onBreak = allStaff.filter(s => (s.status || 'active') === 'break' || (s.status || 'active') === 'on_break').length;
-      const offline = allStaff.filter(s => (s.status || 'active') === 'offline').length;
+      const activeNow = staffMembers.filter(s => (s.status || 'active') === 'active').length;
+      const onBreak = staffMembers.filter(s => (s.status || 'active') === 'break' || (s.status || 'active') === 'on_break').length;
+      const offline = staffMembers.filter(s => (s.status || 'active') === 'offline').length;
 
       res.json({
         totalStaff,
         activeNow,
         onBreak,
         offline,
-        staff: allStaff // Include the full staff list
+        staff: staffMembers // Include the filtered staff list
       });
     } catch (error) {
       console.error(error);
@@ -178,23 +190,35 @@ const staffController = {
 
   async getAllStaffWithCounts(req, res) {
     try {
-      // Get all staff from both collections
-      const staff = await StaffModel.getAllStaff();
+      // Get current user from JWT token
+      const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+      let currentUserEmail = null;
+      
+      if (token) {
+        try {
+          const jwt = require('jsonwebtoken');
+          const JWT_SECRET = process.env.TOKEN_SECRET || "your_jwt_secret";
+          const decoded = jwt.verify(token, JWT_SECRET);
+          currentUserEmail = decoded.email;
+        } catch (err) {
+          console.log('Token verification failed for staff list:', err.message);
+        }
+      }
+
+      // Get all users and filter for staff roles (janitors, drivers, maintenance), excluding current user
       const users = await StaffModel.getAllUsers();
       
       // Debug logging
-      console.log('Raw staff data:', staff.map(s => ({ id: s.id, fullName: s.fullName, contactNumber: s.contactNumber })));
-      console.log('Raw users data:', users.map(u => ({ id: u.id, fullName: u.fullName, contactNumber: u.contactNumber })));
+      console.log('Current user email:', currentUserEmail);
+      console.log('Raw users data:', users.map(u => ({ id: u.id, fullName: u.fullName, email: u.email, role: u.role, contactNumber: u.contactNumber })));
       
-      // Combine and normalize all staff members, filtering out admin roles
-      const allStaff = [
-        ...staff.map(s => ({ ...s, source: 'staff' })),
-        ...users.map(u => ({ ...u, source: 'users' }))
-      ].filter(member => 
-        member.role && 
-        member.role.toLowerCase() !== 'admin' && 
-        member.role.toLowerCase() !== 'administrator'
-      ).map(member => {
+      // Filter for janitors, drivers, and maintenance staff, excluding current user
+      const staffMembers = users.filter(user => {
+        const role = user.role && user.role.toLowerCase();
+        const isStaffRole = role === 'janitor' || role === 'driver' || role === 'maintenance';
+        const isNotCurrentUser = !currentUserEmail || user.email !== currentUserEmail;
+        return isStaffRole && isNotCurrentUser;
+      }).map(member => {
         const mapped = {
           id: member.id,
           fullName: member.fullName,
@@ -204,24 +228,24 @@ const staffController = {
           location: member.location || 'General',
           status: member.status || 'active',
           lastActivity: member.lastActivity || 'Recently active',
-          source: member.source
+          source: 'users'
         };
-        console.log('Mapping member:', { 
-          input: { id: member.id, fullName: member.fullName, contactNumber: member.contactNumber },
+        console.log('Mapping janitor member:', { 
+          input: { id: member.id, fullName: member.fullName, email: member.email, role: member.role, contactNumber: member.contactNumber },
           output: { id: mapped.id, fullName: mapped.fullName, contactNumber: mapped.contactNumber }
         });
         return mapped;
       });
       
-      console.log('Final allStaff before response:', allStaff.map(s => ({ id: s.id, fullName: s.fullName, contactNumber: s.contactNumber })));
+      console.log('Final staff list:', staffMembers.map(s => ({ id: s.id, fullName: s.fullName, email: s.email, contactNumber: s.contactNumber })));
 
-      const totalStaff = allStaff.length;
-      const activeNow = allStaff.filter(s => s.status === 'active').length;
-      const onBreak = allStaff.filter(s => s.status === 'break' || s.status === 'on_break').length;
-      const offline = allStaff.filter(s => s.status === 'offline').length;
+      const totalStaff = staffMembers.length;
+      const activeNow = staffMembers.filter(s => s.status === 'active').length;
+      const onBreak = staffMembers.filter(s => s.status === 'break' || s.status === 'on_break').length;
+      const offline = staffMembers.filter(s => s.status === 'offline').length;
 
       res.json({
-        staff: allStaff,
+        staff: staffMembers,
         counts: {
           totalStaff,
           activeNow,

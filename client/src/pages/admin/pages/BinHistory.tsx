@@ -11,7 +11,7 @@ import api from "@/lib/api";
 interface BinHistoryRecord {
   id: string;
   binId: string;
-  timestamp: string | object;
+  timestamp: string;
   weight: number;
   distance: number;
   binLevel: number;
@@ -23,7 +23,7 @@ interface BinHistoryRecord {
   satellites: number;
   status: string;
   errorMessage?: string;
-  createdAt: string | object;
+  createdAt: string;
 }
 
 interface BinHistoryStats {
@@ -64,7 +64,6 @@ export function BinHistory() {
 
   // Apply filters
   useEffect(() => {
-    console.log("🔄 Applying filters to binHistory:", binHistory.length, "records");
     let filtered = binHistory;
 
     // Search filter
@@ -104,13 +103,9 @@ export function BinHistory() {
           break;
       }
 
-      filtered = filtered.filter((record) => {
-        const recordDate = parseTimestamp(record.timestamp);
-        return recordDate && recordDate >= filterDate;
-      });
+      filtered = filtered.filter((record) => new Date(record.timestamp) >= filterDate);
     }
 
-    console.log("✅ Filtered history:", filtered.length, "records");
     setFilteredHistory(filtered);
     setCurrentPage(1);
   }, [binHistory, searchTerm, statusFilter, binIdFilter, dateFilter]);
@@ -118,16 +113,9 @@ export function BinHistory() {
   const fetchBinHistory = async () => {
     try {
       setLoading(true);
-      console.log("🔍 Fetching bin history from:", "http://localhost:8000/api/bin-history");
       const response = await api.get("/api/bin-history");
-      
-      console.log("📊 API Response:", response);
-      console.log("📊 Response data:", response.data);
-      console.log("📊 Response status:", response.status);
 
       if (response.data && response.data.success && response.data.records) {
-        console.log("✅ Success! Records found:", response.data.records.length);
-        console.log("📋 Sample record:", response.data.records[0]);
         setBinHistory(response.data.records);
         setStats(
           response.data.stats || {
@@ -140,15 +128,12 @@ export function BinHistory() {
           }
         );
       } else {
-        console.log("❌ No records in response:", response.data);
         setBinHistory([]);
         setError(response.data?.message || "No data received");
       }
       setError(null);
     } catch (err: any) {
-      console.error("💥 Error fetching bin history:", err);
-      console.error("💥 Error response:", err.response);
-      console.error("💥 Error message:", err.message);
+      console.error("Error fetching bin history:", err);
       setError(err.response?.data?.message || err.message || "Failed to fetch bin history");
     } finally {
       setLoading(false);
@@ -201,59 +186,57 @@ export function BinHistory() {
   };
 
   // Utility function to parse various timestamp formats
-  const parseTimestamp = (timestamp: string | object): Date | null => {
+  const parseTimestamp = (timestamp: string): Date | null => {
     if (!timestamp || timestamp === 'Invalid Date' || timestamp === 'null' || timestamp === 'undefined') {
       return null;
     }
 
-    // Handle Firebase timestamp objects
-    if (typeof timestamp === 'object' && timestamp !== null) {
-      const firebaseTimestamp = timestamp as any;
-      if (firebaseTimestamp._seconds) {
-        return new Date(firebaseTimestamp._seconds * 1000);
-      }
-      if (firebaseTimestamp.seconds) {
-        return new Date(firebaseTimestamp.seconds * 1000);
+    // Try different timestamp formats
+    let date = new Date(timestamp);
+    
+    // If the first attempt fails, try parsing as ISO string or Unix timestamp
+    if (isNaN(date.getTime())) {
+      // Try as Unix timestamp (seconds or milliseconds)
+      const numTimestamp = Number(timestamp);
+      if (!isNaN(numTimestamp)) {
+        // If it's a Unix timestamp in seconds, convert to milliseconds
+        date = new Date(numTimestamp > 1000000000000 ? numTimestamp : numTimestamp * 1000);
+      } else {
+        // Try parsing with different formats
+        date = new Date(timestamp.replace(' ', 'T')); // Handle space instead of T
       }
     }
 
-    // Handle string timestamps
-    if (typeof timestamp === 'string') {
-      // Try different timestamp formats
-      let date = new Date(timestamp);
-      
-      // If the first attempt fails, try parsing as ISO string or Unix timestamp
-      if (isNaN(date.getTime())) {
-        // Try as Unix timestamp (seconds or milliseconds)
-        const numTimestamp = Number(timestamp);
-        if (!isNaN(numTimestamp)) {
-          // If it's a Unix timestamp in seconds, convert to milliseconds
-          date = new Date(numTimestamp > 1000000000000 ? numTimestamp : numTimestamp * 1000);
-        } else {
-          // Try parsing with different formats
-          date = new Date(timestamp.replace(' ', 'T')); // Handle space instead of T
-        }
-      }
-
-      return isNaN(date.getTime()) ? null : date;
-    }
-
-    return null;
+    return isNaN(date.getTime()) ? null : date;
   };
 
-  const formatTimestamp = (timestamp: string | object) => {
+  // Enhanced timestamp formatting for admin view
+  const formatTimestamp = (timestamp: string) => {
     const date = parseTimestamp(timestamp);
     
     if (!date) {
       return {
         date: 'N/A',
         time: 'N/A',
+        relative: 'Unknown'
       };
     }
 
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
     return {
       date: date.toLocaleDateString(),
       time: date.toLocaleTimeString(),
+      relative: diffInHours < 24 ? 
+        (diffInHours < 1 ? `${Math.floor(diffInHours * 60)}m ago` : `${Math.floor(diffInHours)}h ago`) :
+        date.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        })
     };
   };
 
@@ -318,7 +301,8 @@ export function BinHistory() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bin History</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Bin History</h1>
+          <p className="text-gray-600 dark:text-gray-400">Monitor and analyze bin sensor data history</p>
         </div>
         <Button onClick={exportToCSV} className="flex items-center gap-2">
           <Download className="w-4 h-4" />
@@ -332,8 +316,8 @@ export function BinHistory() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Records</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalRecords}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Records</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalRecords}</p>
               </div>
             </div>
           </CardContent>
@@ -343,7 +327,7 @@ export function BinHistory() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Critical</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Critical</p>
                 <p className="text-2xl font-bold text-red-600">{stats.criticalCount}</p>
               </div>
             </div>
@@ -354,7 +338,7 @@ export function BinHistory() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Warning</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Warning</p>
                 <p className="text-2xl font-bold text-yellow-600">{stats.warningCount}</p>
               </div>
             </div>
@@ -365,7 +349,7 @@ export function BinHistory() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Normal</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Normal</p>
                 <p className="text-2xl font-bold text-green-600">{stats.normalCount}</p>
               </div>
             </div>
@@ -376,7 +360,7 @@ export function BinHistory() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Errors</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Errors</p>
                 <p className="text-2xl font-bold text-red-600">{stats.errorCount}</p>
               </div>
             </div>
@@ -387,7 +371,7 @@ export function BinHistory() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Malfunction</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Malfunction</p>
                 <p className="text-2xl font-bold text-orange-600">{stats.malfunctionCount}</p>
               </div>
             </div>
@@ -398,12 +382,15 @@ export function BinHistory() {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">Filters</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            Filters
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Search</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Search</label>
               <Input
                 placeholder="Search records..."
                 value={searchTerm}
@@ -412,7 +399,7 @@ export function BinHistory() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Status</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Status</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Status" />
@@ -429,7 +416,7 @@ export function BinHistory() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Bin ID</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Bin ID</label>
               <Select value={binIdFilter} onValueChange={setBinIdFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Bins" />
@@ -446,7 +433,7 @@ export function BinHistory() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Date Range</label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Time" />
@@ -478,14 +465,7 @@ export function BinHistory() {
           ) : filteredHistory.length === 0 ? (
             <div className="text-center py-8">
               <Trash2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No bin history records found</p>
-              <div className="mt-4 text-sm text-gray-500">
-                <p>Debug Info:</p>
-                <p>• binHistory.length: {binHistory.length}</p>
-                <p>• filteredHistory.length: {filteredHistory.length}</p>
-                <p>• loading: {loading.toString()}</p>
-                <p>• error: {error || "none"}</p>
-              </div>
+              <p className="text-gray-600 dark:text-gray-400">No bin history records found</p>
             </div>
           ) : (
             <>
@@ -504,17 +484,21 @@ export function BinHistory() {
                   </TableHeader>
                   <TableBody>
                     {currentData.map((record) => {
-                      const { date, time } = formatTimestamp(record.timestamp);
+                      const { date, time, relative } = formatTimestamp(record.timestamp);
                       return (
                         <TableRow key={record.id}>
                           <TableCell className="font-medium">{record.binId}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div>
-                                {date !== 'N/A' ? (
-                                  <div className="text-sm">{date}</div>
+                                <div className="text-sm font-medium">{relative}</div>
+                                {date !== 'N/A' && time !== 'N/A' ? (
+                                  <div className="text-xs text-gray-500 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {date} {time}
+                                  </div>
                                 ) : (
-                                  <div className="text-sm text-red-500 flex items-center gap-1">
+                                  <div className="text-xs text-red-500 flex items-center gap-1">
                                     <AlertTriangle className="w-3 h-3" />
                                     Invalid timestamp
                                   </div>
@@ -559,7 +543,7 @@ export function BinHistory() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
                     Showing {startIndex + 1} to {Math.min(endIndex, filteredHistory.length)} of {filteredHistory.length}{" "}
                     records
                   </div>
@@ -572,7 +556,7 @@ export function BinHistory() {
                     >
                       Previous
                     </Button>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
                       Page {currentPage} of {totalPages}
                     </span>
                     <Button

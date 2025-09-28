@@ -70,7 +70,11 @@ function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
   return null;
 }
 
-export function StaffMapSection() {
+interface StaffMapSectionProps {
+  onBinClick?: (binId: string) => void;
+}
+
+export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
   const { wasteBins, loading, error, bin1Data, monitoringData, gpsHistory, dynamicBinLocations } = useRealTimeData();
   const [showGPSTracking, setShowGPSTracking] = useState(false);
   const [userLocation, setUserLocation] = useState<LatLngTuple | null>(null);
@@ -321,7 +325,7 @@ export function StaffMapSection() {
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             />
             {updatedBinLocations.map((bin) => (
-              <DynamicBinMarker key={bin.id} bin={bin} />
+              <DynamicBinMarker key={bin.id} bin={bin} onBinClick={onBinClick} />
             ))}
 
             {/* GPS Marker for real-time location */}
@@ -336,7 +340,7 @@ export function StaffMapSection() {
                       timestamp:
                         typeof bin1Data.timestamp === "number"
                           ? new Date(bin1Data.timestamp).toISOString()
-                          : String(bin1Data.timestamp || ""),
+                          : bin1Data.timestamp ? String(bin1Data.timestamp) : new Date().toISOString(),
                     }
                   : monitoringData
                   ? {
@@ -347,7 +351,7 @@ export function StaffMapSection() {
                       timestamp:
                         typeof monitoringData.timestamp === "number"
                           ? new Date(monitoringData.timestamp).toISOString()
-                          : String(monitoringData.timestamp || ""),
+                          : monitoringData.timestamp ? String(monitoringData.timestamp) : new Date().toISOString(),
                     }
                   : undefined
               }
@@ -358,7 +362,7 @@ export function StaffMapSection() {
               gpsHistory={gpsHistory.map((point) => ({
                 ...point,
                 timestamp:
-                  typeof point.timestamp === "number" ? new Date(point.timestamp).toISOString() : point.timestamp,
+                  typeof point.timestamp === "number" ? new Date(point.timestamp).toISOString() : (point.timestamp || new Date().toISOString()),
               }))}
               visible={showGPSTracking}
             />

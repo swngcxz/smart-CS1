@@ -2,6 +2,31 @@ const binHistoryModel = require('../models/binHistoryModel');
 const hybridDataService = require('../services/hybridDataService');
 const rateLimitService = require('../services/rateLimitService');
 
+/**
+ * Convert Firebase timestamps to ISO strings for frontend compatibility
+ * @param {Object} record - Record with Firebase timestamps
+ * @returns {Object} Record with converted timestamps
+ */
+function convertFirebaseTimestamps(record) {
+  const convertedRecord = { ...record };
+  
+  // Convert timestamp
+  if (record.timestamp && typeof record.timestamp === 'object' && record.timestamp._seconds) {
+    convertedRecord.timestamp = new Date(record.timestamp._seconds * 1000).toISOString();
+  } else if (record.timestamp) {
+    convertedRecord.timestamp = new Date(record.timestamp).toISOString();
+  }
+  
+  // Convert createdAt
+  if (record.createdAt && typeof record.createdAt === 'object' && record.createdAt._seconds) {
+    convertedRecord.createdAt = new Date(record.createdAt._seconds * 1000).toISOString();
+  } else if (record.createdAt) {
+    convertedRecord.createdAt = new Date(record.createdAt).toISOString();
+  }
+  
+  return convertedRecord;
+}
+
 class BinHistoryController {
   /**
    * Process incoming real-time bin data using hybrid storage approach
@@ -149,8 +174,11 @@ class BinHistoryController {
       // Get all records using the model's getAllBinHistory method
       const records = await binHistoryModel.getAllBinHistory(parseInt(limit));
       
+      // Convert Firebase timestamps to ISO strings for frontend compatibility
+      const convertedRecords = records.map(record => convertFirebaseTimestamps(record));
+      
       // Apply filters
-      let filteredRecords = records;
+      let filteredRecords = convertedRecords;
       
       if (binId) {
         filteredRecords = filteredRecords.filter(record => record.binId === binId);
@@ -219,11 +247,14 @@ class BinHistoryController {
 
       const history = await binHistoryModel.getBinHistory(binId, parseInt(limit));
 
+      // Convert Firebase timestamps to ISO strings for frontend compatibility
+      const convertedHistory = history.map(record => convertFirebaseTimestamps(record));
+
       res.status(200).json({
         success: true,
         message: 'Bin history retrieved successfully',
-        data: history,
-        count: history.length
+        data: convertedHistory,
+        count: convertedHistory.length
       });
 
     } catch (error) {
@@ -247,11 +278,14 @@ class BinHistoryController {
 
       const errorRecords = await binHistoryModel.getErrorRecords(binId, parseInt(limit));
 
+      // Convert Firebase timestamps to ISO strings for frontend compatibility
+      const convertedRecords = errorRecords.map(record => convertFirebaseTimestamps(record));
+
       res.status(200).json({
         success: true,
         message: 'Error records retrieved successfully',
-        data: errorRecords,
-        count: errorRecords.length
+        data: convertedRecords,
+        count: convertedRecords.length
       });
 
     } catch (error) {

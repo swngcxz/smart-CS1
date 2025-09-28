@@ -19,6 +19,7 @@ interface DynamicBinMarkerProps {
     distance_cm?: number;
     binData?: any;
   };
+  onBinClick?: (binId: string) => void;
 }
 
 const createDynamicIcon = (status: string, level: number, isLive: boolean, gpsValid: boolean) => {
@@ -135,7 +136,7 @@ const createDynamicIcon = (status: string, level: number, isLive: boolean, gpsVa
   });
 };
 
-export function DynamicBinMarker({ bin }: DynamicBinMarkerProps) {
+export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
   const [isLive, setIsLive] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
@@ -146,7 +147,8 @@ export function DynamicBinMarker({ bin }: DynamicBinMarkerProps) {
       const timeDiff = now - bin.timestamp;
       // Consider data live if it's less than 10 seconds old
       setIsLive(timeDiff < 10000);
-      setLastUpdate(new Date(bin.timestamp));
+      const date = new Date(bin.timestamp);
+      setLastUpdate(isNaN(date.getTime()) ? new Date() : date);
     }
   }, [bin.binData, bin.timestamp]);
 
@@ -179,8 +181,20 @@ export function DynamicBinMarker({ bin }: DynamicBinMarkerProps) {
     }
   };
 
+  const handleMarkerClick = () => {
+    if (onBinClick) {
+      onBinClick(bin.id);
+    }
+  };
+
   return (
-    <Marker position={bin.position} icon={icon}>
+    <Marker 
+      position={bin.position} 
+      icon={icon}
+      eventHandlers={{
+        click: handleMarkerClick
+      }}
+    >
       <Popup className="custom-popup" maxWidth={300}>
         <div className="p-3 min-w-[250px]">
           <div className="flex items-center gap-2 mb-3">

@@ -200,12 +200,31 @@ async function login(req, res) {
     // Reset attempts on successful login
     rateLimitMap.set(email, []);
 
+    // Get client IP address
+    const getClientIP = (req) => {
+      return req.headers['x-forwarded-for'] || 
+             req.headers['x-real-ip'] || 
+             req.connection?.remoteAddress || 
+             req.socket?.remoteAddress ||
+             req.ip ||
+             'Unknown';
+    };
+
+    const clientIP = getClientIP(req);
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    console.log(`[AUTH] Captured IP: ${clientIP}, User Agent: ${userAgent}`);
+
     // create a log entry for login
     const loginLog = {
       userEmail: user.email,
       role: user.role || "user",
       loginTime: new Date().toISOString(),
       logoutTime: null,
+      ipAddress: clientIP,
+      userAgent: userAgent,
+      status: "active",
+      location: "Unknown", // We can enhance this later with IP geolocation
     };
 
     console.log("Saving login log to Firestore collection: logs");
@@ -385,7 +404,26 @@ async function signout(req, res) {
     // Update logoutTime in logs if logId exists
     if (decoded.logId) {
       const logRef = db.collection("logs").doc(decoded.logId);
-      await withRetry(() => logRef.update({ logoutTime: new Date().toISOString() }));
+      const logoutTime = new Date().toISOString();
+      
+      // Get the login log to calculate session duration
+      const logDoc = await logRef.get();
+      if (logDoc.exists) {
+        const logData = logDoc.data();
+        const loginTime = new Date(logData.loginTime);
+        const sessionDuration = Math.round((new Date(logoutTime).getTime() - loginTime.getTime()) / (1000 * 60)); // in minutes
+        
+        await withRetry(() => logRef.update({ 
+          logoutTime: logoutTime,
+          sessionDuration: sessionDuration,
+          status: "completed"
+        }));
+      } else {
+        await withRetry(() => logRef.update({ 
+          logoutTime: logoutTime,
+          status: "completed"
+        }));
+      }
     }
     // Clear the token cookie
     res.clearCookie("token");
@@ -395,4 +433,161 @@ async function signout(req, res) {
   }
 }
 
-module.exports = { signup, login, requestPasswordReset, resetPassword, signout, getCurrentUser, updateCurrentUser, changePassword };
+// Get login history for admin dashboard
+async function getLoginHistory(req, res) {
+  try {
+    console.log('[AUTH] Fetching login history...');
+    
+    // Get all login logs from Firestore
+    const snapshot = await withRetry(() => db.collection("logs")
+      .orderBy("loginTime", "desc")
+      .limit(1000)
+      .get());
+    
+    const logs = [];
+    snapshot.forEach(doc => {
+      const logData = doc.data();
+      logs.push({
+        id: doc.id,
+        ...logData
+      });
+    });
+    
+    console.log(`[AUTH] Retrieved ${logs.length} login history records`);
+    
+    res.status(200).json({
+      success: true,
+      logs: logs,
+      count: logs.length
+    });
+    
+  } catch (err) {
+    console.error('[AUTH] Error fetching login history:', err);
+    res.status(500).json({ 
+      error: 'Failed to fetch login history',
+      message: err.message 
+    });
+  }
+}
+
+// Get connected accounts for current user
+async function getConnectedAccounts(req, res) {
+  try {
+    const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Find user by email
+    const snapshot = await withRetry(() => db.collection('users').where('email', '==', decoded.email).get());
+    if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
+    
+    const userDoc = snapshot.docs[0];
+    const user = userDoc.data();
+    
+    // Return connected accounts data
+    const connectedAccounts = {
+      google: {
+        connected: !!user.googleId,
+        email: user.googleEmail || null,
+        name: user.googleName || null,
+        picture: user.googlePicture || null
+      },
+      github: {
+        connected: !!user.githubId,
+        username: user.githubUsername || null,
+        name: user.githubName || null,
+        avatar: user.githubAvatar || null
+      },
+      facebook: {
+        connected: !!user.facebookId,
+        name: user.facebookName || null,
+        email: user.facebookEmail || null,
+        picture: user.facebookPicture || null
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      accounts: connectedAccounts
+    });
+
+  } catch (err) {
+    console.error('[AUTH] Error getting connected accounts:', err);
+    res.status(500).json({ error: 'Failed to get connected accounts' });
+  }
+}
+
+// Unlink a connected account
+async function unlinkAccount(req, res) {
+  try {
+    const token = req.cookies.token || req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const { provider } = req.body;
+    if (!provider || !['google', 'github', 'facebook'].includes(provider)) {
+      return res.status(400).json({ error: 'Invalid provider' });
+    }
+
+    // Find user by email
+    const snapshot = await withRetry(() => db.collection('users').where('email', '==', decoded.email).get());
+    if (snapshot.empty) return res.status(404).json({ error: 'User not found' });
+    
+    const userDoc = snapshot.docs[0];
+    const user = userDoc.data();
+    
+    // Check if account is linked
+    const providerId = `${provider}Id`;
+    if (!user[providerId]) {
+      return res.status(400).json({ error: `${provider} account is not linked` });
+    }
+
+    // Prepare update data to remove provider info
+    const updateData = {
+      [`${provider}Id`]: null,
+      [`${provider}Email`]: null,
+      [`${provider}Name`]: null,
+      [`${provider}Picture`]: null,
+      [`${provider}Avatar`]: null,
+      [`${provider}Username`]: null,
+      updatedAt: new Date().toISOString()
+    };
+
+    await withRetry(() => userDoc.ref.update(updateData));
+
+    res.status(200).json({
+      success: true,
+      message: `${provider} account unlinked successfully`
+    });
+
+  } catch (err) {
+    console.error('[AUTH] Error unlinking account:', err);
+    res.status(500).json({ error: 'Failed to unlink account' });
+  }
+}
+
+module.exports = { 
+  signup, 
+  login, 
+  requestPasswordReset, 
+  resetPassword, 
+  signout, 
+  getCurrentUser, 
+  updateCurrentUser, 
+  changePassword, 
+  getLoginHistory,
+  getConnectedAccounts,
+  unlinkAccount
+};

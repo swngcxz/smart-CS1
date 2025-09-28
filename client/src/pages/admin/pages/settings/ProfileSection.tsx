@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Pencil, Camera, Save, X, Mail, Github, Facebook } from "lucide-react";
+import { Pencil, Camera, Save, X, Mail, Github, Facebook, Loader2 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import api from "@/lib/api";
 
 export const ProfileSection = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -20,6 +21,13 @@ export const ProfileSection = () => {
     website: "",
   });
   const [imageUrl, setImageUrl] = useState<string>("");
+  const [connectedAccounts, setConnectedAccounts] = useState({
+    google: { connected: false, email: null, name: null, picture: null },
+    github: { connected: false, username: null, name: null, avatar: null },
+    facebook: { connected: false, name: null, email: null, picture: null }
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleEdit = (field: string) => setIsEditing(field);
@@ -38,6 +46,55 @@ export const ProfileSection = () => {
   };
   const triggerFileSelect = () => fileInputRef.current?.click();
 
+  // Fetch connected accounts from API
+  const fetchConnectedAccounts = async () => {
+    try {
+      const response = await api.get('/auth/connected-accounts');
+      if (response.data.success) {
+        setConnectedAccounts(response.data.accounts);
+      }
+    } catch (error) {
+      console.error('Error fetching connected accounts:', error);
+    }
+  };
+
+  // Handle unlinking an account
+  const handleUnlinkAccount = async (provider: string) => {
+    try {
+      setLoading(true);
+      const response = await api.post('/auth/unlink-account', { provider });
+      if (response.data.success) {
+        // Update local state
+        setConnectedAccounts(prev => ({
+          ...prev,
+          [provider]: {
+            connected: false,
+            email: null,
+            name: null,
+            picture: null,
+            username: null,
+            avatar: null
+          }
+        }));
+        console.log(`${provider} account unlinked successfully`);
+      }
+    } catch (error) {
+      console.error(`Error unlinking ${provider} account:`, error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle linking an account (redirect to OAuth provider)
+  const handleLinkAccount = (provider: string) => {
+    // For now, we'll implement Google OAuth
+    if (provider === 'google') {
+      window.location.href = '/auth/google';
+    } else {
+      console.log(`Linking ${provider} account - not implemented yet`);
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
     setProfile({
@@ -49,17 +106,57 @@ export const ProfileSection = () => {
       website: "",
     });
     setImageUrl(user.avatarUrl || "");
+    
+    // Fetch connected accounts
+    fetchConnectedAccounts();
+    
+    // Check for URL parameters (success/error messages)
+    const urlParams = new URLSearchParams(window.location.search);
+    const linked = urlParams.get('linked');
+    const error = urlParams.get('error');
+    
+    if (linked) {
+      setMessage({ type: 'success', text: `${linked.charAt(0).toUpperCase() + linked.slice(1)} account linked successfully!` });
+      // Refresh connected accounts
+      setTimeout(() => fetchConnectedAccounts(), 1000);
+    } else if (error) {
+      const errorMessages = {
+        user_not_found: 'User not found. Please try again.',
+        invalid_token: 'Session expired. Please log in again.',
+        callback_failed: 'Failed to link account. Please try again.'
+      };
+      setMessage({ type: 'error', text: errorMessages[error as keyof typeof errorMessages] || 'An error occurred.' });
+    }
+    
+    // Clear URL parameters
+    if (linked || error) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, [user]);
 
-  const connectedAccounts = [
-    { name: "Google", icon: <Mail className="w-4 h-4 text-red-500" />, linked: true, value: "john.doe@gmail.com" },
+  // Dynamic connected accounts data
+  const accountsData = [
+    { 
+      name: "Google", 
+      key: "google",
+      icon: <Mail className="w-4 h-4 text-red-500" />, 
+      linked: connectedAccounts.google.connected, 
+      value: connectedAccounts.google.email || connectedAccounts.google.name || "" 
+    },
     {
       name: "GitHub",
+      key: "github",
       icon: <Github className="w-4 h-4 text-gray-700 dark:text-white" />,
-      linked: true,
-      value: "johndoe",
+      linked: connectedAccounts.github.connected,
+      value: connectedAccounts.github.username || connectedAccounts.github.name || "",
     },
-    { name: "Facebook", icon: <Facebook className="w-4 h-4 text-blue-600" />, linked: false, value: "" },
+    { 
+      name: "Facebook", 
+      key: "facebook",
+      icon: <Facebook className="w-4 h-4 text-blue-600" />, 
+      linked: connectedAccounts.facebook.connected, 
+      value: connectedAccounts.facebook.email || connectedAccounts.facebook.name || "" 
+    },
   ];
 
   const EditableField = ({
@@ -108,6 +205,27 @@ export const ProfileSection = () => {
 
   return (
     <div className="space-y-6">
+      {/* Success/Error Messages */}
+      {message && (
+        <div className={`p-4 rounded-md ${
+          message.type === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-800' 
+            : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span>{message.text}</span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setMessage(null)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+      
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">Profile Information</CardTitle>
@@ -159,7 +277,7 @@ export const ProfileSection = () => {
           <div className="space-y-3 pt-4">
             <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Connected Accounts</Label>
             <div className="space-y-2">
-              {connectedAccounts.map((acc) => (
+              {accountsData.map((acc) => (
                 <div
                   key={acc.name}
                   className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md"
@@ -177,13 +295,19 @@ export const ProfileSection = () => {
                     <Button
                       size="sm"
                       variant={acc.linked ? "outline" : "secondary"}
+                      disabled={loading}
+                      onClick={() => acc.linked ? handleUnlinkAccount(acc.key) : handleLinkAccount(acc.key)}
                       className={
                         acc.linked
                           ? "text-red-600 border-red-300 dark:border-red-500 hover:bg-red-50 dark:hover:bg-red-900"
                           : "bg-green-600 text-white hover:bg-green-700"
                       }
                     >
-                      {acc.linked ? "Unlink" : "Link"}
+                      {loading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        acc.linked ? "Unlink" : "Link"
+                      )}
                     </Button>
                   </div>
                 </div>

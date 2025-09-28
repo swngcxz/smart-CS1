@@ -128,7 +128,10 @@ export function BinMarker({ bin }: BinMarkerProps) {
                   <div>Weight: {bin.binData.weight_percent || 0}%</div>
                   <div>Distance: {bin.binData.height_percent || 0}%</div>
                   <div>GPS: {bin.binData.gps_valid ? "Valid" : "Invalid"}</div>
-                  <div>Updated: {new Date(bin.binData.timestamp || Date.now()).toLocaleTimeString()}</div>
+                  <div>Updated: {(() => {
+                      const date = new Date(bin.binData.timestamp || Date.now());
+                      return isNaN(date.getTime()) ? 'Invalid timestamp' : date.toLocaleTimeString();
+                    })()}</div>
                 </div>
               </div>
             )}
