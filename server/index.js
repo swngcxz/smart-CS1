@@ -27,6 +27,7 @@ const binNotificationRoutes = require('./routers/binNotificationRoutes');
 const pickupRequestRoutes = require('./routers/pickupRequestRoutes');
 const ratingRoutes = require('./routers/ratingRoutes');
 const feedbackRoutes = require('./routers/feedbackRoutes');
+const performanceRoutes = require('./routers/performanceRoutes');
 const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
 const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
@@ -111,6 +112,7 @@ app.use('/api', binNotificationRoutes);
 app.use('/api', pickupRequestRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/performance', performanceRoutes);
 
 app.use(errorHandler);
 

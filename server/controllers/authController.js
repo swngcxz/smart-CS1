@@ -67,6 +67,8 @@ const getCurrentUser = async (req, res) => {
       role: user.role || user.acc_type || 'user',
       address: user.address || '',
       phone: user.phone || '',
+      bio: user.bio || '',
+      website: user.website || '',
       status: user.status || 'active',
       emailVerified: Boolean(user.emailVerified),
       avatarUrl: user.avatarUrl || '',

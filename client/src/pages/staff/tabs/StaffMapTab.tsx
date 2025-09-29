@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Navigation, Route, Save, Edit } from "lucide-react";
+import { MapPin, Navigation, Route, Save, Edit, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
 import { useUpdateBin } from "@/hooks/useUpdateBin";
 import { useState } from "react";
@@ -23,6 +23,8 @@ export function MapTab() {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [selectedBinId, setSelectedBinId] = useState<string>("");
+  const [selectedRoute, setSelectedRoute] = useState<string>("");
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(true);
 
   // Use ONLY real-time bin locations from database - no hardcoded coordinates
   const updatedLocationData =
@@ -101,6 +103,17 @@ export function MapTab() {
       loadBinForEdit(selectedBin);
     }
   };
+
+  // Handle route selection
+  const handleRouteSelect = (route: string) => {
+    setSelectedRoute(route);
+    toast.success(`${route.charAt(0).toUpperCase() + route.slice(1).replace('-', ' ')} route selected`);
+  };
+
+  // Toggle location dropdown
+  const toggleLocationDropdown = () => {
+    setIsLocationDropdownOpen(!isLocationDropdownOpen);
+  };
   return (
     <div className="space-y-6">
       <div>
@@ -148,26 +161,143 @@ export function MapTab() {
 
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">Routes</CardTitle>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-between p-0 h-auto hover:bg-transparent"
+                onClick={toggleLocationDropdown}
+              >
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <Route className="w-4 h-4" />
+                  Location List
+                </CardTitle>
+                {isLocationDropdownOpen ? (
+                  <ChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                )}
+              </Button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-gray-600 dark:text-gray-300">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Central Plaza</span>
-                  <span className="font-medium">5 Mins</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Park Avenue</span>
-                  <span className="font-medium">7 Mins</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Mall District</span>
-                  <span className="font-medium">10 Mins</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Residential</span>
-                  <span className="font-medium">9 Mins</span>
-                </div>
+            <CardContent className={`transition-all duration-300 ease-in-out ${
+              isLocationDropdownOpen 
+                ? 'max-h-96 opacity-100' 
+                : 'max-h-0 opacity-0 overflow-hidden'
+            }`}>
+              <div className="space-y-3">
+                {/* Central Plaza Route */}
+                <Button 
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 ${
+                    selectedRoute === "central-plaza" 
+                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" 
+                      : "border-blue-200 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-500 bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                  }`}
+                  onClick={() => handleRouteSelect("central-plaza")}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="flex-shrink-0">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">Central Plaza</div>
+                      <div className="text-xs opacity-90">Downtown business district</div>
+                    </div>
+                    <Badge 
+                      className={`text-xs ${
+                        selectedRoute === "central-plaza" 
+                          ? "bg-green-600 text-white" 
+                          : "bg-blue-600 text-white"
+                      }`}
+                    >
+                      Active
+                    </Badge>
+                  </div>
+                </Button>
+                
+                {/* Park Avenue Route */}
+                <Button 
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 ${
+                    selectedRoute === "park-avenue" 
+                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" 
+                      : "border-emerald-200 dark:border-emerald-700 hover:border-emerald-400 dark:hover:border-emerald-500 bg-transparent hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
+                  }`}
+                  onClick={() => handleRouteSelect("park-avenue")}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="flex-shrink-0">
+                      <Navigation className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">Park Avenue</div>
+                      <div className="text-xs opacity-90">Scenic residential area</div>
+                    </div>
+                    <Badge 
+                      className={`text-xs ${
+                        selectedRoute === "park-avenue" 
+                          ? "bg-green-600 text-white" 
+                          : "bg-emerald-600 text-white"
+                      }`}
+                    >
+                      Active
+                    </Badge>
+                  </div>
+                </Button>
+                
+                {/* Mall District Route */}
+                <Button 
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 ${
+                    selectedRoute === "mall-district" 
+                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" 
+                      : "border-purple-200 dark:border-purple-700 hover:border-purple-400 dark:hover:border-purple-500 bg-transparent hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-300"
+                  }`}
+                  onClick={() => handleRouteSelect("mall-district")}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="flex-shrink-0">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">Mall District</div>
+                      <div className="text-xs opacity-90">Shopping and entertainment</div>
+                    </div>
+                    <Badge 
+                      className={`text-xs ${
+                        selectedRoute === "mall-district" 
+                          ? "bg-green-600 text-white" 
+                          : "bg-purple-600 text-white"
+                      }`}
+                    >
+                      Active
+                    </Badge>
+                  </div>
+                </Button>
+                
+                {/* Residential Route */}
+                <Button 
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 ${
+                    selectedRoute === "residential" 
+                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" 
+                      : "border-orange-200 dark:border-orange-700 hover:border-orange-400 dark:hover:border-orange-500 bg-transparent hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-700 dark:text-orange-300"
+                  }`}
+                  onClick={() => handleRouteSelect("residential")}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="flex-shrink-0">
+                      <Route className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">Residential</div>
+                      <div className="text-xs opacity-90">Housing communities</div>
+                    </div>
+                    <Badge 
+                      className={`text-xs ${
+                        selectedRoute === "residential" 
+                          ? "bg-green-600 text-white" 
+                          : "bg-orange-600 text-white"
+                      }`}
+                    >
+                      Active
+                    </Badge>
+                  </div>
+                </Button>
               </div>
             </CardContent>
           </Card>

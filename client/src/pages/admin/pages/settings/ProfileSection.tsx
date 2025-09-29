@@ -11,7 +11,7 @@ import api from "@/lib/api";
 
 export const ProfileSection = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
-  const { user } = useCurrentUser();
+  const { user, refreshUser } = useCurrentUser();
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -31,16 +31,88 @@ export const ProfileSection = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleEdit = (field: string) => setIsEditing(field);
-  const handleSave = (field: string, value: string) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
-    setIsEditing(null);
+  
+  const handleSave = async (field: string, value: string) => {
+    try {
+      setLoading(true);
+      
+      // Prepare the update data - map frontend field names to backend field names
+      const fieldMapping: { [key: string]: string } = {
+        name: 'fullName',
+        phone: 'phone',
+        location: 'address',
+        bio: 'bio',
+        website: 'website'
+      };
+      
+      const backendField = fieldMapping[field] || field;
+      const updateData = { [backendField]: value };
+      
+      // Call the backend API to update the user profile
+      const response = await api.patch('/auth/me', updateData);
+      
+      if (response.data.message) {
+        // Update local state immediately for better UX
+        setProfile((prev) => ({ ...prev, [field]: value }));
+        setIsEditing(null);
+        
+        // Refresh user data from backend to get the latest information
+        await refreshUser();
+        
+        // Show success message
+        setMessage({ type: 'success', text: 'Profile updated successfully!' });
+        
+        // Clear message after 3 seconds
+        setTimeout(() => setMessage(null), 3000);
+      }
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.response?.data?.error || 'Failed to update profile. Please try again.' 
+      });
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => setMessage(null), 5000);
+    } finally {
+      setLoading(false);
+    }
   };
-  const handleCancel = () => setIsEditing(null);
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  
+  const handleCancel = () => {
+    setIsEditing(null);
+    setMessage(null); // Clear any existing messages when canceling
+  };
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // For now, we'll convert the file to a data URL and save it as avatarUrl
+      // In a production app, you'd upload this to a cloud storage service
       const reader = new FileReader();
-      reader.onloadend = () => setImageUrl(reader.result as string);
+      reader.onloadend = async () => {
+        const dataUrl = reader.result as string;
+        setImageUrl(dataUrl);
+        
+        try {
+          setLoading(true);
+          const response = await api.patch('/auth/me', { avatarUrl: dataUrl });
+          
+          if (response.data.message) {
+            await refreshUser();
+            setMessage({ type: 'success', text: 'Profile picture updated successfully!' });
+            setTimeout(() => setMessage(null), 3000);
+          }
+        } catch (error: any) {
+          console.error('Error updating profile picture:', error);
+          setMessage({ 
+            type: 'error', 
+            text: 'Failed to update profile picture. Please try again.' 
+          });
+          setTimeout(() => setMessage(null), 5000);
+        } finally {
+          setLoading(false);
+        }
+      };
       reader.readAsDataURL(file);
     }
   };
@@ -101,9 +173,9 @@ export const ProfileSection = () => {
       name: user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" "),
       email: user.email || "",
       phone: user.phone || "",
-      bio: "",
+      bio: user.bio || "",
       location: user.address || "",
-      website: "",
+      website: user.website || "",
     });
     setImageUrl(user.avatarUrl || "");
     
@@ -171,29 +243,77 @@ export const ProfileSection = () => {
     type?: string;
   }) => {
     const [tempValue, setTempValue] = useState(value);
+    
+    // Update tempValue when the actual value changes (e.g., from backend updates)
+    useEffect(() => {
+      setTempValue(value);
+    }, [value]);
+    
     return (
       <div className="space-y-2">
         <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</Label>
         {isEditing === field ? (
-          <div className="flex items-center gap-2">
-            <Input type={type} value={tempValue} onChange={(e) => setTempValue(e.target.value)} className="flex-1" />
-            <Button size="sm" onClick={() => handleSave(field, tempValue)} className="bg-green-600 hover:bg-green-700">
-              <Save className="w-4 h-4" />
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleCancel}>
-              <X className="w-4 h-4" />
-            </Button>
+          <div className="flex flex-col gap-2">
+            {field === 'bio' ? (
+              <textarea 
+                value={tempValue} 
+                onChange={(e) => setTempValue(e.target.value)} 
+                className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-none"
+                rows={3}
+                disabled={loading}
+                placeholder="Tell us about yourself..."
+              />
+            ) : (
+              <Input 
+                type={type} 
+                value={tempValue} 
+                onChange={(e) => setTempValue(e.target.value)} 
+                className="flex-1"
+                disabled={loading}
+              />
+            )}
+            <div className="flex items-center gap-2">
+              <Button 
+                size="sm" 
+                onClick={() => handleSave(field, tempValue)} 
+                className="bg-green-600 hover:bg-green-700"
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleCancel}
+                disabled={loading}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 group">
-            <span className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
-              {value}
-            </span>
+          <div className="flex items-start gap-2 group">
+            <div className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md min-h-[40px]">
+              {field === 'bio' ? (
+                value ? (
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{value}</p>
+                ) : (
+                  <span className="text-slate-400 italic text-sm">Not set</span>
+                )
+              ) : (
+                value || <span className="text-slate-400 italic">Not set</span>
+              )}
+            </div>
             <Button
               size="sm"
               variant="ghost"
               onClick={() => handleEdit(field)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              className="opacity-60 hover:opacity-100 transition-opacity mt-1"
+              disabled={loading}
             >
               <Pencil className="w-4 h-4" />
             </Button>
@@ -243,8 +363,13 @@ export const ProfileSection = () => {
                 onClick={triggerFileSelect}
                 size="sm"
                 className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0 bg-blue-600 hover:bg-blue-700"
+                disabled={loading}
               >
-                <Camera className="w-4 h-4" />
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4" />
+                )}
               </Button>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </div>

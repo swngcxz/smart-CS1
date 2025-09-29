@@ -142,16 +142,16 @@ const FeedbackSection = () => {
     fetchTestimonials();
   }, []);
 
-  // Auto-scroll animation for testimonials
+  // Auto-scroll animation for testimonials - one by one
   useEffect(() => {
     if (testimonials.length <= 3) return; // Only animate if we have more than 3 testimonials
 
     const interval = setInterval(() => {
       setCurrentIndex((prevIndex) => {
-        const nextIndex = (prevIndex + 1) % (testimonials.length - 2); // -2 to show 3 at a time
+        const nextIndex = (prevIndex + 1) % testimonials.length; // Move one by one through all testimonials
         return nextIndex;
       });
-    }, 4000); // Change every 4 seconds
+    }, 3000); // Change every 3 seconds for smoother one-by-one movement
 
     return () => clearInterval(interval);
   }, [testimonials.length]);
@@ -203,15 +203,18 @@ const FeedbackSection = () => {
     }
   };
 
-  // Get current testimonials to display (3 at a time with animation)
+  // Get current testimonials to display (one-by-one animation)
   const getCurrentTestimonials = () => {
     if (testimonials.length <= 3) {
       return testimonials;
     }
     
-    // Show 3 testimonials starting from currentIndex
-    const endIndex = Math.min(currentIndex + 3, testimonials.length);
-    return testimonials.slice(currentIndex, endIndex);
+    // Create array with current testimonial and 2 others for smooth one-by-one transition
+    const currentTestimonial = testimonials[currentIndex];
+    const prevIndex = currentIndex === 0 ? testimonials.length - 1 : currentIndex - 1;
+    const nextIndex = (currentIndex + 1) % testimonials.length;
+    
+    return [testimonials[prevIndex], currentTestimonial, testimonials[nextIndex]];
   };
 
   return (
@@ -250,59 +253,53 @@ const FeedbackSection = () => {
               ))}
             </div>
           ) : (
-            <div 
-              className={`grid grid-cols-1 md:grid-cols-3 gap-8 transition-all duration-1000 ease-in-out ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-              }`}
-              style={{
-                transform: testimonials.length > 3 
-                  ? `translateX(-${currentIndex * (100 / 3)}%)` 
-                  : 'translateX(0)'
-              }}
-            >
-              {getCurrentTestimonials().map((testimonial, index) => (
-                <Card
-                  key={testimonial.id}
-                  className="border-green-100 dark:border-slate-700 dark:bg-slate-800 hover:shadow-lg transition-all duration-300 flex-shrink-0"
-                  style={{ transitionDelay: `${index * 100}ms` }}
-                >
-                  <CardHeader>
-                    <div className="flex items-center space-x-1 mb-4">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                      ))}
-                    </div>
-                    <CardDescription className="text-gray-700 dark:text-gray-300 italic">
-                      "{testimonial.content}"
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">{testimonial.name}</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">{testimonial.role}</div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 transition-all duration-700 ${
+              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
+            }`}>
+              {getCurrentTestimonials().map((testimonial, index) => {
+                // Determine animation style based on position
+                const isCenter = index === 1;
+                const isLeft = index === 0;
+                const isRight = index === 2;
+                
+                return (
+                  <Card
+                    key={`${testimonial.id}-${currentIndex}-${index}`}
+                    className={`border-green-100 dark:border-slate-700 dark:bg-slate-800 hover:shadow-lg transition-all duration-700 ease-in-out ${
+                      isCenter 
+                        ? 'scale-105 shadow-xl ring-2 ring-green-200 dark:ring-green-800' 
+                        : 'scale-95 opacity-70'
+                    }`}
+                    style={{
+                      transitionDelay: `${index * 150}ms`,
+                      transform: isLeft ? 'translateX(-20px) rotateY(-10deg)' : 
+                                isRight ? 'translateX(20px) rotateY(10deg)' : 
+                                'translateX(0) rotateY(0deg)',
+                      zIndex: isCenter ? 10 : 1
+                    }}
+                  >
+                    <CardHeader>
+                      <div className="flex items-center space-x-1 mb-4">
+                        {[...Array(testimonial.rating)].map((_, i) => (
+                          <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
+                        ))}
+                      </div>
+                      <CardDescription className="text-gray-700 dark:text-gray-300 italic">
+                        "{testimonial.content}"
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div>
+                        <div className="font-semibold text-gray-900 dark:text-white">{testimonial.name}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">{testimonial.role}</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
           
-          {/* Animation indicators for multiple testimonials */}
-          {testimonials.length > 3 && !testimonialsLoading && (
-            <div className="flex justify-center mt-6 space-x-2">
-              {Array.from({ length: testimonials.length - 2 }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                    index === currentIndex 
-                      ? 'bg-green-600 scale-125' 
-                      : 'bg-gray-300 hover:bg-gray-400'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Feedback Form */}
