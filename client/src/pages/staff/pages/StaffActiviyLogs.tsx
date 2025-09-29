@@ -537,23 +537,23 @@ export function StaffActivityLogs() {
                           {activity.assigned_janitor_name && activity.assigned_janitor_name.trim() !== "" ? (
                             <div className="flex items-center gap-2">
                               <User className="w-4 h-4 text-gray-500" />
-                              <div
-                                className="font-medium text-sm"
-                                title={`Assigned to: ${activity.assigned_janitor_name}`}
-                              >
-                                {activity.assigned_janitor_name}
-                              </div>
+                            <div
+                              className="font-medium text-sm"
+                              title={`Assigned to: ${activity.assigned_janitor_name}`}
+                            >
+                              {activity.assigned_janitor_name}
                             </div>
+                                            </div>
                           ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
+                                    <Button
+                                      variant="outline"
+                                  size="sm"
                               className="h-8 px-3 text-xs bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
                               onClick={() => handleAssignJanitor(activity)}
-                            >
+                                >
                               <Plus className="w-3 h-3 mr-1" />
-                              Assign
-                            </Button>
+                                  Assign
+                                </Button>
                           )}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-sm text-gray-900 dark:text-white">
@@ -685,11 +685,11 @@ export function StaffActivityLogs() {
 
                       <div>
                         <span className="font-medium text-gray-500 dark:text-gray-400">Assigned To:</span>
-                        <div className="text-gray-900 dark:text-white">
+                          <div className="text-gray-900 dark:text-white">
                           {activity.assigned_janitor_name && activity.assigned_janitor_name.trim() !== "" 
                             ? activity.assigned_janitor_name 
                             : "Unassigned"}
-                        </div>
+                          </div>
                       </div>
 
                       <div>
