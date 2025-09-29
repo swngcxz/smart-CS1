@@ -606,7 +606,10 @@ export function WasteLevelsTab() {
             {/* Data Details */}
             {bin1Data && (
               <div className="text-xs text-gray-600 dark:text-gray-400">
-                | Updated: {new Date(bin1Data.timestamp || Date.now()).toLocaleTimeString()}
+                | Updated: {(() => {
+                    const date = new Date(bin1Data.timestamp || Date.now());
+                    return isNaN(date.getTime()) ? 'Invalid timestamp' : date.toLocaleTimeString();
+                  })()}
               </div>
             )}
           </div>
@@ -736,6 +739,45 @@ export function WasteLevelsTab() {
 
               <div className="mt-2">
                 <strong>Last Collected:</strong> {selectedBin.lastCollected}
+              </div>
+
+              {/* Live Metrics: Weight / Height / GPS */}
+              <div className="col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                {/* Weight */}
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Weight</div>
+                  <div className="text-base font-semibold text-gray-900 dark:text-white">
+                    {(bin1Data?.weight_kg ?? 0).toFixed(3)} kg
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+                    <div
+                      className={`h-2 rounded-full ${((bin1Data?.weight_percent ?? 0) >= 60) ? 'bg-yellow-500' : ((bin1Data?.weight_percent ?? 0) >= 90) ? 'bg-red-500' : 'bg-green-500'}`}
+                      style={{ width: `${Math.max(0, Math.min(100, bin1Data?.weight_percent ?? 0))}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Height */}
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Height</div>
+                  <div className="text-base font-semibold text-gray-900 dark:text-white">
+                    {Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+                    <div
+                      className={`h-2 rounded-full ${(Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0)) >= 60) ? 'bg-yellow-500' : (Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0)) >= 90) ? 'bg-red-500' : 'bg-green-500'}`}
+                      style={{ width: `${Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* GPS Status */}
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">GPS Status</div>
+                  <div className={`text-base font-semibold ${bin1Data?.gps_valid ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
+                    {bin1Data?.gps_valid ? 'Online' : 'Offline'} ({bin1Data?.satellites ?? 0} satellites)
+                  </div>
+                </div>
               </div>
             </div>
 

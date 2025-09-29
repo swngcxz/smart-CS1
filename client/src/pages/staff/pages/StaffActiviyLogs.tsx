@@ -57,17 +57,17 @@ export function StaffActivityLogs() {
 
   const getActivityTypeColor = (type: string) => {
     switch (type) {
-      case "task_assignment":
+      case "Task_assignment":
         return "bg-blue-100 text-blue-800 orange:bg-blue-900 orange:text-blue-200";
-      case "bin_emptied":
+      case "Bin_emptied":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "maintenance":
+      case "Maintenance":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "route_change":
+      case "Route_change":
         return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      case "schedule_update":
+      case "Schedule_update":
         return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200";
-      case "bin_alert":
+      case "Bin_alert":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
@@ -76,11 +76,11 @@ export function StaffActivityLogs() {
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case "pending":
+      case "Pending":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "in_progress":
+      case "Inprogress":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "done":
+      case "Done":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
@@ -89,28 +89,53 @@ export function StaffActivityLogs() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority?.toLowerCase()) {
-      case "low":
+      case "Low":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "medium":
+      case "Medium":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "high":
+      case "High":
         return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
-      case "urgent":
+      case "Urgent":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
 
+  // Utility function to parse various timestamp formats
+  const parseTimestamp = (timestamp: string): Date | null => {
+    if (!timestamp || timestamp === 'Invalid Date' || timestamp === 'null' || timestamp === 'undefined') {
+      return null;
+    }
+
+    // Try different timestamp formats
+    let date = new Date(timestamp);
+    
+    // If the first attempt fails, try parsing as ISO string or Unix timestamp
+    if (isNaN(date.getTime())) {
+      // Try as Unix timestamp (seconds or milliseconds)
+      const numTimestamp = Number(timestamp);
+      if (!isNaN(numTimestamp)) {
+        // If it's a Unix timestamp in seconds, convert to milliseconds
+        date = new Date(numTimestamp > 1000000000000 ? numTimestamp : numTimestamp * 1000);
+      } else {
+        // Try parsing with different formats
+        date = new Date(timestamp.replace(' ', 'T')); // Handle space instead of T
+      }
+    }
+
+    return isNaN(date.getTime()) ? null : date;
+  };
+
   const formatTimestamp = (timestamp: string) => {
-    if (!timestamp) return "N/A";
-    const date = new Date(timestamp);
+    const date = parseTimestamp(timestamp);
+    if (!date) return "N/A";
     return date.toLocaleString();
   };
 
   const formatDisplayDate = (timestamp: string) => {
-    if (!timestamp) return "N/A";
-    const date = new Date(timestamp);
+    const date = parseTimestamp(timestamp);
+    if (!date) return "N/A";
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -119,8 +144,8 @@ export function StaffActivityLogs() {
   };
 
   const formatDisplayTime = (timestamp: string) => {
-    if (!timestamp) return "N/A";
-    const date = new Date(timestamp);
+    const date = parseTimestamp(timestamp);
+    if (!date) return "N/A";
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
@@ -284,8 +309,10 @@ export function StaffActivityLogs() {
 
       switch (sortField) {
         case "timestamp":
-          aValue = new Date(a.timestamp).getTime();
-          bValue = new Date(b.timestamp).getTime();
+          const aDate = parseTimestamp(a.timestamp);
+          const bDate = parseTimestamp(b.timestamp);
+          aValue = aDate ? aDate.getTime() : 0;
+          bValue = bDate ? bDate.getTime() : 0;
           break;
         case "activity_type":
           aValue = a.activity_type || "";
@@ -467,16 +494,6 @@ export function StaffActivityLogs() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleSort("status")}
-                          className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-slate-100/50 dark:hover:bg-slate-700/30"
-                        >
-                          Status {getSortIcon("status")}
-                        </Button>
-                      </TableHead>
-                      <TableHead className="w-[8%]">
-                        <Button
-                          variant="ghost"
-                          size="sm"
                           onClick={() => handleSort("priority")}
                           className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-slate-100/50 dark:hover:bg-slate-700/30"
                         >
@@ -484,6 +501,16 @@ export function StaffActivityLogs() {
                         </Button>
                       </TableHead>
                       <TableHead className="w-[10%]">Details</TableHead>
+                      <TableHead className="w-[8%]">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSort("status")}
+                          className="flex items-center gap-1 p-0 h-auto font-semibold text-left w-full justify-start hover:bg-slate-100/50 dark:hover:bg-slate-700/30"
+                        >
+                          Status {getSortIcon("status")}
+                        </Button>
+                      </TableHead>
                       <TableHead className="w-[10%]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -572,16 +599,6 @@ export function StaffActivityLogs() {
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           <Badge
-                            className={`${getStatusColor(
-                              activity.status
-                            )} text-xs px-3 py-1 font-medium transition-all duration-200`}
-                            title={`Status: ${activity.display_status || activity.status || "Pending"}`}
-                          >
-                            {activity.display_status || activity.status || "Pending"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-4 py-3">
-                          <Badge
                             className={`${getPriorityColor(activity.priority)} text-xs px-3 py-1 font-medium`}
                             title={`Priority: ${activity.display_priority || activity.priority || "Low"}`}
                           >
@@ -608,6 +625,16 @@ export function StaffActivityLogs() {
                               </div>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <Badge
+                            className={`${getStatusColor(
+                              activity.status
+                            )} text-xs px-3 py-1 font-medium transition-all duration-200`}
+                            title={`Status: ${activity.display_status || activity.status || "Pending"}`}
+                          >
+                            {activity.display_status || activity.status || "Pending"}
+                          </Badge>
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           <DropdownMenu>
@@ -654,11 +681,11 @@ export function StaffActivityLogs() {
                           >
                             {activity.activity_type?.replace("_", " ") || "unknown"}
                           </Badge>
-                          <Badge className={`${getStatusColor(activity.status)} text-xs px-2 py-1`}>
-                            {activity.display_status || activity.status || "Pending"}
-                          </Badge>
                           <Badge className={`${getPriorityColor(activity.priority)} text-xs px-2 py-1`}>
                             {activity.display_priority || activity.priority || "Low"}
+                          </Badge>
+                          <Badge className={`${getStatusColor(activity.status)} text-xs px-2 py-1`}>
+                            {activity.display_status || activity.status || "Pending"}
                           </Badge>
                         </div>
                         <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">

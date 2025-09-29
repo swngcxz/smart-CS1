@@ -10,6 +10,8 @@ export type CurrentUser = {
   role: string;
   address?: string;
   phone?: string;
+  bio?: string;
+  website?: string;
   status?: string;
   emailVerified?: boolean;
   avatarUrl?: string;
@@ -23,27 +25,30 @@ export function useCurrentUser() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchUser = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get<CurrentUser>("/auth/me");
+      setUser(res.data);
+      setError(null);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to load user");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     (async () => {
-      try {
-        const res = await api.get<CurrentUser>("/auth/me");
-        if (!isMounted) return;
-        setUser(res.data);
-        setError(null);
-      } catch (err: any) {
-        if (!isMounted) return;
-        setError(err?.response?.data?.error || "Failed to load user");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+      await fetchUser();
     })();
     return () => {
       isMounted = false;
     };
   }, []);
 
-  return { user, loading, error };
+  return { user, loading, error, refreshUser: fetchUser };
 }
 
 

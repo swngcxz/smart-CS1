@@ -1,11 +1,12 @@
 const express = require("express");
-const { saveBinData, getAllBins, assignBinTask  } = require("../controllers/binController");
+const { saveBinData, getAllBins, assignBinTask, updateBinDetails  } = require("../controllers/binController");
 const { getBinCollectionSummary } = require("../controllers/getBinCollectionSummary");
 const { admin } = require("../models/firebase");
 const router = express.Router();
 
 router.post("/bins", saveBinData);
 router.get("/bins", getAllBins);
+router.put("/bins/:binId", updateBinDetails);
 router.post("/assign-task", assignBinTask);
 
 router.get("/collection-summary", getBinCollectionSummary);

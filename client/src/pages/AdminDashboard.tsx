@@ -10,6 +10,8 @@ import { ActivityTab } from "./admin/tabs/ActivityTab";
 import { HistoryLogsTab } from "./admin/tabs/HistoryLogsTab";
 import { SettingsTab } from "./admin/tabs/SettingsTab";
 import { ScheduleCollectionTabs } from "./admin/tabs/ScheduleCollectionTabs";
+import { BinHistory } from "./admin/pages/BinHistory";
+import { PerformanceTab } from "./admin/tabs/PerformanceTab";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 
 const AdminDashboard = () => {
@@ -26,12 +28,16 @@ const AdminDashboard = () => {
         return <MapTab />;
       case "staff":
         return <StaffTab />;
-        case "schedule":
+      case "performance":
+        return <PerformanceTab />;
+      case "schedule":
         return <ScheduleCollectionTabs />;
       case "activity":
         return <ActivityTab />;
       case "history":
         return <HistoryLogsTab />;
+      case "bin-history":
+        return <BinHistory />;
       case "settings":
         return <SettingsTab />;
       default:

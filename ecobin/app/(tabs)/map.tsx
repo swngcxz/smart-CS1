@@ -50,7 +50,7 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [selectedBin, setSelectedBin] = useState<BinLocation | null>(null);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
   const router = useRouter();
 
@@ -58,14 +58,19 @@ export default function MapScreen() {
   useEffect(() => {
     if (binLocations.length > 0) {
       const firstBin = binLocations[0];
-      setRegion({
+      const newRegion = {
         latitude: firstBin.position[0],
         longitude: firstBin.position[1],
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
-      });
+      };
+      
+      // Only update if the region has actually changed
+      if (region.latitude !== newRegion.latitude || region.longitude !== newRegion.longitude) {
+        setRegion(newRegion);
+      }
     }
-  }, [binLocations]);
+  }, [binLocations, region.latitude, region.longitude]);
 
   // Function to get user's current location
   const findMyLocation = async () => {
@@ -164,9 +169,11 @@ export default function MapScreen() {
             Last update: {new Date(lastUpdate).toLocaleTimeString()}
           </Text>
         )}
-        {!isGPSValid() && (
+        {bin1Data && (
           <Text style={styles.gpsStatusText}>
-            🛰️ GPS Status: Waiting for satellite connection
+            🛰️ GPS Status: {bin1Data.coordinates_source === 'gps_live' ? 'Live GPS' : 
+                           bin1Data.coordinates_source === 'gps_cached' ? 'Cached GPS' : 
+                           'Waiting for satellite connection'}
           </Text>
         )}
       </View>
@@ -180,13 +187,13 @@ export default function MapScreen() {
       )}
 
       {/* GPS Status Message */}
-      {!isGPSValid() && (
+      {bin1Data && bin1Data.coordinates_source === 'no_data' && (
         <View style={styles.gpsWarningContainer}>
           <Text style={styles.gpsWarningText}>
             🛰️ GPS Not Connected
           </Text>
           <Text style={styles.gpsSubText}>
-            Waiting for satellite connection... Bins will appear when GPS is available.
+            Waiting for satellite connection... Bin will appear when GPS is available.
           </Text>
         </View>
       )}
@@ -228,14 +235,17 @@ export default function MapScreen() {
         ))}
 
         {/* GPS Marker for real-time location */}
-        {bin1Data && (
+        {bin1Data && bin1Data.latitude && bin1Data.longitude && (
           <GPSMarker
             gpsData={{
               latitude: bin1Data.latitude,
               longitude: bin1Data.longitude,
               gps_valid: bin1Data.gps_valid,
               satellites: bin1Data.satellites,
-              timestamp: new Date(bin1Data.timestamp).toISOString()
+              timestamp: new Date(bin1Data.timestamp).toISOString(),
+              coordinates_source: bin1Data.coordinates_source,
+              last_active: bin1Data.last_active,
+              gps_timestamp: bin1Data.gps_timestamp
             }}
           />
         )}
@@ -256,7 +266,11 @@ export default function MapScreen() {
 
       {/* Location Finder Button */}
       <TouchableOpacity
-        style={[styles.locationButton, isLocating && styles.locationButtonLoading]}
+        style={[
+          styles.locationButton, 
+          isLocating && styles.locationButtonLoading,
+          selectedBin && styles.locationButtonWithSelection
+        ]}
         onPress={findMyLocation}
         disabled={isLocating}
       >
@@ -457,6 +471,9 @@ const styles = StyleSheet.create({
   },
   locationButtonLoading: {
     backgroundColor: '#9ca3af',
+  },
+  locationButtonWithSelection: {
+    bottom: 120, // Move up when bin details are shown
   },
   locationButtonText: {
     fontSize: 24,

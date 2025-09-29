@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card"
-import { MessageSquare, Archive, Star } from "lucide-react"
+import { MessageSquare, Archive, Star, Loader2 } from "lucide-react"
 
 interface FeedbackStatsProps {
   stats: {
@@ -8,16 +8,33 @@ interface FeedbackStatsProps {
     archived: number
     avgRating: number
   }
+  loading?: boolean
 }
 
-const FeedbackStats = ({ stats }: FeedbackStatsProps) => {
+const FeedbackStats = ({ stats, loading = false }: FeedbackStatsProps) => {
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star 
         key={i} 
-        className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+        className={`w-4 h-4 ${i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
       />
     ))
+  }
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
   }
 
   return (

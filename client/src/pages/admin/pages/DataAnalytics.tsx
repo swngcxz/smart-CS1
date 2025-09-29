@@ -1,98 +1,133 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp } from "lucide-react";
-import { useRealTimeData } from "@/hooks/useRealTimeData";
+import { BarChart3, TrendingUp, Calendar, AlertTriangle, Route } from "lucide-react";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
 
 export function DataAnalytics() {
-  const { wasteBins, loading, error } = useRealTimeData();
+  const [timeFilter, setTimeFilter] = useState("This Week");
+  const { analyticsData, isLoading, error } = useAnalytics(timeFilter);
 
-  // Calculate real-time statistics
-  const calculateStats = () => {
-    if (wasteBins.length === 0) {
-      return {
-        totalBins: 0,
-        criticalBins: 0,
-        warningBins: 0,
-        normalBins: 0,
-        averageLevel: 0,
-        totalWeight: 0
-      };
-    }
-
-    const criticalBins = wasteBins.filter(bin => bin.status === 'critical').length;
-    const warningBins = wasteBins.filter(bin => bin.status === 'warning').length;
-    const normalBins = wasteBins.filter(bin => bin.status === 'normal').length;
-    const averageLevel = Math.round(wasteBins.reduce((sum, bin) => sum + bin.level, 0) / wasteBins.length);
-    const totalWeight = wasteBins.reduce((sum, bin) => {
-      return sum + (bin.binData?.weight_kg || 0);
-    }, 0);
-
-    return {
-      totalBins: wasteBins.length,
-      criticalBins,
-      warningBins,
-      normalBins,
-      averageLevel,
-      totalWeight: Math.round(totalWeight)
-    };
-  };
-
-  const stats = calculateStats();
+  const timeFilterOptions = [
+    { value: "This Week", label: "This Week" },
+    { value: "This Month", label: "This Month" },
+    { value: "This Year", label: "This Year" }
+  ];
 
   return (
-    <Card className="h-96 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-          Waste Analytics
-          {loading && <span className="text-sm text-gray-500">(Loading...)</span>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900 rounded-lg">
-              <p className="text-sm text-red-600 dark:text-red-300">Error: {error}</p>
-            </div>
-          )}
+    <div className="space-y-6">
+      {/* Header with Time Filter */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Waste Analytics & Reports</h2>
+        <Select value={timeFilter} onValueChange={setTimeFilter}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {timeFilterOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-          <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900 rounded-lg">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Today's Collection</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.totalWeight} kg</p>
+      {/* Analytics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Collections */}
+        <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {timeFilter === "This Week" ? "Weekly Collections" : 
+                   timeFilter === "This Month" ? "Monthly Collections" : 
+                   "Yearly Collections"}
+                </p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {isLoading ? "..." : (
+                    timeFilter === "This Week" ? (analyticsData.weeklyCollections || 0) :
+                    timeFilter === "This Month" ? (analyticsData.monthlyCollections || 0) :
+                    (analyticsData.yearlyCollections || 0)
+                  )}
+                </p>
+              </div>
+              <Calendar className="w-8 h-8 text-green-600" />
             </div>
-            <TrendingUp className="w-8 h-8 text-blue-600" />
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Organic Waste</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{stats.normalBins > 0 ? Math.round((stats.normalBins / stats.totalBins) * 100) : 45}%</span>
+        {/* Average Fill Level */}
+        <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Average Fill Level</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {isLoading ? "..." : `${analyticsData.averageFillLevel || 0}%`}
+                </p>
+              </div>
+              <BarChart3 className="w-8 h-8 text-blue-600" />
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div className="bg-green-500 h-2 rounded-full" style={{ width: `${stats.normalBins > 0 ? (stats.normalBins / stats.totalBins) * 100 : 45}%` }}></div>
-            </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Recyclable</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{stats.warningBins > 0 ? Math.round((stats.warningBins / stats.totalBins) * 100) : 35}%</span>
+        {/* Critical Bins */}
+        <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Critical Bins</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {isLoading ? "..." : (analyticsData.criticalBins || 0)}
+                </p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${stats.warningBins > 0 ? (stats.warningBins / stats.totalBins) * 100 : 35}%` }}></div>
-            </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-300">General Waste</span>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{stats.criticalBins > 0 ? Math.round((stats.criticalBins / stats.totalBins) * 100) : 20}%</span>
+        {/* Route Efficiency */}
+        <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Route Efficiency</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {isLoading ? "..." : `${analyticsData.routeEfficiency || 0}%`}
+                </p>
+              </div>
+              <Route className="w-8 h-8 text-purple-600" />
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div className="bg-gray-500 h-2 rounded-full" style={{ width: `${stats.criticalBins > 0 ? (stats.criticalBins / stats.totalBins) * 100 : 20}%` }}></div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Debug Information */}
+      {process.env.NODE_ENV === 'development' && (
+        <Card className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <CardContent className="p-4">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Debug Info:</h3>
+            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+              <p>Time Filter: {timeFilter}</p>
+              <p>Loading: {isLoading ? 'Yes' : 'No'}</p>
+              <p>Data: {JSON.stringify(analyticsData, null, 2)}</p>
             </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <Card className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+          <CardContent className="p-4">
+            <p className="text-sm text-red-600 dark:text-red-400">
+              Error loading analytics data: {error.message}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

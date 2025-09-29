@@ -18,10 +18,11 @@ class AutomaticTaskService {
     if (binLevel < 85) {
       // Reset threshold flag when bin goes below 84% (not 85%)
       if (binLevel < 84) {
-        this.thresholdCrossed.delete(binId);
+        const thresholdKeyReset = `${binId}_threshold_crossed`;
+        this.thresholdCrossed.delete(thresholdKeyReset);
         console.log(`[AUTOMATIC TASK] Reset threshold flag for ${binId} - bin level ${binLevel}% below 84%`);
       }
-      return { success: false, reason: 'Bin level below threshold' };
+      return { success: false, reason: 'Bin level below threshold', message: 'Below threshold' };
     }
 
     // Check if we've already crossed the threshold for this bin recently (within last 5 minutes)
@@ -42,7 +43,7 @@ class AutomaticTaskService {
     
     if (this.createdTasks.has(taskKey)) {
       console.log(`[AUTOMATIC TASK] Task already created for ${binId} at ${binLevel}% (range ${levelRange}%)`);
-      return { success: false, reason: 'Task already created' };
+      return { success: false, reason: 'Task already created', message: 'Duplicate suppressed (memory)' };
     }
 
     // Additional check: Look for existing pending tasks for this bin
@@ -101,8 +102,26 @@ class AutomaticTaskService {
         source: 'automatic_monitoring'
       };
 
-      // Save to activity logs collection
-      const docRef = await db.collection('activitylogs').add(taskData);
+      // Save to activity logs collection using idempotent document id
+      // Use Firestore create() so it fails if document already exists
+      const docRefId = taskKey;
+      try {
+        const docRef = db.collection('activitylogs').doc(docRefId);
+        const existing = await docRef.get();
+        if (existing.exists) {
+          this.createdTasks.add(taskKey);
+          console.log(`[AUTOMATIC TASK] Found existing doc ${docRefId}, skipping create`);
+          return { success: false, reason: 'Task already exists', message: 'Duplicate suppressed (pre-exists)' };
+        }
+        await docRef.create(taskData);
+      } catch (e) {
+        if (e.code === 6 || e.message?.includes('ALREADY_EXISTS')) { // already exists
+          this.createdTasks.add(taskKey);
+          console.log(`[AUTOMATIC TASK] Skipped creating duplicate task doc ${docRefId}`);
+          return { success: false, reason: 'Task already exists', message: 'Duplicate suppressed (firestore)' };
+        }
+        throw e;
+      }
       
       // Mark task as created
       this.createdTasks.add(taskKey);
@@ -114,11 +133,11 @@ class AutomaticTaskService {
         keysArray.slice(-50).forEach(key => this.createdTasks.add(key));
       }
 
-      console.log(`[AUTOMATIC TASK] ✅ Created task ${docRef.id} for ${binId} at ${binLevel}%`);
+      console.log(`[AUTOMATIC TASK] ✅ Created task ${docRefId} for ${binId} at ${binLevel}%`);
       
       // Send built-in notification
       await this.sendTaskCreatedNotification({
-        taskId: docRef.id,
+        taskId: docRefId,
         binId: binId,
         binLevel: binLevel,
         binLocation: binLocation,
@@ -127,7 +146,7 @@ class AutomaticTaskService {
       
       return {
         success: true,
-        taskId: docRef.id,
+        taskId: docRefId,
         taskData: taskData,
         message: `Automatic task created for ${binId} at ${binLevel}%`
       };

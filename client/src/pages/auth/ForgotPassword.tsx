@@ -4,21 +4,43 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast"; 
+import { useForgotPassword } from "@/hooks/useForgotPassword";
+import { useState } from "react";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
-  const { toast } = useToast(); 
+  const { toast } = useToast();
+  const { requestPasswordReset, loading, error, success, clearState } = useForgotPassword();
+  const [email, setEmail] = useState("");
 
-  const handleResetPassword = (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Password reset requested");
+    
+    if (!email.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your email address",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    toast({
-      title: "Password reset email sent",
-      description: "Check your inbox for instructions.",
-    });
-
-    navigate("/verify-otp"); // Redirect to OTP verification page
+    const result = await requestPasswordReset(email);
+    
+    if (result.success) {
+      toast({
+        title: "Reset code sent",
+        description: "Check your inbox for the 6-digit code.",
+      });
+      // Navigate to OTP verification page with email
+      navigate('/password-reset-otp', { state: { email } });
+    } else {
+      toast({
+        title: "Error",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -29,13 +51,39 @@ const ForgotPassword = () => {
           <CardDescription>Enter your email to receive reset instructions</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+          
+          {success && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-sm text-green-800">
+                Password reset email sent! Check your inbox for instructions.
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="Enter your email" required />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="Enter your email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required 
+                disabled={loading}
+              />
             </div>
-            <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">
-              Send Reset Link
+            <Button 
+              type="submit" 
+              className="w-full bg-green-600 hover:bg-green-700"
+              disabled={loading}
+            >
+              {loading ? "Sending..." : "Send Reset Link"}
             </Button>
           </form>
 

@@ -48,15 +48,19 @@ export const HistoryLogsTab = () => {
       setError(null);
       console.log("🔄 Fetching login history...");
       
-      const response = await api.get("/api/login-history");
+      const response = await api.get("/auth/login-history");
       console.log("📊 Login history response:", response.data);
+      console.log("📊 Response status:", response.status);
       
       const loginLogs = response.data.logs || response.data;
       setLogs(loginLogs);
-      console.log(`Loaded ${loginLogs.length} login history records`);
+      console.log(`✅ Loaded ${loginLogs.length} login history records`);
+      console.log("📋 Sample record:", loginLogs[0]);
     } catch (err: any) {
-      console.error("Error fetching login history:", err);
-      setError(err?.response?.data?.error || err?.message || "Failed to load login history");
+      console.error("💥 Error fetching login history:", err);
+      console.error("💥 Error response:", err.response);
+      console.error("💥 Error message:", err.message);
+      setError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to load login history");
     } finally {
       setLoading(false);
     }
@@ -121,9 +125,9 @@ export const HistoryLogsTab = () => {
     const matchesSearch =
       log.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.ipAddress.toLowerCase().includes(searchTerm.toLowerCase());
+      (log.ipAddress || 'Unknown').toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || log.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || (log.status || 'active') === statusFilter;
     const matchesRole = roleFilter === "all" || log.role.toLowerCase() === roleFilter.toLowerCase();
 
     return matchesSearch && matchesStatus && matchesRole;
@@ -164,8 +168,8 @@ export const HistoryLogsTab = () => {
   const paginatedLogs = sortedLogs.slice(startIndex, startIndex + itemsPerPage);
 
   // Calculate analytics from sorted data
-  const activeSessions = sortedLogs.filter((log) => log.status === "active").length;
-  const completedSessions = sortedLogs.filter((log) => log.status === "completed").length;
+  const activeSessions = sortedLogs.filter((log) => (log.status || 'active') === "active").length;
+  const completedSessions = sortedLogs.filter((log) => (log.status || 'active') === "completed").length;
   const averageSessionDuration = sortedLogs
     .filter((log) => log.sessionDuration !== null)
     .reduce((sum, log) => sum + (log.sessionDuration || 0), 0) / 
@@ -321,11 +325,11 @@ return (
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">IP Address:</span>
-                      <span className="font-medium">{log.ipAddress}</span>
+                      <span className="font-medium">{log.ipAddress || 'Unknown'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Device:</span>
-                      <span className="font-medium" title={log.userAgent}>{formatUserAgent(log.userAgent)}</span>
+                      <span className="font-medium" title={log.userAgent || 'Unknown'}>{formatUserAgent(log.userAgent || 'Unknown')}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -411,7 +415,7 @@ return (
                     <TableCell className="text-sm">{new Date(log.loginTime).toLocaleString()}</TableCell>
                     <TableCell className="text-sm">{log.logoutTime ? new Date(log.logoutTime).toLocaleString() : "Active"}</TableCell>
                     <TableCell className="font-medium">{formatDuration(log.sessionDuration)}</TableCell>
-                    <TableCell className="font-mono text-xs">{log.ipAddress}</TableCell>
+                    <TableCell className="font-mono text-xs">{log.ipAddress || 'Unknown'}</TableCell>
                     <TableCell>{getStatusBadge(log.status)}</TableCell>
                   </TableRow>
                 ))}

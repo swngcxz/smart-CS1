@@ -4,164 +4,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface BinData {
   id: string;
   route: string;
-  lastCollection: string;
+  lastCollection: string | number;
   fillLevel: number;
   status: "normal" | "warning" | "critical";
   collectionsThisWeek: number;
   collectionsThisMonth: number;
   collectionsThisYear: number;
   location: string;
-  timestamp?: string;
+  timestamp?: string | number;
   weight?: number;
   gps?: string;
 }
 
-const mockBinData: BinData[] = [
-  {
-    id: "Bin 1",
-    route: "Route A - Downtown",
-    lastCollection: "2024-01-15 09:30",
-    fillLevel: 45,
-    status: "normal",
-    collectionsThisWeek: 3,
-    collectionsThisMonth: 12,
-    collectionsThisYear: 120,
-    location: "Downtown Plaza",
-    timestamp: "2024-01-15 09:25",
-    weight: 12.5,
-    gps: "10.2980, 123.8960",
-  },
-  {
-    id: "Bin 2",
-    route: "Route A - Downtown",
-    lastCollection: "2024-01-15 10:15",
-    fillLevel: 78,
-    status: "warning",
-    collectionsThisWeek: 2,
-    collectionsThisMonth: 10,
-    collectionsThisYear: 110,
-    location: "Main Street",
-    timestamp: "2024-01-15 10:10",
-    weight: 9.3,
-    gps: "10.2990, 123.8975",
-  },
-  {
-    id: "Bin 3",
-    route: "Route B - Industrial",
-    lastCollection: "2024-01-14 14:20",
-    fillLevel: 92,
-    status: "critical",
-    collectionsThisWeek: 1,
-    collectionsThisMonth: 8,
-    collectionsThisYear: 95,
-    location: "Industrial Zone 1",
-    timestamp: "2024-01-14 14:10",
-    weight: 15.2,
-    gps: "10.3050, 123.9050",
-  },
-  {
-    id: "Bin 4",
-    route: "Route B - Industrial",
-    lastCollection: "2024-01-16 08:45",
-    fillLevel: 30,
-    status: "normal",
-    collectionsThisWeek: 4,
-    collectionsThisMonth: 14,
-    collectionsThisYear: 135,
-    location: "Warehouse District",
-    timestamp: "2024-01-16 08:40",
-    weight: 8.7,
-    gps: "10.3070, 123.9100",
-  },
-  {
-    id: "Bin 5",
-    route: "Route C - Uptown",
-    lastCollection: "2024-01-16 11:05",
-    fillLevel: 67,
-    status: "warning",
-    collectionsThisWeek: 3,
-    collectionsThisMonth: 11,
-    collectionsThisYear: 101,
-    location: "Uptown Mall",
-    timestamp: "2024-01-16 11:00",
-    weight: 13.4,
-    gps: "10.3120, 123.9150",
-  },
-  {
-    id: "Bin 6",
-    route: "Route C - Uptown",
-    lastCollection: "2024-01-15 18:25",
-    fillLevel: 85,
-    status: "critical",
-    collectionsThisWeek: 2,
-    collectionsThisMonth: 9,
-    collectionsThisYear: 88,
-    location: "Central Park",
-    timestamp: "2024-01-15 18:20",
-    weight: 14.1,
-    gps: "10.3150, 123.9200",
-  },
-  {
-    id: "Bin 7",
-    route: "Route D - Suburb",
-    lastCollection: "2024-01-16 07:50",
-    fillLevel: 40,
-    status: "normal",
-    collectionsThisWeek: 3,
-    collectionsThisMonth: 10,
-    collectionsThisYear: 97,
-    location: "Greenfield Subdivision",
-    timestamp: "2024-01-16 07:45",
-    weight: 7.8,
-    gps: "10.3200, 123.9300",
-  },
-  {
-    id: "Bin 8",
-    route: "Route D - Suburb",
-    lastCollection: "2024-01-15 16:40",
-    fillLevel: 95,
-    status: "critical",
-    collectionsThisWeek: 1,
-    collectionsThisMonth: 7,
-    collectionsThisYear: 82,
-    location: "Community Park",
-    timestamp: "2024-01-15 16:35",
-    weight: 16.2,
-    gps: "10.3220, 123.9320",
-  },
-  {
-    id: "Bin 9",
-    route: "Route E - Bay Area",
-    lastCollection: "2024-01-14 20:10",
-    fillLevel: 58,
-    status: "warning",
-    collectionsThisWeek: 2,
-    collectionsThisMonth: 9,
-    collectionsThisYear: 93,
-    location: "Baywalk Promenade",
-    timestamp: "2024-01-14 20:05",
-    weight: 11.0,
-    gps: "10.3300, 123.9400",
-  },
-  {
-    id: "Bin 10",
-    route: "Route E - Bay Area",
-    lastCollection: "2024-01-16 09:55",
-    fillLevel: 22,
-    status: "normal",
-    collectionsThisWeek: 5,
-    collectionsThisMonth: 16,
-    collectionsThisYear: 145,
-    location: "Fishing Port",
-    timestamp: "2024-01-16 09:50",
-    weight: 6.9,
-    gps: "10.3330, 123.9450",
-  },
-];
+// Mock data removed - using real data from APIs and real-time monitoring
 
 
 export function AnalyticsTab() {
@@ -169,39 +31,96 @@ export function AnalyticsTab() {
   const [routeFilter, setRouteFilter] = useState<string>("all");
   const { wasteBins } = useRealTimeData();
 
-  // Merge mock with realtime bins
-  const enhancedBinData = mockBinData.map((bin) => {
-    const realTimeBin = wasteBins.find(
-      (wb) => wb.id === bin.id || wb.location.includes(bin.route.split(" - ")[1])
-    );
-    if (realTimeBin) {
-      return {
-        ...bin,
-        fillLevel: realTimeBin.level,
-        status: realTimeBin.status,
-        lastCollection: realTimeBin.lastCollected,
-      };
+  // Convert timeFilter to the format expected by useAnalytics
+  const analyticsTimeFilter = timeFilter === "week" ? "This Week" : 
+                             timeFilter === "month" ? "This Month" : "This Year";
+  
+  // Use the analytics hook
+  const { 
+    analyticsData, 
+    isLoading: isLoadingAnalytics, 
+    error: analyticsError,
+    criticalBins: criticalBinsData 
+  } = useAnalytics(analyticsTimeFilter);
+
+  // Helper function to safely cast status
+  const getSafeStatus = (status: string): "normal" | "warning" | "critical" => {
+    if (status === "warning" || status === "critical") {
+      return status;
     }
-    return bin;
+    return "normal";
+  };
+
+  // Use analytics data directly (no fallback needed as APIs return real data)
+  const displayData = analyticsData || {
+    weeklyCollections: 0,
+    monthlyCollections: 0,
+    yearlyCollections: 0,
+    averageFillLevel: 0,
+    criticalBins: 0,
+    routeEfficiency: 0,
+  };
+
+  // Create bin data from real-time monitoring and critical bins
+  const realBinData: BinData[] = [];
+  
+  // Add real-time bins
+  wasteBins.forEach((bin) => {
+    realBinData.push({
+      id: bin.id,
+      route: `Route - ${bin.location}`,
+      lastCollection: bin.lastCollected || "N/A",
+      fillLevel: bin.level || 0,
+      status: bin.status || "normal",
+      collectionsThisWeek: 0, // Will be calculated from activity logs
+      collectionsThisMonth: 0,
+      collectionsThisYear: 0,
+      location: bin.location || "Unknown",
+      timestamp: bin.binData?.timestamp || new Date().getTime(),
+      weight: bin.binData?.weight_kg || 0,
+      gps: bin.binData ? `${bin.binData.latitude}, ${bin.binData.longitude}` : "N/A",
+    });
   });
 
-  const filteredData = enhancedBinData.filter(
+  // Add critical bins from bin history
+  criticalBinsData?.forEach((criticalBin) => {
+    // Check if this bin is already in real-time data
+    const existingBin = realBinData.find(bin => bin.id === criticalBin.id);
+    if (existingBin) {
+      // Update existing bin with critical data
+      existingBin.fillLevel = criticalBin.bin_level;
+      existingBin.status = getSafeStatus(criticalBin.status);
+    } else {
+      // Add new critical bin
+      realBinData.push({
+        id: criticalBin.id,
+        route: `Route - ${criticalBin.location}`,
+        lastCollection: "N/A",
+        fillLevel: criticalBin.bin_level,
+        status: getSafeStatus(criticalBin.status),
+        collectionsThisWeek: 0,
+        collectionsThisMonth: 0,
+        collectionsThisYear: 0,
+        location: criticalBin.location,
+        timestamp: criticalBin.timestamp || new Date().getTime(),
+        weight: 0,
+        gps: "N/A",
+      });
+    }
+  });
+
+  const filteredData = realBinData.filter(
     (bin) => routeFilter === "all" || bin.route.includes(routeFilter)
   );
 
-  // === FIX: Add analytics calculations ===
-  const totalCollections = filteredData.reduce((sum, bin) => {
-    if (timeFilter === "week") return sum + bin.collectionsThisWeek;
-    if (timeFilter === "month") return sum + bin.collectionsThisMonth;
-    return sum + bin.collectionsThisYear;
-  }, 0);
+  // Use analytics data from the hook instead of calculating from mock data
+  const totalCollections = timeFilter === "week" ? displayData.weeklyCollections :
+                          timeFilter === "month" ? displayData.monthlyCollections :
+                          displayData.yearlyCollections;
 
-  const averageFillLevel =
-    filteredData.length > 0
-      ? Math.round(filteredData.reduce((sum, bin) => sum + bin.fillLevel, 0) / filteredData.length)
-      : 0;
-
-  const criticalBins = filteredData.filter((bin) => bin.status === "critical").length;
+  const averageFillLevel = displayData.averageFillLevel;
+  const criticalBins = displayData.criticalBins;
+  const routeEfficiency = displayData.routeEfficiency;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -225,12 +144,139 @@ export function AnalyticsTab() {
     }
   };
 
+  // Helper function to format timestamps in a readable way
+  const formatTimestamp = (timestamp: string | number | undefined): string => {
+    if (!timestamp) return "N/A";
+    
+    try {
+      let date: Date;
+      
+      // Handle different timestamp formats
+      if (typeof timestamp === 'number') {
+        // Unix timestamp (seconds or milliseconds)
+        date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
+      } else if (typeof timestamp === 'string') {
+        date = new Date(timestamp);
+      } else {
+        return "N/A";
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "Invalid Date";
+      }
+      
+      // Format as readable date and time
+      const now = new Date();
+      const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+      
+      // If less than 24 hours, show relative time
+      if (diffInHours < 24) {
+        if (diffInHours < 1) {
+          const minutes = Math.floor(diffInHours * 60);
+          return `${minutes}m ago`;
+        } else {
+          const hours = Math.floor(diffInHours);
+          return `${hours}h ago`;
+        }
+      }
+      
+      // If more than 24 hours, show date and time
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+
+  // Helper function to get full timestamp for tooltip
+  const getFullTimestamp = (timestamp: string | number | undefined): string => {
+    if (!timestamp) return "N/A";
+    
+    try {
+      let date: Date;
+      
+      if (typeof timestamp === 'number') {
+        date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
+      } else if (typeof timestamp === 'string') {
+        date = new Date(timestamp);
+      } else {
+        return "N/A";
+      }
+      
+      if (isNaN(date.getTime())) {
+        return "Invalid Date";
+      }
+      
+      return date.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+
+  // Timestamp component with tooltip
+  const TimestampDisplay = ({ timestamp }: { timestamp: string | number | undefined }) => {
+    const formatted = formatTimestamp(timestamp);
+    const fullTimestamp = getFullTimestamp(timestamp);
+    
+    if (formatted === "N/A" || formatted === "Invalid Date") {
+      return <span className="text-gray-500">{formatted}</span>;
+    }
+    
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help text-blue-600 hover:text-blue-800">
+              {formatted}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{fullTimestamp}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  // Show error notification if there's an error, but don't block the UI
+  const showErrorNotification = analyticsError && (
+    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+      <div className="flex items-center space-x-2 text-red-600">
+        <AlertCircle className="h-4 w-4" />
+        <span className="text-sm">Using fallback data - Analytics API unavailable</span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
+      {/* Error notification */}
+      {showErrorNotification}
+      
       <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center space-x-3">
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
         Waste Analytics & Reports
       </h2>
+        {isLoadingAnalytics && (
+          <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+        )}
+      </div>
 
       {/* Time Filter */}
       <Select
@@ -289,7 +335,7 @@ export function AnalyticsTab() {
             <CardTitle className="text-sm font-medium">Route Efficiency</CardTitle>
           </CardHeader>
           <CardContent>
-            <span className="text-2xl font-bold">92%</span>
+            <span className="text-2xl font-bold">{routeEfficiency}%</span>
           </CardContent>
         </Card>
       </div>
@@ -305,10 +351,11 @@ export function AnalyticsTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Routes</SelectItem>
-                <SelectItem value="Route A">Route A - Downtown</SelectItem>
-                <SelectItem value="Route B">Route B - Industrial</SelectItem>
-                <SelectItem value="Route C">Route C - Residential</SelectItem>
-                <SelectItem value="Route D">Route D - Coastal</SelectItem>
+                {Array.from(new Set(realBinData.map(bin => bin.route.split(' - ')[0])))
+                  .filter(route => route && route !== 'Route')
+                  .map(route => (
+                    <SelectItem key={route} value={route}>{route}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -330,12 +377,15 @@ export function AnalyticsTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((bin) => (
+                {filteredData.length > 0 ? (
+                  filteredData.map((bin) => (
                   <TableRow key={bin.id}>
                     <TableCell className="text-center font-medium">{bin.id}</TableCell>
                     <TableCell className="text-center">{bin.route}</TableCell>
-                    <TableCell className="text-center">{bin.timestamp ?? "N/A"}</TableCell>
-                    <TableCell className="text-center">{bin.weight ?? 0}</TableCell>
+                      <TableCell className="text-center text-sm">
+                        <TimestampDisplay timestamp={bin.timestamp} />
+                      </TableCell>
+                      <TableCell className="text-center">{bin.weight ?? 0} kg</TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center gap-2 justify-center">
                         <div className="w-24 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
@@ -347,13 +397,22 @@ export function AnalyticsTab() {
                         <span className="text-sm">{bin.fillLevel}%</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">{bin.gps ?? "Invalid GPS"}</TableCell>
+                      <TableCell className="text-center text-sm">{bin.gps ?? "N/A"}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant={getStatusBadgeVariant(bin.status)}>{bin.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center text-sm">
+                        <TimestampDisplay timestamp={bin.lastCollection} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      No bin data available
                     </TableCell>
-                    <TableCell className="text-center text-sm">{bin.lastCollection}</TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </div>

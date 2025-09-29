@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Clock, MapPin, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import api from "@/lib/api";
 
 interface StaffCounts {
@@ -13,6 +14,7 @@ interface StaffCounts {
 }
 
 export function StaffTab() {
+  const { user } = useAuth();
   const [staffCounts, setStaffCounts] = useState<StaffCounts>({
     totalStaff: 0,
     activeNow: 0,
@@ -27,6 +29,8 @@ export function StaffTab() {
     setError(null);
     try {
       const response = await api.get("/api/staff/status-summary");
+      console.log("Current user:", user?.email);
+      console.log("Staff counts response:", response.data);
       setStaffCounts(response.data);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Failed to load staff data");

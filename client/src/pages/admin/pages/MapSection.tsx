@@ -4,8 +4,14 @@ import L, { LatLngTuple } from "leaflet";
 import { DynamicBinMarker } from "../../staff/pages/DynamicBinMarker";
 import { GPSMarker } from "./GPSMarker";
 import { GPSTrackingLine } from "./GPSTrackingLine";
+import { DirectTileLayer } from "@/components/DirectTileLayer";
+import { MapErrorBoundary } from "@/components/MapErrorBoundary";
+import { MapTypeIndicator } from "@/components/MapTypeIndicator";
+import { GPSFallbackIndicator } from "@/components/GPSFallbackIndicator";
+import { MAP_CONFIG, MAP_OPTIONS, getSafeZoomLevel } from "@/components/MapConfig";
 import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
+import "@/styles/map-transitions.css";
 import { Viewer } from "mapillary-js";
 import "mapillary-js/dist/mapillary.css";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
@@ -280,34 +286,30 @@ export function MapSection() {
       </CardHeader>
 
       <CardContent className="p-0 h-full rounded-b-lg overflow-hidden relative z-0">
-        <MapContainer
-          center={mapCenter}
-          zoom={18}
-          minZoom={10}
-          maxZoom={22}
-          scrollWheelZoom={true}
-          zoomControl={true}
-          doubleClickZoom={true}
-          touchZoom={true}
-          boxZoom={true}
-          keyboard={true}
-          className="h-full w-full z-0"
-          maxBounds={[
-            [9.8, 123.5],
-            [11.3, 124.1],
-          ]}
-          maxBoundsViscosity={0.5}
-        >
+        <MapErrorBoundary>
+          <MapContainer
+            center={mapCenter}
+            zoom={getSafeZoomLevel(18)}
+            minZoom={MAP_CONFIG.zoom.min}
+            maxZoom={MAP_CONFIG.zoom.max}
+            className="h-full w-full z-0"
+            {...MAP_OPTIONS}
+          >
           <MapInitializer
             setMapRef={(map) => {
               (mapContainerRef as any).current._leaflet_map = map;
               mapRef.current = map;
             }}
           />
-          <TileLayer
-            attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          {/* Direct Tile Layer - Simple zoom-based switching */}
+          <DirectTileLayer
+            maxZoom={22}
+            minZoom={1}
+            transitionZoomLevel={18}
           />
+          
+          {/* Map Type Indicator */}
+          <MapTypeIndicator transitionZoomLevel={18} />
           {updatedBinLocations.map((bin) => (
             <DynamicBinMarker key={bin.id} bin={bin} />
           ))}
@@ -328,7 +330,8 @@ export function MapSection() {
               </Popup>
             </Marker>
           )}
-        </MapContainer>
+          </MapContainer>
+        </MapErrorBoundary>
 
         {/* Auto Find Location Button (Triangular Arrow) */}
         <button
@@ -386,11 +389,27 @@ export function MapSection() {
           </div>
         )}
 
+        {/* GPS Fallback Indicator */}
+        <div className="absolute bottom-4 left-4 z-[1000] max-w-sm">
+          <GPSFallbackIndicator 
+            binId="bin1" 
+            currentGPSStatus={bin1Data ? {
+              gps_valid: bin1Data.gps_valid || false,
+              latitude: bin1Data.latitude || 0,
+              longitude: bin1Data.longitude || 0,
+              coordinates_source: bin1Data.coordinates_source,
+              satellites: bin1Data.satellites || 0,
+              last_active: bin1Data.last_active,
+              gps_timestamp: bin1Data.gps_timestamp
+            } : undefined}
+          />
+        </div>
+
         {/* Pegman Icon */}
         <div
           id="pegman"
           draggable
-          className="absolute bottom-4 left-4 z-[999] cursor-grab bg-white p-1 rounded-full shadow-lg border transition-transform duration-300"
+          className="absolute bottom-4 right-16 z-[999] cursor-grab bg-white p-1 rounded-full shadow-lg border transition-transform duration-300"
           title="Drag to Street View"
         >
           <img

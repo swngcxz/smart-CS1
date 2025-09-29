@@ -216,7 +216,9 @@ const saveActivityLog = async (req, res, next) => {
       assigned_janitor_name, 
       task_note, 
       activity_type,
-      timestamp 
+      timestamp,
+      description,
+      source
     } = req.body;
 
     const now = new Date();
@@ -224,13 +226,16 @@ const saveActivityLog = async (req, res, next) => {
       user_id,
       bin_id,
       bin_location,
-      bin_status: bin_status || 'pending',
+      bin_status: assigned_janitor_id ? 'in_progress' : (bin_status || 'pending'),
       bin_level: bin_level || 0,
       assigned_janitor_id,
       assigned_janitor_name,
       task_note,
       activity_type: activity_type || 'task_assignment',
-      status: 'pending', // Clear status field
+      // If a janitor is assigned manually, mark log in-progress immediately
+      status: assigned_janitor_id ? 'in_progress' : 'pending',
+      source: source || 'manual_assignment',
+      description: description || (task_note ? `Manual Task Assignment - ${task_note}` : 'Manual Task Assignment'),
       priority: bin_level > 80 ? 'high' : bin_level > 50 ? 'medium' : 'low',
       timestamp: timestamp || now.toISOString(),
       date: now.toISOString().split('T')[0],

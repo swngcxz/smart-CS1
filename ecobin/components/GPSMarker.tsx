@@ -28,6 +28,9 @@ interface GPSMarkerProps {
     gps_valid: boolean;
     satellites: number;
     timestamp: string;
+    coordinates_source?: string;
+    last_active?: string;
+    gps_timestamp?: string;
   } | undefined;
 }
 

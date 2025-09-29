@@ -11,7 +11,7 @@ import api from "@/lib/api";
 interface BinHistoryRecord {
   id: string;
   binId: string;
-  timestamp: string;
+  timestamp: string | object;
   weight: number;
   distance: number;
   binLevel: number;
@@ -23,7 +23,7 @@ interface BinHistoryRecord {
   satellites: number;
   status: string;
   errorMessage?: string;
-  createdAt: string;
+  createdAt: string | object;
 }
 
 interface BinHistoryStats {
@@ -64,6 +64,7 @@ export function BinHistory() {
 
   // Apply filters
   useEffect(() => {
+    console.log("🔄 Applying filters to binHistory:", binHistory.length, "records");
     let filtered = binHistory;
 
     // Search filter
@@ -103,9 +104,13 @@ export function BinHistory() {
           break;
       }
 
-      filtered = filtered.filter((record) => new Date(record.timestamp) >= filterDate);
+      filtered = filtered.filter((record) => {
+        const recordDate = parseTimestamp(record.timestamp);
+        return recordDate && recordDate >= filterDate;
+      });
     }
 
+    console.log("✅ Filtered history:", filtered.length, "records");
     setFilteredHistory(filtered);
     setCurrentPage(1);
   }, [binHistory, searchTerm, statusFilter, binIdFilter, dateFilter]);
@@ -113,9 +118,16 @@ export function BinHistory() {
   const fetchBinHistory = async () => {
     try {
       setLoading(true);
+      console.log("🔍 Fetching bin history from:", "http://localhost:8000/api/bin-history");
       const response = await api.get("/api/bin-history");
+      
+      console.log("📊 API Response:", response);
+      console.log("📊 Response data:", response.data);
+      console.log("📊 Response status:", response.status);
 
       if (response.data && response.data.success && response.data.records) {
+        console.log("✅ Success! Records found:", response.data.records.length);
+        console.log("📋 Sample record:", response.data.records[0]);
         setBinHistory(response.data.records);
         setStats(
           response.data.stats || {
@@ -128,12 +140,15 @@ export function BinHistory() {
           }
         );
       } else {
+        console.log("❌ No records in response:", response.data);
         setBinHistory([]);
         setError(response.data?.message || "No data received");
       }
       setError(null);
     } catch (err: any) {
-      console.error("Error fetching bin history:", err);
+      console.error("💥 Error fetching bin history:", err);
+      console.error("💥 Error response:", err.response);
+      console.error("💥 Error message:", err.message);
       setError(err.response?.data?.message || err.message || "Failed to fetch bin history");
     } finally {
       setLoading(false);
@@ -185,8 +200,57 @@ export function BinHistory() {
     }
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
+  // Utility function to parse various timestamp formats
+  const parseTimestamp = (timestamp: string | object): Date | null => {
+    if (!timestamp || timestamp === 'Invalid Date' || timestamp === 'null' || timestamp === 'undefined') {
+      return null;
+    }
+
+    // Handle Firebase timestamp objects
+    if (typeof timestamp === 'object' && timestamp !== null) {
+      const firebaseTimestamp = timestamp as any;
+      if (firebaseTimestamp._seconds) {
+        return new Date(firebaseTimestamp._seconds * 1000);
+      }
+      if (firebaseTimestamp.seconds) {
+        return new Date(firebaseTimestamp.seconds * 1000);
+      }
+    }
+
+    // Handle string timestamps
+    if (typeof timestamp === 'string') {
+      // Try different timestamp formats
+      let date = new Date(timestamp);
+      
+      // If the first attempt fails, try parsing as ISO string or Unix timestamp
+      if (isNaN(date.getTime())) {
+        // Try as Unix timestamp (seconds or milliseconds)
+        const numTimestamp = Number(timestamp);
+        if (!isNaN(numTimestamp)) {
+          // If it's a Unix timestamp in seconds, convert to milliseconds
+          date = new Date(numTimestamp > 1000000000000 ? numTimestamp : numTimestamp * 1000);
+        } else {
+          // Try parsing with different formats
+          date = new Date(timestamp.replace(' ', 'T')); // Handle space instead of T
+        }
+      }
+
+      return isNaN(date.getTime()) ? null : date;
+    }
+
+    return null;
+  };
+
+  const formatTimestamp = (timestamp: string | object) => {
+    const date = parseTimestamp(timestamp);
+    
+    if (!date) {
+      return {
+        date: 'N/A',
+        time: 'N/A',
+      };
+    }
+
     return {
       date: date.toLocaleDateString(),
       time: date.toLocaleTimeString(),
@@ -415,6 +479,13 @@ export function BinHistory() {
             <div className="text-center py-8">
               <Trash2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600">No bin history records found</p>
+              <div className="mt-4 text-sm text-gray-500">
+                <p>Debug Info:</p>
+                <p>• binHistory.length: {binHistory.length}</p>
+                <p>• filteredHistory.length: {filteredHistory.length}</p>
+                <p>• loading: {loading.toString()}</p>
+                <p>• error: {error || "none"}</p>
+              </div>
             </div>
           ) : (
             <>
@@ -440,11 +511,14 @@ export function BinHistory() {
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div>
-                                <div className="text-sm">{date}</div>
-                                {/* <div className="text-xs text-gray-500 flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {time}
-                                </div> */}
+                                {date !== 'N/A' ? (
+                                  <div className="text-sm">{date}</div>
+                                ) : (
+                                  <div className="text-sm text-red-500 flex items-center gap-1">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Invalid timestamp
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </TableCell>

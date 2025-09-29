@@ -24,12 +24,27 @@ if (Platform.OS !== 'web') {
 }
 
 interface DynamicBinMarkerProps {
-  bin: BinLocation;
+  bin: BinLocation & {
+    coordinates_source?: string;
+    last_active?: string;
+    gps_timestamp?: string;
+  };
   onPress?: (bin: BinLocation) => void;
 }
 
 export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress }) => {
-  const getMarkerColor = (status: string) => {
+  const getMarkerColor = (status: string, coordinatesSource?: string) => {
+    // If using cached GPS, show grey regardless of status
+    if (coordinatesSource === 'gps_cached') {
+      return '#6b7280'; // grey-500
+    }
+    
+    // If no GPS data, show dark grey
+    if (coordinatesSource === 'no_data') {
+      return '#374151'; // grey-700
+    }
+    
+    // Live GPS - use status-based colors
     switch (status) {
       case 'critical':
         return '#ef4444'; // red-500
@@ -78,9 +93,12 @@ export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress
     >
       <View style={[
         styles.markerContainer,
-        { backgroundColor: getMarkerColor(bin.status) }
+        { 
+          backgroundColor: getMarkerColor(bin.status, bin.coordinates_source),
+          opacity: bin.coordinates_source === 'gps_cached' ? 0.7 : 1.0
+        }
       ]}>
-        <Text style={styles.markerText}>{bin.level}%</Text>
+        <Text style={styles.markerText}>{bin.level || 0}%</Text>
       </View>
 
       <Callout style={styles.callout}>
@@ -88,7 +106,7 @@ export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress
           <Text style={styles.binName}>{bin.name}</Text>
           
           <View style={styles.statusRow}>
-            <Text style={styles.fillLevel}>Fill Level: {bin.level}%</Text>
+            <Text style={styles.fillLevel}>Fill Level: {bin.level || 0}%</Text>
             <View style={[
               styles.statusBadge,
               { backgroundColor: getMarkerColor(bin.status) }
@@ -98,19 +116,26 @@ export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress
           </View>
 
           <ProgressBar
-            progress={bin.level / 100}
+            progress={(bin.level || 0) / 100}
             style={styles.progressBar}
-            color={getMarkerColor(bin.status)}
+            color={getMarkerColor(bin.status, bin.coordinates_source)}
           />
 
           <View style={styles.infoSection}>
             <Text style={styles.infoText}>📍 {bin.route}</Text>
             <Text style={styles.infoText}>
-              🛰️ GPS: {bin.gps_valid ? 'Valid' : 'Invalid'} ({bin.satellites} sats)
+              🛰️ GPS: {bin.coordinates_source === 'gps_live' ? 'Live GPS' : 
+                      bin.coordinates_source === 'gps_cached' ? 'Cached GPS' : 
+                      'No GPS'} ({bin.satellites || 0} sats)
             </Text>
             <Text style={styles.infoText}>
-              🕒 Last Update: {formatDate(bin.lastCollection)}
+              🕒 Last Active: {bin.last_active || formatDate(bin.lastCollection)}
             </Text>
+            {bin.gps_timestamp && bin.gps_timestamp !== 'N/A' && (
+              <Text style={styles.infoText}>
+                📅 GPS Time: {bin.gps_timestamp}
+              </Text>
+            )}
             {bin.weight_kg && (
               <Text style={styles.infoText}>⚖️ Weight: {bin.weight_kg}kg</Text>
             )}
@@ -198,3 +223,4 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
+

@@ -7,9 +7,9 @@ const {
   getRouteEfficiency
 } = require("../controllers/analyticsController");
 
-router.get("/counts", getCollectionCounts);
-router.get("/average-fill", getAverageFillLevel);
-router.get("/critical", getCriticalBins);
+router.get("/collection-counts", getCollectionCounts);
+router.get("/average-fill-level", getAverageFillLevel);
+router.get("/critical-bins", getCriticalBins);
 router.get("/route-efficiency", getRouteEfficiency);
 
 module.exports = router;

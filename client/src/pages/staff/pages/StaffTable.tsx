@@ -6,6 +6,7 @@ import { Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StaffManagementModal } from "@/components/modal/staff/StaffManagementModal";
 import { AddStaffModal } from "@/components/modal/staff/AddStaffModal";
+import { useAuth } from "@/contexts/AuthContext";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
@@ -26,6 +27,7 @@ interface StaffTableProps {
 }
 
 export function StaffTable({ onStaffUpdate }: StaffTableProps) {
+  const { user } = useAuth();
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState("all");
@@ -39,8 +41,9 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
     setError(null);
     try {
       const res = await api.get("/api/staff/all-with-counts");
-      setStaffList(res.data.staff);
+      console.log("Current user:", user?.email);
       console.log("Loaded staff data:", res.data);
+      setStaffList(res.data.staff);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Failed to load staff");
       console.error("Error loading staff:", err);
@@ -98,9 +101,17 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
   };
 
   const filteredStaff = useMemo(() => {
-    if (selectedRoute === "all") return staffList;
-    return staffList.filter((s) => (s.location || "") === selectedRoute);
-  }, [selectedRoute, staffList]);
+    // Filter out the current logged-in user and apply route filter
+    let filtered = staffList.filter((s) => {
+      // Exclude current user
+      const isNotCurrentUser = !user || s.email !== user.email;
+      // Filter by route
+      const matchesRoute = selectedRoute === "all" || (s.location || "") === selectedRoute;
+      return isNotCurrentUser && matchesRoute;
+    });
+    
+    return filtered;
+  }, [selectedRoute, staffList, user]);
 
   return (
     <>

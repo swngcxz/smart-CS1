@@ -58,7 +58,13 @@ export function useActivityLogging() {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.post("/api/activitylogs", activityData);
+      const response = await api.post("/api/activitylogs", {
+        ...activityData,
+        // Mark manual assignment clearly in backend log
+        description: `Manual Task Assignment - ${activityData.task_note || 'No additional notes'}`,
+        source: 'manual_assignment',
+        status: 'in_progress'
+      });
       return response.data;
     } catch (err: any) {
       const errorMessage = err?.response?.data?.error || "Failed to log activity";

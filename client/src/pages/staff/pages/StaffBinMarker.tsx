@@ -141,7 +141,10 @@ export function BinMarker({ bin }: BinMarkerProps) {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Location Updated:</span>
                 <span className="text-sm font-medium">
-                  {new Date(bin.lastLocationUpdate).toLocaleString()}
+                  {(() => {
+                    const date = new Date(bin.lastLocationUpdate);
+                    return isNaN(date.getTime()) ? 'Invalid timestamp' : date.toLocaleString();
+                  })()}
                 </span>
               </div>
             )}

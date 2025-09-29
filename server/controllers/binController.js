@@ -115,8 +115,66 @@ const assignBinTask = async (req, res, next) => {
   }
 };
 
+const updateBinDetails = async (req, res, next) => {
+  try {
+    const { binId } = req.params;
+    const { binName, binType, mainLocation } = req.body;
+
+    // Validate required fields
+    if (!binId) {
+      return res.status(400).json({ message: "Bin ID is required" });
+    }
+
+    if (!binName || !binType || !mainLocation) {
+      return res.status(400).json({ 
+        message: "Bin name, type, and main location are required" 
+      });
+    }
+
+    console.log(`Updating bin details for bin ID: ${binId}`, { binName, binType, mainLocation });
+
+    // Update in Firebase Realtime Database under monitoring
+    const { admin } = require("../models/firebase");
+    const realtimeDb = admin.database();
+    const realtimeRef = realtimeDb.ref(`monitoring/${binId}`);
+    
+    // Check if the bin exists in realtime database
+    const realtimeSnapshot = await realtimeRef.once('value');
+    if (!realtimeSnapshot.exists()) {
+      return res.status(404).json({ message: "Bin not found in monitoring database" });
+    }
+
+    // Update the bin details in Realtime Database
+    await realtimeRef.update({
+      name: binName,
+      type: binType,
+      mainLocation: mainLocation,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user?.id || 'system'
+    });
+
+    console.log(`Successfully updated bin ${binId} in Firebase Realtime Database`);
+
+    res.status(200).json({
+      message: "Bin details updated successfully",
+      binId: binId,
+      updatedData: {
+        name: binName,
+        type: binType,
+        mainLocation: mainLocation,
+        updatedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (err) {
+    console.error("Error updating bin details:", err);
+    next(err);
+  }
+};
+
 module.exports = {
   saveBinData,
   getAllBins,
-  assignBinTask
+  assignBinTask,
+  updateBinDetails
 };

@@ -389,7 +389,10 @@ const Notifications = () => {
                       {/* Only show timestamp if not already in the message */}
                       {notification.message && notification.timestamp && !notification.message.includes(new Date(notification.timestamp).toLocaleString()) && (
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(notification.timestamp).toLocaleString()}
+                          {(() => {
+                            const date = new Date(notification.timestamp);
+                            return isNaN(date.getTime()) ? 'Invalid timestamp' : date.toLocaleString();
+                          })()}
                         </p>
                       )}
                     </div>
