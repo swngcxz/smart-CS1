@@ -1,12 +1,9 @@
 
 import React from "react";
 import BackButton from "@/components/BackButton";
-import PickupHistoryModal from "@/components/modals/PickupHistoryModal";
-import PickupWorkflowModal from "@/components/PickupWorkflowModal";
 import { useLocalSearchParams } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Platform } from "react-native";
+import { ScrollView, StyleSheet, Text, View, ActivityIndicator, Platform } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import { useRealTimeData } from "../../hooks/useRealTimeData";
 
@@ -43,10 +40,7 @@ export default function BinDetailScreen() {
     binStatus?: string; 
     binRoute?: string; 
   }>();
-  const [historyModalVisible, setHistoryModalVisible] = useState(false);
-  const [pickupModalVisible, setPickupModalVisible] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
-  const { binLocations, loading, error, getSafeCoordinates, getTimeSinceLastGPS } = useRealTimeData();
+  const { binLocations, bin1Data, loading, getTimeSinceLastGPS } = useRealTimeData();
 
   // SIMPLIFIED: Focus only on bin1
   const bin = (binLocations || []).find((b) => b && b.id === 'bin1');
@@ -71,15 +65,24 @@ export default function BinDetailScreen() {
     return "#4caf50"; // green
   };
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: true,
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      const uris = result.assets.map((asset) => asset.uri);
-      setImages((prev) => [...prev, ...uris]);
-    }
+  // Derived metrics from real-time data
+  const weightKg = (typeof bin1Data?.weight_kg === 'number' ? bin1Data?.weight_kg : 0) || 0;
+  const heightPercent = (typeof bin1Data?.height_percent === 'number' ? bin1Data?.height_percent : 0) || 0;
+  const gpsValid = (bin1Data?.gps_valid ?? safeBinData.gps_valid) ? true : false;
+  const gpsValidDisplay = gpsValid ? 'Valid' : 'Invalid';
+  const satellitesDisplay = bin1Data?.satellites ?? safeBinData.satellites ?? 0;
+  const lastSeenText = gpsValid && bin1Data?.timestamp
+    ? 'Online'
+    : (bin1Data?.timestamp ? `Offline · ${getTimeSinceLastGPS(bin1Data.timestamp)}` : 'Offline · Unknown');
+
+  // MiniBar: always-visible track with colored fill
+  const MiniBar = ({ percent }: { percent: number }) => {
+    const safe = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
+    return (
+      <View style={styles.miniTrack}>
+        <View style={[styles.miniFill, { width: `${safe}%`, backgroundColor: getStatusColor(safe) }]} />
+      </View>
+    );
   };
 
   if (loading) {
@@ -121,12 +124,9 @@ export default function BinDetailScreen() {
 
       <View style={styles.detailsHeader}>
         <Text style={styles.title}>Details for {safeBinData.name}</Text>
-        <TouchableOpacity onPress={() => setHistoryModalVisible(true)}>
-        </TouchableOpacity>
       </View>
 
       <Text style={styles.text}>Route: {safeBinData.route}</Text>
-      <Text style={styles.text}>GPS Status: {safeBinData.gps_valid ? 'Valid' : 'Invalid'} ({safeBinData.satellites} satellites)</Text>
       <Text style={styles.text}>Current Level: {safeBinData.level}%</Text>
       <ProgressBar
         progress={safeBinData.level / 100}
@@ -136,51 +136,25 @@ export default function BinDetailScreen() {
       <Text style={styles.text}>Last Update: {new Date(safeBinData.lastCollection).toLocaleString()}</Text>
       <Text style={[styles.text, styles.status]}>Status: {safeBinData.status.toUpperCase()}</Text>
 
-      <Text style={styles.sectionTitle}>Proof of Pickup</Text>
-      <View style={styles.imageContainer}>
-        {images.slice(0, 3).map((uri, index) => (
-          <Image key={index} source={{ uri }} style={styles.imagePreview} />
-        ))}
-        <TouchableOpacity style={styles.addButton} onPress={pickImage}>
-          <Text style={styles.addButtonText}>+</Text>
-        </TouchableOpacity>
+      <View style={styles.metricsContainer}>
+        <View style={styles.metricItem}>
+          <Text style={styles.metricLabel}>Weight</Text>
+          <Text style={styles.metricValue}>{weightKg.toFixed(3)} kg</Text>
+          <MiniBar percent={(bin1Data?.weight_percent ?? 0)} />
+        </View>
+        <View style={styles.metricItem}>
+          <Text style={styles.metricLabel}>Height</Text>
+          <Text style={styles.metricValue}>{heightPercent}%</Text>
+          <MiniBar percent={heightPercent} />
+        </View>
+        <View style={styles.metricItem}>
+          <Text style={styles.metricLabel}>GPS Status</Text>
+          <Text style={[styles.metricValue, gpsValid ? styles.ok : styles.warn]}>
+            {gpsValidDisplay} ({satellitesDisplay} satellites)
+          </Text>
+          <Text style={styles.subtle}>{lastSeenText}</Text>
+        </View>
       </View>
-
-      <TouchableOpacity
-        style={[
-          {
-            backgroundColor: safeBinData.level < 80 ? "#ccc" : "#2e7d32",
-            padding: 14,
-            borderRadius: 10,
-            alignItems: "center",
-          },
-        ]}
-        disabled={safeBinData.level < 80}
-        onPress={() => setPickupModalVisible(true)}
-      >
-        <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>Pick Up</Text>
-      </TouchableOpacity>
-
-      <PickupHistoryModal
-        visible={historyModalVisible}
-        onClose={() => setHistoryModalVisible(false)}
-        binId={safeBinData.id}
-        logs={[]}
-      />
-
-      <PickupWorkflowModal
-        visible={pickupModalVisible}
-        onClose={() => setPickupModalVisible(false)}
-        binData={safeBinData}
-        onPickupComplete={() => {
-          setPickupModalVisible(false);
-          alert("Pickup completed successfully!");
-        }}
-        onAcknowledge={() => {
-          setPickupModalVisible(false);
-          alert("Pickup acknowledged and added to pending tasks.");
-        }}
-      />
     </ScrollView>
   );
 }
@@ -206,20 +180,24 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 14,
   },
-
-  imageContainer: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 },
-  imagePreview: { width: 100, height: 100, borderRadius: 10, marginRight: 10, marginBottom: 10 },
-  addButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 10,
-    backgroundColor: "#f1f1f1",
-    justifyContent: "center",
-    alignItems: "center",
+  metricsContainer: {
+    marginTop: 10,
+    marginBottom: 24,
+    backgroundColor: "#f7faf7",
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
-    borderColor: "#aaa",
+    borderColor: "#e2e8f0"
   },
-  addButtonText: { fontSize: 32, color: "#444" },
+  metricItem: { marginBottom: 12 },
+  metricLabel: { fontSize: 13, color: "#6b7280", marginBottom: 4 },
+  metricValue: { fontSize: 16, color: "#111827", fontWeight: "600" },
+  subtle: { fontSize: 12, color: "#6b7280", marginTop: 4 },
+  smallBar: { height: 8, borderRadius: 4, marginTop: 6 },
+  miniTrack: { height: 8, borderRadius: 4, marginTop: 6, backgroundColor: "#e5e7eb", overflow: "hidden" },
+  miniFill: { height: 8, borderRadius: 4 },
+  ok: { color: "#065f46" },
+  warn: { color: "#92400e" },
   detailsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   smallHistoryText: { fontSize: 14, color: "gray", fontWeight: "500" },
 });

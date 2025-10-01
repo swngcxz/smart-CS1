@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Try multiple endpoints for mobile development
 const API_ENDPOINTS = [
-  'http://192.168.1.13:8000', // Computer's IP address
+  'http://192.168.1.4:8000', // Computer's IP address
   'http://localhost:8000',     // Fallback for simulator
   'http://10.0.2.2:8000',     // Android emulator host
 ];
@@ -47,9 +47,12 @@ export interface BinLocation {
   route: string;
   gps_valid: boolean;
   satellites: number;
-  timestamp?: string;
+  timestamp?: number;
   weight_kg?: number;
   distance_cm?: number;
+  coordinates_source?: string;
+  last_active?: string;
+  gps_timestamp?: string;
 }
 
 export interface BinLocationsResponse {
@@ -60,14 +63,19 @@ export interface BinLocationsResponse {
 }
 
 export interface Bin1Data {
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   gps_valid: boolean;
   satellites: number;
   bin_level: number;
   weight_percent: number;
   height_percent: number;
   timestamp: number;
+  weight_kg?: number;
+  distance_cm?: number;
+  coordinates_source?: string;
+  last_active?: string;
+  gps_timestamp?: string;
 }
 
 export const apiService = {

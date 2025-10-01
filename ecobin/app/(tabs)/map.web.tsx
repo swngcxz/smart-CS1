@@ -224,14 +224,17 @@ export default function MapScreen() {
         ))}
 
         {/* GPS Marker for real-time location */}
-        {bin1Data && (
+        {bin1Data && bin1Data.latitude && bin1Data.longitude && (
           <GPSMarker
             gpsData={{
               latitude: bin1Data.latitude,
               longitude: bin1Data.longitude,
               gps_valid: bin1Data.gps_valid,
               satellites: bin1Data.satellites,
-              timestamp: new Date(bin1Data.timestamp).toISOString()
+              timestamp: new Date(bin1Data.timestamp).toISOString(),
+              coordinates_source: bin1Data.coordinates_source,
+              last_active: bin1Data.last_active,
+              gps_timestamp: bin1Data.gps_timestamp
             }}
           />
         )}

@@ -125,16 +125,30 @@ export function useRealTimeData() {
     return bins;
   };
 
-  // Create dynamic bin locations with live coordinates
+  // Create dynamic bin locations with live coordinates or GPS fallback
   const getDynamicBinLocations = () => {
     const locations = [];
     
-    // Add bin1 with live coordinates from real-time database
-    if (bin1Data && bin1Data.gps_valid && bin1Data.latitude && bin1Data.longitude) {
+    // Always add bin1 if we have any bin data (continuous monitoring)
+    if (bin1Data) {
+      // Determine coordinates: use live GPS if valid, otherwise use fallback
+      let coordinates: [number, number];
+      let coordinatesSource: string;
+      
+      if (bin1Data.latitude && bin1Data.longitude) {
+        // ESP32 provides coordinates (either live GPS or cached)
+        coordinates = [bin1Data.latitude, bin1Data.longitude];
+        coordinatesSource = bin1Data.coordinates_source || 'gps_live';
+      } else {
+        // No coordinates from ESP32 - use default fallback position
+        coordinates = [10.24371, 123.786917]; // Default Central Plaza coordinates
+        coordinatesSource = 'no_data';
+      }
+      
       locations.push({
         id: 'bin1',
         name: 'Central Plaza',
-        position: [bin1Data.latitude, bin1Data.longitude] as [number, number],
+        position: coordinates,
         level: bin1Data.bin_level || 0,
         status: getStatusFromLevel(bin1Data.bin_level || 0),
         lastCollection: getTimeAgo(bin1Data.timestamp),
@@ -143,7 +157,10 @@ export function useRealTimeData() {
         satellites: bin1Data.satellites,
         timestamp: bin1Data.timestamp,
         weight_kg: bin1Data.weight_kg,
-        distance_cm: bin1Data.distance_cm
+        distance_cm: bin1Data.distance_cm,
+        coordinates_source: coordinatesSource,
+        last_active: bin1Data.last_active,
+        gps_timestamp: bin1Data.gps_timestamp
       });
     }
     

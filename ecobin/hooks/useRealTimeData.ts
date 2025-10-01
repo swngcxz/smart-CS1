@@ -1,18 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiService, BinLocation, Bin1Data } from '../utils/apiService';
 
 export interface BinData {
-  weight_kg: number;
+  weight_kg?: number;
   weight_percent: number;
-  distance_cm: number;
+  distance_cm?: number;
   height_percent: number;
   bin_level: number;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   gps_valid: boolean;
   satellites: number;
   timestamp: number;
   bin_id?: string;
+  gps_timestamp?: string;
+  last_active?: string;
+  coordinates_source?: string;
 }
 
 export interface WasteBin {
@@ -109,28 +112,60 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
     };
   };
 
-  // Fetch initial data - ONLY bin1 as requested
-  const fetchInitialData = useCallback(async () => {
+  // Fetch data function (shared by initial and real-time)
+  const fetchData = useCallback(async (isInitial = false) => {
     try {
-      setLoading(true);
-      console.log('🔄 Mobile App - Fetching initial data from Firebase...');
+      if (isInitial) {
+        setLoading(true);
+        console.log('🔄 Mobile App - Fetching initial data from Firebase...');
+      }
       
-      // Only fetch bin1 data as requested
+      // Only fetch bin1 data as requested (from API)
       const bin1Response = await apiService.getBin1Data();
+
+      // Fetch GPS/telemetry directly from Firebase RTDB and merge
+      let firebaseData: Partial<BinData> | null = null;
+      try {
+        const rtdbUrl = 'https://smartwaste-b3f0f-default-rtdb.firebaseio.com/monitoring/bin1.json';
+        const res = await fetch(rtdbUrl);
+        if (res.ok) {
+          const json = await res.json();
+          firebaseData = {
+            bin_level: json?.bin_level,
+            weight_kg: json?.weight_kg,
+            weight_percent: json?.weight_percent,
+            distance_cm: json?.distance_cm,
+            height_percent: json?.height_percent,
+            latitude: json?.latitude,
+            longitude: json?.longitude,
+            gps_valid: Boolean(json?.gps_valid),
+            satellites: typeof json?.satellites === 'number' ? json.satellites : 0,
+            timestamp: json?.gps_timestamp ? Date.parse(json.gps_timestamp) : json?.timestamp,
+            last_active: json?.last_active,
+            coordinates_source: json?.coordinates_source,
+            gps_timestamp: json?.gps_timestamp
+          } as Partial<BinData>;
+        } else {
+          console.log('ℹ️ RTDB fetch not ok:', res.status);
+        }
+      } catch (e) {
+        console.log('ℹ️ RTDB fetch failed, will rely on API data:', e);
+      }
 
       console.log('📡 Mobile App - API Response:', bin1Response);
       if (bin1Response) {
-        console.log('🔥 Mobile App - Real-time bin1 data received:', bin1Response);
-        console.log('📊 Mobile App - Bin Level:', bin1Response.bin_level, 'Status:', getStatusFromLevel(bin1Response.bin_level));
-        setBin1Data(bin1Response);
+        const merged = { ...bin1Response, ...(firebaseData || {}) } as BinData;
+        console.log('🔥 Mobile App - Real-time bin1 data (merged):', merged);
+        console.log('📊 Mobile App - Bin Level:', merged.bin_level, 'Status:', getStatusFromLevel(merged.bin_level || 0));
+        setBin1Data(merged);
         setLastUpdate(new Date().toISOString());
         
         // Track GPS history if valid
-        if (bin1Response.gps_valid && bin1Response.latitude && bin1Response.longitude) {
+        if (merged.gps_valid && merged.latitude && merged.longitude) {
           setGpsHistory(prev => [...prev, {
-            lat: bin1Response.latitude,
-            lng: bin1Response.longitude,
-            timestamp: bin1Response.timestamp
+            lat: merged.latitude!,
+            lng: merged.longitude!,
+            timestamp: merged.timestamp
           }].slice(-50)); // Keep last 50 points
         }
       } else {
@@ -139,43 +174,17 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
       
       setError(null);
     } catch (err: any) {
-      console.error('❌ Mobile App - Error fetching initial data:', err);
+      console.error('❌ Mobile App - Error fetching data:', err);
       setError(err.message || 'Failed to fetch data');
     } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Set up real-time updates using polling - only bin1 data as requested
-  const fetchRealTimeData = useCallback(async () => {
-    try {
-      const bin1Response = await apiService.getBin1Data();
-
-      if (bin1Response) {
-        console.log('🔄 Mobile App - Polling update - bin1 data:', bin1Response);
-        console.log('📊 Mobile App - Bin Level:', bin1Response.bin_level, 'Status:', getStatusFromLevel(bin1Response.bin_level));
-        setBin1Data(bin1Response);
-        setLastUpdate(new Date().toISOString());
-        
-        // Track GPS history if valid
-        if (bin1Response.gps_valid && bin1Response.latitude && bin1Response.longitude) {
-          setGpsHistory(prev => [...prev, {
-            lat: bin1Response.latitude,
-            lng: bin1Response.longitude,
-            timestamp: bin1Response.timestamp
-          }].slice(-50)); // Keep last 50 points
-        }
+      if (isInitial) {
+        setLoading(false);
       }
-      
-      setError(null);
-    } catch (err: any) {
-      console.error('❌ Mobile App - Error fetching real-time data:', err);
-      setError(err.message || 'Failed to fetch real-time data');
     }
   }, []);
 
   // Convert Firebase data to waste bin format - ONLY use bin1 for Central Plaza
-  const getWasteBins = (): WasteBin[] => {
+  const getWasteBins = useCallback((): WasteBin[] => {
     const bins: WasteBin[] = [];
     
     // ONLY use bin1 data for Central Plaza as requested
@@ -194,32 +203,49 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
     }
     
     return bins;
-  };
+  }, [bin1Data]);
 
-  // Create dynamic bin locations with live coordinates
-  const getDynamicBinLocations = () => {
+  // Create dynamic bin locations with GPS fallback logic
+  const getDynamicBinLocations = useCallback(() => {
     const locations = [];
     
-    // Add bin1 with live coordinates from real-time database
-    if (bin1Data && bin1Data.gps_valid && bin1Data.latitude && bin1Data.longitude) {
+    // Always add bin1 if we have any bin data (continuous monitoring)
+    if (bin1Data) {
+      // Determine coordinates: use ESP32 cached coordinates if available, otherwise use fallback
+      let coordinates: [number, number];
+      let coordinatesSource: string;
+      
+      if (bin1Data.latitude && bin1Data.longitude) {
+        // ESP32 provides coordinates (either live GPS or cached)
+        coordinates = [bin1Data.latitude, bin1Data.longitude];
+        coordinatesSource = bin1Data.coordinates_source || 'gps_live';
+      } else {
+        // No coordinates from ESP32 - use default fallback position
+        coordinates = [10.24371, 123.786917]; // Default Central Plaza coordinates
+        coordinatesSource = 'no_data';
+      }
+      
       locations.push({
         id: 'bin1',
         name: 'Central Plaza',
-        position: [bin1Data.latitude, bin1Data.longitude] as [number, number],
+        position: coordinates,
         level: bin1Data.bin_level || 0,
         status: getStatusFromLevel(bin1Data.bin_level || 0),
-        lastCollection: getTimeAgo(bin1Data.timestamp),
+        lastCollection: bin1Data.last_active || getTimeAgo(bin1Data.timestamp),
         route: 'Route A - Central',
         gps_valid: bin1Data.gps_valid,
         satellites: bin1Data.satellites,
         timestamp: bin1Data.timestamp,
         weight_kg: bin1Data.weight_kg,
-        distance_cm: bin1Data.distance_cm
+        distance_cm: bin1Data.distance_cm,
+        coordinates_source: coordinatesSource,
+        last_active: bin1Data.last_active,
+        gps_timestamp: bin1Data.gps_timestamp
       });
     }
     
     return locations;
-  };
+  }, [bin1Data]);
 
   // GPS utility functions
   const getCurrentGPSLocation = () => {
@@ -227,31 +253,35 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
   };
 
   const isGPSValid = () => {
-    return (bin1Data?.gps_valid && bin1Data?.latitude && bin1Data?.longitude) ||
-           (monitoringData?.gps_valid && monitoringData?.latitude && monitoringData?.longitude);
+    // Check if we have any valid GPS data (live or cached)
+    return Boolean((bin1Data?.latitude && bin1Data?.longitude) ||
+                   (monitoringData?.latitude && monitoringData?.longitude));
   };
 
   const refetch = useCallback(async () => {
-    setLoading(true);
-    await fetchInitialData();
-  }, [fetchInitialData]);
+    await fetchData(true);
+  }, [fetchData]);
 
   useEffect(() => {
     // Initial fetch
-    fetchInitialData();
-  }, [fetchInitialData]);
+    fetchData(true);
+  }, [fetchData]);
 
   // Set up interval for real-time updates
   useEffect(() => {
-    const interval = setInterval(fetchRealTimeData, refreshInterval);
+    const interval = setInterval(() => fetchData(false), refreshInterval);
     return () => clearInterval(interval);
-  }, [fetchRealTimeData, refreshInterval]);
+  }, [fetchData, refreshInterval]);
+
+  // Memoize expensive calculations
+  const binLocations = useMemo(() => getDynamicBinLocations(), [getDynamicBinLocations]);
+  const wasteBins = useMemo(() => getWasteBins(), [getWasteBins]);
 
   return {
-    binLocations: getDynamicBinLocations(),
+    binLocations,
     bin1Data,
-    wasteBins: getWasteBins(),
-    dynamicBinLocations: getDynamicBinLocations(),
+    wasteBins,
+    dynamicBinLocations: binLocations,
     gpsHistory,
     loading,
     error,

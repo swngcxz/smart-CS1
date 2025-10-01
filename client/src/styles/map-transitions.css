@@ -1,0 +1,89 @@
+/* Smooth transitions for map tile layers */
+.satellite-layer {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.satellite-layer-hidden {
+  opacity: 0 !important;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.street-layer {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.street-layer-hidden {
+  opacity: 0 !important;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* Prevent flickering during transitions */
+.leaflet-tile-container {
+  transition: opacity 0.2s ease-in-out;
+}
+
+/* Loading indicator for map tiles */
+.map-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px 20px;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  font-size: 14px;
+  color: #333;
+}
+
+.map-loading::after {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Zoom level indicator */
+.zoom-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  z-index: 1000;
+}
+
+/* Map type indicator */
+.map-type-indicator {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  z-index: 1000;
+}
+
+.map-type-indicator.satellite {
+  background: rgba(34, 139, 34, 0.8);
+}
+
+.map-type-indicator.street {
+  background: rgba(0, 123, 255, 0.8);
+}

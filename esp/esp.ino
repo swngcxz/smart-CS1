@@ -1,203 +1,170 @@
 #include <WiFi.h>
-#include <Wire.h>
-#include "HX711.h"
 #include <HTTPClient.h>
+#include <HX711.h>
 #include <TinyGPS++.h>
 #include <HardwareSerial.h>
 
-// WiFi Credentials
-const char* ssid = "ZTE_2.4G_3JyGtw";
-const char* password = "4y7JrrGH";
+// -------------------- WiFi & Firebase --------------------
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+String firebaseUrl = "https://YOUR_FIREBASE_PROJECT.firebaseio.com/bin_data.json"; 
 
-// Firebase Settings
-const String firebaseHost1 = "https://smartbin-841a3-default-rtdb.firebaseio.com/";
-const String firebasePath1 = "/monitoring/bin1.json";  // ✅ Fixed location to update
-const String firebaseHost2 = "https://smartbin-75fc3-default-rtdb.asia-southeast1.firebasedatabase.app";
-const String firebasePath2 = "/monitoring/data.json";  // 🟡 Still using PUT
-
-// HX711 Load Cell
-#define DT1 33
-#define SCK1 32
+// -------------------- Load Cell --------------------
+#define DOUT  18
+#define CLK   19
 HX711 scale;
 
-// Ultrasonic Sensor
-#define TRIG_PIN 5
-#define ECHO_PIN 4
+// -------------------- Ultrasonic Sensor --------------------
+#define TRIG_PIN  5
+#define ECHO_PIN  17
+long duration;
+float distance;
 
-// Buzzer
-#define BUZZER 21
+// -------------------- Bin Parameters --------------------
+float binHeight = 40.0; // cm
+float maxWeight = 2.5;  // kg
 
-// LED Indicators
-#define GREEN_LED 18
-#define RED_LED 19
-
-// GPS
+// -------------------- GPS --------------------
 TinyGPSPlus gps;
-HardwareSerial gpsSerial(1);  // Use UART1
-#define GPS_RX 16  // GPS TX → ESP32 RX
-#define GPS_TX 17  // GPS RX → ESP32 TX
+HardwareSerial gpsSerial(1);
+double lastLat = 0.0, lastLng = 0.0;
+unsigned long lastFixTime = 0;
+bool gpsFixAvailable = false;
 
-// Calibration and Thresholds
-const float calibration_factor = -285159;
-const float maxWeight = 2.5;
-const int minDistance = 5;
-const int maxDistance = 30;
-const int alertThreshold = 85;
-const long interval = 1000;
+// -------------------- Timing --------------------
+unsigned long lastSendTime = 0;
+const long sendInterval = 10000; // 10 seconds
 
-unsigned long previousMillis = 0;
-
-void setup() {
-  Serial.begin(115200);
-
-  // GPS Serial
-  gpsSerial.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX);
-
-  // Scale
-  scale.begin(DT1, SCK1);
-  scale.set_scale(calibration_factor);
-  scale.tare();
-
-  // Pins
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
-  pinMode(BUZZER, OUTPUT);
-  pinMode(GREEN_LED, OUTPUT);
-  pinMode(RED_LED, OUTPUT);
-
-  digitalWrite(BUZZER, LOW);
-  digitalWrite(GREEN_LED, LOW);
-  digitalWrite(RED_LED, LOW);
-
-  // WiFi
+// -------------------- WiFi --------------------
+void connectWiFi() {
   WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    delay(1000);
     Serial.print(".");
   }
-  Serial.println("\nWiFi Connected");
+  Serial.println("Connected!");
 }
 
-float getStableWeight() {
-  if (!scale.is_ready()) return 0;
-  float sum = 0;
-  for (int i = 0; i < 5; i++) {
-    sum += scale.get_units(1);
-    delay(5);
+// -------------------- GPS Timestamp --------------------
+String getGPSTimestamp() {
+  if (gps.date.isValid() && gps.time.isValid()) {
+    char buf[25];
+    sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d",
+      gps.date.year(),
+      gps.date.month(),
+      gps.date.day(),
+      gps.time.hour(),
+      gps.time.minute(),
+      gps.time.second()
+    );
+    return String(buf);
   }
-  return max(0.0f, sum / 5.0f);
+  return "N/A";  
 }
 
-int getDistance() {
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-  int duration = pulseIn(ECHO_PIN, HIGH, 30000);
-  if (duration == 0) return -1;
-  return duration * 0.034 / 2;
+// -------------------- Last Active --------------------
+String getActiveAgo() {
+  unsigned long diff = (millis() - lastFixTime) / 1000;
+  if (diff < 60) return String(diff) + "s ago";
+  else if (diff < 3600) return String(diff / 60) + "m ago";
+  else return String(diff / 3600) + "h ago";
 }
 
-int getHeightPercent(int distance) {
-  if (distance == -1) return -1;
-  if (distance <= minDistance) return 100;
-  if (distance >= maxDistance) return 0;
-  return map(distance, maxDistance, minDistance, 0, 100);
+// -------------------- Setup --------------------
+void setup() {
+  Serial.begin(115200);
+  
+  // GPS
+  gpsSerial.begin(9600, SERIAL_8N1, 16, 4); 
+
+  // Load Cell
+  scale.begin(DOUT, CLK);
+  scale.set_scale();   
+  scale.tare();        
+
+  // Ultrasonic
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  connectWiFi();
 }
 
-void alertBuzzer() {
-  digitalWrite(BUZZER, HIGH);
-  delay(300);
-  digitalWrite(BUZZER, LOW);
-  delay(300);
-}
-
+// -------------------- Loop --------------------
 void loop() {
-  while (gpsSerial.available()) {
+  // Read GPS continuously
+  while (gpsSerial.available() > 0) {
     gps.encode(gpsSerial.read());
+    if (gps.location.isValid()) {
+      lastLat = gps.location.lat();
+      lastLng = gps.location.lng();
+      lastFixTime = millis();
+      gpsFixAvailable = true;
+    }
   }
 
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
+  // Every interval → send data
+  if (millis() - lastSendTime > sendInterval) {
+    lastSendTime = millis();
 
-    float weight = getStableWeight();
-    float weightPercent = min((weight / maxWeight) * 100.0, 100.0);
+    // Load cell (kg)
+    float weight = scale.get_units(5);
+    if (weight < 0) weight = 0;
+    float weightPercent = (weight / maxWeight) * 100.0;
+    if (weightPercent > 100) weightPercent = 100;
 
-    int distance = getDistance();
-    int heightPercent = getHeightPercent(distance);
+    // Ultrasonic (cm)
+    digitalWrite(TRIG_PIN, LOW);
+    delayMicroseconds(2);
+    digitalWrite(TRIG_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_PIN, LOW);
+    duration = pulseIn(ECHO_PIN, HIGH, 30000);
+    distance = (duration * 0.0343) / 2;
+    if (distance <= 0 || distance > binHeight) distance = binHeight;
+    float heightPercent = ((binHeight - distance) / binHeight) * 100.0;
+    if (heightPercent < 0) heightPercent = 0;
+    if (heightPercent > 100) heightPercent = 100;
 
-    float binLevel = (heightPercent == -1) ? weightPercent : (weightPercent + heightPercent) / 2.0;
-    binLevel = constrain(binLevel, 0.0f, 100.0f);
+    // Bin level average
+    float binLevel = (weightPercent + heightPercent) / 2.0;
 
-    // GPS Values
-    double latitude = gps.location.isValid() ? gps.location.lat() : 0.0;
-    double longitude = gps.location.isValid() ? gps.location.lng() : 0.0;
+    // Build Firebase JSON
+    String payload = "{";
+    payload += "\"weight_kg\":" + String(weight, 3) + ",";
+    payload += "\"weight_percent\":" + String((int)weightPercent) + ",";
+    payload += "\"distance_cm\":" + String(distance) + ",";
+    payload += "\"height_percent\":" + String((int)heightPercent) + ",";
+    payload += "\"bin_level\":" + String((int)binLevel) + ",";
+    payload += "\"satellites\":" + String(gps.satellites.value()) + ",";
+    payload += "\"last_active\":\"" + getActiveAgo() + "\",";
+    payload += "\"gps_timestamp\":\"" + getGPSTimestamp() + "\"";
 
-    // Serial Debug
-    Serial.println("===== BIN 1 DATA =====");
-    Serial.printf("Weight: %.2f kg (%.0f%%)\n", weight, weightPercent);
-    Serial.printf("Distance: %d cm (Height %%: %d%%)\n", distance, heightPercent);
-    Serial.printf("Bin Level: %.0f%%\n", binLevel);
-    Serial.printf("GPS: Lat %.6f, Lon %.6f\n", latitude, longitude);
-    Serial.println("======================\n");
-
-    // LED Indicators
-    if (binLevel >= 90) {
-      digitalWrite(RED_LED, HIGH);
-      digitalWrite(GREEN_LED, LOW);
-    } else {
-      digitalWrite(RED_LED, LOW);
-      digitalWrite(GREEN_LED, HIGH);
+    // Add lat/lng only if we ever had a fix
+    if (gpsFixAvailable) {
+      payload += ",";
+      payload += "\"latitude\":" + String(lastLat, 6) + ",";
+      payload += "\"longitude\":" + String(lastLng, 6);
     }
 
-    if (binLevel >= alertThreshold) alertBuzzer();
+    payload += "}";
 
-    // WiFi Reconnect
-    if (WiFi.status() != WL_CONNECTED) {
-      WiFi.begin(ssid, password);
-      Serial.println("Reconnecting WiFi...");
-    }
-
-    // Firebase Upload
+    // Send to Firebase
     if (WiFi.status() == WL_CONNECTED) {
       HTTPClient http;
-
-      // Build the payload
-      String payload = "{";
-      payload += "\"weight_kg\":" + String(weight, 3) + ",";
-      payload += "\"weight_percent\":" + String((int)weightPercent) + ",";
-      payload += "\"distance_cm\":" + String(distance) + ",";
-      payload += "\"height_percent\":" + String((int)heightPercent) + ",";
-      payload += "\"bin_level\":" + String((int)binLevel) + ",";
-      payload += "\"latitude\":" + String(latitude, 6) + ",";
-      payload += "\"longitude\":" + String(longitude, 6);
-      payload += "}";
-
-      // ✅ Send to Firebase 1 — overwrite at /monitoring/bin1
-      http.begin(firebaseHost1 + firebasePath1);
+      http.begin(firebaseUrl);
       http.addHeader("Content-Type", "application/json");
-      int httpCode1 = http.PUT(payload);
-      Serial.print("Firebase 1 Response: ");
-      Serial.println(httpCode1);
-      http.end();
+      int httpResponseCode = http.PUT(payload);
 
-      // ✅ Send to Firebase 2 — original behavior
-      http.begin(firebaseHost2 + firebasePath2);
-      http.addHeader("Content-Type", "application/json");
-      int httpCode2 = http.PUT(payload);
-      Serial.print("Firebase 2 Response: ");
-      Serial.println(httpCode2);
+      Serial.println("Data Sent: " + payload);
+      if (httpResponseCode > 0) {
+        Serial.println("Response: " + String(httpResponseCode));
+      } else {
+        Serial.println("Error sending data");
+      }
       http.end();
-    }
-  }
-
-  // Manual Tare
-  if (Serial.available()) {
-    if (Serial.read() == 't') {
-      scale.tare();
-      Serial.println("Tare set!");
+    } else {
+      connectWiFi();
     }
   }
 }

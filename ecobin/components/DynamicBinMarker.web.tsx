@@ -99,7 +99,7 @@ export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress
           <View style={styles.infoSection}>
             <Text style={styles.infoText}>📍 {bin.route}</Text>
             <Text style={styles.infoText}>
-              🛰️ GPS: {bin.gps_valid ? 'Valid' : 'Invalid'} ({bin.satellites} sats)
+              🛰️ GPS: {bin.gps_valid ? 'Valid' : 'Invalid'} ({bin.satellites || 0} sats)
             </Text>
             <Text style={styles.infoText}>
               🕒 Last Update: {formatDate(bin.lastCollection)}

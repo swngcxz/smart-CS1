@@ -72,8 +72,7 @@ export default function HomeScreen() {
       
       console.log("📱 Mobile App - Filtered activities count:", filteredActivities.length);
       
-      // Update state with filtered activities
-      setLogs(filteredActivities);
+      // Debug: Log all activities for analysis
       allActivities.forEach((activity: any, index: number) => {
         console.log(`📱 Mobile App - Activity ${index}:`, {
           bin_id: activity.bin_id,
@@ -88,9 +87,10 @@ export default function HomeScreen() {
         });
       });
 
-      setLogs(allActivities);
+      // Update state with filtered activities (only show relevant ones)
+      setLogs(filteredActivities);
 
-      console.log(`📱 Mobile App - Found ${allActivities.length} activity logs for ${account.email}`);
+      console.log(`📱 Mobile App - Found ${filteredActivities.length} filtered activity logs for ${account.email}`);
     } catch (err) {
       console.error("📱 Mobile App - Failed to fetch activity logs:", err);
       setLogs([]);
@@ -259,14 +259,38 @@ export default function HomeScreen() {
   // Filter and sort activity logs
   const filteredAndSortedLogs = mappedLogs
     .filter((log) => {
-      const shouldShow = log.status === "pending" || log.status === "in_progress";
-      console.log("🔍 Filter Debug:", {
+      // Show pending tasks to all janitors (unassigned)
+      if (log.status === "pending" && !log.assigned_janitor_id) {
+        console.log("🔍 Filter Debug - Pending (unassigned):", {
+          bin_id: log.bin_id,
+          status: log.status,
+          assigned_janitor_id: log.assigned_janitor_id,
+          shouldShow: true,
+        });
+        return true;
+      }
+      
+      // Show in_progress tasks only to assigned janitor
+      if (log.status === "in_progress" && log.assigned_janitor_id === account?.id) {
+        console.log("🔍 Filter Debug - In Progress (assigned to me):", {
+          bin_id: log.bin_id,
+          status: log.status,
+          assigned_janitor_id: log.assigned_janitor_id,
+          my_id: account?.id,
+          shouldShow: true,
+        });
+        return true;
+      }
+      
+      console.log("🔍 Filter Debug - Excluded:", {
         bin_id: log.bin_id,
         status: log.status,
-        shouldShow,
+        assigned_janitor_id: log.assigned_janitor_id,
+        my_id: account?.id,
+        shouldShow: false,
       });
-      return shouldShow;
-    }) // Only show pending and in_progress
+      return false;
+    }) // Only show pending (unassigned) and in_progress (assigned to me)
     .sort((a, b) => {
       // First sort by status: pending first, then in_progress
       if (a.status !== b.status) {

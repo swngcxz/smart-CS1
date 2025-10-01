@@ -134,18 +134,18 @@ export function NotificationPopover() {
                       </Badge>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{notification.message}</p>
-                    {notification.userRole && (
+                    {/* {notification.userRole && (
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           Role: {notification.userRole}
                         </span>
                         {notification.userEmail && (
                           <span className="text-xs text-gray-500 dark:text-gray-400">
-                            • {notification.userEmail}
+                          {notification.userEmail}
                           </span>
                         )}
                       </div>
-                    )}
+                    )} */}
                     <p className="text-xs text-gray-400 dark:text-gray-500">
                       {notification.timestamp ? new Date(notification.timestamp).toLocaleString() : ""}
                     </p>

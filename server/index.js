@@ -17,6 +17,7 @@ const activityRoutes = require('./routers/activityRoutes');
 const activityStatsRoutes = require('./routers/activityStatsRoutes');
 const analyticsRoutes = require('./routers/analyticsRoutes');
 const wasteRoutes = require('./routers/wasteRoutes');
+const gpsFallbackRoutes = require('./routers/gpsFallbackRoutes');
 const { admin } = require('./models/firebase');
 const serialportgsm = require('serialport-gsm');
 
@@ -34,6 +35,7 @@ const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
 const automaticTaskService = require('./services/automaticTaskService');
 const binHealthMonitor = require('./services/binHealthMonitor');
+
 
 
 const db = admin.database();
@@ -107,6 +109,7 @@ app.use("/api", binRoutes);
 console.log('[INDEX] binRoutes mounted successfully');
 app.use("/api", activityRoutes);
 app.use("/api", activityStatsRoutes);
+app.use("/api/gps-fallback", gpsFallbackRoutes);
 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api', binHistoryRoutes);
@@ -378,10 +381,30 @@ function setupRealTimeMonitoring() {
       console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
       console.log(` Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
       console.log(` Bin Level: ${data.bin_level || 0}%`);
-      console.log(` GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
-      console.log(` GPS Valid: ${data.gps_valid || false}`);
+      console.log(` GPS: ${data.latitude || 'N/A'}, ${data.longitude || 'N/A'}`);
       console.log(` Satellites: ${data.satellites || 0}`);
+      console.log(` Last Active: ${data.last_active || 'Unknown'}`);
+      console.log(` GPS Time: ${data.gps_timestamp || 'N/A'}`);
       console.log('==========================================\n');
+       
+      // Apply GPS fallback logic for monitoring/data
+      try {
+                  const processedGPSData = await gpsFallbackService.processGPSData('data', {
+                    latitude: data.latitude,
+                    longitude: data.longitude,
+                    satellites: data.satellites || 0,
+                    last_active: data.last_active,
+                    gps_timestamp: data.gps_timestamp,
+                    timestamp: Date.now()
+                  });
+        
+        console.log(`[GPS FALLBACK] Data source: ${processedGPSData.coordinates_source}`);
+        if (processedGPSData.coordinates_source === 'gps_fallback') {
+          console.log(`[GPS FALLBACK] Using fallback coordinates: ${processedGPSData.latitude}, ${processedGPSData.longitude}`);
+        }
+      } catch (gpsError) {
+        console.error('[GPS FALLBACK] Error processing GPS data:', gpsError);
+      }
       
       // SMS alert logic for monitoring/data - AUTOMATIC SMS when bin exceeds 85%
       if (data.bin_level >= 85 && !smsSentData) {
@@ -435,13 +458,24 @@ function setupRealTimeMonitoring() {
       console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
       console.log(` Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
       console.log(` Bin Level: ${data.bin_level || 0}%`);
-      console.log(` GPS: ${data.latitude || 0}, ${data.longitude || 0}`);
-      console.log(` GPS Valid: ${data.gps_valid || false}`);
+      console.log(` GPS: ${data.latitude || 'N/A'}, ${data.longitude || 'N/A'}`);
       console.log(` Satellites: ${data.satellites || 0}`);
+      console.log(` Last Active: ${data.last_active || 'Unknown'}`);
+      console.log(` GPS Time: ${data.gps_timestamp || 'N/A'}`);
       console.log('==========================================\n');
       
       // Process data through bin history system (with quota protection)
       try {
+        // Apply GPS fallback logic before processing
+        const processedGPSData = await gpsFallbackService.processGPSData('bin1', {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          satellites: data.satellites || 0,
+          last_active: data.last_active,
+          gps_timestamp: data.gps_timestamp,
+          timestamp: Date.now()
+        });
+
         // Only process if bin level is significant to reduce Firebase calls
         if (data.bin_level >= 70 || data.bin_level <= 10) {
           const historyResult = await BinHistoryProcessor.processExistingMonitoringData({
@@ -449,12 +483,13 @@ function setupRealTimeMonitoring() {
             distance: data.height_percent || 0,
             binLevel: data.bin_level || 0,
             gps: {
-              lat: data.latitude || 0,
-              lng: data.longitude || 0
+              lat: processedGPSData.latitude,
+              lng: processedGPSData.longitude
             },
-            gpsValid: data.gps_valid || false,
+            gpsValid: processedGPSData.gps_valid,
             satellites: data.satellites || 0,
-            errorMessage: null
+            errorMessage: null,
+            coordinatesSource: processedGPSData.coordinates_source
           });
           
           if (historyResult.success) {
@@ -937,16 +972,18 @@ app.post('/api/test-coordinates', async (req, res) => {
 
 // Start HTTP server immediately
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Server accessible at:`);
   console.log(`  - http://localhost:${PORT}`);
   console.log(`  - http://192.168.1.2:${PORT}`);
   console.log(`  - http://0.0.0.0:${PORT}`);
-  
+
   // Start bin health monitoring system
   console.log('[SERVER] Starting bin health monitoring system...');
   binHealthMonitor.start();
+
+
 });
 
 // Move modem initialization to after server startup
