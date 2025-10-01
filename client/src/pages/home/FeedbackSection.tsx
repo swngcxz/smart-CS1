@@ -11,16 +11,57 @@ import { useFeedback } from "@/hooks/useFeedback";
 import { Star, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import api from "@/lib/api";
 
+interface FeedbackItem {
+  id: string;
+  name?: string;
+  email?: string;
+  userId?: string;
+  content: string;
+  createdAt: string;
+}
+interface Testimonial {
+  id: string;
+  name: string;
+  role: string;
+  content: string;
+  rating: number;
+  date: string;
+}
+
+interface RatingItem {
+  userEmail?: string;
+  userId?: string;
+  rating: number;
+}
+
+
 const FeedbackSection = () => {
   const [feedback, setFeedback] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [wordCount, setWordCount] = useState(0);
-  const [testimonials, setTestimonials] = useState<any[]>([]);
+  const [rating, setRating] = useState<number>(0); // ✅ Added rating state
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { ref, isVisible } = useScrollAnimation();
   const { loading, error, submitFeedback, fetchFeedback, clearError } = useFeedback();
+
+
+  const renderStars = () => {
+    return [...Array(5)].map((_, i) => {
+      const value = i + 1;
+      return (
+        <Star
+          key={i}
+          className={`h-6 w-6 cursor-pointer ${
+            value <= rating ? "text-yellow-400 fill-current" : "text-gray-300"
+          }`}
+          onClick={() => setRating(value)}
+        />
+      );
+    });
+  };
 
   // Word count validation
   const minWords = 10;
@@ -29,107 +70,106 @@ const FeedbackSection = () => {
   const isTooLong = feedback.length > maxLength;
   const isValidLength = wordCount >= minWords && feedback.length <= maxLength;
 
-  // Update word count when feedback changes
+  // Update word count
   useEffect(() => {
     const words = feedback.trim().split(/\s+/).filter(word => word.length > 0);
     setWordCount(words.length);
   }, [feedback]);
 
-  // Fetch real testimonials from the database
+  // Fetch testimonials
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
         setTestimonialsLoading(true);
-        
-        // Fetch feedback data
+
         const feedbackResponse = await api.get('/api/feedback');
         const feedbackData = feedbackResponse.data.feedback || [];
-        
-        // Fetch ratings data to combine with feedback
+
         const ratingsResponse = await api.get('/api/ratings');
         const ratingsData = ratingsResponse.data.ratings || [];
-        
-        // Combine feedback with ratings to create testimonials
-        const combinedTestimonials = feedbackData.map(feedbackItem => {
-          // Find matching rating by user email
-          const matchingRating = ratingsData.find(rating => 
-            rating.userEmail === feedbackItem.email || 
-            rating.userId === feedbackItem.userId
-          );
-          
-          return {
-            id: feedbackItem.id,
-            name: feedbackItem.name || 'Anonymous User',
-            role: 'Customer', // Default role since we don't have role in feedback
-            content: feedbackItem.content,
-            rating: matchingRating?.rating || 5, // Default to 5 stars if no rating found
-            date: feedbackItem.createdAt
-          };
-        });
-        
-        // If we have less than 3 testimonials, add some default ones to maintain the design
-        const defaultTestimonials = [
+
+       const combinedTestimonials: Testimonial[] = feedbackData.map((feedbackItem: FeedbackItem) => {
+  const matchingRating = ratingsData.find(
+    (rating: RatingItem) =>
+      rating.userEmail === feedbackItem.email ||
+      rating.userId === feedbackItem.userId
+  );
+
+  return {
+    id: feedbackItem.id,
+    name: feedbackItem.name || "Anonymous User",
+    role: "Customer",
+    content: feedbackItem.content,
+    rating: matchingRating?.rating || 5,
+    date: feedbackItem.createdAt
+  };
+});
+
+
+        const defaultTestimonials: Testimonial[] = [
           {
-            id: 'default-1',
+            id: "default-1",
             name: "Sarah Johnson",
             role: "City Manager",
-            content: "EcoSmart has transformed our waste management operations. We've seen significant cost savings and improved efficiency.",
+            content:
+              "EcoSmart has transformed our waste management operations. We've seen significant cost savings and improved efficiency.",
             rating: 5,
             date: new Date().toISOString()
           },
           {
-            id: 'default-2',
+            id: "default-2",
             name: "Mike Chen",
             role: "Environmental Director",
-            content: "The real-time monitoring and analytics have helped us reduce waste overflow incidents by 80%.",
+            content:
+              "The real-time monitoring and analytics have helped us reduce waste overflow incidents by 80%.",
             rating: 5,
             date: new Date().toISOString()
           },
           {
-            id: 'default-3',
+            id: "default-3",
             name: "Lisa Rodriguez",
             role: "Operations Manager",
-            content: "Outstanding customer support and innovative technology. Highly recommend for any city looking to modernize.",
+            content:
+              "Outstanding customer support and innovative technology. Highly recommend for any city looking to modernize.",
             rating: 5,
             date: new Date().toISOString()
           }
         ];
-        
-        // Combine real and default testimonials, prioritizing real ones
+
         const allTestimonials = [...combinedTestimonials, ...defaultTestimonials];
-        
-        // Take the most recent testimonials and ensure we have at least 3
+
         const finalTestimonials = allTestimonials
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, Math.max(3, allTestimonials.length));
-        
+
         setTestimonials(finalTestimonials);
-        
       } catch (error) {
-        console.error('Error fetching testimonials:', error);
-        // Fallback to default testimonials
+        console.error("Error fetching testimonials:", error);
         setTestimonials([
           {
-            id: 'default-1',
+            id: "default-1",
             name: "Sarah Johnson",
             role: "City Manager",
-            content: "EcoSmart has transformed our waste management operations. We've seen significant cost savings and improved efficiency.",
+            content:
+              "EcoSmart has transformed our waste management operations. We've seen significant cost savings and improved efficiency.",
             rating: 5,
             date: new Date().toISOString()
           },
           {
-            id: 'default-2',
+            id: "default-2",
             name: "Mike Chen",
             role: "Environmental Director",
-            content: "The real-time monitoring and analytics have helped us reduce waste overflow incidents by 80%.",
+            content:
+              "The real-time monitoring and analytics have helped us reduce waste overflow incidents by 80%.",
             rating: 5,
             date: new Date().toISOString()
           },
           {
-            id: 'default-3',
+            id: "default-3",
             name: "Lisa Rodriguez",
             role: "Operations Manager",
-            content: "Outstanding customer support and innovative technology. Highly recommend for any city looking to modernize.",
+            content:
+              "Outstanding customer support and innovative technology. Highly recommend for any city looking to modernize.",
             rating: 5,
             date: new Date().toISOString()
           }
@@ -142,58 +182,47 @@ const FeedbackSection = () => {
     fetchTestimonials();
   }, []);
 
-  // Auto-scroll animation for testimonials - one by one
+  // Auto-scroll testimonials
   useEffect(() => {
-    if (testimonials.length <= 3) return; // Only animate if we have more than 3 testimonials
-
+    if (testimonials.length <= 3) return;
     const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => {
-        const nextIndex = (prevIndex + 1) % testimonials.length; // Move one by one through all testimonials
-        return nextIndex;
-      });
-    }, 3000); // Change every 3 seconds for smoother one-by-one movement
-
+      setCurrentIndex(prevIndex => (prevIndex + 1) % testimonials.length);
+    }, 3000);
     return () => clearInterval(interval);
   }, [testimonials.length]);
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Clear any previous errors
     clearError();
 
-    // Validate word count and character length
-    if (isTooShort || isTooLong) {
+    if (isTooShort || isTooLong || rating === 0) {
       toast({
         title: "Invalid Feedback",
-        description: `Please enter at least ${minWords} words and no more than ${maxLength} characters.`,
+        description: `Please provide at least ${minWords} words, no more than ${maxLength} characters, and a rating.`,
         variant: "destructive"
       });
       return;
     }
 
-    // Submit feedback
     const result = await submitFeedback({
-      content: feedback,
-      name: name.trim() || undefined,
-      email: email.trim() || undefined
-    });
+  content: feedback,
+  name: name.trim() || undefined,
+  email: email.trim() || undefined,
+  rating
+} as any); 
+
 
     if (result.success) {
       toast({
         title: "Feedback Submitted!",
-        description: `Thank you for your valuable feedback (${wordCount} words).`,
+        description: `Thank you for your valuable feedback  ${name}.`
       });
-      // Reset form
       setFeedback("");
       setName("");
       setEmail("");
       setWordCount(0);
-      
-      // Refresh testimonials to show the new feedback
-      setTimeout(() => {
-        window.location.reload(); // Simple refresh to show new testimonials
-      }, 2000);
+      setRating(0);
+      setTimeout(() => window.location.reload(), 2000);
     } else {
       toast({
         title: "Submission Failed",
@@ -203,17 +232,11 @@ const FeedbackSection = () => {
     }
   };
 
-  // Get current testimonials to display (one-by-one animation)
   const getCurrentTestimonials = () => {
-    if (testimonials.length <= 3) {
-      return testimonials;
-    }
-    
-    // Create array with current testimonial and 2 others for smooth one-by-one transition
+    if (testimonials.length <= 3) return testimonials;
     const currentTestimonial = testimonials[currentIndex];
     const prevIndex = currentIndex === 0 ? testimonials.length - 1 : currentIndex - 1;
     const nextIndex = (currentIndex + 1) % testimonials.length;
-    
     return [testimonials[prevIndex], currentTestimonial, testimonials[nextIndex]];
   };
 
@@ -227,9 +250,10 @@ const FeedbackSection = () => {
         >
           <Badge className="mb-4 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Testimonials</Badge>
           <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">What Our Clients Say</h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Hear from city leaders who have transformed their waste management operations.
-          </p>
+         <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            Discover how you can take part in keeping the community clean through smart waste solutions.
+        </p>
+
         </div>
 
         <div className="relative mb-12 overflow-hidden">
@@ -265,9 +289,9 @@ const FeedbackSection = () => {
                 return (
                   <Card
                     key={`${testimonial.id}-${currentIndex}-${index}`}
-                    className={`border-green-100 dark:border-slate-700 dark:bg-slate-800 hover:shadow-lg transition-all duration-700 ease-in-out ${
+                    className={`dark:border-slate-700 dark:bg-slate-800 hover:shadow-lg transition-all duration-700 ease-in-out ${
                       isCenter 
-                        ? 'scale-105 shadow-xl ring-2 ring-green-200 dark:ring-green-800' 
+                        ? 'scale-105 ring-green-200 dark:ring-green-800' 
                         : 'scale-95 opacity-70'
                     }`}
                     style={{
@@ -346,16 +370,28 @@ const FeedbackSection = () => {
                     />
                   </div>
                 </div>
+                <div className="space-y-3">
+                              <Label>Rate Your Experience</Label>
+                              <div className="flex space-x-1">{renderStars()}</div>
+                              <p className="text-sm text-gray-500">
+                                {rating === 0 && "Please select a rating"}
+                                {rating === 1 && "Poor - Needs significant improvement"}
+                                {rating === 2 && "Fair - Below expectations"}
+                                {rating === 3 && "Good - Meets expectations"}
+                                {rating === 4 && "Very Good - Above expectations"}
+                                {rating === 5 && "Excellent - Exceeds expectations"}
+                              </p>
+                            </div>
 
                 {/* Feedback Textarea */}
                 <div className="space-y-2">
                   <Label htmlFor="feedback" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Your Feedback *
+                    Your Feedback 
                   </Label>
                   <Textarea
                     id="feedback"
                     name="feedback"
-                    placeholder="Tell us about your experience or suggestions... (minimum 10 words required)"
+                    placeholder="Tell us about your experience or suggestions..."
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
                     className="min-h-32 border-green-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-gray-400 focus:border-green-500"
@@ -368,26 +404,35 @@ const FeedbackSection = () => {
                       <div className="flex items-center gap-2">
                         {isValidLength ? (
                           <div className="flex items-center gap-1 text-green-600">
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Valid feedback</span>
+
+                           
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1 text-green-600">
-                            <AlertCircle className="w-4 h-4" />
-                            <span>
-                              {isTooShort ? `Need ${minWords - wordCount} more words` : 
-                               isTooLong ? `${feedback.length - maxLength} characters over limit` : 
-                               'Invalid feedback'}
-                            </span>
+                         <div
+                            className={`flex items-center gap-1 ${
+                              isTooShort ? "text-red-600" : "text-green-600"
+                            }`}
+                          >
+                           <span className="text-xs">
+                            {isTooShort
+                              ? `Need ${minWords - wordCount} more words`
+                              : isTooLong
+                              ? `${feedback.length - maxLength} characters over limit`
+                              : "Invalid feedback"}
+                          </span>
+
                           </div>
+
                         )}
                       </div>
-                      <span className={`font-medium ${
-                        isTooShort || isTooLong ? 'text-green-600' : 
-                        isValidLength ? 'text-green-600' : 'text-green-500'
-                      }`}>
-                        {wordCount} words / {feedback.length} chars
-                      </span>
+                    <span className={`text-xs ${
+                      isTooShort || isTooLong ? 'text-black-500' : 
+                      isValidLength ? 'text-green-600' : 
+                      'text-gray-500'
+                    }`}>
+                      {wordCount} words / {feedback.length} chars
+                    </span>
+
                     </div>
                   )}
                 </div>

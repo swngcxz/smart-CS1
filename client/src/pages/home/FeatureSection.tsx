@@ -17,21 +17,7 @@ const FeaturesSection = () => {
       title: "Route Optimization",
       description: "AI-powered route planning reduces fuel consumption and collection time by up to 40%.",
     },
-    {
-      icon: <BarChart3 className="h-8 w-8 text-green-600 dark:text-green-400" />,
-      title: "Analytics Dashboard",
-      description: "Comprehensive insights and reporting to track waste patterns and operational efficiency.",
-    },
-    {
-      icon: <Recycle className="h-8 w-8 text-green-600 dark:text-green-400" />,
-      title: "Recycling Optimization",
-      description: "Automated sorting recommendations and recycling rate improvement strategies.",
-    },
-    {
-      icon: <Zap className="h-8 w-8 text-green-600 dark:text-green-400" />,
-      title: "Energy Efficient",
-      description: "Solar-powered sensors and energy-efficient operations reduce carbon footprint.",
-    },
+
     {
       icon: <Shield className="h-8 w-8 text-green-600 dark:text-green-400" />,
       title: "Secure & Reliable",

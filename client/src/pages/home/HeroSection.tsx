@@ -28,7 +28,7 @@ const HeroSection = () => {
               isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
             }`}
           >
-            Smart Waste Management System
+            Smart Waste Monitoring System
           </Badge>
           <h1
             className={`text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6 transition-all duration-700 delay-300 ${
