@@ -5,6 +5,7 @@ interface FeedbackData {
   content: string;
   name?: string;
   email?: string;
+  rating?: number;
 }
 
 interface Feedback {
@@ -13,10 +14,15 @@ interface Feedback {
   name: string;
   email: string;
   userId?: string;
+  rating?: number | null;
   timestamp: string;
   createdAt: string;
   status: 'pending' | 'reviewed' | 'resolved';
   category: 'general' | 'bug' | 'feature' | 'complaint' | 'praise';
+  subcategory?: string;
+  sentiment?: 'positive' | 'negative' | 'suggestion' | 'neutral';
+  sentimentConfidence?: number;
+  topics?: string[];
   characterCount?: number;
 }
 
@@ -65,10 +71,12 @@ export const useFeedback = (): UseFeedbackReturn => {
         throw new Error(`Feedback must not exceed 500 characters. Current: ${trimmedContent.length} characters.`);
       }
 
+
       const response = await api.post('/api/feedback', {
         content: trimmedContent,
         name: data.name,
-        email: data.email
+        email: data.email,
+        rating: data.rating
       });
 
       setLoading(false);

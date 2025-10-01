@@ -14,6 +14,9 @@ router.get('/:id', feedbackController.getFeedbackById);
 // Get feedback statistics (admin only)
 router.get('/stats/overview', feedbackController.getFeedbackStats);
 
+// Get feedback analytics with categorization (admin only)
+router.get('/analytics', feedbackController.getFeedbackAnalytics);
+
 // Update feedback status (admin only)
 router.put('/:id/status', feedbackController.updateFeedbackStatus);
 

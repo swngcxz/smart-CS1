@@ -31,32 +31,37 @@ export function PerformanceTab() {
   const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().slice(0, 7)); // Current month (YYYY-MM)
-  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+  const [selectedMonth, setSelectedMonth] = useState<string>('10'); // Default to October
+  const [selectedYear, setSelectedYear] = useState<string>('2025'); // Default to 2025
 
-  // Generate month options (last 12 months)
+  // Generate month options (show only month names)
   const generateMonthOptions = () => {
     const options = [];
-    const currentDate = new Date();
     
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      const value = date.toISOString().slice(0, 7);
-      const label = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-      options.push({ value, label });
+    // Add all 12 months
+    for (let month = 1; month <= 12; month++) {
+      const date = new Date(2024, month - 1, 1); // Use any year for formatting
+      const label = date.toLocaleDateString('en-US', { month: 'long' });
+      
+      options.push({ 
+        value: month.toString(), 
+        label: label
+      });
     }
     
     return options;
   };
 
-  // Generate year options (last 5 years)
+  // Generate year options (show range of years)
   const generateYearOptions = () => {
-    const currentYear = new Date().getFullYear();
     const options = [];
     
-    for (let i = 0; i < 5; i++) {
-      const year = currentYear - i;
-      options.push({ value: year.toString(), label: year.toString() });
+    // Add years from 2020 to 2030
+    for (let year = 2030; year >= 2020; year--) {
+      options.push({
+        value: year.toString(),
+        label: year.toString()
+      });
     }
     
     return options;
@@ -64,6 +69,10 @@ export function PerformanceTab() {
 
   // Fetch janitor performance data
   const fetchPerformanceData = async () => {
+    if (!selectedMonth || !selectedYear) {
+      return; // Don't fetch if no month/year selected
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -199,11 +208,8 @@ export function PerformanceTab() {
           <CardContent className="pt-6">
             <div>
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Top Performer</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">
                 {performanceData?.topPerformer?.fullName || "N/A"}
-              </p>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                {performanceData?.topPerformer?.activityCount || 0} activities
               </p>
             </div>
           </CardContent>
@@ -214,7 +220,6 @@ export function PerformanceTab() {
             <div>
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Total Activities</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{performanceData?.totalActivities || 0}</p>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">This month</p>
             </div>
           </CardContent>
         </Card>
@@ -224,7 +229,6 @@ export function PerformanceTab() {
             <div>
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Active Janitors</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{performanceData?.janitors?.length || 0}</p>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">This month</p>
             </div>
           </CardContent>
         </Card>
@@ -234,7 +238,6 @@ export function PerformanceTab() {
             <div>
               <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">Average</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(performanceData?.averageActivities || 0)}</p>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">Activities per janitor</p>
             </div>
           </CardContent>
         </Card>

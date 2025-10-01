@@ -17,6 +17,10 @@ interface FeedbackItem {
   email?: string;
   userId?: string;
   content: string;
+  rating?: number | null;
+  category?: string;
+  subcategory?: string;
+  sentiment?: string;
   createdAt: string;
 }
 interface Testimonial {
@@ -28,11 +32,6 @@ interface Testimonial {
   date: string;
 }
 
-interface RatingItem {
-  userEmail?: string;
-  userId?: string;
-  rating: number;
-}
 
 
 const FeedbackSection = () => {
@@ -76,109 +75,42 @@ const FeedbackSection = () => {
     setWordCount(words.length);
   }, [feedback]);
 
-  // Fetch testimonials
-  useEffect(() => {
-    const fetchTestimonials = async () => {
-      try {
-        setTestimonialsLoading(true);
+  // Function to fetch testimonials
+  const fetchTestimonials = async () => {
+    try {
+      setTestimonialsLoading(true);
 
-        const feedbackResponse = await api.get('/api/feedback');
-        const feedbackData = feedbackResponse.data.feedback || [];
+      const feedbackResponse = await api.get('/api/feedback');
+      const feedbackData = feedbackResponse.data.feedback || [];
 
-        const ratingsResponse = await api.get('/api/ratings');
-        const ratingsData = ratingsResponse.data.ratings || [];
+      // Convert feedback data to testimonials format
+      const dynamicTestimonials: Testimonial[] = feedbackData
+        .filter((feedbackItem: FeedbackItem) => feedbackItem.rating && feedbackItem.rating > 0) // Only show feedback with ratings
+        .map((feedbackItem: FeedbackItem) => ({
+          id: feedbackItem.id,
+          name: feedbackItem.name || "Anonymous User",
+          role: "Customer",
+          content: feedbackItem.content,
+          rating: feedbackItem.rating || 0,
+          date: feedbackItem.createdAt
+        }));
 
-       const combinedTestimonials: Testimonial[] = feedbackData.map((feedbackItem: FeedbackItem) => {
-  const matchingRating = ratingsData.find(
-    (rating: RatingItem) =>
-      rating.userEmail === feedbackItem.email ||
-      rating.userId === feedbackItem.userId
-  );
+      // Sort by date (newest first) and take the most recent ones
+      const finalTestimonials = dynamicTestimonials
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 3); // Show only the 3 most recent testimonials
 
-  return {
-    id: feedbackItem.id,
-    name: feedbackItem.name || "Anonymous User",
-    role: "Customer",
-    content: feedbackItem.content,
-    rating: matchingRating?.rating || 5,
-    date: feedbackItem.createdAt
+      setTestimonials(finalTestimonials);
+    } catch (error) {
+      console.error("Error fetching testimonials:", error);
+      setTestimonials([]); // Set empty array if there's an error
+    } finally {
+      setTestimonialsLoading(false);
+    }
   };
-});
 
-
-        const defaultTestimonials: Testimonial[] = [
-          {
-            id: "default-1",
-            name: "Sarah Johnson",
-            role: "City Manager",
-            content:
-              "EcoSmart has transformed our waste management operations. We've seen significant cost savings and improved efficiency.",
-            rating: 5,
-            date: new Date().toISOString()
-          },
-          {
-            id: "default-2",
-            name: "Mike Chen",
-            role: "Environmental Director",
-            content:
-              "The real-time monitoring and analytics have helped us reduce waste overflow incidents by 80%.",
-            rating: 5,
-            date: new Date().toISOString()
-          },
-          {
-            id: "default-3",
-            name: "Lisa Rodriguez",
-            role: "Operations Manager",
-            content:
-              "Outstanding customer support and innovative technology. Highly recommend for any city looking to modernize.",
-            rating: 5,
-            date: new Date().toISOString()
-          }
-        ];
-
-        const allTestimonials = [...combinedTestimonials, ...defaultTestimonials];
-
-        const finalTestimonials = allTestimonials
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          .slice(0, Math.max(3, allTestimonials.length));
-
-        setTestimonials(finalTestimonials);
-      } catch (error) {
-        console.error("Error fetching testimonials:", error);
-        setTestimonials([
-          {
-            id: "default-1",
-            name: "Sarah Johnson",
-            role: "City Manager",
-            content:
-              "EcoSmart has transformed our waste management operations. We've seen significant cost savings and improved efficiency.",
-            rating: 5,
-            date: new Date().toISOString()
-          },
-          {
-            id: "default-2",
-            name: "Mike Chen",
-            role: "Environmental Director",
-            content:
-              "The real-time monitoring and analytics have helped us reduce waste overflow incidents by 80%.",
-            rating: 5,
-            date: new Date().toISOString()
-          },
-          {
-            id: "default-3",
-            name: "Lisa Rodriguez",
-            role: "Operations Manager",
-            content:
-              "Outstanding customer support and innovative technology. Highly recommend for any city looking to modernize.",
-            rating: 5,
-            date: new Date().toISOString()
-          }
-        ]);
-      } finally {
-        setTestimonialsLoading(false);
-      }
-    };
-
+  // Fetch testimonials on component mount
+  useEffect(() => {
     fetchTestimonials();
   }, []);
 
@@ -204,6 +136,7 @@ const FeedbackSection = () => {
       return;
     }
 
+
     const result = await submitFeedback({
   content: feedback,
   name: name.trim() || undefined,
@@ -215,14 +148,18 @@ const FeedbackSection = () => {
     if (result.success) {
       toast({
         title: "Feedback Submitted!",
-        description: `Thank you for your valuable feedback  ${name}.`
+        description: `Thank you for your valuable feedback ${name}.`
       });
       setFeedback("");
       setName("");
       setEmail("");
       setWordCount(0);
       setRating(0);
-      setTimeout(() => window.location.reload(), 2000);
+      
+      // Refresh testimonials to show the new feedback
+      setTimeout(() => {
+        fetchTestimonials();
+      }, 1000);
     } else {
       toast({
         title: "Submission Failed",
@@ -275,6 +212,16 @@ const FeedbackSection = () => {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          ) : testimonials.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-500 dark:text-gray-400 mb-4">
+                <Star className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <h3 className="text-xl font-semibold mb-2">No testimonials yet</h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Be the first to share your experience with our smart waste management system!
+                </p>
+              </div>
             </div>
           ) : (
             <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 transition-all duration-700 ${

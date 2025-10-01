@@ -9,29 +9,22 @@ interface FeedbackItem {
   name: string
   email: string
   userId?: string
+  rating?: number | null
   timestamp: string
   createdAt: string
   status: 'pending' | 'reviewed' | 'resolved'
   category: 'general' | 'bug' | 'feature' | 'complaint' | 'praise'
+  subcategory?: string
+  sentiment?: 'positive' | 'negative' | 'suggestion' | 'neutral'
+  sentimentConfidence?: number
+  topics?: string[]
   userAgent?: string
   ipAddress?: string
 }
 
-// Rating interface for combined data
-interface RatingItem {
-  id: string
-  rating: number
-  userId?: string
-  userEmail?: string
-  timestamp: string
-  createdAt: string
-  userAgent?: string
-  ipAddress?: string
-}
 
 interface FeedbackListProps {
   feedbacks: FeedbackItem[]
-  ratings: RatingItem[]
   filter: 'all' | 'new'
   stats: {
     total: number
@@ -43,15 +36,56 @@ interface FeedbackListProps {
   onDelete: (id: string) => void
 }
 
-const FeedbackList = ({ feedbacks, ratings, filter, stats, loading = false, onFilterChange, onArchive, onDelete }: FeedbackListProps) => {
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'complaint': return 'bg-red-100 text-red-800'
-      case 'feature': return 'bg-blue-100 text-blue-800'
-      case 'praise': return 'bg-green-100 text-green-800'
-      case 'bug': return 'bg-orange-100 text-orange-800'
-      case 'general': return 'bg-gray-100 text-gray-800'
-      default: return 'bg-gray-100 text-gray-800'
+const FeedbackList = ({ feedbacks, filter, stats, loading = false, onFilterChange, onArchive, onDelete }: FeedbackListProps) => {
+  const getCategoryColor = (category: string, subcategory?: string) => {
+    // Use subcategory for more specific styling if available
+    const displayCategory = subcategory || category;
+    
+    switch (displayCategory) {
+      case 'compliment':
+      case 'praise':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'negative_feedback':
+      case 'complaint':
+        return 'bg-red-100 text-red-800 border-red-200'
+      case 'suggestion':
+      case 'feature':
+        return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'bug':
+        return 'bg-orange-100 text-orange-800 border-orange-200'
+      case 'neutral_feedback':
+      case 'general':
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+      default: 
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getCategoryDisplayName = (category: string, subcategory?: string) => {
+    // Use subcategory for display if available, otherwise use category
+    const displayCategory = subcategory || category;
+    
+    switch (displayCategory) {
+      case 'compliment':
+        return 'Compliment'
+      case 'negative_feedback':
+        return 'Negative'
+      case 'suggestion':
+        return 'Suggestion'
+      case 'praise':
+        return 'Praise'
+      case 'complaint':
+        return 'Complaint'
+      case 'feature':
+        return 'Feature Request'
+      case 'bug':
+        return 'Bug Report'
+      case 'neutral_feedback':
+        return 'General'
+      case 'general':
+        return 'General'
+      default:
+        return 'General'
     }
   }
 
@@ -64,18 +98,8 @@ const FeedbackList = ({ feedbacks, ratings, filter, stats, loading = false, onFi
     }
   }
 
-  // Combine feedback with ratings
-  const combinedData = feedbacks.map(feedback => {
-    // Find matching rating by user email or user ID
-    const matchingRating = ratings.find(rating => 
-      rating.userEmail === feedback.email || rating.userId === feedback.userId
-    )
-    
-    return {
-      ...feedback,
-      rating: matchingRating?.rating || 0
-    }
-  })
+  // Use feedback data directly since ratings are now stored with feedback
+  const combinedData = feedbacks
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -147,8 +171,8 @@ const FeedbackList = ({ feedbacks, ratings, filter, stats, loading = false, onFi
                         : feedback.content
                       }
                     </h3>
-                    <Badge className={getCategoryColor(feedback.category)}>
-                      {feedback.category}
+                    <Badge className={getCategoryColor(feedback.category, feedback.subcategory)}>
+                      {getCategoryDisplayName(feedback.category, feedback.subcategory)}
                     </Badge>
                   </div>
                   
@@ -158,7 +182,7 @@ const FeedbackList = ({ feedbacks, ratings, filter, stats, loading = false, onFi
                     <div className="flex items-center gap-1">
                       {formatDate(feedback.createdAt)}
                     </div>
-                    {feedback.rating > 0 && (
+                    {feedback.rating && feedback.rating > 0 && (
                       <div className="flex items-center gap-1">
                         {renderStars(feedback.rating)}
                         <span className="ml-1">({feedback.rating}/5)</span>

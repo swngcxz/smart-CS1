@@ -271,7 +271,6 @@ const saveActivityLog = async (req, res, next) => {
       task_note,
       activity_type: activity_type || 'task_assignment',
       status: assigned_janitor_id ? 'in_progress' : 'pending', // Set status based on assignment
-
       priority: bin_level > 80 ? 'high' : bin_level > 50 ? 'medium' : 'low',
       timestamp: timestamp || now.toISOString(),
       date: now.toISOString().split('T')[0],

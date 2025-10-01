@@ -1,14 +1,27 @@
 const FeedbackModel = require("../models/feedbackModel");
+const { categorizeFeedback, analyzeSentiment, extractTopics } = require("../utils/sentimentAnalysis");
 
 const feedbackController = {
   // Submit new feedback
   async submitFeedback(req, res) {
     try {
-      const { content, name, email } = req.body;
+      const { content, name, email, rating } = req.body;
+      
       
       // Validate required fields
       if (!content || content.trim().length === 0) {
         return res.status(400).json({ error: "Feedback content is required" });
+      }
+
+      // Validate rating if provided
+      if (rating !== undefined && rating !== null) {
+        const ratingNum = typeof rating === 'string' ? parseInt(rating) : rating;
+        if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+          return res.status(400).json({ 
+            error: "Rating must be a number between 1 and 5",
+            validRange: "1-5"
+          });
+        }
       }
 
       // Validate content (minimum 10 words, maximum 500 characters)
@@ -54,19 +67,45 @@ const feedbackController = {
         }
       }
 
+      // Analyze sentiment and categorize feedback
+      const finalRating = rating ? (typeof rating === 'string' ? parseInt(rating) : rating) : null;
+      const categorization = categorizeFeedback(trimmedContent, finalRating || 0);
+      const sentiment = analyzeSentiment(trimmedContent);
+      const topics = extractTopics(trimmedContent);
+
       // Prepare feedback data
       const feedbackData = {
         content: trimmedContent,
         name: name || userName || 'Anonymous',
         email: email || userEmail || '',
-        userId: userId,
+        rating: finalRating, // Store rating as integer or null
         userAgent: req.headers['user-agent'] || '',
         ipAddress: req.ip || req.connection.remoteAddress || '',
         timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         status: 'pending', // pending, reviewed, resolved
-        category: 'general' // general, bug, feature, complaint, praise
+        category: categorization.category, // Auto-categorized: general, bug, feature, complaint, praise
+        subcategory: categorization.subcategory, // More specific: compliment, suggestion, negative_feedback, etc.
+        sentiment: categorization.sentiment, // positive, negative, suggestion, neutral
+        sentimentConfidence: categorization.confidence, // 0-1 confidence score
+        topics: topics, // Array of detected topics
+        analysis: {
+          sentiment: sentiment,
+          categorization: categorization
+        }
       };
+
+      // Only add userId if it exists (user is logged in)
+      if (userId) {
+        feedbackData.userId = userId;
+      }
+
+      // Ensure no undefined values are passed to Firestore
+      Object.keys(feedbackData).forEach(key => {
+        if (feedbackData[key] === undefined) {
+          delete feedbackData[key];
+        }
+      });
 
       // Save to database
       const result = await FeedbackModel.createFeedback(feedbackData);
@@ -74,17 +113,40 @@ const feedbackController = {
       console.log('Feedback submitted:', { 
         id: result.id, 
         userId: userId || 'anonymous',
-        length: trimmedContent.length 
+        length: trimmedContent.length,
+        rating: finalRating || 'no rating',
+        category: categorization.category,
+        subcategory: categorization.subcategory,
+        sentiment: categorization.sentiment,
+        confidence: categorization.confidence,
+        topics: topics
       });
 
       res.status(201).json({ 
         message: "Feedback submitted successfully", 
         feedback: result,
-        characterCount: trimmedContent.length
+        characterCount: trimmedContent.length,
+        rating: finalRating,
+        categorization: {
+          category: categorization.category,
+          subcategory: categorization.subcategory,
+          sentiment: categorization.sentiment,
+          confidence: categorization.confidence,
+          topics: topics
+        }
       });
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      res.status(500).json({ error: error.message });
+      
+      // Provide more user-friendly error messages
+      let errorMessage = error.message;
+      if (error.message.includes('Firestore')) {
+        errorMessage = "There was an issue saving your feedback. Please try again.";
+      } else if (error.message.includes('validation')) {
+        errorMessage = error.message;
+      }
+      
+      res.status(500).json({ error: errorMessage });
     }
   },
 
@@ -150,6 +212,68 @@ const feedbackController = {
       res.json(stats);
     } catch (error) {
       console.error("Error fetching feedback stats:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // Get feedback analytics with categorization
+  async getFeedbackAnalytics(req, res) {
+    try {
+      const { limit = 50, offset = 0 } = req.query;
+      
+      const options = {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        orderBy: 'createdAt',
+        orderDirection: 'desc'
+      };
+
+      const result = await FeedbackModel.getAllFeedback(options);
+      
+      // Analyze all feedback for analytics
+      const analytics = {
+        total: result.feedback.length,
+        categories: {},
+        sentiments: {},
+        subcategories: {},
+        topics: {},
+        ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        recentTrends: []
+      };
+
+      result.feedback.forEach(feedback => {
+        // Count categories
+        const category = feedback.category || 'general';
+        analytics.categories[category] = (analytics.categories[category] || 0) + 1;
+
+        // Count sentiments
+        const sentiment = feedback.sentiment || 'neutral';
+        analytics.sentiments[sentiment] = (analytics.sentiments[sentiment] || 0) + 1;
+
+        // Count subcategories
+        const subcategory = feedback.subcategory || 'general';
+        analytics.subcategories[subcategory] = (analytics.subcategories[subcategory] || 0) + 1;
+
+        // Count topics
+        if (feedback.topics && Array.isArray(feedback.topics)) {
+          feedback.topics.forEach(topic => {
+            analytics.topics[topic] = (analytics.topics[topic] || 0) + 1;
+          });
+        }
+
+        // Count ratings
+        if (feedback.rating && feedback.rating >= 1 && feedback.rating <= 5) {
+          analytics.ratingDistribution[feedback.rating]++;
+        }
+      });
+
+      res.json({
+        analytics,
+        feedback: result.feedback,
+        pagination: result.pagination
+      });
+    } catch (error) {
+      console.error("Error fetching feedback analytics:", error);
       res.status(500).json({ error: error.message });
     }
   },

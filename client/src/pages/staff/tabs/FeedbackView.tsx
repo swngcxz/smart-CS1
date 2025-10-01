@@ -12,48 +12,38 @@ interface FeedbackItem {
   name: string
   email: string
   userId?: string
+  rating?: number | null
   timestamp: string
   createdAt: string
   status: 'pending' | 'reviewed' | 'resolved'
   category: 'general' | 'bug' | 'feature' | 'complaint' | 'praise'
+  subcategory?: string
+  sentiment?: 'positive' | 'negative' | 'suggestion' | 'neutral'
+  sentimentConfidence?: number
+  topics?: string[]
   userAgent?: string
   ipAddress?: string
 }
 
-interface RatingItem {
-  id: string
-  rating: number
-  userId?: string
-  userEmail?: string
-  timestamp: string
-  createdAt: string
-  userAgent?: string
-  ipAddress?: string
-}
 
 const Feedback = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([])
-  const [ratings, setRatings] = useState<RatingItem[]>([])
   const [filter, setFilter] = useState<'all' | 'new'>('all')
   const [showArchived, setShowArchived] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { fetchFeedback, fetchStats } = useFeedback()
 
-  // Fetch feedback and ratings data
+  // Fetch feedback data (ratings are now included in feedback)
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
       setError(null)
       
       try {
-        // Fetch feedback data
+        // Fetch feedback data (now includes ratings)
         const feedbackResponse = await api.get('/api/feedback')
         setFeedbacks(feedbackResponse.data.feedback || [])
-        
-        // Fetch ratings data
-        const ratingsResponse = await api.get('/api/ratings')
-        setRatings(ratingsResponse.data.ratings || [])
         
       } catch (err: any) {
         setError(err?.response?.data?.error || 'Failed to load feedback data')
@@ -101,9 +91,10 @@ const Feedback = () => {
   const newFeedbacks = activeFeedbacks.filter(f => f.status === 'pending').length
   const archivedFeedbacks = feedbacks.filter(f => f.status === 'resolved').length
   
-  // Calculate average rating from ALL ratings data (as requested)
-  const avgRating = ratings.length > 0 
-    ? ratings.reduce((acc, r) => acc + r.rating, 0) / ratings.length 
+  // Calculate average rating from feedback data (ratings are now stored with feedback)
+  const feedbackWithRatings = feedbacks.filter(f => f.rating && f.rating > 0)
+  const avgRating = feedbackWithRatings.length > 0 
+    ? feedbackWithRatings.reduce((acc, f) => acc + (f.rating || 0), 0) / feedbackWithRatings.length 
     : 0
 
   const stats = {
@@ -206,7 +197,6 @@ const Feedback = () => {
 
       <FeedbackList
         feedbacks={filteredFeedbacks}
-        ratings={ratings}
         filter={filter}
         stats={stats}
         loading={loading}

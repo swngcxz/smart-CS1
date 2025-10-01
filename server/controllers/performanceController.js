@@ -29,86 +29,70 @@ class PerformanceController {
 
       // Create date range for the specified month
       const startDate = new Date(yearNum, monthNum - 1, 1); // month is 0-indexed
-      const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59); // Last day of the month
+      const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59, 999); // Last day of the month with milliseconds
       
       console.log(`Fetching performance data for ${yearNum}-${monthNum}`);
-      console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-      // Query activity logs for the specified month
-      // Note: This query requires a composite index in Firestore
-      // If the index doesn't exist, we'll use a fallback approach
-      let activityLogsSnapshot;
-      
-      try {
-        activityLogsSnapshot = await db.collection('activitylogs')
-          .where('timestamp', '>=', startDate)
-          .where('timestamp', '<=', endDate)
-          .where('userRole', 'in', ['janitor', 'driver', 'maintenance']) // Include all cleaning staff
-          .get();
-      } catch (indexError) {
-        if (indexError.code === 9) { // FAILED_PRECONDITION - missing index
-          console.log('⚠️ Composite index missing, using fallback query approach');
-          
-          // Fallback: Get all activity logs for the date range, then filter by role
-          const allLogsSnapshot = await db.collection('activitylogs')
-            .where('timestamp', '>=', startDate)
-            .where('timestamp', '<=', endDate)
-            .get();
-          
-          // Filter by role in memory
-          const filteredDocs = [];
-          allLogsSnapshot.forEach(doc => {
-            const data = doc.data();
-            if (['janitor', 'driver', 'maintenance'].includes(data.userRole)) {
-              filteredDocs.push({
-                id: doc.id,
-                data: () => data
-              });
-            }
-          });
-          
-          // Create a mock snapshot-like object
-          activityLogsSnapshot = {
-            forEach: (callback) => filteredDocs.forEach(callback),
-            size: filteredDocs.length
-          };
-        } else {
-          throw indexError; // Re-throw if it's a different error
-        }
-      }
+      // Get all activity logs and filter by date in memory
+      const activityLogsSnapshot = await db.collection('activitylogs').get();
 
       const activityLogs = [];
       
       activityLogsSnapshot.forEach(doc => {
-        const data = typeof doc.data === 'function' ? doc.data() : doc.data;
-        activityLogs.push({
-          id: doc.id,
-          ...data
-        });
+        const data = doc.data();
+        const logDate = new Date(data.timestamp);
+        
+        // Filter by month and year
+        if (logDate.getFullYear() === yearNum && logDate.getMonth() === (monthNum - 1)) {
+          activityLogs.push({
+            id: doc.id,
+            ...data
+          });
+        }
       });
 
-      console.log(`Found ${activityLogs.length} activity logs`);
+      console.log(`Found ${activityLogs.length} activity logs for ${yearNum}-${monthNum}`);
+      
+      // Get all users to map user IDs to roles and details
+      const usersSnapshot = await db.collection('users').get();
+      const usersMap = {};
+      
+      usersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        usersMap[doc.id] = {
+          id: doc.id,
+          fullName: userData.fullName || 'Unknown User',
+          email: userData.email || '',
+          role: userData.role || 'unknown',
+          status: userData.status || 'active',
+          avatarUrl: userData.avatarUrl || ''
+        };
+      });
 
       // Count activities per user
       const userActivityCounts = {};
       const userDetails = {};
 
       activityLogs.forEach(log => {
-        const userId = log.userId;
-        const userRole = log.userRole;
+        // For task assignments, prioritize the assigned janitor over the creator
+        let userId = log.user_id;
+        let user = usersMap[userId];
+        
+        // If the creator is not a valid user or not a janitor/driver/maintenance,
+        // but there's an assigned janitor, use the assigned janitor instead
+        if ((!user || !['janitor', 'driver', 'maintenance'].includes(user.role)) && 
+            log.assigned_janitor_id && usersMap[log.assigned_janitor_id]) {
+          userId = log.assigned_janitor_id;
+          user = usersMap[userId];
+        }
+        
         
         // Only count janitors, drivers, and maintenance staff
-        if (['janitor', 'driver', 'maintenance'].includes(userRole)) {
+        if (user && ['janitor', 'driver', 'maintenance'].includes(user.role)) {
           if (!userActivityCounts[userId]) {
             userActivityCounts[userId] = 0;
             userDetails[userId] = {
-              id: userId,
-              fullName: log.userFirstName ? 
-                `${log.userFirstName} ${log.userLastName || ''}`.trim() : 
-                'Unknown User',
-              email: log.userEmail || '',
-              role: userRole,
-              status: 'active',
+              ...user,
               lastActivity: log.timestamp
             };
           }
@@ -118,25 +102,6 @@ class PerformanceController {
           if (new Date(log.timestamp) > new Date(userDetails[userId].lastActivity)) {
             userDetails[userId].lastActivity = log.timestamp;
           }
-        }
-      });
-
-      // Get additional user details from users collection
-      const usersSnapshot = await db.collection('users').get();
-      
-      usersSnapshot.forEach(doc => {
-        const userData = doc.data();
-        const userId = doc.id;
-        
-        if (userDetails[userId]) {
-          // Update with more complete user information
-          userDetails[userId] = {
-            ...userDetails[userId],
-            fullName: userData.fullName || userData.firstName || userDetails[userId].fullName,
-            email: userData.email || userDetails[userId].email,
-            avatarUrl: userData.avatarUrl || '',
-            status: userData.status || 'active'
-          };
         }
       });
 
@@ -193,60 +158,37 @@ class PerformanceController {
       const startDate = new Date(currentYear, currentMonth - 1, 1);
       const endDate = new Date(currentYear, currentMonth, 0, 23, 59, 59);
 
-      let activityLogsSnapshot;
-      
-      try {
-        activityLogsSnapshot = await db.collection('activitylogs')
-          .where('timestamp', '>=', startDate)
-          .where('timestamp', '<=', endDate)
-          .where('userRole', 'in', ['janitor', 'driver', 'maintenance'])
-          .get();
-      } catch (indexError) {
-        if (indexError.code === 9) { // FAILED_PRECONDITION - missing index
-          console.log('⚠️ Composite index missing, using fallback query approach for summary');
-          
-          // Fallback: Get all activity logs for the date range, then filter by role
-          const allLogsSnapshot = await db.collection('activitylogs')
-            .where('timestamp', '>=', startDate)
-            .where('timestamp', '<=', endDate)
-            .get();
-          
-          // Filter by role in memory
-          const filteredDocs = [];
-          allLogsSnapshot.forEach(doc => {
-            const data = doc.data();
-            if (['janitor', 'driver', 'maintenance'].includes(data.userRole)) {
-              filteredDocs.push({
-                id: doc.id,
-                data: () => data
-              });
-            }
-          });
-          
-          // Create a mock snapshot-like object
-          activityLogsSnapshot = {
-            forEach: (callback) => filteredDocs.forEach(callback),
-            size: filteredDocs.length
-          };
-        } else {
-          throw indexError; // Re-throw if it's a different error
-        }
-      }
+      // Get all activity logs for the date range
+      const activityLogsSnapshot = await db.collection('activitylogs')
+        .where('timestamp', '>=', startDate)
+        .where('timestamp', '<=', endDate)
+        .get();
 
       const activityLogs = [];
       
       activityLogsSnapshot.forEach(doc => {
-        const data = typeof doc.data === 'function' ? doc.data() : doc.data;
+        const data = doc.data();
         activityLogs.push(data);
+      });
+
+      // Get all users to map user IDs to roles
+      const usersSnapshot = await db.collection('users').get();
+      const usersMap = {};
+      
+      usersSnapshot.forEach(doc => {
+        const userData = doc.data();
+        usersMap[doc.id] = {
+          role: userData.role || 'unknown'
+        };
       });
 
       // Count activities per user
       const userActivityCounts = {};
       activityLogs.forEach(log => {
-        const userId = log.userId;
-        const userRole = log.userRole;
+        const userId = log.user_id; // Use the correct field name
+        const user = usersMap[userId];
         
-        if (['janitor', 'driver', 'maintenance'].includes(userRole)) {
+        if (user && ['janitor', 'driver', 'maintenance'].includes(user.role)) {
           userActivityCounts[userId] = (userActivityCounts[userId] || 0) + 1;
         }
       });

@@ -64,6 +64,12 @@ const FeedbackModel = {
       const snapshot = await db.collection('feedback').get();
       const allFeedback = snapshot.docs.map(doc => doc.data());
 
+      // Calculate rating statistics
+      const feedbackWithRatings = allFeedback.filter(f => f.rating && f.rating >= 1 && f.rating <= 5);
+      const averageRating = feedbackWithRatings.length > 0 
+        ? feedbackWithRatings.reduce((sum, f) => sum + f.rating, 0) / feedbackWithRatings.length
+        : 0;
+
       const stats = {
         totalFeedback: allFeedback.length,
         recentFeedback: allFeedback.filter(f => {
@@ -73,7 +79,16 @@ const FeedbackModel = {
         }).length,
         averageLength: allFeedback.length > 0 
           ? Math.round(allFeedback.reduce((sum, f) => sum + (f.content?.length || 0), 0) / allFeedback.length)
-          : 0
+          : 0,
+        totalRatings: feedbackWithRatings.length,
+        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
+        ratingDistribution: {
+          1: feedbackWithRatings.filter(f => f.rating === 1).length,
+          2: feedbackWithRatings.filter(f => f.rating === 2).length,
+          3: feedbackWithRatings.filter(f => f.rating === 3).length,
+          4: feedbackWithRatings.filter(f => f.rating === 4).length,
+          5: feedbackWithRatings.filter(f => f.rating === 5).length
+        }
       };
 
       return stats;
