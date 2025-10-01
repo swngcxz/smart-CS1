@@ -49,6 +49,14 @@ export function NotificationPopover() {
 
   const getTypeBadge = (type: string) => {
     switch (type) {
+      case "task_accepted":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "activity_completed":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "bin_maintenance":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "bin_maintenance_urgent":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       case "warning":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "critical":
@@ -64,7 +72,12 @@ export function NotificationPopover() {
 
   const handleSeeAll = () => {
     setIsOpen(false);
-    navigate("/notifications");
+    // Navigate to appropriate notification page based on user role
+    if (currentUser?.role === "admin") {
+      navigate("/admin/notifications");
+    } else {
+      navigate("/staff/notifications");
+    }
   };
 
   return (
@@ -111,6 +124,14 @@ export function NotificationPopover() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-sm text-gray-900 dark:text-white">{notification.title}</h4>
+                      <Badge className={getTypeBadge(notification.type || "info")}>
+                        {notification.type === 'task_accepted' ? 'Task Accepted' :
+                         notification.type === 'activity_completed' ? 'Task Completed' :
+                         notification.type === 'bin_maintenance' ? 'Maintenance' :
+                         notification.type === 'bin_maintenance_urgent' ? 'Urgent' :
+                         notification.type === 'login' ? 'Login' :
+                         notification.type || 'Info'}
+                      </Badge>
                     </div>
                     <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{notification.message}</p>
                     {notification.userRole && (

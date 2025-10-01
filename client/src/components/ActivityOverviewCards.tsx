@@ -5,9 +5,10 @@ import { AlertTriangle, Activity, Wrench } from "lucide-react";
 interface ActivityOverviewCardsProps {
   cards: ActivityOverviewCard[];
   loading?: boolean;
+  error?: string | null;
 }
 
-export function ActivityOverviewCards({ cards, loading = false }: ActivityOverviewCardsProps) {
+export function ActivityOverviewCards({ cards, loading = false, error }: ActivityOverviewCardsProps) {
   const getIcon = (label: string) => {
     switch (label.toLowerCase()) {
       case "alerts":
@@ -42,6 +43,15 @@ export function ActivityOverviewCards({ cards, loading = false }: ActivityOvervi
     <div className="space-y-4">
       {/* Header */}
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Activity Overview</h2>
+      
+      {/* Error display */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-600 dark:text-red-400 text-sm">
+            Error loading activity overview: {error}
+          </p>
+        </div>
+      )}
       
       {/* Cards grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

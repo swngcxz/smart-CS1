@@ -18,6 +18,26 @@ const getAssignedActivityLogs = async (req, res, next) => {
 
 const { db } = require("../models/firebase");
 const notificationModel = require('../models/notificationModel');
+const { db: realtimeDb } = require("../models/firebase");
+
+// Helper function to create notifications in Realtime Database
+const createRealtimeNotification = async (userId, notificationData) => {
+  try {
+    const notification = {
+      ...notificationData,
+      timestamp: Date.now(),
+      read: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    await realtimeDb.ref(`notifications/${userId}`).push(notification);
+    console.log(`[REALTIME NOTIFICATION] Created notification for user ${userId}: ${notification.title}`);
+    return true;
+  } catch (error) {
+    console.error('[REALTIME NOTIFICATION] Error creating notification:', error);
+    throw error;
+  }
+};
 const fcmService = require('../services/fcmService');
 
 // Get activity statistics for overview cards
@@ -180,6 +200,24 @@ const assignTaskAtomically = async (req, res, next) => {
       });
     }
     
+    // Send notification to staff when janitor accepts task
+    try {
+      await sendTaskAcceptanceNotification({
+        activityId: activityId,
+        binId: result.data.bin_id,
+        binLocation: result.data.bin_location,
+        binLevel: result.data.bin_level,
+        janitorId: assigned_janitor_id,
+        janitorName: assigned_janitor_name,
+        activityType: result.data.activity_type || 'task_assignment',
+        priority: result.data.priority || 'medium',
+        timestamp: new Date()
+      });
+    } catch (notifyErr) {
+      console.error('[TASK ASSIGNMENT] Failed to send task acceptance notification:', notifyErr);
+      // Don't fail the main operation if notification fails
+    }
+    
     res.status(200).json({
       message: result.message,
       activityId,
@@ -230,7 +268,7 @@ const saveActivityLog = async (req, res, next) => {
       assigned_janitor_name,
       task_note,
       activity_type: activity_type || 'task_assignment',
-      status: 'pending', // Clear status field
+      status: assigned_janitor_id ? 'in_progress' : 'pending', // Set status based on assignment
       priority: bin_level > 80 ? 'high' : bin_level > 50 ? 'medium' : 'low',
       timestamp: timestamp || now.toISOString(),
       date: now.toISOString().split('T')[0],
@@ -698,8 +736,11 @@ const updateActivityLog = async (req, res, next) => {
     await db.collection("activitylogs").doc(activityId).update(updateData);
     console.log("✅ Update completed successfully");
 
-    // If status is 'done', send notification to staff
+    // Send notifications based on status change
+    // Note: Task acceptance notifications are handled by assignTaskAtomically function
+    // to avoid duplicate notifications
     if (status === 'done') {
+      // Task was completed
       try {
         await sendActivityCompletedNotification({
           activityId: activityId,
@@ -882,11 +923,11 @@ const sendActivityCompletedNotification = async (notificationData) => {
         );
       }
       
-      // Create in-app notification record
+      // Create in-app notification record in Realtime Database
       notificationPromises.push(
-        notificationModel.createNotification({
+        createRealtimeNotification(doc.id, {
           ...notificationPayload,
-          staffId: doc.id
+          read: false
         }).catch(err => 
           console.error(`[ACTIVITY COMPLETED NOTIFICATION] Failed to create in-app notification for ${staff.email}:`, err)
         )
@@ -956,11 +997,11 @@ const sendBinCollectionNotification = async (notificationData) => {
         );
       }
       
-      // Create in-app notification record
+      // Create in-app notification record in Realtime Database
       notificationPromises.push(
-        notificationModel.createNotification({
+        createRealtimeNotification(doc.id, {
           ...notificationPayload,
-          staffId: doc.id
+          read: false
         }).catch(err => 
           console.error(`[BIN COLLECTION NOTIFICATION] Failed to create in-app notification for ${staff.email}:`, err)
         )
@@ -973,6 +1014,63 @@ const sendBinCollectionNotification = async (notificationData) => {
   } catch (error) {
     console.error('[BIN COLLECTION NOTIFICATION] Error sending bin collection notification:', error);
     throw error;
+  }
+};
+
+// Helper function to send task acceptance notifications to staff
+const sendTaskAcceptanceNotification = async (notificationData) => {
+  try {
+    const {
+      activityId,
+      binId,
+      binLocation,
+      binLevel,
+      janitorId,
+      janitorName,
+      activityType,
+      priority,
+      timestamp
+    } = notificationData;
+
+    // Get all staff users to notify them about task acceptance
+    const staffUsers = await notificationModel.getUsersByRoles(['staff', 'admin', 'supervisor']);
+    
+    if (staffUsers.length === 0) {
+      console.log('[TASK ACCEPTANCE] No staff users found to notify.');
+      return false;
+    }
+
+    const title = '✅ Task Accepted';
+    const message = `${janitorName || 'A janitor'} has accepted the task for bin ${binId} at ${binLocation}. Status: In Progress`;
+
+    const notificationPayload = {
+      binId: binId,
+      type: 'task_accepted',
+      title: title,
+      message: message,
+      status: 'ACCEPTED',
+      binLevel: binLevel,
+      acceptedBy: janitorName,
+      acceptedById: janitorId,
+      activityType: activityType,
+      priority: priority,
+      timestamp: Date.now(),
+      read: false
+    };
+
+    // Send notification to all staff users
+    const notificationPromises = staffUsers.map(staff =>
+      createRealtimeNotification(staff.id, notificationPayload).catch(err =>
+        console.error(`[TASK ACCEPTANCE] Failed to create notification for ${staff.email}:`, err)
+      )
+    );
+
+    await Promise.all(notificationPromises);
+    console.log(`[TASK ACCEPTANCE] Sent task acceptance notification to ${staffUsers.length} staff members.`);
+    return true;
+  } catch (error) {
+    console.error('[TASK ACCEPTANCE] Error sending task acceptance notification:', error);
+    return false;
   }
 };
 
@@ -1109,5 +1207,6 @@ module.exports = {
   sendJanitorAssignmentNotification,
   sendBinCollectionNotification,
   sendActivityCompletedNotification,
+  sendTaskAcceptanceNotification,
   testJanitorNotification
 };

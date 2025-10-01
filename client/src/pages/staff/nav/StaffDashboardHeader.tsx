@@ -40,7 +40,7 @@ export function StaffDashboardHeader() {
   
   // Filter for bin collection completed notifications and activity logs with done status
   const binCollectionNotifications = backendNotifications.filter(
-    (n) => (n.type === 'bin_collection_completed' || n.type === 'activity_completed') && !n.read
+    (n) => (n.type === 'bin_collection_completed' || n.type === 'activity_completed' || n.type === 'bin_full' || n.type === 'bin_warning' || n.type === 'bin_maintenance' || n.type === 'bin_maintenance_urgent' || n.type === 'task_accepted') && !n.read
   );
   const unreadBinCollectionCount = binCollectionNotifications.length;
 

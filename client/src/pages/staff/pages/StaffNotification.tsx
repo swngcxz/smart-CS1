@@ -9,12 +9,8 @@ import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 import { useEffect } from "react";
 
-
 // Notification type from hook
 import type { Notification as NotificationType } from "@/hooks/useNotifications";
-
-
-
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -70,49 +66,8 @@ const Notifications = () => {
   
   const { notifications, loading, error } = useNotifications(finalNotificationBucket);
   
-  // Additional safety check: if somehow admin notifications are loaded, filter them out
-  const safeNotifications = Array.isArray(notifications) ? notifications.filter(notification => {
-    // Comprehensive filter: exclude any admin-related notifications
-    const isAdminNotification = (
-      // Login notifications (admin-only)
-      notification.type === 'login' ||
-      notification.title?.includes('User Login') ||
-      notification.title?.includes('Staff Login Alert') ||
-      notification.message?.includes('logged into the system') ||
-      notification.message?.includes('logged in') ||
-      
-      // Admin user notifications
-      notification.userRole === 'admin' ||
-      notification.userEmail?.includes('admin') ||
-      notification.userId === 'admin' ||
-      
-      // System-wide notifications that staff shouldn't see
-      notification.type === 'system' ||
-      notification.title?.includes('System') ||
-      notification.title?.includes('Admin') ||
-      
-      // Bin alerts (admin-only)
-      notification.type === 'critical' ||
-      notification.type === 'warning' ||
-      notification.title?.includes('Bin') ||
-      notification.title?.includes('Critical') ||
-      notification.title?.includes('Warning')
-    );
-    
-    // Debug log if admin notifications are detected
-    if (isAdminNotification) {
-      console.warn('🚨 Admin notification detected in staff view:', notification);
-      console.warn('🚨 Notification details:', {
-        type: notification.type,
-        title: notification.title,
-        message: notification.message,
-        userRole: notification.userRole,
-        userEmail: notification.userEmail
-      });
-    }
-    
-    return !isAdminNotification;
-  }) : [];
+  // Backend now handles filtering, so we can use notifications directly
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
   
   // Debug logging for notifications
   const adminNotificationCount = notifications.filter(n => 
@@ -137,12 +92,9 @@ const Notifications = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [hiddenNotifications, setHiddenNotifications] = useState<string[]>([]);
 
-
   // Only use safe, filtered notifications (no admin notifications)
   const backendNotifications: NotificationType[] = safeNotifications;
   const unreadCount = backendNotifications.filter((n) => !n.read).length;
-
-
 
   // Mark a single notification as read in the backend
   const markAsRead = async (key: string) => {
@@ -179,9 +131,6 @@ const Notifications = () => {
     setHiddenNotifications((prev) => [...prev, key]);
   };
 
-
-
-
   // Remove duplicate notifications (same title, message, and timestamp, regardless of key)
   const uniqueNotifications = backendNotifications.filter((notif, idx, arr) => {
     return (
@@ -202,12 +151,7 @@ const Notifications = () => {
     // Exclude admin-specific notifications like login alerts
     const typeMatch = typeFilter === "all" || notification.type === typeFilter;
     
-    // Additional filter: exclude admin notifications that might have leaked through
-    const isAdminNotification = notification.type === 'login' || 
-                              notification.title?.includes('User Login') ||
-                              notification.message?.includes('logged into the system');
-    
-    return statusMatch && typeMatch && !isAdminNotification;
+    return statusMatch && typeMatch;
   });
 
   const getTypeColor = (type: string) => {
@@ -217,6 +161,12 @@ const Notifications = () => {
       case "error":
         return "border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900";
       case "success":
+        return "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900";
+      case "bin_maintenance_urgent":
+        return "border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900";
+      case "bin_maintenance":
+        return "border-orange-200 bg-orange-50 dark:border-orange-700 dark:bg-orange-900";
+      case "task_accepted":
         return "border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900";
       default:
         return "border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900";
@@ -230,6 +180,12 @@ const Notifications = () => {
       case "error":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       case "success":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "bin_maintenance_urgent":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "bin_maintenance":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "task_accepted":
         return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
       default:
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
@@ -326,6 +282,9 @@ const Notifications = () => {
                     <SelectItem value="warning">Warning</SelectItem>
                     <SelectItem value="success">Success</SelectItem>
                     <SelectItem value="error">Error</SelectItem>
+                    <SelectItem value="bin_maintenance">Maintenance</SelectItem>
+                    <SelectItem value="bin_maintenance_urgent">Urgent Maintenance</SelectItem>
+                    <SelectItem value="task_accepted">Task Accepted</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -369,7 +328,7 @@ const Notifications = () => {
             filteredNotifications.map((notification) => (
               <Card
                 key={notification.key}
-                className={`${getTypeColor("info")} ${
+                className={`${getTypeColor(notification.type || "info")} ${
                   !notification.read ? "ring-2 ring-green-200 dark:ring-green-600" : ""
                 } transition-all hover:shadow-md`}
               >
@@ -378,7 +337,14 @@ const Notifications = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
-                        <Badge className={getTypeBadge("info")}>info</Badge>
+                        <Badge className={getTypeBadge(notification.type || "info")}>
+                          {notification.type === 'bin_maintenance_urgent' ? 'urgent' :
+                           notification.type === 'bin_maintenance' ? 'maintenance' :
+                           notification.type === 'bin_collection_completed' ? 'completed' :
+                           notification.type === 'activity_completed' ? 'activity' :
+                           notification.type === 'task_accepted' ? 'accepted' :
+                           notification.type || 'info'}
+                        </Badge>
                         {!notification.read && (
                           <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                             New

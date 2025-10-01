@@ -14,6 +14,27 @@ export interface Notification {
   userRole?: string;
   userEmail?: string;
   userFirstName?: string;
+  // Bin activity specific fields
+  binId?: string;
+  binLevel?: number;
+  status?: string;
+  completedBy?: string;
+  collectedBy?: string;
+  activityId?: string;
+  binLocation?: string;
+  collectedWeight?: number;
+  binCondition?: string;
+  completionNotes?: string;
+  activityType?: string;
+  // Bin maintenance specific fields
+  severity?: string;
+  issues?: Array<{
+    binId: string;
+    type: string;
+    severity: string;
+    message: string;
+    details: any;
+  }>;
 }
 
 export function useNotifications(userId: string) {

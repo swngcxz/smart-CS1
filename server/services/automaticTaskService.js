@@ -24,6 +24,11 @@ class AutomaticTaskService {
       return { success: false, reason: 'Bin level below threshold' };
     }
 
+    // Check for archiving logic: If bin reaches 90% and no one accepted previous task
+    if (binLevel >= 90) {
+      await this.archiveUnacceptedTasks(binId, binLevel, timestamp);
+    }
+
     // Check if we've already crossed the threshold for this bin recently (within last 5 minutes)
     const thresholdKey = `${binId}_threshold_crossed`;
     const lastCrossed = this.thresholdCrossed.get(thresholdKey);
@@ -139,6 +144,56 @@ class AutomaticTaskService {
         error: error.message,
         message: 'Failed to create automatic task'
       };
+    }
+  }
+
+  /**
+   * Archive unaccepted tasks when bin reaches 90% and create new task
+   * @param {string} binId - Bin identifier
+   * @param {number} binLevel - Current bin level
+   * @param {Date} timestamp - Current timestamp
+   */
+  async archiveUnacceptedTasks(binId, binLevel, timestamp) {
+    try {
+      console.log(`[AUTOMATIC TASK] Checking for unaccepted tasks to archive for ${binId} at ${binLevel}%`);
+      
+      // Get all pending tasks for this bin that haven't been accepted
+      const pendingTasksSnapshot = await db.collection("activitylogs")
+        .where("bin_id", "==", binId)
+        .where("status", "==", "pending")
+        .where("activity_type", "==", "task_assignment")
+        .get();
+
+      if (pendingTasksSnapshot.empty) {
+        console.log(`[AUTOMATIC TASK] No pending tasks found for ${binId} to archive`);
+        return;
+      }
+
+      console.log(`[AUTOMATIC TASK] Found ${pendingTasksSnapshot.size} pending tasks for ${binId} - archiving them`);
+
+      // Archive all pending tasks
+      const archivePromises = [];
+      pendingTasksSnapshot.forEach(doc => {
+        const archivePromise = doc.ref.update({
+          status: 'archived',
+          bin_status: 'archived',
+          archived_at: timestamp.toISOString(),
+          archived_reason: `Bin level reached ${binLevel}% - no janitor accepted task within time limit`,
+          updated_at: timestamp.toISOString()
+        });
+        archivePromises.push(archivePromise);
+      });
+
+      await Promise.all(archivePromises);
+      console.log(`[AUTOMATIC TASK] Successfully archived ${pendingTasksSnapshot.size} pending tasks for ${binId}`);
+
+      // Clear the created tasks cache for this bin to allow new task creation
+      const keysToDelete = Array.from(this.createdTasks).filter(key => key.startsWith(binId));
+      keysToDelete.forEach(key => this.createdTasks.delete(key));
+      console.log(`[AUTOMATIC TASK] Cleared task cache for ${binId} - ${keysToDelete.length} entries removed`);
+
+    } catch (error) {
+      console.error(`[AUTOMATIC TASK] Error archiving tasks for ${binId}:`, error);
     }
   }
 

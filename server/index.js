@@ -28,10 +28,12 @@ const pickupRequestRoutes = require('./routers/pickupRequestRoutes');
 const ratingRoutes = require('./routers/ratingRoutes');
 const feedbackRoutes = require('./routers/feedbackRoutes');
 const performanceRoutes = require('./routers/performanceRoutes');
+const binHealthRoutes = require('./routers/binHealthRoutes');
 const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
 const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
 const automaticTaskService = require('./services/automaticTaskService');
+const binHealthMonitor = require('./services/binHealthMonitor');
 
 
 const db = admin.database();
@@ -113,6 +115,7 @@ app.use('/api', pickupRequestRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/performance', performanceRoutes);
+app.use('/api/bin-health', binHealthRoutes);
 
 app.use(errorHandler);
 
@@ -596,6 +599,26 @@ app.post('/api/test/automatic-task', async (req, res) => {
   }
 });
 
+// Test endpoint to manually trigger bin health check
+app.post('/api/test/bin-health-check', async (req, res) => {
+  try {
+    console.log('[TEST] Manual bin health check triggered');
+    await binHealthMonitor.manualHealthCheck();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Manual bin health check completed',
+      status: binHealthMonitor.getStatus()
+    });
+  } catch (error) {
+    console.error('Error during manual bin health check:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Get automatic task service status
 app.get('/api/test/automatic-task/status', async (req, res) => {
   try {
@@ -920,6 +943,10 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`  - http://localhost:${PORT}`);
   console.log(`  - http://192.168.1.2:${PORT}`);
   console.log(`  - http://0.0.0.0:${PORT}`);
+  
+  // Start bin health monitoring system
+  console.log('[SERVER] Starting bin health monitoring system...');
+  binHealthMonitor.start();
 });
 
 // Move modem initialization to after server startup

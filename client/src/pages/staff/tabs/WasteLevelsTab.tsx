@@ -490,6 +490,9 @@ export function WasteLevelsTab() {
         title: "Success",
         description: `Task assigned to ${selectedJanitor.fullName}`,
       });
+
+      // Trigger a custom event to refresh activity logs
+      window.dispatchEvent(new CustomEvent('activityLogCreated'));
     } catch (error) {
       toast({
         title: "Error",
