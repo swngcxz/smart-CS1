@@ -49,7 +49,6 @@ function useGSMStatus() {
 
     fetchGSMStatus();
 
-    // Poll GSM status every 30 seconds
     const interval = setInterval(fetchGSMStatus, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -442,65 +441,67 @@ export function WasteLevelsTab() {
   const filteredBins = realTimeBins.filter((bin) => bin.location === selectedLocation);
 
   const handleCardClick = (bin: WasteBin) => {
-    console.log("🖱️ Card clicked:", bin);
+    console.log("Card clicked:", bin);
     setSelectedBin(bin);
     setSelectedJanitorId(null); // Reset selection on open
     setIsModalOpen(true);
-    console.log("📱 Modal should open now");
+    console.log("Modal should open now");
   };
 
-  const handleAssignTask = async () => {
-    if (!selectedJanitorId || !selectedBin) {
+ const handleAssignTask = async () => {
+  if (!selectedJanitorId || !selectedBin) {
+    toast({
+      title: "Error",
+      description: "Please select a janitor and ensure bin data is available",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  try {
+    const selectedJanitor = janitors.find((j) => j.id === selectedJanitorId);
+    if (!selectedJanitor) {
       toast({
         title: "Error",
-        description: "Please select a janitor and ensure bin data is available",
+        description: "Selected janitor not found",
         variant: "destructive",
       });
       return;
     }
 
-    try {
-      const selectedJanitor = janitors.find((j) => j.id === selectedJanitorId);
-      if (!selectedJanitor) {
-        toast({
-          title: "Error",
-          description: "Selected janitor not found",
-          variant: "destructive",
-        });
-        return;
-      }
+    await logActivity({
+      user_id: "staff-user",
+      bin_id: selectedBin.id,
+      bin_location: selectedBin.location,
+      bin_status: selectedBin.status,
+      bin_level: selectedBin.level,
+      assigned_janitor_id: selectedJanitorId,
+      assigned_janitor_name: selectedJanitor.fullName,
+      task_note: taskNote,
+      activity_type: "task_assignment",
+    });
 
-      // Log the activity to the backend
-      await logActivity({
-        user_id: "staff-user", // You might want to get this from auth context
-        bin_id: selectedBin.id,
-        bin_location: selectedBin.location,
-        bin_status: selectedBin.status,
-        bin_level: selectedBin.level,
-        assigned_janitor_id: selectedJanitorId,
-        assigned_janitor_name: selectedJanitor.fullName,
-        task_note: taskNote,
-        activity_type: "task_assignment",
-      });
+    // ✅ Close modal first
+    setIsModalOpen(false);
 
-      // Show success confirmation
-      setShowConfirmation(true);
+    // ✅ Then show toast
+    toast({
+      title: "Success",
+      description: `Task assigned to ${selectedJanitor.fullName}.`,
+      duration: 2000,
+    });
 
-      toast({
-        title: "Success",
-        description: `Task assigned to ${selectedJanitor.fullName}`,
-      });
+    window.dispatchEvent(new CustomEvent("activityLogCreated"));
+  } catch (error) {
+    toast({
+      title: "Error",
+      description:
+        error instanceof Error ? error.message : "Failed to assign task",
+      variant: "destructive",
+    });
+  }
+};
 
-      // Trigger a custom event to refresh activity logs
-      window.dispatchEvent(new CustomEvent('activityLogCreated'));
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to assign task",
-        variant: "destructive",
-      });
-    }
-  };
 
   const filteredJanitors = selectedBin
     ? janitors.filter((j) => {
@@ -864,34 +865,10 @@ export function WasteLevelsTab() {
             </div>
             {activityError && <p className="text-sm text-red-600 mt-2">Error: {activityError}</p>}
           </div>
+           
         </div>
       )}
 
-      {/* Confirmation Modal */}
-      {showConfirmation && selectedJanitorId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md p-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Task Assigned Successfully</h3>
-            <p className="text-sm text-gray-800 dark:text-gray-300 mb-4">
-              Task successfully assigned to{" "}
-              <strong>{janitors.find((j) => j.id === selectedJanitorId)?.fullName}</strong>
-              {taskNote && ` with note: "${taskNote}"`}
-            </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Activity has been logged to the system.</p>
-            <Button
-              onClick={() => {
-                setShowConfirmation(false);
-                setIsModalOpen(false);
-                setTaskNote("");
-                setSelectedJanitorId(null);
-              }}
-              className="w-full bg-green-600 text-white hover:bg-green-700"
-            >
-              OK
-            </Button>
-          </div>
-        </div>
-      )}
     </>
   );
 }
