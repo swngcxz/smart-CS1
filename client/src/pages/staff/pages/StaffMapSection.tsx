@@ -87,6 +87,9 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
 
+  // New state that indicates the Leaflet map instance is ready
+  const [mapLoaded, setMapLoaded] = useState(false);
+
   // Debug logging for real-time data
   useEffect(() => {
     if (bin1Data) {
@@ -131,6 +134,19 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
+
+  // Refs for our custom tile layers
+  const baseLayerRef = useRef<any>(null);
+  const satLayerRef = useRef<any>(null);
+
+  // --- Satellite / high-zoom configuration ---
+  // Esri World Imagery (works without an API key and is commonly used for satellite basemaps)
+  // If you prefer Mapbox or Google Maps tiles, swap the URL and add an API key as needed.
+  const OSM_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const ESRI_SAT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+
+  // Zoom threshold where we switch from the regular raster basemap to satellite imagery
+  const SAT_TRANSITION_ZOOM = 18; // you can tweak this (e.g., 16/17/18) depending on preference
 
   // Function to get user's current location
   const findMyLocation = () => {
@@ -179,6 +195,40 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
       }
     );
   };
+
+  // Toggle satellite/base layer based on current zoom
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return;
+    const map = mapRef.current;
+
+    const updateLayers = () => {
+      const z = Math.round(map.getZoom() * 100) / 100; // keep small decimal precision
+      const useSat = z >= SAT_TRANSITION_ZOOM;
+
+      try {
+        if (satLayerRef.current && typeof satLayerRef.current.setOpacity === "function") {
+          satLayerRef.current.setOpacity(useSat ? 1 : 0);
+        }
+        if (baseLayerRef.current && typeof baseLayerRef.current.setOpacity === "function") {
+          baseLayerRef.current.setOpacity(useSat ? 0 : 1);
+        }
+      } catch (e) {
+        // Some Leaflet layer refs may be null during hot reloads — ignore silently
+        console.warn("Layer toggle warning:", e);
+      }
+    };
+
+    map.on("zoomend", updateLayers);
+
+    // Ensure initial state
+    updateLayers();
+
+    return () => {
+      map.off("zoomend", updateLayers);
+    };
+  }, [mapLoaded]);
+
+  // When the map initializes, we set mapRef and mark mapLoaded true via MapInitializer (see below)
 
   useEffect(() => {
     const pegman = document.getElementById("pegman");
@@ -253,12 +303,12 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
     <div className="space-y-4">
       <Card
         ref={mapContainerRef}
-        className="h-[700px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative"
+        className="h-[510px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative"
       >
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
             <div className="flex items-center gap-2">
-              Central Plaza, Naga City, Cebu
+              Naga City, Cebu
               {bin1Data && bin1Data.gps_valid && (
                 <div className="flex items-center gap-1 ml-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -278,7 +328,7 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
                   GPS: {bin1Data?.gps_valid || monitoringData?.gps_valid ? "Valid" : "Invalid"}
                   {bin1Data?.gps_valid || monitoringData?.gps_valid ? (
                     <span className="text-blue-600">
-                      ({bin1Data?.latitude?.toFixed(4) || monitoringData?.latitude?.toFixed(4)},{" "}
+                      ({bin1Data?.latitude?.toFixed(4) || monitoringData?.latitude?.toFixed(4)}, {" "}
                       {bin1Data?.longitude?.toFixed(4) || monitoringData?.longitude?.toFixed(4)})
                     </span>
                   ) : null}
@@ -307,81 +357,109 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
               center={mapCenter}
               zoom={getSafeZoomLevel(18)}
               minZoom={MAP_CONFIG.zoom.min}
-              maxZoom={MAP_CONFIG.zoom.max}
+              maxZoom={22} // allow very close zoom levels
               className="h-full w-full z-0"
+              // keep existing map options but override some zoom behavior for smoother/finer zooming
               {...MAP_OPTIONS}
+              zoomSnap={0.25}
+              zoomDelta={0.5}
+              wheelPxPerZoomLevel={60}
             >
-            <MapInitializer
-              setMapRef={(map) => {
-                (mapContainerRef as any).current._leaflet_map = map;
-                mapRef.current = map;
-              }}
-            />
-            {/* Direct Tile Layer - Simple zoom-based switching */}
-            <DirectTileLayer
-              maxZoom={22}
-              minZoom={1}
-              transitionZoomLevel={18}
-            />
-            
-            {/* Map Type Indicator */}
-            <MapTypeIndicator transitionZoomLevel={18} />
-            {updatedBinLocations.map((bin) => (
-              <DynamicBinMarker key={bin.id} bin={bin} onBinClick={onBinClick} />
-            ))}
+              <MapInitializer
+                setMapRef={(map) => {
+                  (mapContainerRef as any).current._leaflet_map = map;
+                  mapRef.current = map;
+                  setMapLoaded(true); // notify that the map instance is ready
+                }}
+              />
 
-            {/* GPS Marker for real-time location */}
-            <GPSMarker
-              gpsData={
-                bin1Data
-                  ? {
-                      latitude: bin1Data.latitude,
-                      longitude: bin1Data.longitude,
-                      gps_valid: bin1Data.gps_valid,
-                      satellites: bin1Data.satellites,
-                      timestamp:
-                        typeof bin1Data.timestamp === "number"
-                          ? new Date(bin1Data.timestamp).toISOString()
-                          : bin1Data.timestamp ? String(bin1Data.timestamp) : new Date().toISOString(),
-                    }
-                  : monitoringData
-                  ? {
-                      latitude: monitoringData.latitude,
-                      longitude: monitoringData.longitude,
-                      gps_valid: monitoringData.gps_valid,
-                      satellites: monitoringData.satellites,
-                      timestamp:
-                        typeof monitoringData.timestamp === "number"
-                          ? new Date(monitoringData.timestamp).toISOString()
-                          : monitoringData.timestamp ? String(monitoringData.timestamp) : new Date().toISOString(),
-                    }
-                  : undefined
-              }
-            />
+              {/* Base raster tile (OpenStreetMap) */}
+              <TileLayer
+                url={OSM_URL}
+                ref={(layer) => (baseLayerRef.current = layer)}
+                maxZoom={19}
+                detectRetina={true}
+                attribution="&copy; OpenStreetMap contributors"
+              />
 
-            {/* GPS Tracking Line */}
-            <GPSTrackingLine
-              gpsHistory={gpsHistory.map((point) => ({
-                ...point,
-                timestamp:
-                  typeof point.timestamp === "number" ? new Date(point.timestamp).toISOString() : (point.timestamp || new Date().toISOString()),
-              }))}
-              visible={showGPSTracking}
-            />
+              {/* Satellite tile overlay (Esri World Imagery). Initially invisible (opacity 0) and shown when zoom >= SAT_TRANSITION_ZOOM */}
+              <TileLayer
+                url={ESRI_SAT_URL}
+                ref={(layer) => (satLayerRef.current = layer)}
+                maxNativeZoom={19}
+                maxZoom={22}
+                opacity={0}
+                zIndex={15}
+                detectRetina={true}
+                attribution="Tiles &copy; Esri"
+              />
 
-            {/* User Location Marker */}
-            {userLocation && (
-              <Marker position={userLocation} icon={createUserLocationIcon()}>
-                <Popup>
-                  <div className="text-center">
-                    <div className="font-semibold text-blue-600">Your Location</div>
-                    <div className="text-sm text-gray-600">
-                      {userLocation[0].toFixed(6)}, {userLocation[1].toFixed(6)}
+              {/* Keep DirectTileLayer (if you rely on it for custom tile switching) */}
+              <DirectTileLayer maxZoom={22} minZoom={1} transitionZoomLevel={18} />
+
+              {/* Map Type Indicator */}
+              <MapTypeIndicator transitionZoomLevel={18} />
+
+              {updatedBinLocations.map((bin) => (
+                <DynamicBinMarker key={bin.id} bin={bin} onBinClick={onBinClick} />
+              ))}
+
+              {/* GPS Marker for real-time location */}
+              <GPSMarker
+                gpsData={
+                  bin1Data
+                    ? {
+                        latitude: bin1Data.latitude,
+                        longitude: bin1Data.longitude,
+                        gps_valid: bin1Data.gps_valid,
+                        satellites: bin1Data.satellites,
+                        timestamp:
+                          typeof bin1Data.timestamp === "number"
+                            ? new Date(bin1Data.timestamp).toISOString()
+                            : bin1Data.timestamp
+                            ? String(bin1Data.timestamp)
+                            : new Date().toISOString(),
+                      }
+                    : monitoringData
+                    ? {
+                        latitude: monitoringData.latitude,
+                        longitude: monitoringData.longitude,
+                        gps_valid: monitoringData.gps_valid,
+                        satellites: monitoringData.satellites,
+                        timestamp:
+                          typeof monitoringData.timestamp === "number"
+                            ? new Date(monitoringData.timestamp).toISOString()
+                            : monitoringData.timestamp
+                            ? String(monitoringData.timestamp)
+                            : new Date().toISOString(),
+                      }
+                    : undefined
+                }
+              />
+
+              {/* GPS Tracking Line */}
+              <GPSTrackingLine
+                gpsHistory={gpsHistory.map((point) => ({
+                  ...point,
+                  timestamp:
+                    typeof point.timestamp === "number" ? new Date(point.timestamp).toISOString() : (point.timestamp || new Date().toISOString()),
+                }))}
+                visible={showGPSTracking}
+              />
+
+              {/* User Location Marker */}
+              {userLocation && (
+                <Marker position={userLocation} icon={createUserLocationIcon()}>
+                  <Popup>
+                    <div className="text-center">
+                      <div className="font-semibold text-blue-600">Your Location</div>
+                      <div className="text-sm text-gray-600">
+                        {userLocation[0].toFixed(6)}, {userLocation[1].toFixed(6)}
+                      </div>
                     </div>
-                  </div>
-                </Popup>
-            </Marker>
-          )}
+                  </Popup>
+                </Marker>
+              )}
             </MapContainer>
           </MapErrorBoundary>
 
@@ -435,29 +513,29 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
             </div>
           )}
 
-        {/* GPS Fallback Indicator */}
-        <div className="absolute bottom-4 left-4 z-[1000] max-w-sm">
-          <GPSFallbackIndicator 
-            binId="bin1" 
-            currentGPSStatus={bin1Data ? {
-              gps_valid: bin1Data.gps_valid || false,
-              latitude: bin1Data.latitude || 0,
-              longitude: bin1Data.longitude || 0,
-              coordinates_source: bin1Data.coordinates_source,
-              satellites: bin1Data.satellites || 0,
-              last_active: bin1Data.last_active,
-              gps_timestamp: bin1Data.gps_timestamp
-            } : undefined}
-          />
-        </div>
+          {/* GPS Fallback Indicator */}
+          <div className="absolute bottom-4 left-4 z-[1000] max-w-sm">
+            <GPSFallbackIndicator
+              binId="bin1"
+              currentGPSStatus={bin1Data ? {
+                gps_valid: bin1Data.gps_valid || false,
+                latitude: bin1Data.latitude || 0,
+                longitude: bin1Data.longitude || 0,
+                coordinates_source: bin1Data.coordinates_source,
+                satellites: bin1Data.satellites || 0,
+                last_active: bin1Data.last_active,
+                gps_timestamp: bin1Data.gps_timestamp
+              } : undefined}
+            />
+          </div>
 
-        {/* Pegman Icon */}
-        <div
-          id="pegman"
-          draggable
-          className="absolute bottom-4 right-16 z-[999] cursor-grab bg-white p-1 rounded-full shadow-lg border transition-transform duration-300"
-          title="Drag to Street View"
-        >
+          {/* Pegman Icon */}
+          <div
+            id="pegman"
+            draggable
+            className="absolute bottom-4 right-16 z-[999] cursor-grab bg-white p-1 rounded-full shadow-lg border transition-transform duration-300"
+            title="Drag to Street View"
+          >
             <img
               src="https://brandlogos.net/wp-content/uploads/2013/12/google-street-view-vector-logo.png"
               alt="Street View"
@@ -480,7 +558,7 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
           <p className="text-sm">Real-time smart bin monitoring powered by live GPS coordinates</p>
           {bin1Data && bin1Data.gps_valid && (
             <p className="text-xs mt-1">
-              Live coordinates: {bin1Data.latitude.toFixed(6)}, {bin1Data.longitude.toFixed(6)} | GPS Valid:{" "}
+              Live coordinates: {bin1Data.latitude.toFixed(6)}, {bin1Data.longitude.toFixed(6)} | GPS Valid: {" "}
               {bin1Data.satellites} satellites | Last update: {new Date(bin1Data.timestamp).toLocaleTimeString()}
             </p>
           )}
@@ -489,3 +567,5 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
     </div>
   );
 }
+
+export default StaffMapSection;
