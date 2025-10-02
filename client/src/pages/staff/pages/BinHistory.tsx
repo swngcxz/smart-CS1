@@ -160,21 +160,18 @@ export function BinHistory() {
       case "CRITICAL":
         return (
           <div className="flex items-center gap-1 text-red-600">
-            <AlertTriangle className="w-3 h-3" />
             Critical
           </div>
         );
       case "WARNING":
         return (
           <div className="flex items-center gap-1 text-yellow-600">
-            <AlertTriangle className="w-3 h-3" />
             Warning
           </div>
         );
       case "OK":
         return (
           <div className="flex items-center gap-1 text-green-600">
-            <CheckCircle className="w-3 h-3" />
             Normal
           </div>
         );
@@ -495,7 +492,10 @@ export function BinHistory() {
                       const { date, time } = formatTimestamp(record.timestamp);
                       return (
                         <TableRow key={record.id}>
-                          <TableCell className="font-medium">{record.binId}</TableCell>
+                        <TableCell className="font-medium">
+  {record.binId.charAt(0).toUpperCase() + record.binId.slice(1)}
+</TableCell>
+
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div>
