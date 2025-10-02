@@ -329,6 +329,68 @@ const feedbackController = {
     }
   },
 
+  // Archive feedback (admin only)
+  async archiveFeedback(req, res) {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ error: "Feedback ID is required" });
+      }
+
+      const { db } = require('../models/firebase');
+      const updateData = {
+        status: 'resolved',
+        archivedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.collection('feedback').doc(id).update(updateData);
+      
+      console.log('Feedback archived:', id);
+
+      res.json({ 
+        message: "Feedback archived successfully",
+        id,
+        ...updateData
+      });
+    } catch (error) {
+      console.error("Error archiving feedback:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // Unarchive feedback (admin only)
+  async unarchiveFeedback(req, res) {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ error: "Feedback ID is required" });
+      }
+
+      const { db } = require('../models/firebase');
+      const updateData = {
+        status: 'pending',
+        unarchivedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.collection('feedback').doc(id).update(updateData);
+      
+      console.log('Feedback unarchived:', id);
+
+      res.json({ 
+        message: "Feedback unarchived successfully",
+        id,
+        ...updateData
+      });
+    } catch (error) {
+      console.error("Error unarchiving feedback:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
   // Delete feedback (admin only)
   async deleteFeedback(req, res) {
     try {

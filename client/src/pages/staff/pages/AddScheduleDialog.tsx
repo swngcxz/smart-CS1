@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { CalendarIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import api from "@/lib/api";
 
 export interface Collector {
   id: string;
@@ -40,18 +42,12 @@ interface AddScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAddSchedule: (schedule: Omit<Schedule, "id">) => void;
-  collectors?: Collector[];
-  drivers?: Collector[];
-  maintenanceWorkers?: Collector[];
 }
 
 export function AddScheduleDialog({
   open,
   onOpenChange,
   onAddSchedule,
-  collectors,
-  drivers,
-  maintenanceWorkers,
 }: AddScheduleDialogProps) {
   const [serviceType, setServiceType] = useState<"collection" | "maintenance">("collection");
   const [location, setLocation] = useState("");
@@ -65,11 +61,55 @@ export function AddScheduleDialog({
   const [notes, setNotes] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [priority, setPriority] = useState<"Low" | "Normal" | "High">("Normal");
+  
+  // State for fetching workers
+  const [drivers, setDrivers] = useState<Collector[]>([]);
+  const [maintenanceWorkers, setMaintenanceWorkers] = useState<Collector[]>([]);
+  const [loadingWorkers, setLoadingWorkers] = useState(false);
+  
+  // Toast for notifications
+  const { toast } = useToast();
 
-  const availableCollectors: Collector[] = (
-    collectors ? collectors : serviceType === "collection" ? drivers || [] : maintenanceWorkers || []
-  ) as Collector[];
+  const availableCollectors: Collector[] = serviceType === "collection" ? drivers : maintenanceWorkers;
   const selectedCollector = availableCollectors.find((c) => c.id === collectorId);
+
+  // Fetch drivers and maintenance workers when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchWorkers();
+    }
+  }, [open]);
+
+  // Fetch workers when service type changes
+  useEffect(() => {
+    if (open) {
+      setCollectorId(""); // Reset selected worker when service type changes
+    }
+  }, [serviceType, open]);
+
+  const fetchWorkers = async () => {
+    setLoadingWorkers(true);
+    try {
+      const [driversResponse, maintenanceResponse] = await Promise.all([
+        api.get("/api/staff/drivers"),
+        api.get("/api/staff/maintenance")
+      ]);
+
+      setDrivers(driversResponse.data || []);
+      setMaintenanceWorkers(maintenanceResponse.data || []);
+    } catch (error) {
+      console.error("Error fetching workers:", error);
+      setDrivers([]);
+      setMaintenanceWorkers([]);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load workers. Please try again.",
+      });
+    } finally {
+      setLoadingWorkers(false);
+    }
+  };
 
   const resetForm = () => {
     setServiceType("collection");
@@ -86,42 +126,93 @@ export function AddScheduleDialog({
     setPriority("Normal");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!location || !type || !startTime || !endTime || !date) {
+    if (!location || !startTime || !endTime || !date || !collectorId || collectorId === "loading" || collectorId === "no-workers") {
       return;
     }
 
-    // Capacity is only relevant for collection
-    let normalizedCapacity = "";
-    if (serviceType === "collection" && capacity.trim()) {
-      normalizedCapacity = capacity.trim();
-      if (!normalizedCapacity.endsWith("%")) {
-        normalizedCapacity = `${normalizedCapacity}%`;
+    try {
+      let response;
+      
+      if (serviceType === "collection") {
+        // Use truck-schedules endpoint for collection
+        const scheduleData = {
+          staffId: collectorId,
+          sched_type: "collection",
+          start_collected: startTime,
+          end_collected: endTime,
+          location: location.trim(),
+          status: "scheduled",
+          date: format(date, "yyyy-MM-dd"),
+          priority: priority,
+          ...(notes.trim() && { notes: notes.trim() }),
+          ...(contactPerson.trim() && { contactPerson: contactPerson.trim() }),
+          ...(truckPlate.trim() && { truckPlate: truckPlate.trim().toUpperCase() })
+        };
+        
+        response = await api.post("/api/truck-schedules", scheduleData);
+      } else {
+        // Use regular schedules endpoint for maintenance
+        const scheduleData = {
+          staffId: collectorId,
+          sched_type: "maintenance",
+          start_time: startTime,
+          end_time: endTime,
+          location: location.trim(),
+          status: "scheduled",
+          date: format(date, "yyyy-MM-dd"),
+          priority: priority,
+          lunch_break_start: "12:00",
+          lunch_break_end: "13:00",
+          ...(notes.trim() && { notes: notes.trim() }),
+          ...(contactPerson.trim() && { contactPerson: contactPerson.trim() })
+        };
+        
+        response = await api.post("/api/schedules", scheduleData);
       }
+
+      if (response.status === 201) {
+        // Create schedule object for frontend
+        const newSchedule: Omit<Schedule, "id"> = {
+          serviceType,
+          location: location.trim(),
+          type: serviceType,
+          time: startTime,
+          date: format(date, "yyyy-MM-dd"),
+          status: "scheduled",
+          collector: selectedCollector,
+          notes: notes.trim() || undefined,
+          contactPerson: contactPerson.trim() || undefined,
+          start_collected: startTime,
+          end_collected: endTime,
+          priority,
+          ...(truckPlate.trim() && { truckPlate: truckPlate.trim().toUpperCase() })
+        };
+
+        onAddSchedule(newSchedule);
+        resetForm();
+        onOpenChange(false);
+        
+        toast({
+          variant: "success",
+          title: "Success",
+          description: `${serviceType === "collection" ? "Trash collection" : "Maintenance"} schedule created successfully!`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error creating schedule:", error);
+      
+      // Extract error message from response
+      const errorMessage = error.response?.data?.error || error.message || "Failed to create schedule";
+      
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
     }
-
-    const newSchedule: Omit<Schedule, "id"> = {
-      serviceType,
-      location: location.trim(),
-      type,
-      time: `${startTime} - ${endTime}`,
-      date: format(date, "yyyy-MM-dd"),
-      status: "scheduled",
-      capacity: normalizedCapacity || undefined,
-      collector: selectedCollector,
-      truckPlate: truckPlate.trim().toUpperCase() || undefined,
-      notes: notes.trim() || undefined,
-      contactPerson: contactPerson.trim() || undefined,
-      start_collected: startTime,
-      end_collected: endTime,
-      priority,
-    };
-
-    onAddSchedule(newSchedule);
-    resetForm();
-    onOpenChange(false);
   };
 
   const getTypeOptions = () => {
@@ -238,7 +329,7 @@ export function AddScheduleDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="startTime">Time</Label>
+              <Label htmlFor="startTime">Start Time</Label>
               <Input
                 id="startTime"
                 type="time"
@@ -249,17 +340,38 @@ export function AddScheduleDialog({
             </div>
 
             <div className="grid gap-2">
+              <Label htmlFor="endTime">End Time</Label>
+              <Input
+                id="endTime"
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="collector">{serviceType === "collection" ? "Assign Driver" : "Assign Maintenance"}</Label>
               <Select value={collectorId} onValueChange={setCollectorId}>
                 <SelectTrigger id="collector">
-                  <SelectValue placeholder="Select worker" />
+                  <SelectValue placeholder={loadingWorkers ? "Loading workers..." : "Select worker"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableCollectors.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} {c.phone ? `• ${c.phone}` : ""}
+                  {loadingWorkers ? (
+                    <SelectItem value="loading" disabled>
+                      Loading workers...
                     </SelectItem>
-                  ))}
+                  ) : availableCollectors.length === 0 ? (
+                    <SelectItem value="no-workers" disabled>
+                      No {serviceType === "collection" ? "drivers" : "maintenance workers"} available
+                    </SelectItem>
+                  ) : (
+                    availableCollectors.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} {c.phone ? `• ${c.phone}` : ""}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -290,8 +402,12 @@ export function AddScheduleDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">
-              Add Schedule
+            <Button 
+              type="submit" 
+              className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition"
+              disabled={!location || !startTime || !endTime || !date || !collectorId || collectorId === "loading" || collectorId === "no-workers" || loadingWorkers}
+            >
+              {loadingWorkers ? "Loading..." : "Add Schedule"}
             </Button>
           </DialogFooter>
         </form>

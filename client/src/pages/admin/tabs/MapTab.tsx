@@ -123,32 +123,28 @@ export function MapTab() {
             </CardHeader>
             <CardContent className={`transition-all duration-300 ease-in-out ${
               isLocationDropdownOpen 
-                ? 'max-h-96 opacity-100' 
-                : 'max-h-0 opacity-0 overflow-hidden'
+                ? 'max-h-96 opacity-100 p-4' 
+                : 'max-h-0 opacity-0 overflow-hidden p-0'
             }`}>
               <div className="space-y-3">
                 {/* Central Plaza Route */}
                 <Button 
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 ${
-                    selectedRoute === "central-plaza" 
-                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" 
-                      : "border-blue-200 dark:border-blue-700 hover:border-blue-400 dark:hover:border-blue-500 bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                  }`}
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
+                    ${
+                      selectedRoute === "central-plaza"
+                        ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+                        : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
+                    }`}
                   onClick={() => handleRouteSelect("central-plaza")}
                 >
                   <div className="flex items-center gap-3 w-full">
-                    <div className="flex-shrink-0">
-                      <MapPin className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">Central Plaza</div>
-                      <div className="text-xs opacity-90">Downtown business district</div>
-                    </div>
-                    <Badge 
+                    <MapPin className="w-5 h-5 flex-shrink-0" />
+                    <div className="flex-1 font-semibold text-sm">Central Plaza</div>
+                    <Badge
                       className={`text-xs ${
-                        selectedRoute === "central-plaza" 
-                          ? "bg-green-600 text-white" 
-                          : "bg-blue-600 text-white"
+                        selectedRoute === "central-plaza"
+                          ? "bg-green-700 text-white"
+                          : "bg-gray-300 text-black"
                       }`}
                     >
                       Active
@@ -158,26 +154,22 @@ export function MapTab() {
                 
                 {/* Park Avenue Route */}
                 <Button 
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 ${
-                    selectedRoute === "park-avenue" 
-                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" 
-                      : "border-emerald-200 dark:border-emerald-700 hover:border-emerald-400 dark:hover:border-emerald-500 bg-transparent hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
-                  }`}
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
+                    ${
+                      selectedRoute === "park-avenue"
+                        ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+                        : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
+                    }`}
                   onClick={() => handleRouteSelect("park-avenue")}
                 >
                   <div className="flex items-center gap-3 w-full">
-                    <div className="flex-shrink-0">
-                      <Navigation className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">Park Avenue</div>
-                      <div className="text-xs opacity-90">Scenic residential area</div>
-                    </div>
-                    <Badge 
+                    <MapPin className="w-5 h-5 flex-shrink-0" />
+                    <div className="flex-1 font-semibold text-sm">Park Avenue</div>
+                    <Badge
                       className={`text-xs ${
-                        selectedRoute === "park-avenue" 
-                          ? "bg-green-600 text-white" 
-                          : "bg-emerald-600 text-white"
+                        selectedRoute === "park-avenue"
+                          ? "bg-green-700 text-white"
+                          : "bg-gray-300 text-black"
                       }`}
                     >
                       Active
@@ -187,26 +179,22 @@ export function MapTab() {
                 
                 {/* Mall District Route */}
                 <Button 
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 ${
-                    selectedRoute === "mall-district" 
-                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" 
-                      : "border-purple-200 dark:border-purple-700 hover:border-purple-400 dark:hover:border-purple-500 bg-transparent hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-700 dark:text-purple-300"
-                  }`}
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
+                    ${
+                      selectedRoute === "mall-district"
+                        ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+                        : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
+                    }`}
                   onClick={() => handleRouteSelect("mall-district")}
                 >
                   <div className="flex items-center gap-3 w-full">
-                    <div className="flex-shrink-0">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">Mall District</div>
-                      <div className="text-xs opacity-90">Shopping and entertainment</div>
-                    </div>
-                    <Badge 
+                    <MapPin className="w-5 h-5 flex-shrink-0" />
+                    <div className="flex-1 font-semibold text-sm">Mall District</div>
+                    <Badge
                       className={`text-xs ${
-                        selectedRoute === "mall-district" 
-                          ? "bg-green-600 text-white" 
-                          : "bg-purple-600 text-white"
+                        selectedRoute === "mall-district"
+                          ? "bg-green-700 text-white"
+                          : "bg-gray-300 text-black"
                       }`}
                     >
                       Active
@@ -216,26 +204,22 @@ export function MapTab() {
                 
                 {/* Residential Route */}
                 <Button 
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 ${
-                    selectedRoute === "residential" 
-                      ? "border-green-600 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300" 
-                      : "border-orange-200 dark:border-orange-700 hover:border-orange-400 dark:hover:border-orange-500 bg-transparent hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-700 dark:text-orange-300"
-                  }`}
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
+                    ${
+                      selectedRoute === "residential"
+                        ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+                        : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
+                    }`}
                   onClick={() => handleRouteSelect("residential")}
                 >
                   <div className="flex items-center gap-3 w-full">
-                    <div className="flex-shrink-0">
-                      <Route className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-sm">Residential</div>
-                      <div className="text-xs opacity-90">Housing communities</div>
-                    </div>
-                    <Badge 
+                    <MapPin className="w-5 h-5 flex-shrink-0" />
+                    <div className="flex-1 font-semibold text-sm">Residential Area</div>
+                    <Badge
                       className={`text-xs ${
-                        selectedRoute === "residential" 
-                          ? "bg-green-600 text-white" 
-                          : "bg-orange-600 text-white"
+                        selectedRoute === "residential"
+                          ? "bg-green-700 text-white"
+                          : "bg-gray-300 text-black"
                       }`}
                     >
                       Active

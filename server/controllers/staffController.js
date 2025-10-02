@@ -88,6 +88,62 @@ const staffController = {
     }
   },
 
+  async getDrivers(req, res) {
+    try {
+      // Get drivers using role-based filtering from users collection
+      const drivers = await StaffModel.getUsersByRole('driver');
+      
+      // Normalize the data structure to ensure consistency
+      const normalizedDrivers = drivers.map(driver => ({
+        id: driver.id,
+        name: driver.fullName, // Use 'name' to match frontend expectation
+        fullName: driver.fullName,
+        email: driver.email,
+        phone: driver.contactNumber || 'N/A',
+        contactNumber: driver.contactNumber || 'N/A',
+        role: driver.role,
+        location: driver.location || 'General',
+        status: driver.status || 'active',
+        lastActivity: driver.lastActivity || 'Recently active'
+      }));
+      
+      console.log(`Found ${normalizedDrivers.length} drivers from users collection`);
+      console.log('Drivers:', normalizedDrivers.map(d => ({ name: d.fullName, role: d.role, phone: d.phone })));
+      
+      res.json(normalizedDrivers);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async getMaintenanceWorkers(req, res) {
+    try {
+      // Get maintenance workers using role-based filtering from users collection
+      const maintenanceWorkers = await StaffModel.getUsersByRole('maintenance');
+      
+      // Normalize the data structure to ensure consistency
+      const normalizedMaintenanceWorkers = maintenanceWorkers.map(worker => ({
+        id: worker.id,
+        name: worker.fullName, // Use 'name' to match frontend expectation
+        fullName: worker.fullName,
+        email: worker.email,
+        phone: worker.contactNumber || 'N/A',
+        contactNumber: worker.contactNumber || 'N/A',
+        role: worker.role,
+        location: worker.location || 'General',
+        status: worker.status || 'active',
+        lastActivity: worker.lastActivity || 'Recently active'
+      }));
+      
+      console.log(`Found ${normalizedMaintenanceWorkers.length} maintenance workers from users collection`);
+      console.log('Maintenance Workers:', normalizedMaintenanceWorkers.map(w => ({ name: w.fullName, role: w.role, phone: w.phone })));
+      
+      res.json(normalizedMaintenanceWorkers);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
   async seedSampleData(req, res) {
     try {
       await StaffModel.seedSampleJanitors();

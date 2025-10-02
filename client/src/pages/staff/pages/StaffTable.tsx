@@ -149,19 +149,18 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
           <TableHead>Role</TableHead>
           <TableHead>Route</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Last Activity</TableHead>
           <TableHead>Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {loading && (
           <TableRow>
-            <TableCell colSpan={9} className="text-center text-sm text-gray-500">Loading...</TableCell>
+            <TableCell colSpan={7} className="text-center text-sm text-gray-500">Loading...</TableCell>
           </TableRow>
         )}
         {error && (
           <TableRow>
-            <TableCell colSpan={9} className="text-center text-sm text-red-600">{error}</TableCell>
+            <TableCell colSpan={7} className="text-center text-sm text-red-600">{error}</TableCell>
           </TableRow>
         )}
         {!loading && !error && filteredStaff.map((staff) => (
@@ -195,7 +194,6 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
                 {staff.status || "active"}
               </Badge>
             </TableCell>
-            <TableCell className="text-gray-500">{staff.lastActivity || ""}</TableCell>
             {/* <TableCell>
               <Badge 
                 variant="outline" 

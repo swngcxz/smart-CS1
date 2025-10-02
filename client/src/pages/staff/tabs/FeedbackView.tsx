@@ -68,7 +68,7 @@ const Feedback = () => {
 
   const archiveFeedback = async (id: string) => {
     try {
-      await api.put(`/api/feedback/${id}/status`, { status: 'resolved' })
+      await api.put(`/api/feedback/${id}/archive`)
       setFeedbacks(prev => 
         prev.map(feedback => 
           feedback.id === id ? { ...feedback, status: 'resolved' as const } : feedback
@@ -77,6 +77,20 @@ const Feedback = () => {
       toast.success("Feedback archived successfully")
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to archive feedback')
+    }
+  }
+
+  const unarchiveFeedback = async (id: string) => {
+    try {
+      await api.put(`/api/feedback/${id}/unarchive`)
+      setFeedbacks(prev => 
+        prev.map(feedback => 
+          feedback.id === id ? { ...feedback, status: 'pending' as const } : feedback
+        )
+      )
+      toast.success("Feedback unarchived successfully")
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to unarchive feedback')
     }
   }
 
@@ -106,62 +120,34 @@ const Feedback = () => {
 
   if (showArchived) {
     const resolvedFeedbacks = feedbacks.filter(f => f.status === 'resolved')
+    const archivedStats = {
+      total: resolvedFeedbacks.length,
+      new: 0
+    }
+    
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Resolved Feedback</h1>
-            <p className="text-gray-600">Previously resolved feedback items</p>
+            <h1 className="text-2xl font-bold text-gray-900">Archived Feedback</h1>
+            <p className="text-gray-600">Previously archived feedback items</p>
           </div>
           <Button onClick={() => setShowArchived(false)}>
             Back to Active
           </Button>
         </div>
         
-        <div className="space-y-4">
-          {resolvedFeedbacks.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No resolved feedback found.
-            </div>
-          ) : (
-            resolvedFeedbacks.map((feedback) => (
-              <div key={feedback.id} className="border rounded-lg p-4 bg-gray-50">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-2">
-                      {feedback.content.length > 50 
-                        ? `${feedback.content.substring(0, 50)}...` 
-                        : feedback.content
-                      }
-                    </h3>
-                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span>{feedback.name}</span>
-                      <span>{feedback.email}</span>
-                      <span>{new Date(feedback.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => archiveFeedback(feedback.id)}
-                    >
-                      Reopen
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => deleteFeedback(feedback.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+        <FeedbackList
+          feedbacks={resolvedFeedbacks}
+          filter="all"
+          stats={archivedStats}
+          loading={loading}
+          showArchived={true}
+          onFilterChange={() => {}}
+          onArchive={() => {}}
+          onUnarchive={unarchiveFeedback}
+          onDelete={deleteFeedback}
+        />
       </div>
     )
   }

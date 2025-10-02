@@ -144,44 +144,41 @@ export function BinHistory() {
     switch (status.toUpperCase()) {
       case "CRITICAL":
         return (
-          <Badge variant="destructive" className="flex items-center gap-1">
+          <div className="flex items-center gap-1 text-red-600">
             <AlertTriangle className="w-3 h-3" />
             Critical
-          </Badge>
+          </div>
         );
       case "WARNING":
         return (
-          <Badge variant="outline" className="flex items-center gap-1 text-yellow-600 border-yellow-600">
+          <div className="flex items-center gap-1 text-yellow-600">
             <AlertTriangle className="w-3 h-3" />
             Warning
-          </Badge>
+          </div>
         );
       case "OK":
         return (
-          <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-600">
+          <div className="flex items-center gap-1 text-green-600">
             <CheckCircle className="w-3 h-3" />
             Normal
-          </Badge>
+          </div>
         );
       case "ERROR":
         return (
-          <Badge variant="destructive" className="flex items-center gap-1">
+          <div className="flex items-center gap-1 text-red-600">
             <XCircle className="w-3 h-3" />
             Error
-          </Badge>
+          </div>
         );
       case "MALFUNCTION":
         return (
-          <Badge
-            variant="destructive"
-            className="flex items-center gap-1 text-orange-600 bg-orange-100 border-orange-600"
-          >
+          <div className="flex items-center gap-1 text-orange-600">
             <XCircle className="w-3 h-3" />
             Malfunction
-          </Badge>
+          </div>
         );
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <div className="flex items-center gap-1 text-gray-600">{status}</div>;
     }
   };
 
@@ -226,7 +223,11 @@ export function BinHistory() {
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
     
     return {
-      date: date.toLocaleDateString(),
+      date: date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: '2-digit'
+      }),
       time: date.toLocaleTimeString(),
       relative: diffInHours < 24 ? 
         (diffInHours < 1 ? `${Math.floor(diffInHours * 60)}m ago` : `${Math.floor(diffInHours)}h ago`) :
@@ -248,18 +249,14 @@ export function BinHistory() {
     const headers = [
       "Bin ID",
       "Timestamp",
-      "Weight (kg)",
-      "Distance (cm)",
       "Bin Level (%)",
-      "GPS Coordinates",
+      "Location",
       "Status",
       "Error Message",
     ];
     const csvData = filteredHistory.map((record) => [
       record.binId,
       record.timestamp,
-      record.weight,
-      record.distance,
       record.binLevel,
       formatCoordinates(record.gps),
       record.status,
@@ -475,10 +472,8 @@ export function BinHistory() {
                     <TableRow>
                       <TableHead>Bin ID</TableHead>
                       <TableHead>Timestamp</TableHead>
-                      <TableHead>Weight (kg)</TableHead>
-                      <TableHead>Distance (cm)</TableHead>
                       <TableHead>Bin Level (%)</TableHead>
-                      <TableHead>GPS Coordinates</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -506,8 +501,6 @@ export function BinHistory() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>{record.weight.toFixed(2)}</TableCell>
-                          <TableCell>{record.distance.toFixed(1)}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div className="w-16 bg-gray-200 rounded-full h-2">

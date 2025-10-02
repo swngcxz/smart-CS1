@@ -31,12 +31,14 @@ interface FeedbackListProps {
     new: number
   }
   loading?: boolean
+  showArchived?: boolean
   onFilterChange: (filter: 'all' | 'new') => void
   onArchive: (id: string) => void
+  onUnarchive?: (id: string) => void
   onDelete: (id: string) => void
 }
 
-const FeedbackList = ({ feedbacks, filter, stats, loading = false, onFilterChange, onArchive, onDelete }: FeedbackListProps) => {
+const FeedbackList = ({ feedbacks, filter, stats, loading = false, showArchived = false, onFilterChange, onArchive, onUnarchive, onDelete }: FeedbackListProps) => {
   const getCategoryColor = (category: string, subcategory?: string) => {
     // Use subcategory for more specific styling if available
     const displayCategory = subcategory || category;
@@ -138,24 +140,26 @@ const FeedbackList = ({ feedbacks, filter, stats, loading = false, onFilterChang
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
-            Active Feedback
+            {showArchived ? 'Archived Feedback' : 'Active Feedback'}
           </CardTitle>
-          <div className="flex gap-2">
-            <Button 
-              variant={filter === 'all' ? 'default' : 'outline'} 
-              size="sm"
-              onClick={() => onFilterChange('all')}
-            >
-              All ({stats.total})
-            </Button>
-            <Button 
-              variant={filter === 'new' ? 'default' : 'outline'} 
-              size="sm"
-              onClick={() => onFilterChange('new')}
-            >
-              New ({stats.new})
-            </Button>
-          </div>
+          {!showArchived && (
+            <div className="flex gap-2">
+              <Button 
+                variant={filter === 'all' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => onFilterChange('all')}
+              >
+                All ({stats.total})
+              </Button>
+              <Button 
+                variant={filter === 'new' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => onFilterChange('new')}
+              >
+                New ({stats.new})
+              </Button>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -194,15 +198,31 @@ const FeedbackList = ({ feedbacks, filter, stats, loading = false, onFilterChang
                 </div>
                 
                 <div className="flex gap-2 ml-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => onArchive(feedback.id)}
-                    className="flex items-center gap-1"
-                  >
-                    <Archive className="w-4 h-4" />
-                    Archive
-                  </Button>
+                  {showArchived ? (
+                    <>
+                      {onUnarchive && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => onUnarchive(feedback.id)}
+                          className="flex items-center gap-1 text-green-600 hover:text-green-700"
+                        >
+                          <Archive className="w-4 h-4" />
+                          Unarchive
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => onArchive(feedback.id)}
+                      className="flex items-center gap-1"
+                    >
+                      <Archive className="w-4 h-4" />
+                      Archive
+                    </Button>
+                  )}
                   <Button 
                     variant="outline" 
                     size="sm"

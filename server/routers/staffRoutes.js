@@ -6,6 +6,8 @@ const validateStaff = require("../middlewares/validateStaff");
 router.post("/", validateStaff, staffController.create);
 router.get("/", staffController.getAll);
 router.get("/janitors", staffController.getJanitors);
+router.get("/drivers", staffController.getDrivers);
+router.get("/maintenance", staffController.getMaintenanceWorkers);
 router.post("/seed-sample", staffController.seedSampleData);
 router.post("/seed-current-user", staffController.seedCurrentUser);
 router.put("/:id", staffController.update);

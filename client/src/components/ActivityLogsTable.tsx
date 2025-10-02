@@ -295,13 +295,11 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                 <TableHeader>
                   <TableRow className="border-gray-200 dark:border-gray-700">
                     <TableHead className="text-gray-900 dark:text-white font-semibold">Date & Time</TableHead>
-                    <TableHead className="text-gray-900 dark:text-white font-semibold">Activity Type</TableHead>
                     <TableHead className="text-gray-900 dark:text-white font-semibold">Description</TableHead>
                     <TableHead className="text-gray-900 dark:text-white font-semibold">Assigned To</TableHead>
                     <TableHead className="text-gray-900 dark:text-white font-semibold">Location</TableHead>
                     <TableHead className="text-gray-900 dark:text-white font-semibold">Status</TableHead>
                     <TableHead className="text-gray-900 dark:text-white font-semibold">Priority</TableHead>
-                    <TableHead className="text-gray-900 dark:text-white font-semibold">Details</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -312,16 +310,17 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                           <Calendar className="h-4 w-4 text-gray-400" />
                           <div>
                             <div className="font-medium">
-                              {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleDateString()}
+                              {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
                             </div>
                             <div className="text-xs text-gray-500">
                               {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleTimeString()}
                             </div>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {getActivityTypeBadge(log.activity_type)}
                       </TableCell>
                       <TableCell className="text-sm text-gray-900 dark:text-white max-w-xs">
                         <div className="truncate">
@@ -366,12 +365,6 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                       </TableCell>
                       <TableCell>
                         {getPriorityBadge(log.priority)}
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600 dark:text-gray-400">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-gray-400" />
-                          Level: {log.bin_level || 0}%
-                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

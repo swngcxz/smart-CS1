@@ -41,9 +41,6 @@ export function ActivityOverviewCards({ cards, loading = false, error }: Activit
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Activity Overview</h2>
-      
       {/* Error display */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">

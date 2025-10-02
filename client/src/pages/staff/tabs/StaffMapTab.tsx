@@ -187,11 +187,11 @@ export function MapTab() {
   <div className="space-y-3">
     {/* Central Plaza Route */}
     <Button
-      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200
+      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
         ${
           selectedRoute === "central-plaza"
-            ? "bg-gray-100 border-green-700 text-black"
-            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-100 hover:border-gray-400"
+            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
         }`}
       onClick={() => handleRouteSelect("central-plaza")}
     >
@@ -212,11 +212,11 @@ export function MapTab() {
 
     {/* Park Avenue Route */}
     <Button
-      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200
+      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
         ${
           selectedRoute === "park-avenue"
-            ? "bg-gray-100 border-green-700 text-black"
-            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-100 hover:border-gray-400"
+            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
         }`}
       onClick={() => handleRouteSelect("park-avenue")}
     >
@@ -237,11 +237,11 @@ export function MapTab() {
 
     {/* Mall District Route */}
     <Button
-      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200
+      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
         ${
           selectedRoute === "mall-district"
-            ? "bg-gray-100 border-green-700 text-black"
-            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-100 hover:border-gray-400"
+            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
         }`}
       onClick={() => handleRouteSelect("mall-district")}
     >
@@ -262,11 +262,11 @@ export function MapTab() {
 
     {/* Residential Route */}
     <Button
-      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200
+      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
         ${
           selectedRoute === "residential"
-            ? "bg-gray-100 border-green-700 text-black"
-            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-100 hover:border-gray-400"
+            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
         }`}
       onClick={() => handleRouteSelect("residential")}
     >

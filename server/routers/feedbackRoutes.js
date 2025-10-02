@@ -20,6 +20,12 @@ router.get('/analytics', feedbackController.getFeedbackAnalytics);
 // Update feedback status (admin only)
 router.put('/:id/status', feedbackController.updateFeedbackStatus);
 
+// Archive feedback (admin only)
+router.put('/:id/archive', feedbackController.archiveFeedback);
+
+// Unarchive feedback (admin only)
+router.put('/:id/unarchive', feedbackController.unarchiveFeedback);
+
 // Delete feedback (admin only)
 router.delete('/:id', feedbackController.deleteFeedback);
 
