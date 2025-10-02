@@ -10,15 +10,15 @@ const wasteData = [
     level: 85, // Will be overridden by real-time data
     status: "critical",
     lastCollected: "2 hours ago",
-    icon: AlertTriangle,
+    icon: CheckCircle,
   },
   {
     id: 2,
     location: "Park Avenue",
-    level: 45,
-    status: "normal",
+    level: 90,
+    status: "critical",
     lastCollected: "1 day ago",
-    icon: CheckCircle,
+    icon: AlertTriangle,
   },
   {
     id: 3,
