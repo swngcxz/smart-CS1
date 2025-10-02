@@ -681,193 +681,246 @@ export function WasteLevelsTab() {
         </Card>
       </div>
 
-      {isModalOpen && selectedBin && (
-        <div className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
-          <div className="bg-white dark:bg-gray-900 rounded-md shadow-lg w-full max-w-xl p-8 relative">
-            {/* Modal Header */}
-            <div className="flex justify-between items-center border-b pb-3 px-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Bin Information - {selectedBin.location}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-500 hover:text-gray-600 text-lg font-bold"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Bin Information */}
-            <div className="grid grid-cols-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-4 rounded-md border border-gray-200 dark:border-gray-700 mt-4">
-              <div>
-                <strong>{selectedBin.location} Bin:</strong> {selectedBin.id}
-              </div>
-
-              {/* Fill Level with Progress Bar */}
-              <div className="col-span-2">
-                <div className="flex items-center justify-between">
-                  <strong>Fill Level:</strong>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      selectedBin.status === "critical"
-                        ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                        : selectedBin.status === "warning"
-                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
-                        : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                    }`}
-                  >
-                    {selectedBin.status.toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between mt-2">
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                    <div
-                      className={`h-3 rounded-full ${
-                        selectedBin.level >= 80
-                          ? "bg-red-500"
-                          : selectedBin.level >= 50
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                      }`}
-                      style={{ width: `${selectedBin.level}%` }}
-                    ></div>
-                  </div>
-                  <span className="ml-2 text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {selectedBin.level}%
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-2">
-                <strong>Last Collected:</strong> {selectedBin.lastCollected}
-              </div>
-
-              {/* Live Metrics: Weight / Height / GPS */}
-              <div className="col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                {/* Weight */}
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Weight</div>
-                  <div className="text-base font-semibold text-gray-900 dark:text-white">
-                    {(bin1Data?.weight_kg ?? 0).toFixed(3)} kg
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-                    <div
-                      className={`h-2 rounded-full ${((bin1Data?.weight_percent ?? 0) >= 60) ? 'bg-yellow-500' : ((bin1Data?.weight_percent ?? 0) >= 90) ? 'bg-red-500' : 'bg-green-500'}`}
-                      style={{ width: `${Math.max(0, Math.min(100, bin1Data?.weight_percent ?? 0))}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Height */}
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Height</div>
-                  <div className="text-base font-semibold text-gray-900 dark:text-white">
-                    {Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-                    <div
-                      className={`h-2 rounded-full ${(Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0)) >= 60) ? 'bg-yellow-500' : (Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0)) >= 90) ? 'bg-red-500' : 'bg-green-500'}`}
-                      style={{ width: `${Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* GPS Status */}
-                <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-3">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">GPS Status</div>
-                  <div className={`text-base font-semibold ${bin1Data?.gps_valid ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
-                    {bin1Data?.gps_valid ? 'Online' : 'Offline'} ({bin1Data?.satellites ?? 0} satellites)
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Suggested Action directly under Bin Information */}
-            <div className="text-sm text-gray-600 dark:text-gray-400 rounded-md mt-2">
-              <strong>Suggested Action:</strong>{" "}
-              {selectedBin.status === "critical"
-                ? "Immediate collection required."
-                : selectedBin.status === "warning"
-                ? "Monitor closely and prepare for collection."
-                : "No action needed at the moment."}
-            </div>
-
-            {/* Assign Janitor */}
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                Assign to Janitor ({filteredJanitors.length} available)
-              </label>
-              {/* {filteredJanitors.length > 0 && (
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                  Available janitors: {filteredJanitors.map((j) => j.fullName).join(", ")}
-                </div>
-              )} */}
-              <Select onValueChange={(val) => setSelectedJanitorId(val)}>
-                <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
-                  <SelectValue placeholder={janitorsLoading ? "Loading..." : "Select Janitor"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {janitorsLoading ? (
-                    <SelectItem disabled value="loading">
-                      Loading...
-                    </SelectItem>
-                  ) : filteredJanitors.length > 0 ? (
-                    filteredJanitors.map((janitor) => (
-                      <SelectItem key={janitor.id} value={janitor.id}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{janitor.fullName}</span>
-                          <span className="text-xs text-gray-500">
-                            {janitor.location && `${janitor.location}`} • Role: {janitor.role || "Janitor"}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem disabled value="none">
-                      No janitors available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              {janitorsError && <p className="text-sm text-red-600 mt-1">Error loading janitors: {janitorsError}</p>}
-              {!janitorsLoading && filteredJanitors.length === 0 && (
-                <p className="text-sm text-yellow-600 mt-1">
-                  No janitors available for {selectedBin?.location}. Consider assigning a general janitor.
-                </p>
-              )}
-            </div>
-
-            {/* Task Note */}
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                Task Notes (Optional)
-              </label>
-              <textarea
-                className="w-full h-15 rounded-md border bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-800 dark:text-white p-2"
-                placeholder="e.g, Clean the Bin."
-                value={taskNote}
-                onChange={(e) => setTaskNote(e.target.value)}
-              />
-            </div>
-
-            {/* Buttons */}
-            <div className="flex justify-end gap-2 mt-4">
-              <Button
-                onClick={handleAssignTask}
-                disabled={activityLoading || !selectedJanitorId}
-                className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                {activityLoading ? "Assigning..." : "Assign Task"}
-              </Button>
-            </div>
-            {activityError && <p className="text-sm text-red-600 mt-2">Error: {activityError}</p>}
-          </div>
-           
+{isModalOpen && selectedBin && (
+  <div className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
+    <div className="bg-white dark:bg-gray-900 rounded-md shadow-lg w-full max-w-xl p-6 relative">
+      {/* Modal Header */}
+      <div className="flex justify-between items-center border-b pb-3">
+        <div className="flex items-center gap-3">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+            Bin Information - {selectedBin.location}
+          </h3>
         </div>
+        <button
+          onClick={() => setIsModalOpen(false)}
+          className="text-gray-500 hover:text-gray-600 text-lg font-bold"
+        >
+          ×
+        </button>
+      </div>
+
+      {/* Bin Info Grid */}
+      <div className="grid grid-cols-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-4 rounded-md border border-gray-200 dark:border-gray-700 mt-4">
+        <div>
+          <strong className="text-base font-semibold text-gray-900 dark:text-white">
+            {selectedBin.location} Bin:
+          </strong>{" "}
+          {selectedBin.id}
+        </div>
+
+        {/* Fill Level with Progress Bar */}
+        <div className="col-span-2">
+          <div className="flex items-center justify-between">
+            <strong className="text-base font-semibold text-gray-900 dark:text-white">
+              Fill Level:
+            </strong>
+            <span
+              className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                selectedBin.status === "critical"
+                  ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                  : selectedBin.status === "warning"
+                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                  : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+              }`}
+            >
+              {selectedBin.status.toUpperCase()}
+            </span>
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+              <div
+                className={`h-3 rounded-full ${
+                  selectedBin.level >= 80
+                    ? "bg-red-500"
+                    : selectedBin.level >= 50
+                    ? "bg-yellow-500"
+                    : "bg-green-500"
+                }`}
+                style={{ width: `${selectedBin.level}%` }}
+              ></div>
+            </div>
+            <span className="ml-2 text-sm font-medium text-gray-600 dark:text-gray-300">
+              {selectedBin.level}%
+            </span>
+          </div>
+        </div>
+
+        {/* Last Collected and GPS */}
+        <div className="mt-2">
+          <strong className="text-base font-semibold text-gray-900 dark:text-white">
+            Last Collected:
+          </strong>{" "}
+          {selectedBin.lastCollected}
+        </div>
+        <div className="mt-2">
+          <strong className="text-base font-semibold text-gray-900 dark:text-white">
+            GPS:
+          </strong>{" "}
+          <span
+            className={`font-semibold ${
+              bin1Data?.gps_valid
+                ? "text-green-700 dark:text-green-400"
+                : "text-red-700 dark:text-red-400"
+            }`}
+          >
+            {bin1Data?.gps_valid ? "Online" : "Offline"}
+          </span>
+        </div>
+
+    {/* Weight and Height */}
+<div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+  {/* Weight */}
+  <div className="pr-3">
+    <div className="flex justify-between items-center">
+      <span className="text-base font-semibold text-gray-900 dark:text-white">
+        Weight
+      </span>
+      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {(bin1Data?.weight_kg ?? 0).toFixed(3)} kg
+      </span>
+    </div>
+    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+      <div
+        className={`h-2 rounded-full ${
+          (bin1Data?.weight_percent ?? 0) >= 90
+            ? "bg-red-500"
+            : (bin1Data?.weight_percent ?? 0) >= 60
+            ? "bg-yellow-500"
+            : "bg-green-500"
+        }`}
+        style={{
+          width: `${Math.max(
+            0,
+            Math.min(100, bin1Data?.weight_percent ?? 0)
+          )}%`,
+        }}
+      ></div>
+    </div>
+  </div>
+
+  {/* Height */}
+  <div className="pr-3">
+    <div className="flex justify-between items-center">
+      <span className="text-base font-semibold text-gray-900 dark:text-white">
+        Height
+      </span>
+      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        {Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%
+      </span>
+    </div>
+    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
+      <div
+        className={`h-2 rounded-full ${
+          (bin1Data?.height_percent ?? 0) >= 90
+            ? "bg-red-500"
+            : (bin1Data?.height_percent ?? 0) >= 60
+            ? "bg-yellow-500"
+            : "bg-green-500"
+        }`}
+        style={{
+          width: `${Math.max(
+            0,
+            Math.min(100, bin1Data?.height_percent ?? 0)
+          )}%`,
+        }}
+      ></div>
+    </div>
+  </div>
+</div>
+
+      </div>
+
+      {/* Suggested Action */}
+      <div className="text-sm text-gray-600 dark:text-gray-400 rounded-md mt-2">
+        <strong className="text-base font-semibold text-gray-900 dark:text-white">
+          Suggested Action:
+        </strong>{" "}
+        {selectedBin.status === "critical"
+          ? "Immediate collection required."
+          : selectedBin.status === "warning"
+          ? "Monitor closely and prepare for collection."
+          : "No action needed at the moment."}
+      </div>
+
+      {/* Assign Janitor */}
+      <div className="mt-4">
+        <label className="block text-base font-semibold text-gray-900 dark:text-white mb-2">
+          Assign to Janitor ({filteredJanitors.length} available)
+        </label>
+        <Select onValueChange={(val) => setSelectedJanitorId(val)}>
+          <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
+            <SelectValue
+              placeholder={janitorsLoading ? "Loading..." : "Select Janitor"}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {janitorsLoading ? (
+              <SelectItem disabled value="loading">
+                Loading...
+              </SelectItem>
+            ) : filteredJanitors.length > 0 ? (
+              filteredJanitors.map((janitor) => (
+                <SelectItem key={janitor.id} value={janitor.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{janitor.fullName}</span>
+                    <span className="text-xs text-gray-500">
+                      {janitor.location && `${janitor.location}`} • Role:{" "}
+                      {janitor.role || "Janitor"}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem disabled value="none">
+                No janitors available
+              </SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+        {janitorsError && (
+          <p className="text-sm text-red-600 mt-1">
+            Error loading janitors: {janitorsError}
+          </p>
+        )}
+        {!janitorsLoading && filteredJanitors.length === 0 && (
+          <p className="text-sm text-yellow-600 mt-1">
+            No janitors available for {selectedBin?.location}. Consider assigning
+            a general janitor.
+          </p>
+        )}
+      </div>
+
+      {/* Task Note */}
+      <div className="mt-4">
+        <label className="block text-base font-semibold text-gray-900 dark:text-white mb-2">
+          Task Notes (Optional)
+        </label>
+        <textarea
+          className="w-full h-15 rounded-md border bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-800 dark:text-white p-2"
+          placeholder="e.g, Clean the Bin."
+          value={taskNote}
+          onChange={(e) => setTaskNote(e.target.value)}
+        />
+      </div>
+
+      {/* Buttons */}
+      <div className="flex justify-end gap-2 mt-4">
+        <Button
+          onClick={handleAssignTask}
+          disabled={activityLoading || !selectedJanitorId}
+          className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+        >
+          {activityLoading ? "Assigning..." : "Assign Task"}
+        </Button>
+      </div>
+
+      {activityError && (
+        <p className="text-sm text-red-600 mt-2">Error: {activityError}</p>
       )}
+    </div>
+  </div>
+)}
+
 
     </>
   );
