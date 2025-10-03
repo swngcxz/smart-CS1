@@ -131,16 +131,10 @@ const StaffNotifications = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-                <Bell className="h-6 w-6 text-green-600 dark:text-green-300" />
-              </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Staff Notifications</h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {unreadCount} unread of {staffNotifications.length} total notifications
-                </p>
-                <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                  Showing: Task Acceptance, Task Completed, Bin Maintenance
+                  {staffNotifications.length} Notifications
                 </p>
               </div>
             </div>
@@ -180,9 +174,6 @@ const StaffNotifications = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
-                        <Badge className={getTypeBadge(notification.type || "info")}>
-                          {getTypeLabel(notification.type || "info")}
-                        </Badge>
                         {!notification.read && (
                           <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                             New
