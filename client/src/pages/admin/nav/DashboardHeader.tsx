@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { NotificationPopover } from "@/components/modal/NotificationPopover";
 import { useAuth } from "@/contexts/AuthContext";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useState } from "react";
 
 export function DashboardHeader() {
@@ -37,8 +37,10 @@ export function DashboardHeader() {
             <DialogContent className="sm:max-w-md dark:bg-gray-900">
               <DialogHeader>
                 <DialogTitle className="text-lg">Confirm Logout</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to log out? You will need to sign in again to access your account.
+                </DialogDescription>
               </DialogHeader>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Are you sure you want to log out?</p>
               <DialogFooter className="mt-4">
                 <Button variant="secondary" onClick={() => setOpen(false)}>
                   Cancel

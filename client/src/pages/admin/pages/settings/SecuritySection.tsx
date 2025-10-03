@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, Key, Shield, Smartphone, LogOut, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import api from "@/lib/api";
 
 export const SecuritySection = () => {
@@ -232,6 +232,9 @@ export const SecuritySection = () => {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Recovery Codes</DialogTitle>
+                    <DialogDescription>
+                      Save these backup codes in a secure location. You can use them to access your account if you lose your authenticator device.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <p>Here are your backup codes. Keep them safe:</p>

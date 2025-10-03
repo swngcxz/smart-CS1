@@ -302,30 +302,155 @@ async function login(req, res) {
 }
 
 
-// Password reset request
+// Password reset request - OTP based
 async function requestPasswordReset(req, res) {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: "Email required" });
-  const snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
-  if (snapshot.empty) return res.status(404).json({ error: "User not found" });
-  const userDoc = snapshot.docs[0];
-  const resetToken = jwt.sign({ email }, PASSWORD_RESET_SECRET, { expiresIn: "1h" });
-  await withRetry(() => userDoc.ref.update({ resetToken }));
-  const resetUrl = `${req.protocol}://${req.get("host")}/auth/reset-password?token=${resetToken}`;
-  await transporter.sendMail({
-    from: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
-    to: email,
-    subject: "Password Reset Request",
-    text: `Reset your password using this link: ${resetUrl}`,
-  });
-  return res.json({ message: "Password reset email sent." });
+  
+  try {
+    const snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
+    if (snapshot.empty) return res.status(404).json({ error: "User not found" });
+    
+    const userDoc = snapshot.docs[0];
+    
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Store OTP in user document
+    await withRetry(() => userDoc.ref.update({ 
+      resetOtp: otp,
+      otpExpiry: otpExpiry.toISOString(),
+      resetToken: null // Clear any existing reset token
+    }));
+    
+    // Send OTP via email
+    await transporter.sendMail({
+      from: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
+      to: email,
+      subject: "Password Reset Code",
+      text: `Your password reset code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this, please ignore this email.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #059669;">Password Reset Code</h2>
+          <p>Your password reset code is:</p>
+          <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #059669; font-size: 32px; margin: 0; letter-spacing: 4px;">${otp}</h1>
+          </div>
+          <p>This code will expire in <strong>10 minutes</strong>.</p>
+          <p>If you didn't request this password reset, please ignore this email.</p>
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+          <p style="color: #6b7280; font-size: 14px;">This is an automated message, please do not reply.</p>
+        </div>
+      `
+    });
+    
+    console.log(`[PASSWORD RESET] OTP sent to ${email}: ${otp}`);
+    
+    return res.json({ 
+      success: true,
+      message: "Password reset code sent to your email." 
+    });
+  } catch (err) {
+    console.error('[PASSWORD RESET] Error:', err);
+    return res.status(500).json({ error: "Failed to send reset code" });
+  }
 }
 
-// Password reset handler
+// Verify OTP for password reset
+async function verifyOtp(req, res) {
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ error: "Email and OTP are required" });
+
+  try {
+    const snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
+    if (snapshot.empty) return res.status(404).json({ error: "User not found" });
+
+    const userDoc = snapshot.docs[0];
+    const user = userDoc.data();
+
+    // Check if OTP exists and matches
+    if (!user.resetOtp || user.resetOtp !== otp) {
+      return res.status(400).json({ error: "Invalid OTP" });
+    }
+
+    // Check if OTP has expired
+    const now = new Date();
+    const otpExpiry = new Date(user.otpExpiry);
+    if (now > otpExpiry) {
+      return res.status(400).json({ error: "OTP has expired" });
+    }
+
+    return res.json({ 
+      success: true,
+      message: "OTP verified successfully" 
+    });
+  } catch (err) {
+    console.error('[OTP VERIFICATION] Error:', err);
+    return res.status(500).json({ error: "Failed to verify OTP" });
+  }
+}
+
+// Resend OTP for password reset
+async function resendOtp(req, res) {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: "Email is required" });
+
+  try {
+    const snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
+    if (snapshot.empty) return res.status(404).json({ error: "User not found" });
+
+    const userDoc = snapshot.docs[0];
+    
+    // Generate new 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Update OTP in user document
+    await withRetry(() => userDoc.ref.update({ 
+      resetOtp: otp,
+      otpExpiry: otpExpiry.toISOString()
+    }));
+    
+    // Send new OTP via email
+    await transporter.sendMail({
+      from: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
+      to: email,
+      subject: "New Password Reset Code",
+      text: `Your new password reset code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this, please ignore this email.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #059669;">New Password Reset Code</h2>
+          <p>Your new password reset code is:</p>
+          <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #059669; font-size: 32px; margin: 0; letter-spacing: 4px;">${otp}</h1>
+          </div>
+          <p>This code will expire in <strong>10 minutes</strong>.</p>
+          <p>If you didn't request this password reset, please ignore this email.</p>
+          <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+          <p style="color: #6b7280; font-size: 14px;">This is an automated message, please do not reply.</p>
+        </div>
+      `
+    });
+    
+    console.log(`[PASSWORD RESET] New OTP sent to ${email}: ${otp}`);
+    
+    return res.json({ 
+      success: true,
+      message: "New password reset code sent to your email." 
+    });
+  } catch (err) {
+    console.error('[RESEND OTP] Error:', err);
+    return res.status(500).json({ error: "Failed to resend OTP" });
+  }
+}
+
+// Password reset handler - OTP based
 async function resetPassword(req, res) {
-  const { token: resetToken } = req.query;
-  const { newPassword } = req.body;
-  if (!resetToken || !newPassword) return res.status(400).json({ error: "Missing token or new password" });
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ error: "Email, OTP, and new password are required" });
+  }
 
   // Password strength validation
   const passwordStrength = zxcvbn(newPassword);
@@ -334,15 +459,43 @@ async function resetPassword(req, res) {
   }
 
   try {
-    const decoded = jwt.verify(resetToken, PASSWORD_RESET_SECRET);
-    const snapshot = await withRetry(() => db.collection("users").where("email", "==", decoded.email).get());
-    if (snapshot.empty) return res.status(400).json({ error: "Invalid token" });
+    const snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
+    if (snapshot.empty) return res.status(404).json({ error: "User not found" });
+
     const userDoc = snapshot.docs[0];
+    const user = userDoc.data();
+
+    // Verify OTP
+    if (!user.resetOtp || user.resetOtp !== otp) {
+      return res.status(400).json({ error: "Invalid OTP" });
+    }
+
+    // Check if OTP has expired
+    const now = new Date();
+    const otpExpiry = new Date(user.otpExpiry);
+    if (now > otpExpiry) {
+      return res.status(400).json({ error: "OTP has expired" });
+    }
+
+    // Hash new password and update
     const hashed = await hashPassword(newPassword);
-    await withRetry(() => userDoc.ref.update({ password: hashed, resetToken: null }));
-    return res.json({ message: "Password reset successful. You can now log in." });
+    await withRetry(() => userDoc.ref.update({ 
+      password: hashed, 
+      resetOtp: null,
+      otpExpiry: null,
+      resetToken: null,
+      updatedAt: new Date().toISOString()
+    }));
+
+    console.log(`[PASSWORD RESET] Password reset successful for ${email}`);
+    
+    return res.json({ 
+      success: true,
+      message: "Password reset successful. You can now log in." 
+    });
   } catch (err) {
-    return res.status(400).json({ error: "Invalid or expired token" });
+    console.error('[PASSWORD RESET] Error:', err);
+    return res.status(500).json({ error: "Failed to reset password" });
   }
 }
 
@@ -595,6 +748,8 @@ module.exports = {
   login, 
   requestPasswordReset, 
   resetPassword, 
+  verifyOtp,
+  resendOtp,
   signout, 
   getCurrentUser, 
   updateCurrentUser, 

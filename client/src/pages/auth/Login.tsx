@@ -95,11 +95,11 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
 
         <form onSubmit={handleEmailLogin} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="dark:text-gray-300">
+            <Label htmlFor="login-email" className="dark:text-gray-300">
               Email
             </Label>
             <Input
-              id="email"
+              id="login-email"
               type="email"
               placeholder="Enter your email"
               className="dark:bg-slate-800 dark:text-white dark:border-gray-600"

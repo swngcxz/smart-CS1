@@ -128,11 +128,11 @@ Create Account</CardTitle>
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email" className="dark:text-gray-300">
+            <Label htmlFor="register-email" className="dark:text-gray-300">
               Email
             </Label>
             <Input
-              id="email"
+              id="register-email"
               type="email"
               placeholder="Enter your email"
               value={email}

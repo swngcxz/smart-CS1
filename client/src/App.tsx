@@ -18,6 +18,7 @@ import Notifications from "./pages/admin/pages/Notifications";
 import StaffNotifications from "./pages/staff/pages/StaffNotifications";
 import StaffDashboard from "./pages/StaffDashboard";
 import OtpVerification from "./pages/auth/OtpVerification";
+import PasswordResetOtp from "./pages/auth/PasswordResetOtp";
 import RequireAuth from "@/components/RequireAuth";
 
 const queryClient = new QueryClient({
@@ -42,6 +43,7 @@ const AppContent = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/password-reset-otp" element={<PasswordResetOtp />} />
             <Route path="/admin" element={<RequireAuth allowedRoles={["admin"]}><AdminDashboard /></RequireAuth>} />
             <Route path="/admin/notifications" element={<RequireAuth allowedRoles={["admin"]}><Notifications /></RequireAuth>} />
             <Route path="/staff" element={<RequireAuth allowedRoles={["staff","admin"]}><StaffDashboard /></RequireAuth>} />

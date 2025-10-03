@@ -304,11 +304,11 @@ const FeedbackSection = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <Label htmlFor="feedback-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Email (Optional)
                     </Label>
                     <Input
-                      id="email"
+                      id="feedback-email"
                       type="email"
                       placeholder="your@email.com"
                       value={email}

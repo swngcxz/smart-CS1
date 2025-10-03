@@ -67,9 +67,9 @@ const ForgotPassword = () => {
 
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="forgot-email">Email</Label>
               <Input 
-                id="email" 
+                id="forgot-email" 
                 type="email" 
                 placeholder="Enter your email" 
                 value={email}

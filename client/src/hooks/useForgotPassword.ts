@@ -52,7 +52,7 @@ export const useForgotPassword = () => {
     setState({ loading: true, error: null, success: false });
 
     try {
-      const response = await api.post('/auth/verify-password-reset-otp', { email, otp });
+      const response = await api.post('/auth/verify-otp', { email, otp });
       
       setState({ loading: false, error: null, success: true });
       return { success: true, message: response.data.message };
@@ -67,7 +67,7 @@ export const useForgotPassword = () => {
     setState({ loading: true, error: null, success: false });
 
     try {
-      const response = await api.post('/auth/resend-password-reset-otp', { email });
+      const response = await api.post('/auth/resend-otp', { email });
       
       setState({ loading: false, error: null, success: true });
       return { success: true, message: response.data.message };
