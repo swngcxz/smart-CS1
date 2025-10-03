@@ -15,53 +15,33 @@ interface BinMarkerProps {
   };
 }
 
+// Create a circle marker showing the fill percentage with status color
 const getStatusIcon = (status: string, level: number) => {
   const iconSize = 30;
   const iconAnchor = [iconSize / 2, iconSize] as [number, number];
-  
+
+  // Status-based color
   let color = "#10B981"; // green for normal
-  let icon = "🗑️";
-  
-  if (status === "critical") {
-    color = "#EF4444"; // red
-    icon = "🚨";
-  } else if (status === "warning") {
-    color = "#F59E0B"; // yellow
-    icon = "⚠️";
-  }
+  if (status === "critical") color = "#EF4444"; // red
+  else if (status === "warning") color = "#F59E0B"; // yellow
 
   return L.divIcon({
     html: `
       <div style="
-        background: ${color};
         width: ${iconSize}px;
         height: ${iconSize}px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
-        border: 3px solid white;
+        font-size: 12px;
+        font-weight: bold;
+        color: ${color};
+        border: 3px solid ${color};
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         position: relative;
       ">
-        <span>${icon}</span>
-        <div style="
-          position: absolute;
-          bottom: -8px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: white;
-          color: ${color};
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-size: 10px;
-          font-weight: bold;
-          white-space: nowrap;
-          box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        ">
-          ${level}%
-        </div>
+        ${level}%
       </div>
     `,
     className: "custom-bin-marker",
@@ -88,7 +68,7 @@ export function BinMarker({ bin }: BinMarkerProps) {
               </div>
             )}
           </div>
-          
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Status:</span>
@@ -105,17 +85,17 @@ export function BinMarker({ bin }: BinMarkerProps) {
                 </span>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Level:</span>
               <span className="text-sm font-medium text-gray-900">{bin.level}%</span>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Route:</span>
               <span className="text-sm text-gray-700">{bin.route}</span>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Last Collection:</span>
               <span className="text-sm text-gray-700">{bin.lastCollection}</span>
@@ -129,9 +109,9 @@ export function BinMarker({ bin }: BinMarkerProps) {
                   <div>Distance: {bin.binData.height_percent || 0}%</div>
                   <div>GPS: {bin.binData.gps_valid ? "Valid" : "Invalid"}</div>
                   <div>Updated: {(() => {
-                      const date = new Date(bin.binData.timestamp || Date.now());
-                      return isNaN(date.getTime()) ? 'Invalid timestamp' : date.toLocaleTimeString();
-                    })()}</div>
+                    const date = new Date(bin.binData.timestamp || Date.now());
+                    return isNaN(date.getTime()) ? 'Invalid timestamp' : date.toLocaleTimeString();
+                  })()}</div>
                 </div>
               </div>
             )}

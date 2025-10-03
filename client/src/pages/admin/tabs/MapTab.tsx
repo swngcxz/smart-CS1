@@ -63,10 +63,6 @@ export function MapTab() {
           {/* Additional space below the map */}
           <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Map Information</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              This map shows real-time waste bin locations and their current fill levels. 
-              Use the location finder button to center the map on your current position.
-            </p>
           </div>
         </div>
 
@@ -111,7 +107,6 @@ export function MapTab() {
                 onClick={toggleLocationDropdown}
               >
                 <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  <Route className="w-4 h-4" />
                   Location List
                 </CardTitle>
                 {isLocationDropdownOpen ? (
