@@ -14,6 +14,7 @@ interface BinHistoryRecord {
   timestamp: string;
   weight: number;
   distance: number;
+  location: string;
   binLevel: number;
   gps: {
     lat: number;
@@ -145,35 +146,30 @@ export function BinHistory() {
       case "CRITICAL":
         return (
           <div className="flex items-center gap-1 text-red-600">
-            <AlertTriangle className="w-3 h-3" />
             Critical
           </div>
         );
       case "WARNING":
         return (
           <div className="flex items-center gap-1 text-yellow-600">
-            <AlertTriangle className="w-3 h-3" />
             Warning
           </div>
         );
       case "OK":
         return (
           <div className="flex items-center gap-1 text-green-600">
-            <CheckCircle className="w-3 h-3" />
             Normal
           </div>
         );
       case "ERROR":
         return (
           <div className="flex items-center gap-1 text-red-600">
-            <XCircle className="w-3 h-3" />
             Error
           </div>
         );
       case "MALFUNCTION":
         return (
           <div className="flex items-center gap-1 text-orange-600">
-            <XCircle className="w-3 h-3" />
             Malfunction
           </div>
         );
@@ -299,7 +295,6 @@ export function BinHistory() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Bin History</h1>
-          <p className="text-gray-600 dark:text-gray-400">Monitor and analyze bin sensor data history</p>
         </div>
         <Button onClick={exportToCSV} className="flex items-center gap-2">
           <Download className="w-4 h-4" />
@@ -380,7 +375,6 @@ export function BinHistory() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
             Filters
           </CardTitle>
         </CardHeader>
@@ -482,19 +476,20 @@ export function BinHistory() {
                       const { date, time, relative } = formatTimestamp(record.timestamp);
                       return (
                         <TableRow key={record.id}>
-                          <TableCell className="font-medium">{record.binId}</TableCell>
+                        <TableCell className="font-medium">
+                          {record.binId.charAt(0).toUpperCase() + record.binId.slice(1)}
+                        </TableCell>
+
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <div>
                                 <div className="text-sm font-medium">{relative}</div>
                                 {date !== 'N/A' && time !== 'N/A' ? (
                                   <div className="text-xs text-gray-500 flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
                                     {date} {time}
                                   </div>
                                 ) : (
                                   <div className="text-xs text-red-500 flex items-center gap-1">
-                                    <AlertTriangle className="w-3 h-3" />
                                     Invalid timestamp
                                   </div>
                                 )}
@@ -518,13 +513,13 @@ export function BinHistory() {
                               <span className="text-sm font-medium">{record.binLevel.toFixed(1)}%</span>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs font-mono">
-                                {record.gpsValid ? formatCoordinates(record.gps) : "Invalid GPS"}
-                              </span>
-                            </div>
-                          </TableCell>
+                         <TableCell>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-mono">
+                              {record.gpsValid ? record.location : "Invalid Location"}
+                            </span>
+                          </div>
+                        </TableCell>
                           <TableCell>{getStatusBadge(record.status)}</TableCell>
                         </TableRow>
                       );

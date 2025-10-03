@@ -86,7 +86,6 @@ export const SecuritySection = () => {
       <Card className="shadow-sm dark:bg-slate-900">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
-            <Key className="w-5 h-5" />
             Change Password
           </CardTitle>
         </CardHeader>
@@ -155,7 +154,6 @@ export const SecuritySection = () => {
       <Card className="shadow-sm dark:bg-slate-900">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
-            <Shield className="w-5 h-5" />
             Two-Factor Authentication
           </CardTitle>
         </CardHeader>
