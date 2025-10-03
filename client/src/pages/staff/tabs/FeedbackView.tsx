@@ -4,6 +4,7 @@ import FeedbackList from "@/pages/staff/pages/FeedbackList"
 import FeedbackStats from "@/pages/staff/pages/FeedbackStats"
 import { Button } from "@/components/ui/button";
 import { useFeedback } from "@/hooks/useFeedback";
+import { ArrowLeft } from "lucide-react";
 import api from "@/lib/api";
 
 interface FeedbackItem {
@@ -128,13 +129,17 @@ const Feedback = () => {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <div>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setShowArchived(false)}
+              className="rounded-full"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <h1 className="text-2xl font-bold text-gray-900">Archived Feedback</h1>
-            <p className="text-gray-600">Previously archived feedback items</p>
           </div>
-          <Button onClick={() => setShowArchived(false)}>
-            Back to Active
-          </Button>
         </div>
         
         <FeedbackList

@@ -368,23 +368,24 @@ export function AnalyticsTab() {
                 <TableRow>
                   <TableHead className="text-center">Bin ID</TableHead>
                   <TableHead className="text-center">Route</TableHead>
-                  <TableHead className="text-center">Timestamp</TableHead>
                   <TableHead className="text-center">Weight (kg)</TableHead>
                   <TableHead className="text-center">Bin Level (%)</TableHead>
-                  <TableHead className="text-center">GPS Coordinates</TableHead>
+                  <TableHead className="text-center">Location</TableHead>
                   <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-center">Last Collection</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.length > 0 ? (
                   filteredData.map((bin) => (
                   <TableRow key={bin.id}>
-                    <TableCell className="text-center font-medium">{bin.id}</TableCell>
+                   <TableCell className="text-center font-medium">
+                      {bin.id.charAt(0).toUpperCase() + bin.id.slice(1)}
+                    </TableCell>
+
                     <TableCell className="text-center">{bin.route}</TableCell>
-                      <TableCell className="text-center text-sm">
+                      {/* <TableCell className="text-center text-sm">
                         <TimestampDisplay timestamp={bin.timestamp} />
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell className="text-center">{bin.weight ?? 0} kg</TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center gap-2 justify-center">
@@ -397,13 +398,13 @@ export function AnalyticsTab() {
                         <span className="text-sm">{bin.fillLevel}%</span>
                       </div>
                     </TableCell>
-                      <TableCell className="text-center text-sm">{bin.gps ?? "N/A"}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={getStatusBadgeVariant(bin.status)}>{bin.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center text-sm">
-                        <TimestampDisplay timestamp={bin.lastCollection} />
-                      </TableCell>
+                      <TableCell className="text-center text-sm">{bin.location ?? "N/A"}</TableCell>
+                   <TableCell className="text-center">
+                      <Badge className="text-green-600 font-medium bg-transparent shadow-none px-2">
+                        {bin.status.charAt(0).toUpperCase() + bin.status.slice(1)}
+                      </Badge>
+                    </TableCell>
+
                     </TableRow>
                   ))
                 ) : (

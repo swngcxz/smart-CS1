@@ -25,15 +25,6 @@ interface DynamicBinMarkerProps {
   onBinClick?: (binId: string) => void;
 }
 
-// Function to get fill level color based on percentage (0-100%)
-const getFillLevelColor = (level: number): string => {
-  if (level >= 85) return "#EF4444"; // Red for critical (85-100%)
-  if (level >= 70) return "#F59E0B"; // Yellow for warning (70-84%)
-  if (level >= 50) return "#FBBF24"; // Light yellow (50-69%)
-  if (level >= 25) return "#10B981"; // Green (25-49%)
-  return "#34D399"; // Light green for low levels (0-24%)
-};
-
 // Helper function to calculate time ago
 const getTimeAgo = (timestamp: number | string): string => {
   const now = Date.now();
@@ -53,133 +44,63 @@ const createDynamicIcon = (status: string, level: number, isLive: boolean, gpsVa
   const iconSize = 40;
   const iconAnchor = [iconSize / 2, iconSize] as [number, number];
   
-  // Check if using GPS fallback coordinates
-  const isUsingFallback = coordinatesSource === 'gps_fallback' || (!gpsValid && coordinatesSource !== 'gps_live');
-  
+  // Determine main color based on status
   let color = "#10B981"; // green for normal
-  let pulseColor = "#34D399"; // lighter green for pulse
-  let icon = "🗑️";
-  
-  if (status === "critical") {
-    color = "#EF4444"; // red
-    pulseColor = "#F87171"; // lighter red
-    icon = "🚨";
-  } else if (status === "warning") {
-    color = "#F59E0B"; // yellow
-    pulseColor = "#FBBF24"; // lighter yellow
-    icon = "⚠️";
-  }
+  if (status === "critical") color = "#EF4444"; // red
+  else if (status === "warning") color = "#F59E0B"; // yellow
 
   // Apply grey/decayed appearance for GPS fallback coordinates
-  if (isUsingFallback) {
-    color = "#6B7280"; // grey
-    pulseColor = "#9CA3AF"; // lighter grey
-    // No pulsing animation for fallback coordinates
-  }
+  const isUsingFallback = coordinatesSource === 'gps_fallback' || (!gpsValid && coordinatesSource !== 'gps_live');
+  if (isUsingFallback) color = "#6B7280"; // grey for fallback
 
   // Create pulsing animation CSS (only for live GPS, not fallback)
   const pulseAnimation = (isLive && !isUsingFallback) ? `
     @keyframes pulse-ring {
-      0% {
-        transform: scale(0.8);
-        opacity: 1;
-      }
-      100% {
-        transform: scale(2.4);
-        opacity: 0;
-      }
+      0% { transform: scale(0.8); opacity: 1; }
+      100% { transform: scale(2.4); opacity: 0; }
     }
     @keyframes pulse-dot {
-      0% {
-        transform: scale(0.8);
-      }
-      50% {
-        transform: scale(1.2);
-      }
-      100% {
-        transform: scale(0.8);
-      }
+      0% { transform: scale(0.8); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(0.8); }
     }
-    .pulse-ring {
-      animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-    }
-    .pulse-dot {
-      animation: pulse-dot 2s ease-in-out infinite;
-    }
+    .pulse-ring { animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+    .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
   ` : '';
 
   return L.divIcon({
     html: `
       <style>${pulseAnimation}</style>
-      <div style="
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      ">
+      <div style="position: relative; display: flex; align-items: center; justify-content: center;">
         ${(isLive && !isUsingFallback) ? `
           <div class="pulse-ring" style="
             position: absolute;
             width: ${iconSize}px;
             height: ${iconSize}px;
-            border: 3px solid ${pulseColor};
+            border: 3px solid ${color};
             border-radius: 50%;
             opacity: 0.6;
           "></div>
         ` : ''}
-        
+
         <div class="${(isLive && !isUsingFallback) ? 'pulse-dot' : ''}" style="
-          background: ${isUsingFallback ? '#6B7280' : color};
+          background: ${color};
           width: ${iconSize}px;
           height: ${iconSize}px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 18px;
-          border: 3px solid white;
+          font-size: 12px;
+          font-weight: bold;
+          color: white;
+          border: 2px solid white;
           box-shadow: 0 4px 8px rgba(0,0,0,0.3);
           position: relative;
           z-index: 2;
-          ${isUsingFallback ? 'opacity: 0.7; filter: grayscale(0.3);' : ''}
         ">
-          <span>${icon}</span>
-          <!-- Fill Level Border Indicator -->
-          <div style="
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-radius: 50%;
-            border: 3px solid ${getFillLevelColor(level)};
-            pointer-events: none;
-            ${isUsingFallback ? 'opacity: 0.8;' : ''}
-          "></div>
-          <!-- Fill Level Percentage Badge -->
-          <div style="
-            position: absolute;
-            bottom: -4px;
-            right: -4px;
-            background: ${getFillLevelColor(level)};
-            color: white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 9px;
-            font-weight: bold;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            z-index: 3;
-          ">
-            ${level}%
-          </div>
+          ${level}%
         </div>
-        
-        
       </div>
     `,
     className: "dynamic-bin-marker",
@@ -236,24 +157,23 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
   };
 
   const handleMarkerClick = () => {
-    if (onBinClick) {
-      onBinClick(bin.id);
-    }
+    if (onBinClick) onBinClick(bin.id);
   };
 
   return (
     <Marker 
       position={bin.position} 
       icon={icon}
-      eventHandlers={{
-        click: handleMarkerClick
-      }}
+      eventHandlers={{ click: handleMarkerClick }}
     >
       <Popup className="custom-popup" maxWidth={300}>
         <div className="p-3 min-w-[250px]">
           <div className="flex items-center gap-2 mb-3">
-            <MapPin className="w-4 h-4 text-gray-600" />
-            <h3 className="font-semibold text-gray-900">{bin.name}</h3>
+         <h3 className="font-semibold text-gray-900">
+            {bin.name}: {bin.id.charAt(0).toUpperCase() + bin.id.slice(1)}
+          </h3>
+
+
             {isLive && bin.coordinates_source !== 'gps_fallback' && (
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -269,16 +189,7 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
           </div>
           
           <div className="space-y-3">
-            {/* Status */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Status:</span>
-              <div className="flex items-center gap-1">
-                {getStatusIcon()}
-                <span className={`text-sm font-medium ${getStatusColor()}`}>
-                  {bin.status.charAt(0).toUpperCase() + bin.status.slice(1)}
-                </span>
-              </div>
-            </div>
+          
             
             {/* Fill Level */}
             <div className="flex items-center justify-between">
@@ -289,24 +200,23 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
                     className="h-full transition-all duration-500"
                     style={{ 
                       width: `${bin.level}%`,
-                      backgroundColor: getFillLevelColor(bin.level)
+                      backgroundColor: bin.status === 'critical' ? '#EF4444' :
+                                       bin.status === 'warning' ? '#F59E0B' :
+                                       '#059162ff'
                     }}
                   ></div>
                 </div>
                 <span 
                   className="text-sm font-medium"
-                  style={{ color: getFillLevelColor(bin.level) }}
+                  style={{ color: bin.status === 'critical' ? '#EF4444' :
+                                  bin.status === 'warning' ? '#F59E0B' :
+                                  '#059162ff' }}
                 >
                   {bin.level}%
                 </span>
               </div>
             </div>
             
-            {/* Route */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Route:</span>
-              <span className="text-sm text-gray-700">{bin.route}</span>
-            </div>
             
             {/* Last Collection */}
             <div className="flex items-center justify-between">
@@ -343,25 +253,9 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
                     <span className="font-medium">{bin.weight_kg || 0}kg</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Distance:</span>
-                    <span className="font-medium">{bin.distance_cm || 0}cm</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span>Coordinates:</span>
                     <span className="font-medium text-xs">
                       {bin.position[0].toFixed(4)}, {bin.position[1].toFixed(4)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>GPS Source:</span>
-                    <span className={`font-medium text-xs ${
-                      bin.coordinates_source === 'gps_live' ? 'text-green-600' : 
-                      bin.coordinates_source === 'gps_fallback' ? 'text-gray-600' : 
-                      'text-red-600'
-                    }`}>
-                      {bin.coordinates_source === 'gps_live' ? 'Live GPS' : 
-                       bin.coordinates_source === 'gps_fallback' ? 'Cached' : 
-                       'Unknown'}
                     </span>
                   </div>
                   <div className="flex justify-between">

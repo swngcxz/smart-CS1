@@ -487,18 +487,6 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
             </svg>
           </button>
 
-          {/* Location Error Toast */}
-          {locationError && (
-            <div className="absolute top-4 right-4 z-[1000] bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg max-w-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">{locationError}</span>
-                <button onClick={() => setLocationError(null)} className="ml-2 text-white hover:text-gray-200">
-                  ×
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Location Success Toast */}
           {userLocation && !isLocating && (
             <div className="absolute top-4 right-4 z-[1000] bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg max-w-sm">
@@ -530,7 +518,7 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
           </div>
 
           {/* Pegman Icon */}
-          <div
+          {/* <div
             id="pegman"
             draggable
             className="absolute bottom-4 right-16 z-[999] cursor-grab bg-white p-1 rounded-full shadow-lg border transition-transform duration-300"
@@ -541,7 +529,7 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
               alt="Street View"
               className="w-10 h-10"
             />
-          </div>
+          </div> */}
 
           {/* Street View Viewer */}
           <div id="mapillary-viewer" className="absolute top-0 left-0 w-full h-full z-[998] hidden bg-white"></div>

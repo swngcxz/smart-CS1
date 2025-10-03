@@ -43,10 +43,9 @@ const FeedbackStats = ({ stats, loading = false }: FeedbackStatsProps) => {
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Active</p>
+              <p className="text-sm text-gray-600">Total Feedback</p>
               <p className="text-2xl font-bold">{stats.total}</p>
             </div>
-            <MessageSquare className="w-8 h-8 text-blue-600" />
           </div>
         </CardContent>
       </Card>
@@ -58,7 +57,7 @@ const FeedbackStats = ({ stats, loading = false }: FeedbackStatsProps) => {
               <p className="text-sm text-gray-600">New</p>
               <p className="text-2xl font-bold text-green-600">{stats.new}</p>
             </div>
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            {/* <div className="w-3 h-3 bg-green-500 rounded-full"></div> */}
           </div>
         </CardContent>
       </Card>
@@ -70,7 +69,6 @@ const FeedbackStats = ({ stats, loading = false }: FeedbackStatsProps) => {
               <p className="text-sm text-gray-600">Archived</p>
               <p className="text-2xl font-bold text-gray-600">{stats.archived}</p>
             </div>
-            <Archive className="w-6 h-6 text-gray-600" />
           </div>
         </CardContent>
       </Card>

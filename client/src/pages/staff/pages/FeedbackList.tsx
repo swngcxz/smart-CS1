@@ -239,7 +239,7 @@ const FeedbackList = ({ feedbacks, filter, stats, loading = false, showArchived 
           
           {combinedData.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              No feedback found for the selected filter.
+              No feedback found.
             </div>
           )}
         </div>

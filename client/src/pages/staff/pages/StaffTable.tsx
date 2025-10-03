@@ -172,28 +172,30 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
             <TableCell className="font-medium">{staff.fullName}</TableCell>
             <TableCell>{staff.email}</TableCell>
             <TableCell>{staff.contactNumber || "N/A"}</TableCell>
-            <TableCell>{staff.role}</TableCell>
+<TableCell>
+  {staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}
+</TableCell>
+
             <TableCell>{staff.location || ""}</TableCell>
-            <TableCell>
-              <Badge
-                variant={
-                  (staff.status || "active") === "active"
-                    ? "default"
-                    : (staff.status || "active") === "offline"
-                    ? "destructive"
-                    : "secondary"
-                }
-                className={
-                  (staff.status || "active") === "active"
-                    ? "bg-green-100 text-green-800 hover:bg-green-200"
-                    : (staff.status || "") === "break"
-                    ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                    : ""
-                }
-              >
-                {staff.status || "active"}
-              </Badge>
-            </TableCell>
+          <TableCell>
+  <Badge
+    className={
+      `${
+        (staff.status || "active") === "active"
+          ? "text-green-600 font-semibold"
+          : (staff.status || "") === "offline"
+          ? "text-red-600 font-semibold"
+          : (staff.status || "") === "break"
+          ? "text-yellow-600 font-semibold"
+          : "text-gray-600 font-semibold"
+      } bg-transparent hover:bg-transparent shadow-none px-0`
+    }
+  >
+    {(staff.status || "active").charAt(0).toUpperCase() + (staff.status || "active").slice(1)}
+  </Badge>
+</TableCell>
+
+
             {/* <TableCell>
               <Badge 
                 variant="outline" 

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, RefreshCw, UserPlus, Calendar, MapPin, User, Clock, AlertCircle } from "lucide-react";
+import { Search, RefreshCw, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ActivityLog } from "@/hooks/useActivityLogsApi";
 import api from "@/lib/api";
@@ -30,13 +30,10 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
   const [janitors, setJanitors] = useState<any[]>([]);
   const [janitorsLoading, setJanitorsLoading] = useState(false);
 
-  // Fetch janitors when modal opens
   const fetchJanitors = async () => {
     setJanitorsLoading(true);
     try {
-      console.log("Fetching janitors from API...");
       const response = await api.get("/api/staff/janitors");
-      console.log("Janitors API Response:", response.data);
       setJanitors(response.data || []);
     } catch (err) {
       console.error("Error fetching janitors:", err);
@@ -56,40 +53,23 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
     if (!selectedActivity || !selectedJanitor || selectedJanitor === "loading" || selectedJanitor === "no-janitors") return;
 
     try {
-      // Find the selected janitor's name
       const selectedJanitorData = janitors.find(j => j.id === selectedJanitor);
       const janitorName = selectedJanitorData ? `${selectedJanitorData.fullName}` : "Unknown Janitor";
 
-      const response = await api.put(`/api/activitylogs/${selectedActivity.id}`, {
+      await api.put(`/api/activitylogs/${selectedActivity.id}`, {
         assigned_janitor_id: selectedJanitor,
         assigned_janitor_name: janitorName,
         status: "in_progress"
       });
-      
-      // Handle different response types
-      if (response.data.warning) {
-        // Task already assigned to this janitor
-        console.log("ℹ️ Task already assigned to this janitor");
-        // Still close modal and refresh
-        setAssignModalOpen(false);
-        setSelectedActivity(null);
-        setSelectedJanitor("");
-        onRefresh();
-      } else {
-        // Successful assignment
-        setAssignModalOpen(false);
-        setSelectedActivity(null);
-        setSelectedJanitor("");
-        onRefresh();
-      }
+
+      setAssignModalOpen(false);
+      setSelectedActivity(null);
+      setSelectedJanitor("");
+      onRefresh();
     } catch (err: any) {
       console.error("Error assigning task:", err);
-      
-      // Handle assignment conflict specifically
+
       if (err.response?.status === 409 && err.response?.data?.error === 'Task assignment conflict') {
-        const conflictData = err.response.data;
-        console.log("🚫 Assignment conflict:", conflictData);
-        // Close modal and refresh to show updated state
         setAssignModalOpen(false);
         setSelectedActivity(null);
         setSelectedJanitor("");
@@ -98,62 +78,53 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "done":
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">done</Badge>;
-      case "in_progress":
-        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">in_progress</Badge>;
-      case "pending":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">pending</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
+  // Helper to format text
+  const formatText = (text: string) =>
+    (text || "")
+      .split("_")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority?.toLowerCase()) {
-      case "urgent":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">urgent</Badge>;
-      case "high":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">high</Badge>;
-      case "medium":
-        return <Badge variant="outline">medium</Badge>;
-      case "low":
-        return <Badge variant="outline">low</Badge>;
-      default:
-        return <Badge variant="outline">{priority || "medium"}</Badge>;
-    }
-  };
+  // Status badge
+const getStatusBadge = (status: string) => {
+  const displayText = formatText(status);
+  switch (status?.toLowerCase()) {
+    case "done":
+      return <Badge className="text-green-600 font-semibold bg-transparent shadow-none px-0">{displayText}</Badge>;
+    case "in_progress":
+      return <Badge className="text-yellow-700 font-semibold bg-transparent shadow-none px-0">{displayText}</Badge>;
+    case "pending":
+      return <Badge className="text-red-600 font-semibold bg-transparent shadow-none px-0">{displayText}</Badge>;
+    default:
+      return <Badge className="text-gray-600 font-semibold bg-transparent shadow-none px-0">{displayText}</Badge>;
+  }
+};
 
-  const getActivityTypeBadge = (type: string) => {
-    switch (type) {
-      case "task_assignment":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">task_assignment</Badge>;
-      case "bin_alert":
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">bin_alert</Badge>;
-      case "collection":
-        return <Badge variant="outline">collection</Badge>;
-      case "maintenance":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">maintenance</Badge>;
-      case "route_change":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">route_change</Badge>;
-      case "cleaning":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">cleaning</Badge>;
-      default:
-        return <Badge variant="outline">{type}</Badge>;
-    }
-  };
+// Priority badge
+const getPriorityBadge = (priority: string) => {
+  const displayText = formatText(priority);
+  switch (priority?.toLowerCase()) {
+    case "urgent":
+      return <Badge className="text-red-600 font-semibold bg-transparent shadow-none px-0">{displayText}</Badge>;
+    case "high":
+      return <Badge className="text-red-500 font-semibold bg-transparent shadow-none px-0">{displayText}</Badge>;
+    case "medium":
+      return <Badge className="text-yellow-600 font-semibold bg-transparent shadow-none px-0">{displayText}</Badge>;
+    case "low":
+      return <Badge className="text-green-600 font-semibold bg-transparent shadow-none px-0">{displayText}</Badge>;
+    default:
+      return <Badge className="text-gray-600 font-semibold bg-transparent shadow-none px-0">{displayText}</Badge>;
+  }
+};
+
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.bin_location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.task_note?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.activity_type?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+                          log.task_note?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          log.activity_type?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === "all" || log.activity_type === typeFilter;
     const matchesStatus = statusFilter === "all" || log.status === statusFilter;
     const matchesPriority = priorityFilter === "all" || log.priority === priorityFilter;
-    
     return matchesSearch && matchesType && matchesStatus && matchesPriority;
   });
 
@@ -195,13 +166,10 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
 
   return (
     <div className="space-y-6">
-      {/* Combined Activity Logs Container */}
       <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-              Activity Logs
-            </CardTitle>
+            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 {filteredLogs.length} of {logs.length} Logs
@@ -226,23 +194,18 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
               </TooltipProvider>
             </div>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Activity Filters
-          </p>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search activities..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 border-gray-300 focus:border-blue-500"
-                />
-              </div>
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search activities..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 border-gray-300 focus:border-blue-500"
+              />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-full sm:w-40 border-gray-300">
@@ -307,7 +270,6 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                     <TableRow key={log.id} className="border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
                       <TableCell className="text-sm text-gray-900 dark:text-white">
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
                           <div>
                             <div className="font-medium">
                               {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleDateString('en-US', {
@@ -323,17 +285,12 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-gray-900 dark:text-white max-w-xs">
-                        <div className="truncate">
-                          {log.task_note || log.message || "No description"}
-                        </div>
+                        <div className="truncate">{log.task_note || log.message || "No description"}</div>
                       </TableCell>
                       <TableCell>
                         {log.assigned_janitor_name && log.status !== 'pending' ? (
                           <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm text-gray-900 dark:text-white">
-                              {log.assigned_janitor_name}
-                            </span>
+                            <span className="text-sm text-gray-900 dark:text-white">{log.assigned_janitor_name}</span>
                           </div>
                         ) : log.status === 'pending' ? (
                           <Button
@@ -342,30 +299,19 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                             onClick={() => handleAssignClick(log)}
                             className="text-xs border-gray-300 hover:bg-gray-50"
                           >
-                            <UserPlus className="h-3 w-3 mr-1" />
                             Assign Task
                           </Button>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              Unassigned
-                            </span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
                           </div>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-gray-900 dark:text-white">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          {log.bin_location || log.location || "Unknown"}
-                        </div>
+                        {log.bin_location || log.location || "Unknown"}
                       </TableCell>
-                      <TableCell>
-                        {getStatusBadge(log.status)}
-                      </TableCell>
-                      <TableCell>
-                        {getPriorityBadge(log.priority)}
-                      </TableCell>
+                      <TableCell>{getStatusBadge(log.status || "")}</TableCell>
+                      <TableCell>{getPriorityBadge(log.priority || "")}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -375,58 +321,6 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
         </CardContent>
       </Card>
 
-      {/* Assignment Modal */}
-      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
-        <DialogContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-white">Assign Task</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="janitor" className="text-gray-700 dark:text-gray-300">Select Janitor</Label>
-              <Select value={selectedJanitor} onValueChange={setSelectedJanitor} disabled={janitorsLoading}>
-                <SelectTrigger className="border-gray-300">
-                  <SelectValue placeholder={janitorsLoading ? "Loading janitors..." : "Choose a janitor"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {janitorsLoading ? (
-                    <SelectItem value="loading" disabled>
-                      Loading janitors...
-                    </SelectItem>
-                  ) : janitors.length > 0 ? (
-                    janitors.map((janitor) => (
-                      <SelectItem key={janitor.id} value={janitor.id}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{janitor.fullName}</span>
-                          <span className="text-xs text-gray-500">
-                            {janitor.location || 'General'} • {janitor.contactNumber || 'No contact'}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-janitors" disabled>
-                      No janitors available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAssignModalOpen(false)} className="border-gray-300">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleAssignSubmit} 
-              disabled={!selectedJanitor || selectedJanitor === "loading" || selectedJanitor === "no-janitors"} 
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Assign Task
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

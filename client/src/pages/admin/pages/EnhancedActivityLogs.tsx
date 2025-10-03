@@ -22,7 +22,6 @@ export function EnhancedActivityLogs() {
           cards={overviewCards} 
           loading={statsLoading} 
           error={statsError}
-          onRefresh={handleRefresh}
         />
       </div>
 

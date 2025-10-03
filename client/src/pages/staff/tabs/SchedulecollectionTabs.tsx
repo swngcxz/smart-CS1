@@ -326,7 +326,7 @@ export function ScheduleCollectionTabs() {
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-2xl">Schedules</CardTitle>
-              <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+              {/* <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-green-500 rounded"></div>
                   <span>Trash Collection</span>
@@ -335,7 +335,7 @@ export function ScheduleCollectionTabs() {
                   <div className="w-3 h-3 bg-blue-500 rounded"></div>
                   <span>Maintenance</span>
                 </div>
-              </div>
+              </div> */}
             </div>
             <Button 
               onClick={() => setIsAddDialogOpen(true)} 
@@ -347,7 +347,7 @@ export function ScheduleCollectionTabs() {
           </div>
         </CardHeader>
         
-        <CardContent className="p-6">
+        <CardContent className="p-3">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -388,7 +388,7 @@ export function ScheduleCollectionTabs() {
               Schedules for {selectedDate && format(selectedDate, "MMMM dd, yyyy")}
             </DialogTitle>
             <DialogDescription>
-              {selectedDateSchedules.length} schedule{selectedDateSchedules.length > 1 ? 's' : ''} for this date
+              {selectedDateSchedules.length} Schedule{selectedDateSchedules.length > 1 ? 's' : ''} for this date
             </DialogDescription>
           </DialogHeader>
           
@@ -397,6 +397,15 @@ export function ScheduleCollectionTabs() {
               <div key={schedule.id} className="p-4 bg-gray-50 rounded-lg border">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
+                    <span className="font-semibold">{schedule.location}</span>
+                    <div className="flex gap-2">
+                      <Badge className={getStatusColor(schedule.status)} variant="secondary">
+                        {schedule.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-sm text-gray-600">
                     <div className="flex items-center space-x-2">
                       {schedule.serviceType === "collection" ? (
                         <span className="text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
@@ -407,25 +416,20 @@ export function ScheduleCollectionTabs() {
                           MAINTENANCE
                         </span>
                       )}
-                      <span className="font-semibold">{schedule.location}</span>
+                     
                     </div>
-                    <div className="flex gap-2">
-                      <Badge className={getStatusColor(schedule.status)} variant="secondary">
-                        {schedule.status}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm text-gray-600">
+
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-1">
                         <Clock className="h-4 w-4" />
                         <span>{schedule.time}</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Truck className="h-4 w-4" />
-                        <span>{schedule.type}</span>
-                      </div>
+
+                        {schedule.priority && (
+                    <div className="text-sm text-gray-700">
+                      <span className="font-medium">Priority:</span> {schedule.priority}
+                    </div>
+                  )}
                     </div>
                   </div>
 
@@ -441,11 +445,6 @@ export function ScheduleCollectionTabs() {
                   {schedule.truckPlate && (
                     <div className="text-sm text-gray-700">
                       <span className="font-medium">Vehicle:</span> {schedule.truckPlate}
-                    </div>
-                  )}
-                  {schedule.priority && (
-                    <div className="text-sm text-gray-700">
-                      <span className="font-medium">Priority:</span> {schedule.priority}
                     </div>
                   )}
                   {schedule.contactPerson && (
@@ -473,12 +472,6 @@ export function ScheduleCollectionTabs() {
               </div>
             ))}
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSchedulePopupOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

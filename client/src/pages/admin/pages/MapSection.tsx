@@ -236,7 +236,7 @@ export function MapSection() {
     >
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
-          <div className="flex items-center gap-2">Baywalk, Naga City, Cebu</div>
+          <div className="flex items-center gap-2">Naga City, Cebu</div>
           <div className="flex items-center gap-4 text-xs">
             {/* GPS Status */}
             <div className="flex items-center gap-1">
@@ -246,7 +246,7 @@ export function MapSection() {
                 }`}
               ></div>
               <span className="flex items-center gap-1">
-                📍 GPS: {bin1Data?.gps_valid || monitoringData?.gps_valid ? "Valid" : "Invalid"}
+                 GPS: {bin1Data?.gps_valid || monitoringData?.gps_valid ? "Valid" : "Invalid"}
                 {bin1Data?.gps_valid || monitoringData?.gps_valid ? (
                   <span className="text-blue-600">
                     ({bin1Data?.latitude?.toFixed(4) || monitoringData?.latitude?.toFixed(4)},{" "}
@@ -269,18 +269,6 @@ export function MapSection() {
               </button>
             )}
 
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span>Normal ({normalBins})</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <span>Warning ({warningBins})</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span>Critical ({criticalBins})</span>
-            </div>
           </div>
         </CardTitle>
       </CardHeader>
@@ -381,7 +369,7 @@ export function MapSection() {
               </span>
               <button
                 onClick={() => setUserLocation(null)}
-                className="ml-2 text-white hover:text-gray-200"
+                className=" text-white hover:text-gray-200"
               >
                 ×
               </button>
@@ -406,7 +394,7 @@ export function MapSection() {
         </div>
 
         {/* Pegman Icon */}
-        <div
+        {/* <div
           id="pegman"
           draggable
           className="absolute bottom-4 right-16 z-[999] cursor-grab bg-white p-1 rounded-full shadow-lg border transition-transform duration-300"
@@ -417,14 +405,14 @@ export function MapSection() {
             alt="Street View"
             className="w-10 h-10"
           />
-        </div>
+        </div> */}
 
         {/* Street View Viewer */}
         <div id="mapillary-viewer" className="absolute top-0 left-0 w-full h-full z-[998] hidden bg-white"></div>
 
-        <button id="close-street" className="absolute top-2 right-2 text-black px-3 py-1 rounded z-[999]">
+        {/* <button id="close-street" className="absolute top-2 right-2 text-black px-3 py-1 rounded z-[999]">
           x
-        </button>
+        </button> */}
       </CardContent>
     </Card>
   );

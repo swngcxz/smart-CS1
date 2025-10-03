@@ -18,7 +18,7 @@ export function StaffEnhancedActivityLogs() {
   // Listen for activity log creation events to refresh data
   useEffect(() => {
     const handleActivityLogCreated = () => {
-      console.log('🔄 Activity log created, refreshing data...');
+      console.log('Activity log created, refreshing data...');
       handleRefresh();
     };
 

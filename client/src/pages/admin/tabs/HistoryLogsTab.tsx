@@ -83,6 +83,32 @@ export const HistoryLogsTab = () => {
     }
   };
 
+const formatDateTime = (dateString: string | null) => {
+  if (!dateString) return "Active";
+  const date = new Date(dateString);
+
+  const datePart = date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+  });
+
+  const timePart = date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  return (
+    <>
+      <div>{datePart}</div>
+      <div>{timePart}</div>
+    </>
+  );
+};
+
+
+
   const getRoleBadge = (role: string) => {
     const colors = {
       admin: "bg-purple-100 text-purple-800",
@@ -375,7 +401,6 @@ return (
                   >
                     <div className="flex items-center gap-2">
                       Login Time
-                      {getSortIcon("loginTime")}
                     </div>
                   </TableHead>
                   <TableHead 
@@ -384,25 +409,22 @@ return (
                   >
                     <div className="flex items-center gap-2">
                       Logout Time
-                      {getSortIcon("logoutTime")}
                     </div>
                   </TableHead>
-                  <TableHead 
+                  {/* <TableHead 
                     className="min-w-[100px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => handleSort("sessionDuration")}
                   >
                     <div className="flex items-center gap-2">
                       Duration
-                      {getSortIcon("sessionDuration")}
                     </div>
-                  </TableHead>
+                  </TableHead> */}
                   <TableHead 
                     className="min-w-[120px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => handleSort("ipAddress")}
                   >
                     <div className="flex items-center gap-2">
                       IP Address
-                      {getSortIcon("ipAddress")}
                     </div>
                   </TableHead>
                   <TableHead 
@@ -411,7 +433,6 @@ return (
                   >
                     <div className="flex items-center gap-2">
                       Status
-                      {getSortIcon("status")}
                     </div>
                   </TableHead>
                 </TableRow>
@@ -420,12 +441,22 @@ return (
                 {paginatedLogs.map((log) => (
                   <TableRow key={log.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium">{log.userEmail}</TableCell>
-                    <TableCell>{getRoleBadge(log.role)}</TableCell>
-                    <TableCell className="text-sm">{new Date(log.loginTime).toLocaleString()}</TableCell>
-                    <TableCell className="text-sm">{log.logoutTime ? new Date(log.logoutTime).toLocaleString() : "Active"}</TableCell>
-                    <TableCell className="font-medium">{formatDuration(log.sessionDuration)}</TableCell>
+                  <TableCell>
+                    <Badge className={getRoleBadge(log.role).props.className.replace(/bg-\S+/g, "bg-transparent")}>
+                      {getRoleBadge(log.role).props.children.charAt(0).toUpperCase() + getRoleBadge(log.role).props.children.slice(1)}
+                    </Badge>
+                  </TableCell>
+                   <TableCell className="text-sm">{formatDateTime(log.loginTime)}</TableCell>
+<TableCell className="text-sm">{formatDateTime(log.logoutTime)}</TableCell>
+
+                    {/* <TableCell className="font-medium">{formatDuration(log.sessionDuration)}</TableCell> */}
                     <TableCell className="font-mono text-xs">{log.ipAddress || 'Unknown'}</TableCell>
-                    <TableCell>{getStatusBadge(log.status)}</TableCell>
+                   <TableCell>
+                    <Badge className={getStatusBadge(log.status).props.className.replace(/bg-\S+/g, "bg-transparent")}>
+                      {getStatusBadge(log.status).props.children.charAt(0).toUpperCase() + getStatusBadge(log.status).props.children.slice(1)}
+                    </Badge>
+                  </TableCell>
+
                   </TableRow>
                 ))}
               </TableBody>

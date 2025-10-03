@@ -84,7 +84,7 @@ export function StaffTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Staff Information</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Staff Information</h2>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>}
@@ -99,7 +99,6 @@ export function StaffTab() {
             >
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300">
-                  <IconComponent className="w-4 h-4" />
                   {stat.label}
                 </CardTitle>
               </CardHeader>

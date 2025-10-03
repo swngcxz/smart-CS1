@@ -295,7 +295,6 @@ export function MapTab() {
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                <Edit className="w-4 h-4" />
                  Bin Details
               </CardTitle>
             </CardHeader>

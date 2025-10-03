@@ -109,11 +109,11 @@ export function PerformanceTab() {
 
   const getPerformanceBadge = (rank: number, total: number) => {
     if (rank === 1 && total > 0) {
-      return <Badge className="bg-yellow-500 text-white"><Trophy className="w-3 h-3 mr-1" />🥇 Top Performer</Badge>;
+      return <Badge className="bg-yellow-500 text-white">Top Performer</Badge>;
     } else if (rank === 2 && total > 1) {
-      return <Badge className="bg-gray-400 text-white"><Medal className="w-3 h-3 mr-1" />🥈 Runner-up</Badge>;
+      return <Badge className="bg-gray-400 text-white">Runner-up</Badge>;
     } else if (rank === 3 && total > 2) {
-      return <Badge className="bg-orange-600 text-white"><Award className="w-3 h-3 mr-1" />🥉 Third Place</Badge>;
+      return <Badge className="bg-orange-600 text-white">Third Place</Badge>;
     } else if (rank <= 5 && total > 4) {
       return <Badge className="bg-blue-500 text-white">Top 5</Badge>;
     }
@@ -169,9 +169,6 @@ export function PerformanceTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Employee Performance</h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Track janitor activity and identify top performers
-          </p>
         </div>
         <div className="flex gap-3">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -247,75 +244,72 @@ export function PerformanceTab() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            Janitor Performance Rankings
+          Performance Rankings
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Rank</TableHead>
-                <TableHead>Employee</TableHead>
-                <TableHead>Activities</TableHead>
-                <TableHead>Performance Level</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Achievement</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {performanceData?.janitors?.map((janitor, index) => {
-                const rank = index + 1;
-                const activityLevel = getActivityLevel(janitor.activityCount);
-                
-                return (
-                  <TableRow key={janitor.id}>
-                    <TableCell className="font-semibold">
-                      {rank <= 3 ? (
-                        <span className="text-2xl">
-                          {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
-                        </span>
-                      ) : (
-                        <span className="text-gray-600">#{rank}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src={janitor.avatarUrl} />
-                          <AvatarFallback>
-                            {janitor.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{janitor.fullName}</p>
-                          <p className="text-sm text-gray-500">{janitor.email}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-lg font-bold text-blue-600">{janitor.activityCount}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={activityLevel.color}>
-                        {activityLevel.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={janitor.status === 'active' ? 'default' : 'secondary'}
-                        className={janitor.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
-                      >
-                        {janitor.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {getPerformanceBadge(rank, performanceData?.janitors?.length || 0)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
+ <TableHeader>
+  <TableRow>
+    <TableHead className="text-center">Rank</TableHead>
+    <TableHead className="">Employee</TableHead>
+    <TableHead className="text-center">Activities</TableHead>
+    <TableHead className="text-center">Performance Level</TableHead>
+    <TableHead className="text-center">Status</TableHead>
+    <TableHead className="text-center">Achievement</TableHead>
+  </TableRow>
+</TableHeader>
+
+<TableBody>
+  {performanceData?.janitors?.map((janitor, index) => {
+    const rank = index + 1;
+    const activityLevel = getActivityLevel(janitor.activityCount);
+
+    return (
+      <TableRow key={janitor.id}>
+        <TableCell className="text-center font-semibold">
+          {rank <= 3 ? (
+            <span className="text-2xl">
+              {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
+            </span>
+          ) : (
+            <span className="text-gray-600">#{rank}</span>
+          )}
+        </TableCell>
+       <TableCell className="text-left">
+  <div className="flex flex-col">
+    <p className="font-medium">{janitor.fullName}</p>
+    <p className="text-sm text-gray-500">{janitor.email}</p>
+  </div>
+</TableCell>
+
+        <TableCell className="text-center">
+          <span className="text-lg font-bold text-blue-600">{janitor.activityCount}</span>
+        </TableCell>
+        <TableCell className="text-center">
+          <Badge className={activityLevel.color.replace(/bg-\S+/g, "bg-transparent")}>
+            {activityLevel.label}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-center">
+          <Badge
+            variant="default"
+            className={
+              "bg-transparent " +
+              (janitor.status === "active" ? "text-green-800" : "text-gray-700")
+            }
+          >
+            {janitor.status.charAt(0).toUpperCase() + janitor.status.slice(1)}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-center">
+          {getPerformanceBadge(rank, performanceData?.janitors?.length || 0)}
+        </TableCell>
+      </TableRow>
+    );
+  })}
+</TableBody>
+
           </Table>
           
           {performanceData?.janitors?.length === 0 && (
