@@ -4,26 +4,42 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Route, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
+import { useGpsBackups, GpsBackupData, getTimeDifference } from "@/hooks/useGpsBackup";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export function MapTab() {
   const { wasteBins, loading, error, dynamicBinLocations } = useRealTimeData();
+  const { data: gpsBackups, loading: gpsBackupsLoading } = useGpsBackups();
   const [selectedRoute, setSelectedRoute] = useState<string>("");
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(true);
 
   // Use dynamic bin locations from API or fallback to static data
   const updatedLocationData = dynamicBinLocations.length > 0 
-    ? dynamicBinLocations.map((bin) => ({
-        id: bin.id,
-        name: bin.name,
-        lat: bin.position[0].toString(),
-        lng: bin.position[1].toString(),
-        status: bin.status,
-        level: bin.level,
-        lastCollected: bin.lastCollection,
-        binData: bin
-      }))
+    ? dynamicBinLocations.map((bin) => {
+        // Check if this bin has GPS backup data
+        const gpsBackup = gpsBackups?.find((backup: GpsBackupData) => backup.binId === bin.id);
+        const isGpsMalfunctioning = (bin.position[0] === 0 && bin.position[1] === 0);
+        
+        return {
+          id: bin.id,
+          name: bin.name,
+          lat: isGpsMalfunctioning && gpsBackup 
+            ? gpsBackup.lastKnownLatitude.toString() 
+            : bin.position[0].toString(),
+          lng: isGpsMalfunctioning && gpsBackup 
+            ? gpsBackup.lastKnownLongitude.toString() 
+            : bin.position[1].toString(),
+          status: bin.status,
+          level: bin.level,
+          lastCollected: bin.lastCollection,
+          binData: bin,
+          // GPS backup information
+          isGpsOffline: isGpsMalfunctioning && !!gpsBackup,
+          gpsBackupData: gpsBackup,
+          offlineTime: gpsBackup ? getTimeDifference(gpsBackup.lastUpdateTime) : null
+        };
+      })
     : wasteBins.map((bin) => ({
         id: bin.id,
         name: bin.location,
@@ -32,13 +48,17 @@ export function MapTab() {
         status: bin.status,
         level: bin.level,
         lastCollected: bin.lastCollected,
-        binData: bin
+        binData: bin,
+        isGpsOffline: false,
+        gpsBackupData: null,
+        offlineTime: null
       }));
 
   // Calculate summary statistics
   const criticalBins = updatedLocationData.filter((location) => location.status === "critical").length;
   const warningBins = updatedLocationData.filter((location) => location.status === "warning").length;
   const normalBins = updatedLocationData.filter((location) => location.status === "normal").length;
+  const offlineBins = updatedLocationData.filter((location) => location.isGpsOffline).length;
 
   // Handle route selection
   const handleRouteSelect = (route: string) => {
@@ -76,7 +96,7 @@ export function MapTab() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Normal</span>
@@ -94,6 +114,12 @@ export function MapTab() {
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Critical</span>
                   </div>
                   <div className="text-2xl font-bold text-red-600 dark:text-red-400">{criticalBins}</div>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">GPS Offline</span>
+                  </div>
+                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{offlineBins}</div>
                 </div>
               </div>
             </CardContent>
@@ -224,6 +250,48 @@ export function MapTab() {
               </div>
             </CardContent>
           </Card>
+
+          {/* GPS Offline Bins */}
+          {offlineBins > 0 && (
+            <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                  <Clock className="w-4 h-4 text-orange-600" />
+                  GPS Offline Bins
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {updatedLocationData
+                    .filter(location => location.isGpsOffline)
+                    .map((location) => (
+                      <div key={location.id} className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                        <div className="flex items-center gap-3">
+                          <MapPin className="w-4 h-4 text-orange-600" />
+                          <div>
+                            <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                              {location.name}
+                            </div>
+                            <div className="text-xs text-orange-600 dark:text-orange-400">
+                              Offline {location.offlineTime}
+                            </div>
+                          </div>
+                        </div>
+                        <Badge className="bg-orange-600 text-white text-xs">
+                          GPS Offline
+                        </Badge>
+                      </div>
+                    ))}
+                </div>
+                <div className="mt-3 p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                  <p className="text-xs text-orange-800 dark:text-orange-200">
+                    <strong>Note:</strong> These bins are using last known coordinates. 
+                    Weight and level sensors are still functioning normally.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

@@ -23,7 +23,7 @@ interface LoginHistoryLog {
   loginTime: string;
   logoutTime: string | null;
   sessionDuration: number | null; // in minutes
-  status: "active" | "completed";
+  status: "active" | "completed" | "offline";
   ipAddress: string;
   userAgent: string;
   location: string;
@@ -76,6 +76,8 @@ export const HistoryLogsTab = () => {
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>;
       case "completed":
         return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Completed</Badge>;
+      case "offline":
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Offline</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -148,6 +150,11 @@ const formatDateTime = (dateString: string | null) => {
 
   // Filter and search logic
   const filteredLogs = logs.filter((log) => {
+    // Exclude admin logs from display
+    if (log.role.toLowerCase() === 'admin') {
+      return false;
+    }
+
     const matchesSearch =
       log.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -193,13 +200,14 @@ const formatDateTime = (dateString: string | null) => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedLogs = sortedLogs.slice(startIndex, startIndex + itemsPerPage);
 
-  // Calculate analytics from sorted data
-  const activeSessions = sortedLogs.filter((log) => (log.status || 'active') === "active").length;
-  const completedSessions = sortedLogs.filter((log) => (log.status || 'active') === "completed").length;
-  const averageSessionDuration = sortedLogs
+  // Calculate analytics from filtered data (excluding admin logs)
+  const nonAdminLogs = logs.filter((log) => log.role.toLowerCase() !== 'admin');
+  const activeSessions = nonAdminLogs.filter((log) => (log.status || 'active') === "active").length;
+  const completedSessions = nonAdminLogs.filter((log) => (log.status || 'active') === "completed").length;
+  const averageSessionDuration = nonAdminLogs
     .filter((log) => log.sessionDuration !== null)
     .reduce((sum, log) => sum + (log.sessionDuration || 0), 0) / 
-    Math.max(sortedLogs.filter((log) => log.sessionDuration !== null).length, 1);
+    Math.max(nonAdminLogs.filter((log) => log.sessionDuration !== null).length, 1);
 
 return (
   <div className="space-y-6 p-4 sm:p-2">
@@ -234,7 +242,7 @@ return (
     </CardHeader>
     <CardContent>
       <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-        {logs.length}
+        {nonAdminLogs.length}
       </div>
     </CardContent>
   </Card>
@@ -307,6 +315,7 @@ return (
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={roleFilter} onValueChange={setRoleFilter}>

@@ -418,12 +418,12 @@ async function signout(req, res) {
         await withRetry(() => logRef.update({ 
           logoutTime: logoutTime,
           sessionDuration: sessionDuration,
-          status: "completed"
+          status: "offline"
         }));
       } else {
         await withRetry(() => logRef.update({ 
           logoutTime: logoutTime,
-          status: "completed"
+          status: "offline"
         }));
       }
     }
