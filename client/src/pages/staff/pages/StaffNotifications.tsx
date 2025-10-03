@@ -1,19 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
-import { Bell, Trash, Check, ArrowLeft } from "lucide-react";
+import { Bell, Check, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 
-// Notification type from hook
 import type { Notification as NotificationType } from "@/hooks/useNotifications";
 
 const StaffNotifications = () => {
   const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string>("");
-  
+
   useEffect(() => {
     (async () => {
       try {
@@ -25,36 +24,30 @@ const StaffNotifications = () => {
     })();
   }, []);
 
-  // Get notifications for current staff user
   const { notifications, loading, error } = useNotifications(currentUserId);
-  
-  // Backend filters notifications, so we can use them directly
   const staffNotifications: NotificationType[] = Array.isArray(notifications) ? notifications : [];
   const unreadCount = staffNotifications.filter((n) => !n.read).length;
 
-  // Mark a single notification as read
   const markAsRead = async (key: string) => {
+    if (!currentUserId) return;
     try {
-      if (!currentUserId) return;
       await api.patch(`/api/notifications/${currentUserId}/mark-read/${key}`);
       window.location.reload();
     } catch (err) {
-      console.error('Failed to mark notification as read:', err);
+      console.error("Failed to mark notification as read:", err);
     }
   };
 
-  // Mark all notifications as read
   const markAllAsRead = async () => {
+    if (!currentUserId) return;
     try {
-      if (!currentUserId) return;
       await api.patch(`/api/notifications/${currentUserId}/mark-all-read`);
       window.location.reload();
     } catch (err) {
-      console.error('Failed to mark all notifications as read:', err);
+      console.error("Failed to mark all notifications as read:", err);
     }
   };
 
-  // Get notification type styling
   const getTypeColor = (type: string) => {
     switch (type) {
       case "task_accepted":
@@ -82,21 +75,6 @@ const StaffNotifications = () => {
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "task_accepted":
-        return "Task Accepted";
-      case "activity_completed":
-        return "Task Completed";
-      case "bin_maintenance":
-        return "Maintenance";
-      case "bin_maintenance_urgent":
-        return "Urgent Maintenance";
-      default:
-        return "Notification";
     }
   };
 
@@ -130,13 +108,9 @@ const StaffNotifications = () => {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center space-x-3">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Staff Notifications</h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {staffNotifications.length} Notifications
-                </p>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Staff Notifications</h1>
+              <p className="text-gray-600 dark:text-gray-400">{staffNotifications.length} Notifications</p>
             </div>
           </div>
 
@@ -150,15 +124,11 @@ const StaffNotifications = () => {
         {/* Notifications List */}
         <div className="space-y-4">
           {staffNotifications.length === 0 ? (
-            <Card className="border-green-200 dark:border-green-700 dark:bg-gray-800">
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No notifications found</h3>
-                  <p className="text-gray-500 dark:text-gray-400">
-                    You don't have any staff notifications yet.
-                  </p>
-                </div>
+            <Card className="border-gray-200 dark:border-gray-700 dark:bg-gray-800">
+              <CardContent className="pt-6 text-center">
+                <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No notifications found</h3>
+                <p className="text-gray-500 dark:text-gray-400">You don't have any staff notifications yet.</p>
               </CardContent>
             </Card>
           ) : (

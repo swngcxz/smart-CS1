@@ -159,13 +159,10 @@ const Notifications = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center space-x-3">
-              <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-                <Bell className="h-6 w-6 text-green-600 dark:text-green-300" />
-              </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">All Notifications</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">All Notifications</h1>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {unreadCount} unread of {backendNotifications.length} total notifications
+                {backendNotifications.length} Notifications
                 </p>
               </div>
             </div>
@@ -182,7 +179,6 @@ const Notifications = () => {
         <Card className="border-green-200 dark:border-green-700 dark:bg-gray-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-300">
-              <Filter className="h-5 w-5" />
               Filters
             </CardTitle>
           </CardHeader>
