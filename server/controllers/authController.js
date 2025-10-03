@@ -448,10 +448,20 @@ async function getLoginHistory(req, res) {
     
     const logs = [];
     snapshot.forEach(doc => {
-      const logData = doc.data();
+      const data = doc.data();
       logs.push({
         id: doc.id,
-        ...logData
+        userEmail: data.userEmail || 'Unknown',
+        role: data.role || 'Unknown',
+        loginTime: data.loginTime || new Date().toISOString(),
+        logoutTime: data.logoutTime || null,
+        sessionDuration: data.logoutTime ? 
+          Math.round((new Date(data.logoutTime).getTime() - new Date(data.loginTime).getTime()) / (1000 * 60)) : 
+          null, // Duration in minutes
+        status: data.logoutTime ? 'completed' : 'active',
+        ipAddress: data.ipAddress || 'Unknown',
+        userAgent: data.userAgent || 'Unknown',
+        location: data.location || 'Unknown'
       });
     });
     

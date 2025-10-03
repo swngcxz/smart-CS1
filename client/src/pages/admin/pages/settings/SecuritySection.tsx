@@ -6,9 +6,10 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Eye, EyeOff, Key, Shield, Smartphone, LogOut } from "lucide-react";
+import { Eye, EyeOff, Key, Shield, Smartphone, LogOut, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import api from "@/lib/api";
 
 export const SecuritySection = () => {
   const [showPasswords, setShowPasswords] = useState({
@@ -23,6 +24,7 @@ export const SecuritySection = () => {
   });
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [recoveryDialogOpen, setRecoveryDialogOpen] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const { toast } = useToast();
 
   const handlePasswordChange = (field: string, value: string) => {
@@ -39,7 +41,7 @@ export const SecuritySection = () => {
     return passwords.new.length >= 8 && score >= 3 && hasUpper && hasNumber && hasSymbol;
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (passwords.new !== passwords.confirm) {
@@ -58,12 +60,41 @@ export const SecuritySection = () => {
       });
     }
 
-    toast({
-      title: "Password updated",
-      description: "Your password has been successfully changed.",
-    });
+    if (!passwords.current.trim()) {
+      return toast({
+        title: "Current password required",
+        description: "Please enter your current password.",
+        variant: "destructive",
+      });
+    }
 
-    setPasswords({ current: "", new: "", confirm: "" });
+    try {
+      setIsChangingPassword(true);
+      
+      const response = await api.post('/auth/change-password', {
+        currentPassword: passwords.current,
+        newPassword: passwords.new
+      });
+
+      toast({
+        title: "Password updated",
+        description: "Your password has been successfully changed.",
+      });
+
+      setPasswords({ current: "", new: "", confirm: "" });
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to change password';
+      
+      toast({
+        title: "Password change failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const togglePasswordVisibility = (field: string) => {
@@ -142,9 +173,17 @@ export const SecuritySection = () => {
 
             <Button
               type="submit"
-              className="w-full md:w-auto bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-md transition-colors"
+              disabled={isChangingPassword}
+              className="w-full md:w-auto bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Update Password
+              {isChangingPassword ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Updating Password...
+                </>
+              ) : (
+                'Update Password'
+              )}
             </Button>
           </form>
         </CardContent>

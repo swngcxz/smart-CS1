@@ -71,15 +71,15 @@ export const HistoryLogsTab = () => {
   }, []);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "active":
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>;
       case "completed":
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">Completed</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Offline</Badge>;
       case "offline":
         return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Offline</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200">Offline</Badge>;
     }
   };
 
@@ -160,7 +160,10 @@ const formatDateTime = (dateString: string | null) => {
       log.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.ipAddress || 'Unknown').toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || (log.status || 'active') === statusFilter;
+    const logStatus = log.status || 'offline';
+    // Treat "completed" status as "offline" for display purposes
+    const displayStatus = logStatus === 'completed' ? 'offline' : logStatus;
+    const matchesStatus = statusFilter === "all" || displayStatus.toLowerCase() === statusFilter.toLowerCase();
     const matchesRole = roleFilter === "all" || log.role.toLowerCase() === roleFilter.toLowerCase();
 
     return matchesSearch && matchesStatus && matchesRole;
@@ -202,8 +205,11 @@ const formatDateTime = (dateString: string | null) => {
 
   // Calculate analytics from filtered data (excluding admin logs)
   const nonAdminLogs = logs.filter((log) => log.role.toLowerCase() !== 'admin');
-  const activeSessions = nonAdminLogs.filter((log) => (log.status || 'active') === "active").length;
-  const completedSessions = nonAdminLogs.filter((log) => (log.status || 'active') === "completed").length;
+  const activeSessions = nonAdminLogs.filter((log) => (log.status || 'offline') === "active").length;
+  const offlineSessions = nonAdminLogs.filter((log) => {
+    const status = log.status || 'offline';
+    return status === "completed" || status === "offline";
+  }).length;
   const averageSessionDuration = nonAdminLogs
     .filter((log) => log.sessionDuration !== null)
     .reduce((sum, log) => sum + (log.sessionDuration || 0), 0) / 

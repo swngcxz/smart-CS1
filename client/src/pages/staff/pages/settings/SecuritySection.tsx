@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Key } from "lucide-react";
+import { Eye, EyeOff, Key, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
 
 export const SecuritySection = () => {
   const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
   const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const { toast } = useToast();
 
   const handlePasswordChange = (field: string, value: string) => {
@@ -28,18 +29,57 @@ export const SecuritySection = () => {
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (passwords.new !== passwords.confirm) {
-      return toast({ title: "Password mismatch", description: "New password and confirmation don't match.", variant: "destructive" });
+      return toast({
+        title: "Password mismatch",
+        description: "New password and confirmation don't match.",
+        variant: "destructive",
+      });
     }
+
     if (!isPasswordStrong()) {
-      return toast({ title: "Weak password", description: "Password must be strong.", variant: "destructive" });
+      return toast({
+        title: "Weak password",
+        description: "Password must be at least 8 characters long and include uppercase letters, numbers, and symbols.",
+        variant: "destructive",
+      });
     }
+
+    if (!passwords.current.trim()) {
+      return toast({
+        title: "Current password required",
+        description: "Please enter your current password.",
+        variant: "destructive",
+      });
+    }
+
     try {
-      await api.post('/auth/change-password', { currentPassword: passwords.current, newPassword: passwords.new });
-      toast({ title: 'Password updated', description: 'Your password has been changed.' });
-      setPasswords({ current: '', new: '', confirm: '' });
-    } catch (err: any) {
-      toast({ title: 'Failed to change password', description: err?.response?.data?.error || 'Error', variant: 'destructive' });
+      setIsChangingPassword(true);
+      
+      const response = await api.post('/auth/change-password', {
+        currentPassword: passwords.current,
+        newPassword: passwords.new
+      });
+
+      toast({
+        title: "Password updated",
+        description: "Your password has been successfully changed.",
+      });
+
+      setPasswords({ current: "", new: "", confirm: "" });
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to change password';
+      
+      toast({
+        title: "Password change failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -97,11 +137,25 @@ export const SecuritySection = () => {
                   style={{ width: `${(getPasswordStrength().score + 1) * 20}%` }}
                 />
               </div>
+              <p className="text-xs mt-1 text-slate-600 dark:text-slate-400">
+                {["Very Weak", "Weak", "Fair", "Strong", "Very Strong"][getPasswordStrength().score]}
+              </p>
             </div>
           )}
 
-          <Button type="submit" className="w-full md:w-auto bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-md transition-colors">
-            Update Password
+          <Button 
+            type="submit" 
+            disabled={isChangingPassword}
+            className="w-full md:w-auto bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isChangingPassword ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Updating Password...
+              </>
+            ) : (
+              'Update Password'
+            )}
           </Button>
         </form>
       </CardContent>
