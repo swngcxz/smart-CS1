@@ -28,11 +28,16 @@ export function useNotificationBadge(janitorId?: string, { auto = true, interval
 
   const fetchNotificationBadge = useCallback(async () => {
     if (!hasJanitorId) {
-      console.log('📱 Mobile App - No janitor ID provided, skipping notification badge fetch');
+      // No janitor ID - set default badge data
+      setBadgeData({
+        unreadCount: 0,
+        totalCount: 0,
+        hasNotifications: false
+      });
+      setError(null);
       return;
     }
     
-    console.log('📱 Mobile App - Fetching notification badge for janitor:', janitorId);
     setLoading(true);
     try {
       // Fetch notifications for badge count with better error handling
@@ -61,26 +66,22 @@ export function useNotificationBadge(janitorId?: string, { auto = true, interval
       
       setError(null);
     } catch (err: any) {
-      console.error('📱 Mobile App - Failed to fetch notification badge:', err);
+      // Always set default badge data for any error - this is normal behavior
+      setBadgeData({
+        unreadCount: 0,
+        totalCount: 0,
+        hasNotifications: false
+      });
+      setError(null); // Never show errors to user for notifications
       
-      // Handle different error scenarios
-      if (err.response?.status === 500) {
-        console.log('📱 Mobile App - Server error, using fallback badge data');
-        // Set default badge data for server errors
-        setBadgeData({
-          unreadCount: 0,
-          totalCount: 0,
-          hasNotifications: false
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📱 Mobile App - Notification badge fetch failed (handled silently):', {
+          janitorId,
+          error: err.message,
+          status: err.response?.status,
+          reason: 'No notifications exist yet or network issue'
         });
-      } else if (err.response?.status === 404) {
-        console.log('📱 Mobile App - No notifications found for user');
-        setBadgeData({
-          unreadCount: 0,
-          totalCount: 0,
-          hasNotifications: false
-        });
-      } else {
-        setError(err?.response?.data?.error || 'Failed to fetch notification badge');
       }
     } finally {
       setLoading(false);
@@ -120,7 +121,10 @@ export function useNotificationBadge(janitorId?: string, { auto = true, interval
       }));
       return true;
     } catch (err) {
-      console.error('📱 Mobile App - Failed to mark notification as read:', err);
+      // Log error for debugging but don't show popup
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📱 Mobile App - Failed to mark notification as read:', err);
+      }
       return false;
     }
   }, []);
@@ -135,7 +139,10 @@ export function useNotificationBadge(janitorId?: string, { auto = true, interval
       }));
       return true;
     } catch (err) {
-      console.error('📱 Mobile App - Failed to mark all notifications as read:', err);
+      // Log error for debugging but don't show popup
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📱 Mobile App - Failed to mark all notifications as read:', err);
+      }
       return false;
     }
   }, [janitorId]);

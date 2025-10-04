@@ -4,6 +4,7 @@ import { AntDesign, FontAwesome, FontAwesome5, Ionicons } from "@expo/vector-ico
 import { router } from "expo-router";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { LoginErrorPopup } from "@/components/LoginErrorPopup";
 
 import {
   KeyboardAvoidingView,
@@ -48,7 +49,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, loading, error } = useAuth();
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [errorType, setErrorType] = useState<'invalid_credentials' | 'network_error' | 'server_error' | 'validation_error' | 'generic'>('generic');
+  const { login, loading, error, validationErrors } = useAuth();
 
   const handleLogin = async () => {
     console.log('🔐 Mobile App - Attempting login with:', { email });
@@ -61,8 +64,45 @@ export default function LoginScreen() {
       router.replace("/(tabs)/home");
     } else {
       console.log('❌ Mobile App - Login failed, response:', res);
+      // Show error popup
+      const errorType = determineErrorType();
+      setErrorType(errorType);
+      setShowErrorPopup(true);
     }
-    // else error is handled by hook
+  };
+
+  const determineErrorType = (): 'invalid_credentials' | 'network_error' | 'server_error' | 'validation_error' | 'generic' => {
+    // Check validation errors first
+    if (validationErrors.email || validationErrors.password) {
+      return 'validation_error';
+    }
+
+    // Check general error message
+    if (error) {
+      if (error.includes('Invalid email or password') || error.includes('Invalid credentials')) {
+        return 'invalid_credentials';
+      }
+      if (error.includes('Network error') || error.includes('internet connection')) {
+        return 'network_error';
+      }
+      if (error.includes('Server error') || error.includes('try again later')) {
+        return 'server_error';
+      }
+    }
+
+    return 'invalid_credentials'; // Default to invalid credentials for login failures
+  };
+
+  const handleRetry = () => {
+    handleLogin();
+  };
+
+  const handleForgotPassword = () => {
+    router.push("/(auth)/forgot-password");
+  };
+
+  const closeErrorPopup = () => {
+    setShowErrorPopup(false);
   };
 
   if (!fontsLoaded) return null;
@@ -123,9 +163,6 @@ export default function LoginScreen() {
         </View>
 
         {/* Login Button */}
-        {error ? (
-          <Text style={{ color: 'red', textAlign: 'center', marginBottom: 8 }}>{error}</Text>
-        ) : null}
         <TouchableOpacity
           style={[styles.loginButton, loading && styles.disabledButton]}
           onPress={handleLogin}
@@ -158,6 +195,15 @@ export default function LoginScreen() {
           </Text>
         </Text>
       </ScrollView>
+
+      {/* Error Popup */}
+      <LoginErrorPopup
+        visible={showErrorPopup}
+        errorType={errorType}
+        onClose={closeErrorPopup}
+        onRetry={handleRetry}
+        onForgotPassword={handleForgotPassword}
+      />
     </KeyboardAvoidingView>
   );
 }

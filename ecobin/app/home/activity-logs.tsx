@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import axiosInstance from "../../utils/axiosInstance";
 import { useAccount } from "../../hooks/useAccount";
+import { safeTextRenderers } from "../../utils/textErrorHandler";
 
 export default function ActivityLogsScreen() {
   const router = useRouter();
@@ -311,7 +312,7 @@ export default function ActivityLogsScreen() {
     >
       {/* Title row with status and type badges */}
       <View style={styles.logTitleRow}>
-        <Text style={styles.logTitle}>{`Bin ${log.bin}`}</Text>
+        <Text style={styles.logTitle}>{safeTextRenderers.binTitle(log.bin)}</Text>
         <View style={{ flex: 1 }} />
         <View style={styles.badgeContainer}>
           <View style={[styles.statusBadge, getStatusBadgeStyle(log.status)]}>
@@ -321,28 +322,28 @@ export default function ActivityLogsScreen() {
               color="#fff" 
               style={styles.statusIcon}
             />
-            <Text style={styles.statusText}>{log.status.toUpperCase()}</Text>
+            <Text style={styles.statusText}>{safeTextRenderers.statusText(log.status)}</Text>
           </View>
           <View style={[styles.typeBadge, getBadgeStyle(log.type)]}>
-            <Text style={styles.badgeText}>{String(log.type)}</Text>
+            <Text style={styles.badgeText}>{safeTextRenderers.typeText(log.type)}</Text>
           </View>
         </View>
       </View>
 
       {/* Message */}
       <View style={styles.logMsgRow}>
-        <Text style={styles.logMessage}>{String(log.message)}</Text>
+        <Text style={styles.logMessage}>{safeTextRenderers.messageText(log.message)}</Text>
       </View>
 
       {/* Location and Time details */}
       <View style={styles.logDetailsRow}>
         <View style={styles.detailItem}>
           <Ionicons name="location-outline" size={14} color="#666" />
-          <Text style={styles.logSubtext}>{log.location || "Unknown Location"}</Text>
+          <Text style={styles.logSubtext}>{safeTextRenderers.locationText(log.location)}</Text>
         </View>
         <View style={styles.detailItem}>
           <Ionicons name="time-outline" size={14} color="#666" />
-          <Text style={styles.logTime}>{`${log.date} ${log.time}`}</Text>
+          <Text style={styles.logTime}>{safeTextRenderers.timeText(log.date, log.time)}</Text>
         </View>
       </View>
 

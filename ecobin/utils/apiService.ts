@@ -1,17 +1,45 @@
 import axios from 'axios';
+import {
+  API_BASE_URL,
+  API_FALLBACK_LOCALHOST,
+  API_FALLBACK_ANDROID_EMULATOR,
+  API_TIMEOUT,
+  API_DEBUG,
+} from '@env';
+
+// Fallback endpoints in case environment variables are not loaded
+const FALLBACK_ENDPOINTS = [
+  'http://10.0.0.117:8000',        // Current IP from .env
+  'http://192.168.254.114:8000',   // Previous IP
+  'http://localhost:8000',          // Localhost fallback
+  'http://10.0.2.2:8000',          // Android emulator
+];
 
 // Try multiple endpoints for mobile development
 const API_ENDPOINTS = [
-  'http://192.168.254.114:8000', // Computer's IP address
-  'http://localhost:8000',     // Fallback for simulator
-  'http://10.0.2.2:8000',     // Android emulator host
+  API_BASE_URL || FALLBACK_ENDPOINTS[0],                    // Primary endpoint from .env
+  API_FALLBACK_LOCALHOST || FALLBACK_ENDPOINTS[2],          // Fallback for simulator
+  API_FALLBACK_ANDROID_EMULATOR || FALLBACK_ENDPOINTS[3],   // Android emulator host
+  ...FALLBACK_ENDPOINTS,                                     // Additional fallbacks
 ];
 
 let currentEndpoint = API_ENDPOINTS[0];
 
+// Debug logging
+if (API_DEBUG === 'true') {
+  console.log('🔧 API Service - Environment Variables:', {
+    API_BASE_URL,
+    API_FALLBACK_LOCALHOST,
+    API_FALLBACK_ANDROID_EMULATOR,
+    API_TIMEOUT,
+    API_DEBUG,
+  });
+  console.log('🔧 API Service - Available Endpoints:', API_ENDPOINTS);
+}
+
 const api = axios.create({
   baseURL: currentEndpoint,
-  timeout: 10000,
+  timeout: parseInt(API_TIMEOUT) || 10000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,10 +57,14 @@ const tryEndpoints = async (endpointIndex = 0) => {
   
   try {
     const response = await api.get('/api/bin1');
-    console.log(`✅ Mobile App - Connected to API at: ${endpoint}`);
+    if (API_DEBUG === 'true') {
+      console.log(`✅ Mobile App - Connected to API at: ${endpoint}`);
+    }
     return response;
   } catch (error) {
-    console.log(`❌ Mobile App - Failed to connect to: ${endpoint}`);
+    if (API_DEBUG === 'true') {
+      console.log(`❌ Mobile App - Failed to connect to: ${endpoint}`);
+    }
     return tryEndpoints(endpointIndex + 1);
   }
 };
@@ -85,12 +117,16 @@ export const apiService = {
       const response = await api.get('/api/bin-locations');
       return response.data;
     } catch (error) {
-      console.log('🔄 Mobile App - Retrying bin locations with different endpoint...');
+      if (API_DEBUG === 'true') {
+        console.log('🔄 Mobile App - Retrying bin locations with different endpoint...');
+      }
       try {
         const response = await tryEndpoints();
         return response.data;
       } catch (retryError) {
-        console.error('Error fetching bin locations:', retryError);
+        if (API_DEBUG === 'true') {
+          console.error('Error fetching bin locations:', retryError);
+        }
         throw new Error('Failed to fetch bin locations');
       }
     }
@@ -102,12 +138,16 @@ export const apiService = {
       const response = await api.get('/api/bin1');
       return response.data;
     } catch (error) {
-      console.log('🔄 Mobile App - Retrying bin1 data with different endpoint...');
+      if (API_DEBUG === 'true') {
+        console.log('🔄 Mobile App - Retrying bin1 data with different endpoint...');
+      }
       try {
         const response = await tryEndpoints();
         return response.data;
       } catch (retryError) {
-        console.error('Error fetching bin1 data:', retryError);
+        if (API_DEBUG === 'true') {
+          console.error('Error fetching bin1 data:', retryError);
+        }
         throw new Error('Failed to fetch bin1 data');
       }
     }
@@ -119,7 +159,9 @@ export const apiService = {
       const response = await api.get('/api/bin');
       return response.data;
     } catch (error) {
-      console.error('Error fetching bin data:', error);
+      if (API_DEBUG === 'true') {
+        console.error('Error fetching bin data:', error);
+      }
       throw new Error('Failed to fetch bin data');
     }
   },
@@ -130,7 +172,9 @@ export const apiService = {
       const response = await api.get('/api/gps-history');
       return response.data;
     } catch (error) {
-      console.error('Error fetching GPS history:', error);
+      if (API_DEBUG === 'true') {
+        console.error('Error fetching GPS history:', error);
+      }
       return [];
     }
   }

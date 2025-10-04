@@ -22,7 +22,12 @@ export function useNotifications(janitorId?: string, { auto = true, intervalMs =
   const hasJanitorId = useMemo(() => Boolean(janitorId && janitorId.length > 0), [janitorId]);
 
   const fetchNotifications = useCallback(async () => {
-    if (!hasJanitorId) return;
+    if (!hasJanitorId) {
+      setNotifications([]);
+      setError(null);
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await axiosInstance.get(`/api/bin-notifications/janitor/${janitorId}?limit=100`);
@@ -30,7 +35,19 @@ export function useNotifications(janitorId?: string, { auto = true, intervalMs =
       setNotifications(list);
       setError(null);
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to fetch notifications');
+      // Always set empty notifications for any error - this is normal behavior
+      setNotifications([]);
+      setError(null); // Never show errors to user for notifications
+      
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📱 Mobile App - Notifications fetch failed (handled silently):', {
+          janitorId,
+          error: err.message,
+          status: err.response?.status,
+          reason: 'No notifications exist yet or network issue'
+        });
+      }
     } finally {
       setLoading(false);
     }
