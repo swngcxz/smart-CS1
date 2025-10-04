@@ -1,5 +1,5 @@
 const { db } = require("../models/firebase");
-const { sendSMS } = require("../index"); // Import SMS function from main server file
+const smsNotificationService = require("../services/smsNotificationService");
 
 const pickupRequestController = {
   // Create a new pickup request
@@ -56,17 +56,6 @@ const pickupRequestController = {
       
       console.log(`[PICKUP REQUEST] Created pickup request ${docRef.id} for bin ${binName} (${binLevel}%)`);
 
-      // Send static SMS notification (for now)
-      try {
-        const staticPhoneNumber = '+639309096606'; // Static phone number
-        const smsMessage = `🚨 PICKUP REQUEST 🚨\n\nBin: ${pickupRequestData.binName}\nLocation: ${pickupRequestData.binLocation}\nLevel: ${pickupRequestData.binLevel}%\nPriority: ${pickupRequestData.priority.toUpperCase()}\n\nPlease check the staff dashboard for assignment.\n\nTime: ${new Date().toLocaleString()}`;
-        
-        await sendSMS(staticPhoneNumber, smsMessage);
-        console.log(`[PICKUP REQUEST] Static SMS sent to ${staticPhoneNumber}`);
-      } catch (notifyError) {
-        console.error('[PICKUP REQUEST] Failed to send static SMS:', notifyError);
-        // Don't fail the request creation if notification fails
-      }
 
       res.status(201).json({
         success: true,
@@ -129,7 +118,7 @@ const pickupRequestController = {
   async assignJanitor(req, res) {
     try {
       const { requestId } = req.params;
-      const { janitorId, janitorName, janitorPhone } = req.body;
+      const { janitorId, janitorName, janitorPhone, taskNotes } = req.body;
 
       if (!requestId || !janitorId) {
         return res.status(400).json({
@@ -138,8 +127,20 @@ const pickupRequestController = {
         });
       }
 
-      // Update pickup request
+      // Get the current request data first
       const requestRef = db.collection('pickupRequests').doc(requestId);
+      const requestDoc = await requestRef.get();
+      
+      if (!requestDoc.exists) {
+        return res.status(404).json({
+          success: false,
+          message: 'Pickup request not found'
+        });
+      }
+
+      const requestData = requestDoc.data();
+
+      // Update pickup request
       const updateData = {
         assignedJanitor: janitorId,
         assignedJanitorName: janitorName || 'Unknown Janitor',
@@ -148,30 +149,64 @@ const pickupRequestController = {
         updatedAt: new Date().toISOString()
       };
 
+      // Add task notes if provided
+      if (taskNotes && taskNotes.trim()) {
+        updateData.taskNotes = taskNotes.trim();
+      }
+
       await requestRef.update(updateData);
 
-      // Get the updated request data
-      const requestDoc = await requestRef.get();
-      const requestData = requestDoc.data();
-
-      // Send static SMS notification (for now)
+      // Send SMS notification to the assigned janitor
       try {
-        const staticPhoneNumber = '+639309096606'; // Static phone number
-        const smsMessage = `🚨 PICKUP REQUEST ASSIGNED 🚨\n\nBin: ${requestData.binName}\nLocation: ${requestData.binLocation}\nLevel: ${requestData.binLevel}%\nPriority: ${requestData.priority.toUpperCase()}\n\nAssigned to: ${janitorName || 'Unknown Janitor'}\n\nPlease proceed to empty the bin immediately.\n\nTime: ${new Date().toLocaleString()}`;
+        console.log(`[PICKUP REQUEST] Sending SMS notification to janitor: ${janitorId}`);
         
-        await sendSMS(staticPhoneNumber, smsMessage);
-        console.log(`[PICKUP REQUEST] Static SMS sent to ${staticPhoneNumber} for assignment to ${janitorName}`);
+        const smsResult = await smsNotificationService.sendManualTaskSMS({
+          binName: requestData.binName,
+          binLocation: requestData.binLocation,
+          binLevel: requestData.binLevel,
+          weight: requestData.weight,
+          height: requestData.height,
+          coordinates: {
+            latitude: requestData.coordinates[0] || 0,
+            longitude: requestData.coordinates[1] || 0
+          },
+          taskNotes: taskNotes || '',
+          assignedBy: janitorName || 'Staff'
+        }, janitorId);
+
+        if (smsResult.success) {
+          console.log(`[PICKUP REQUEST] ✅ SMS sent successfully to ${smsResult.janitor.name}`);
+        } else {
+          console.error(`[PICKUP REQUEST] ❌ SMS failed: ${smsResult.error}`);
+        }
+
+        // Update the response to include SMS status
+        updateData.smsNotification = {
+          sent: smsResult.success,
+          error: smsResult.error || null,
+          timestamp: new Date().toISOString()
+        };
+
       } catch (smsError) {
-        console.error('[PICKUP REQUEST] Failed to send static SMS:', smsError);
+        console.error('[PICKUP REQUEST] SMS notification error:', smsError);
+        // Don't fail the assignment if SMS fails
+        updateData.smsNotification = {
+          sent: false,
+          error: smsError.message,
+          timestamp: new Date().toISOString()
+        };
       }
+
+      // Get the final updated request data
+      const finalRequestDoc = await requestRef.get();
+      const finalRequestData = finalRequestDoc.data();
 
       res.json({
         success: true,
         message: 'Janitor assigned successfully',
         data: {
           id: requestId,
-          ...requestData,
-          ...updateData
+          ...finalRequestData
         }
       });
 
@@ -236,17 +271,6 @@ const pickupRequestController = {
     }
   },
 
-  // Static SMS notification function (simplified for now)
-  async sendStaticSMS(message) {
-    try {
-      const staticPhoneNumber = '+639309096606'; // Static phone number
-      await sendSMS(staticPhoneNumber, message);
-      console.log(`[PICKUP REQUEST] Static SMS sent to ${staticPhoneNumber}`);
-    } catch (error) {
-      console.error('[PICKUP REQUEST] Failed to send static SMS:', error);
-      throw error;
-    }
-  }
 };
 
 module.exports = pickupRequestController;

@@ -18,8 +18,8 @@ const activityStatsRoutes = require('./routers/activityStatsRoutes');
 const analyticsRoutes = require('./routers/analyticsRoutes');
 const wasteRoutes = require('./routers/wasteRoutes');
 const gpsFallbackRoutes = require('./routers/gpsFallbackRoutes');
-const { admin } = require('./models/firebase');
-const serialportgsm = require('serialport-gsm');
+const { admin, db } = require('./models/firebase');
+const { sendJanitorAssignmentNotification } = require('./controllers/activityController');
 
 
 const notificationRoutes = require('./routers/notificationRoutes');
@@ -37,12 +37,14 @@ const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
 const automaticTaskService = require('./services/automaticTaskService');
 const binHealthMonitor = require('./services/binHealthMonitor');
+const gpsFallbackService = require('./services/gpsFallbackService');
+const smsNotificationService = require('./services/smsNotificationService');
+const gsmService = require('./services/gsmService');
 
 
-
-const db = admin.database();
-const dataRef = db.ref('monitoring/data');
-const bin1Ref = db.ref('monitoring/bin1');
+const rtdb = admin.database();
+const dataRef = rtdb.ref('monitoring/data');
+const bin1Ref = rtdb.ref('monitoring/bin1');
 
 
 // Initialize Firebase with env variables
@@ -109,8 +111,134 @@ app.use("/api/waste", wasteRoutes);
 console.log('[INDEX] Mounting binRoutes at /api');
 app.use("/api", binRoutes);
 console.log('[INDEX] binRoutes mounted successfully');
+// Manual task assignment endpoint (must be before activity routes)
+app.post('/api/assign-task', async (req, res) => {
+  try {
+    const { activityId, janitorId, janitorName, taskNote } = req.body;
+    
+    if (!activityId || !janitorId) {
+      return res.status(400).json({
+        success: false,
+        error: 'activityId and janitorId are required'
+      });
+    }
+
+    console.log(`[MANUAL ASSIGNMENT API] Assigning task ${activityId} to janitor ${janitorId}`);
+
+    // Get the activity log to extract bin information
+    const activityRef = db.collection("activitylogs").doc(activityId);
+    const activityDoc = await activityRef.get();
+    
+    if (!activityDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Activity log not found'
+      });
+    }
+
+    const activityData = activityDoc.data();
+    const binId = activityData.bin_id;
+    const binLocation = activityData.bin_location;
+    const binLevel = activityData.bin_level;
+
+    // Update the activity log with janitor assignment
+    const updateData = {
+      assigned_janitor_id: janitorId,
+      assigned_janitor_name: janitorName || 'Staff Assigned',
+      status: 'in_progress',
+      bin_status: 'in_progress',
+      updated_at: new Date().toISOString(),
+      assignment_type: 'manual',
+      assignment_timestamp: new Date().toISOString()
+    };
+
+    await activityRef.update(updateData);
+
+    // Send SMS notification to the assigned janitor
+    try {
+      await sendJanitorAssignmentNotification({
+        janitorId,
+        janitorName: janitorName || 'Staff Assigned',
+        binId,
+        binLocation: binLocation || 'Unknown Location',
+        binLevel: binLevel || 0,
+        taskNote: taskNote || '',
+        activityType: 'manual_assignment',
+        priority: binLevel >= 80 ? 'high' : binLevel >= 50 ? 'medium' : 'low',
+        activityId: activityId,
+        timestamp: new Date(),
+        isTaskAssignment: true,
+        assignmentType: 'manual' // Add indicator for manual assignment
+      });
+
+      console.log(`[MANUAL ASSIGNMENT API] ✅ Task ${activityId} assigned to janitor ${janitorId} with SMS notification`);
+    } catch (smsError) {
+      console.error('[MANUAL ASSIGNMENT API] SMS notification error:', smsError);
+      // Don't fail the assignment if SMS fails
+    }
+
+    res.json({
+      success: true,
+      message: 'Task assigned successfully',
+      data: {
+        activityId,
+        assigned_janitor_id: janitorId,
+        assigned_janitor_name: janitorName || 'Staff Assigned',
+        status: 'in_progress',
+        assignment_type: 'manual'
+      }
+    });
+
+  } catch (error) {
+    console.error('[MANUAL ASSIGNMENT API] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 app.use("/api", activityRoutes);
 app.use("/api", activityStatsRoutes);
+
+// Get available janitors for task assignment
+app.get('/api/janitors/available', async (req, res) => {
+  try {
+    console.log('[JANITORS API] Fetching available janitors...');
+    
+    const janitorsRef = db.collection('users');
+    const snapshot = await janitorsRef.where('role', '==', 'janitor').get();
+    
+    const janitors = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      janitors.push({
+        id: doc.id,
+        fullName: data.fullName,
+        email: data.email,
+        contactNumber: data.contactNumber,
+        location: data.location,
+        status: data.status
+      });
+    });
+    
+    console.log(`[JANITORS API] Found ${janitors.length} janitors`);
+    
+    res.json({
+      success: true,
+      janitors: janitors,
+      count: janitors.length
+    });
+    
+  } catch (error) {
+    console.error('[JANITORS API] Error fetching janitors:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 app.use("/api/gps-fallback", gpsFallbackRoutes);
 
 app.use('/api/notifications', notificationRoutes);
@@ -144,121 +272,9 @@ app.get('/auth/google/callback',
   }
 );
 
-// Modem and SMS logic
-let modem = serialportgsm.Modem();
-let options = {
-  baudRate: 9600,
-  dataBits: 8,
-  stopBits: 1,
-  parity: 'none',
-  rtscts: false,
-  xon: false,
-  xoff: false,
-  xany: false,
-  autoDeleteOnReceive: true,
-  enableConcatenation: true,
-  incomingCallIndication: true,
-  incomingSMSIndication: true,
-  pin: '',
-  customInitCommand: '',
-  cnmiCommand: 'AT+CNMI=2,1,0,2,1',
-  logger: console
-};
 
-// Fallback SMS using console logging (for testing) or web service
-async function sendSMSFallback(phoneNumber, message) {
-  try {
-    console.log(`[SMS FALLBACK] Attempting to send SMS to ${phoneNumber}`);
-    
-    // For now, just log the SMS to console (you can replace with actual SMS service)
-    console.log('='.repeat(60));
-    console.log('📱 SMS NOTIFICATION (FALLBACK MODE)');
-    console.log('='.repeat(60));
-    console.log(`📞 To: ${phoneNumber}`);
-    console.log(`📝 Message: ${message}`);
-    console.log(`⏰ Time: ${new Date().toLocaleString()}`);
-    console.log('='.repeat(60));
-    
-    // Simulate successful SMS send
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log('[SMS FALLBACK] ✅ SMS logged successfully (fallback mode)');
-    return { status: 'success', method: 'console_fallback' };
-    
-    // Uncomment below to use actual SMS service (replace with your preferred service)
-    /*
-    const response = await fetch('https://api.example-sms-service.com/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer YOUR_API_KEY'
-      },
-      body: JSON.stringify({
-        to: phoneNumber,
-        message: message
-      })
-    });
-    
-    if (response.ok) {
-      console.log('[SMS FALLBACK] ✅ SMS sent successfully via web service');
-      return { status: 'success', method: 'web_service' };
-    } else {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    */
-  } catch (error) {
-    console.error('[SMS FALLBACK] ❌ Failed to send SMS via fallback:', error.message);
-    throw error;
-  }
-}
 
-function sendSMS(phoneNumber, message) {
-  return new Promise(async (resolve, reject) => {
-    console.log(`[SERIAL MONITOR] Creating SMS to ${phoneNumber}: "${message}"`);
-    
-    // Check if modem is available
-    if (!modem || !modem.isOpen) {
-      console.error('[SERIAL MONITOR] Modem is not connected or not open');
-      console.log('[SERIAL MONITOR] Attempting fallback SMS method...');
-      
-      try {
-        const result = await sendSMSFallback(phoneNumber, message);
-        resolve(result);
-        return;
-      } catch (fallbackError) {
-        console.error('[SERIAL MONITOR] Fallback SMS also failed:', fallbackError.message);
-        reject(new Error('Both modem and fallback SMS failed'));
-        return;
-      }
-    }
-    
-    modem.sendSMS(phoneNumber, message, true, (result) => {
-      console.log('[SERIAL MONITOR] SMS send result:', result);
-      
-      if (result && result.status === 'success') {
-        console.log('[SERIAL MONITOR] ✅ SMS sent successfully via modem:', result);
-        resolve(result);
-      } else {
-        console.error('[SERIAL MONITOR] ❌ Failed to send SMS via modem:', result);
-        console.log('[SERIAL MONITOR] Attempting fallback SMS method...');
-        
-        // Try fallback method
-        sendSMSFallback(phoneNumber, message)
-          .then(fallbackResult => {
-            console.log('[SERIAL MONITOR] ✅ Fallback SMS sent successfully');
-            resolve(fallbackResult);
-          })
-          .catch(fallbackError => {
-            console.error('[SERIAL MONITOR] ❌ Fallback SMS also failed:', fallbackError.message);
-            reject(new Error('Both modem and fallback SMS failed'));
-          });
-      }
-    });
-  });
-}
 
-let smsSentData = false; // For monitoring/data path
-let smsSentBin1 = false; // For monitoring/bin1 path
 let criticalNotificationSent = false;
 let warningNotificationSent = false; // For the automatic threshold check
 
@@ -267,191 +283,16 @@ let firebaseOperationsCount = 0;
 let lastQuotaReset = Date.now();
 const QUOTA_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 
-modem.on('error', error => {
-  console.error('Modem error:', error);
-});
 
-// Function to attempt modem connection with retry
-function connectModem(retryCount = 0) {
-  const maxRetries = 3;
-  const retryDelay = 5000; // 5 seconds
-  
-  console.log(`[MODEM] Attempting to connect to COM12 (attempt ${retryCount + 1}/${maxRetries + 1})...`);
-  
-  modem.open('COM12', options, (error) => {
-    if (error) {
-      console.error(`[MODEM] Error opening port (attempt ${retryCount + 1}):`, error.message);
-      
-      if (retryCount < maxRetries) {
-        console.log(`[MODEM] Retrying in ${retryDelay/1000} seconds...`);
-        setTimeout(() => {
-          connectModem(retryCount + 1);
-        }, retryDelay);
-        return;
-      }
-      
-      console.log('⚠️  Modem not connected after all retries, but real-time monitoring will still work');
-      console.log('💡 Troubleshooting tips:');
-      console.log('   1. Make sure no other application is using COM12');
-      console.log('   2. Try running the server as Administrator');
-      console.log('   3. Check if the USB-SERIAL CH340 driver is properly installed');
-      console.log('   4. Unplug and reconnect the USB device');
-      
-      // Record the error in bin history
-      BinHistoryProcessor.processError('bin1', `Error opening port after ${maxRetries + 1} attempts: ${error.message}`, {
-        weight: 0,
-        distance: 0,
-        binLevel: 0,
-        gps: { lat: 0, lng: 0 },
-        gpsValid: false,
-        satellites: 0
-      }).then(result => {
-        if (result.success) {
-          console.log(`[BIN HISTORY] Recorded modem error: Status=${result.status}`);
-        }
-      }).catch(err => {
-        console.error('[BIN HISTORY] Failed to record modem error:', err);
-      });
-      
-      // Setup real-time monitoring even without modem
-      setupRealTimeMonitoring();
-      return;
-    }
-    
-    console.log('✅ [MODEM] Successfully connected to COM12');
-  });
-}
 
-// Start modem connection - moved to after server startup
-
-// Periodic modem status check (every 30 seconds)
-setInterval(() => {
-  if (modem) {
-    console.log('[MODEM STATUS CHECK]', {
-      timestamp: new Date().toISOString(),
-      isOpen: modem.isOpen,
-      port: modem.port,
-      initialized: modem.initialized,
-      customInitialized: modemInitialized
-    });
-  } else {
-    console.log('[MODEM STATUS CHECK] Modem object not initialized');
-  }
-}, 30000);
-
-modem.on('open', data => {
-  console.log('[SERIAL MONITOR] Port opened successfully');
-  console.log('[SERIAL MONITOR] Modem status:', modem.isOpen ? 'OPEN' : 'CLOSED');
-  console.log('[SERIAL MONITOR] Modem port:', modem.port);
-  console.log('[SERIAL MONITOR] Modem details:', {
-    isOpen: modem.isOpen,
-    port: modem.port,
-    initialized: modem.initialized
-  });
-  
-  modem.initializeModem((result) => {
-    if (!result || result.status !== 'success') {
-      console.error('[SERIAL MONITOR] Error initializing modem:', result);
-      modemInitialized = false;
-      return;
-    }
-    console.log('[SERIAL MONITOR] Modem is initialized:', result);
-    console.log('[SERIAL MONITOR] Modem ready for SMS sending');
-    console.log('[SERIAL MONITOR] Final modem status check:', {
-      isOpen: modem.isOpen,
-      port: modem.port,
-      initialized: modem.initialized
-    });
-    
-    // Set our custom initialization flag
-    modemInitialized = true;
-    console.log('[SERIAL MONITOR] ✅ Custom modem initialization flag set to true');
-    
-    // Real-time data monitoring for both data paths
-    setupRealTimeMonitoring();
-  });
-});
 
 // Real-time data monitoring function
 function setupRealTimeMonitoring() {
   console.log('🔍 Setting up real-time data monitoring...');
   
-  // Monitor monitoring/data (original path)
-  dataRef.on('value', async (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      console.log('\n === REAL-TIME DATA UPDATE (monitoring/data) ===');
-      console.log(`Timestamp: ${new Date().toLocaleString()}`);
-      console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
-      console.log(` Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
-      console.log(` Bin Level: ${data.bin_level || 0}%`);
-      console.log(` GPS: ${data.latitude || 'N/A'}, ${data.longitude || 'N/A'}`);
-      console.log(` Satellites: ${data.satellites || 0}`);
-      console.log(` Last Active: ${data.last_active || 'Unknown'}`);
-      console.log(` GPS Time: ${data.gps_timestamp || 'N/A'}`);
-      console.log('==========================================\n');
-       
-      // Apply GPS fallback logic for monitoring/data
-      try {
-                  const processedGPSData = await gpsFallbackService.processGPSData('data', {
-                    latitude: data.latitude,
-                    longitude: data.longitude,
-                    satellites: data.satellites || 0,
-                    last_active: data.last_active,
-                    gps_timestamp: data.gps_timestamp,
-                    timestamp: Date.now()
-                  });
-        
-        console.log(`[GPS FALLBACK] Data source: ${processedGPSData.coordinates_source}`);
-        if (processedGPSData.coordinates_source === 'gps_fallback') {
-          console.log(`[GPS FALLBACK] Using fallback coordinates: ${processedGPSData.latitude}, ${processedGPSData.longitude}`);
-        }
-      } catch (gpsError) {
-        console.error('[GPS FALLBACK] Error processing GPS data:', gpsError);
-      }
-      
-      // SMS alert logic for monitoring/data - AUTOMATIC SMS when bin exceeds 85%
-      if (data.bin_level >= 85 && !smsSentData) {
-        console.log(`🚨 S1BIN3 ALERT: Level ${data.bin_level}% exceeds 85% threshold!`);
-        console.log('📱 Sending automatic SMS notification...');
-        
-        const smsMessage = `🚨 SMARTBIN ALERT 🚨\n\nBin S1Bin3 is at ${data.bin_level}% capacity!\nLocation: Central Plaza\nTime: ${new Date().toLocaleString()}\n\nPlease empty the bin immediately.`;
-        
-        try {
-          await sendSMS('+639309096606', smsMessage);
-          smsSentData = true;
-          console.log('✅ AUTOMATIC SMS sent successfully for S1Bin3');
-        } catch (smsError) {
-          console.error('❌ FAILED to send automatic SMS for S1Bin3:', smsError);
-          // Reset flag to retry on next data update
-          smsSentData = false;
-        }
-      } else if (data.bin_level < 85) {
-        smsSentData = false; // Reset flag if bin level drops below threshold
-        console.log(`📊 S1Bin3 level ${data.bin_level}% is below 85% threshold - SMS flag reset`);
-      }
-
-      // Notification logic for monitoring/data
-      try {
-        if (data.bin_level >= 85 && !criticalNotificationSent) {
-          console.log('🚨 Sending critical bin notification...');
-          await sendCriticalBinNotification('S1Bin3', data.bin_level, 'Central Plaza');
-          criticalNotificationSent = true;
-          warningNotificationSent = false; // Reset warning flag
-        } else if (data.bin_level >= 70 && data.bin_level < 85 && !warningNotificationSent) {
-          console.log('⚠️ Sending warning bin notification...');
-          await sendWarningBinNotification('S1Bin3', data.bin_level, 'Central Plaza');
-          warningNotificationSent = true;
-        } else if (data.bin_level < 70) {
-          // Reset flags when bin level drops below warning threshold
-          criticalNotificationSent = false;
-          warningNotificationSent = false;
-        }
-      } catch (notifyErr) {
-        console.error('Failed to send bin notification for monitoring/data:', notifyErr);
-      }
-    }
-  });
+  // Monitor monitoring/data (original path) - DISABLED to prevent duplicate task creation
+  // The monitoring/bin1 listener handles all automatic task creation and notifications
+  console.log('🔍 monitoring/data listener disabled to prevent duplicate task creation');
   
   // Monitor monitoring/bin1 (new path)
   bin1Ref.on('value', async (snapshot) => {
@@ -480,7 +321,7 @@ function setupRealTimeMonitoring() {
           timestamp: Date.now()
         });
 
-        // Only process if bin level is significant to reduce Firebase calls
+        // Process bin history for significant levels to reduce Firebase calls
         if (data.bin_level >= 70 || data.bin_level <= 10) {
           const historyResult = await BinHistoryProcessor.processExistingMonitoringData({
             weight: data.weight_percent || 0,
@@ -498,78 +339,58 @@ function setupRealTimeMonitoring() {
           
           if (historyResult.success) {
             console.log(`[BIN HISTORY] Recorded monitoring data for bin1: Status=${historyResult.status}`);
-            
-            // Only check notifications for critical levels to reduce Firebase calls
-            if (data.bin_level >= 85) {
-              try {
-                // 1. Create automatic task assignment FIRST
-                const taskResult = await automaticTaskService.createAutomaticTask({
-                  binId: 'bin1',
-                  binLevel: data.bin_level || 0,
-                  binLocation: 'Central Plaza',
-                  timestamp: new Date()
-                });
-
-                if (taskResult.success) {
-                  console.log(`[AUTOMATIC TASK] ✅ ${taskResult.message}`);
-                } else {
-                  console.log(`[AUTOMATIC TASK] ❌ ${taskResult.message} - ${taskResult.reason || taskResult.error}`);
-                }
-
-                // 2. Then send notifications
-                const notificationResult = await binNotificationController.checkBinAndNotify({
-                  binId: 'bin1',
-                  binLevel: data.bin_level || 0,
-                  status: historyResult.status,
-                  gps: {
-                    lat: data.latitude || 0,
-                    lng: data.longitude || 0
-                  },
-                  timestamp: new Date(),
-                  weight: data.weight_percent || 0,
-                  distance: data.height_percent || 0,
-                  gpsValid: data.gps_valid || false,
-                  satellites: data.satellites || 0,
-                  errorMessage: null
-                });
-                
-                if (notificationResult.notificationSent) {
-                  console.log(`[BIN NOTIFICATION] Sent notification to janitor: ${notificationResult.type}`);
-                }
-              } catch (notifyErr) {
-                console.error('[BIN NOTIFICATION] Error sending notification:', notifyErr);
-              }
-            }
           } else {
             console.error('[BIN HISTORY] Failed to record monitoring data:', historyResult.error);
           }
         } else {
           console.log(`[BIN HISTORY] Skipping database write for normal bin level: ${data.bin_level}%`);
         }
+
+        // Check for automatic task creation and notifications for critical levels (separate from bin history processing)
+        if (data.bin_level >= 85) {
+          try {
+            // 1. Create automatic task assignment FIRST
+            const taskResult = await automaticTaskService.createAutomaticTask({
+              binId: 'bin1',
+              binLevel: data.bin_level || 0,
+              binLocation: 'Central Plaza',
+              timestamp: new Date()
+            });
+
+            if (taskResult.success) {
+              console.log(`[AUTOMATIC TASK] ✅ ${taskResult.message}`);
+            } else {
+              console.log(`[AUTOMATIC TASK] ❌ ${taskResult.message} - ${taskResult.reason || taskResult.error}`);
+            }
+
+            // 2. Then send notifications
+            const notificationResult = await binNotificationController.checkBinAndNotify({
+              binId: 'bin1',
+              binLevel: data.bin_level || 0,
+              status: data.bin_level >= 90 ? 'critical' : 'warning',
+              gps: {
+                lat: data.latitude || 0,
+                lng: data.longitude || 0
+              },
+              timestamp: new Date(),
+              weight: data.weight_percent || 0,
+              distance: data.height_percent || 0,
+              gpsValid: data.gps_valid || false,
+              satellites: data.satellites || 0,
+              errorMessage: null
+            });
+            
+            if (notificationResult.notificationSent) {
+              console.log(`[BIN NOTIFICATION] Sent notification to janitor: ${notificationResult.type}`);
+            }
+          } catch (notifyErr) {
+            console.error('[BIN NOTIFICATION] Error sending notification:', notifyErr);
+          }
+        }
       } catch (historyErr) {
         console.error('[BIN HISTORY] Error processing monitoring data:', historyErr);
       }
       
-      // SMS alert logic for bin1 - AUTOMATIC SMS when bin exceeds 85%
-      if (data.bin_level >= 85 && !smsSentBin1) {
-        console.log(`🚨 BIN1 ALERT: Level ${data.bin_level}% exceeds 85% threshold!`);
-        console.log('📱 Sending automatic SMS notification...');
-        
-        const smsMessage = `🚨 SMARTBIN ALERT 🚨\n\nBin1 is at ${data.bin_level}% capacity!\nLocation: Central Plaza\nTime: ${new Date().toLocaleString()}\n\nPlease empty the bin immediately.`;
-        
-        try {
-          await sendSMS('+639309096606', smsMessage);
-          smsSentBin1 = true;
-          console.log('✅ AUTOMATIC SMS sent successfully for bin1');
-        } catch (smsError) {
-          console.error('❌ FAILED to send automatic SMS for bin1:', smsError);
-          // Reset flag to retry on next data update
-          smsSentBin1 = false;
-        }
-      } else if (data.bin_level < 85) {
-        smsSentBin1 = false; // Reset flag if bin level drops below threshold
-        console.log(`📊 Bin1 level ${data.bin_level}% is below 85% threshold - SMS flag reset`);
-      }
 
       // Notification logic for monitoring/bin1
       try {
@@ -675,6 +496,216 @@ app.get('/api/test/automatic-task/status', async (req, res) => {
   }
 });
 
+// Get SMS notification service status
+app.get('/api/test/sms-service/status', async (req, res) => {
+  try {
+    const status = smsNotificationService.getHealthStatus();
+    res.json({
+      success: true,
+      service: 'SMS Notification Service',
+      status: status
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// SMS health check endpoint
+app.get('/api/sms/health', async (req, res) => {
+  try {
+    const healthCheck = await smsNotificationService.performHealthCheck();
+    res.json({
+      success: true,
+      health: healthCheck,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// SMS statistics endpoint
+app.get('/api/sms/stats', async (req, res) => {
+  try {
+    const healthStatus = smsNotificationService.getHealthStatus();
+    res.json({
+      success: true,
+      statistics: {
+        totalSmsSent: healthStatus.totalSmsSent,
+        totalSmsFailed: healthStatus.totalSmsFailed,
+        successRate: healthStatus.totalSmsSent + healthStatus.totalSmsFailed > 0 
+          ? (healthStatus.totalSmsSent / (healthStatus.totalSmsSent + healthStatus.totalSmsFailed) * 100).toFixed(2) + '%'
+          : 'N/A',
+        consecutiveFailures: healthStatus.consecutiveFailures,
+        isHealthy: healthStatus.isHealthy,
+        lastHealthCheck: healthStatus.lastHealthCheck,
+        lastError: healthStatus.lastError
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Database health check endpoint
+app.get('/api/database/health', async (req, res) => {
+  try {
+    const { rtdb } = require('./models/firebase');
+    
+    if (!rtdb) {
+      return res.json({
+        success: false,
+        database: 'Realtime Database not initialized',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Test database connection
+    const testRef = rtdb.ref('.info/connected');
+    const snapshot = await testRef.once('value');
+    
+    res.json({
+      success: true,
+      database: {
+        type: 'Firebase Realtime Database',
+        connected: snapshot.val(),
+        healthy: true
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      database: {
+        type: 'Firebase Realtime Database',
+        healthy: false,
+        error: error.message
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get GSM service status
+app.get('/api/test/gsm-service/status', async (req, res) => {
+  try {
+    const status = gsmService.getStatus();
+    res.json({
+      success: true,
+      service: 'GSM Service',
+      status: status
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Test GSM connection
+app.get('/api/test/gsm-connection', async (req, res) => {
+  try {
+    const result = await gsmService.testConnection();
+    res.json({
+      success: true,
+      message: 'GSM connection test completed',
+      result: result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Test SMS notification endpoint
+app.post('/api/test/sms-send', async (req, res) => {
+  try {
+    const { janitorId, taskData } = req.body;
+    
+    if (!janitorId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Janitor ID is required'
+      });
+    }
+
+    const defaultTaskData = {
+      binName: 'Test Bin',
+      binLocation: 'Test Location',
+      binLevel: 85,
+      weight: 50,
+      height: 75,
+      coordinates: { latitude: 10.2105, longitude: 123.7583 },
+      taskNotes: 'This is a test SMS notification',
+      assignedBy: 'Test Staff'
+    };
+
+    const result = await smsNotificationService.sendManualTaskSMS(
+      taskData || defaultTaskData, 
+      janitorId
+    );
+
+    res.json({
+      success: true,
+      message: 'SMS test completed',
+      result: result
+    });
+
+  } catch (error) {
+    console.error('[SMS TEST] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Direct SMS test endpoint (bypasses janitor lookup)
+app.post('/api/test/sms-direct', async (req, res) => {
+  try {
+    const { phoneNumber, message } = req.body;
+    
+    if (!phoneNumber || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number and message are required'
+      });
+    }
+
+    console.log(`[SMS DIRECT TEST] Sending SMS to ${phoneNumber}`);
+    
+    const result = await gsmService.sendSMSWithFallback(phoneNumber, message);
+
+    res.json({
+      success: true,
+      message: 'Direct SMS test completed',
+      result: result
+    });
+
+  } catch (error) {
+    console.error('[SMS DIRECT TEST] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // bin1 endpoint moved to binRoutes.js
 
 // Helper function to determine bin status
@@ -767,146 +798,9 @@ app.get('/api/status', async (req, res) => {
   }
 });
 
-app.post('/api/send-sms', async (req, res) => {
-  try {
-    console.log('[SERVER] Manual SMS request received!');
-    const snapshot = await dataRef.once('value');
-    const data = snapshot.val();
-    const binName = data.bin_name || 'SmartBin';
-    const msg = `Alert: ${binName}\nWeight: ${data.weight_percent || 0}%\nHeight: ${data.height_percent || 0}%\nBin Level: ${data.bin_level || 0}%`;
-    const phoneNumber = req.body.phoneNumber || '+639309096606';
-    await sendSMS(phoneNumber, msg);
-    res.json({ status: 'success', message: 'SMS sent.' });
-  } catch (err) {
-    console.error('[SERVER] Error sending manual SMS:', err);
-    res.status(500).json({ error: 'Failed to send SMS', details: err.message });
-  }
-});
 
-// Test SMS endpoint
-app.post('/api/test-sms', async (req, res) => {
-  try {
-    const { phoneNumber, message } = req.body;
-    const testPhoneNumber = phoneNumber || '+639309096606';
-    const testMessage = message || 'Test SMS from SmartBin System';
-    
-    console.log(`[TEST SMS] Sending test SMS to ${testPhoneNumber}`);
-    console.log(`[TEST SMS] Message: ${testMessage}`);
-    
-    await sendSMS(testPhoneNumber, testMessage);
-    
-    res.json({ 
-      status: 'success', 
-      message: 'Test SMS sent successfully',
-      phoneNumber: testPhoneNumber,
-      message: testMessage
-    });
-  } catch (err) {
-    console.error('[TEST SMS] Error sending test SMS:', err);
-    res.status(500).json({ 
-      error: 'Failed to send test SMS', 
-      details: err.message,
-      modemStatus: modem ? (modem.isOpen ? 'connected' : 'disconnected') : 'not initialized'
-    });
-  }
-});
 
-// Force SMS alert for testing
-app.post('/api/force-sms-alert', async (req, res) => {
-  try {
-    const { binId, binLevel } = req.body;
-    const phoneNumber = '+639309096606';
-    const level = binLevel || 90;
-    const bin = binId || 'Bin1';
-    
-    const smsMessage = `🚨 SMARTBIN ALERT 🚨\n\n${bin} is at ${level}% capacity!\nLocation: Central Plaza\nTime: ${new Date().toLocaleString()}\n\nPlease empty the bin immediately.`;
-    
-    console.log(`[FORCE SMS] Sending forced SMS alert for ${bin} at ${level}%`);
-    
-    await sendSMS(phoneNumber, smsMessage);
-    
-    res.json({ 
-      status: 'success', 
-      message: 'Forced SMS alert sent successfully',
-      binId: bin,
-      binLevel: level,
-      phoneNumber: phoneNumber
-    });
-  } catch (err) {
-    console.error('[FORCE SMS] Error sending forced SMS alert:', err);
-    res.status(500).json({ 
-      error: 'Failed to send forced SMS alert', 
-      details: err.message
-    });
-  }
-});
 
-// Track modem initialization status
-let modemInitialized = false;
-
-// SMS configuration status
-app.get('/api/sms-status', (req, res) => {
-  // Enhanced GSM status with more detailed information
-  let modemStatus = 'not initialized';
-  let modemDetails = {};
-  
-  if (modem) {
-    modemDetails = {
-      isOpen: modem.isOpen,
-      port: modem.port || 'COM12',
-      baudRate: options.baudRate,
-      initialized: modem.initialized || false,
-      customInitialized: modemInitialized
-    };
-    
-    // Check multiple conditions for connection status
-    if (modemInitialized || (modem.isOpen && modem.initialized)) {
-      modemStatus = 'connected';
-    } else if (modem.isOpen || modem.port) {
-      modemStatus = 'disconnected';
-    } else {
-      modemStatus = 'not initialized';
-    }
-  }
-  
-  res.json({
-    phoneNumber: '+639309096606',
-    threshold: '85%',
-    modemStatus: modemStatus,
-    modemDetails: modemDetails,
-    smsFlags: {
-      smsSentData: smsSentData,
-      smsSentBin1: smsSentBin1
-    },
-    autoSmsEnabled: true,
-    message: 'SMS notifications will be sent automatically when bin level exceeds 85%',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Debug endpoint to test GSM modem connection
-app.get('/api/gsm-debug', (req, res) => {
-  const debugInfo = {
-    timestamp: new Date().toISOString(),
-    modem: {
-      exists: !!modem,
-      isOpen: modem ? modem.isOpen : false,
-      port: modem ? modem.port : null,
-      initialized: modem ? modem.initialized : false
-    },
-    options: options,
-    connectionAttempts: 'Check server logs for connection attempts',
-    recommendations: [
-      '1. Check if COM12 is available in Device Manager',
-      '2. Ensure no other application is using COM12',
-      '3. Try running server as Administrator',
-      '4. Check USB-SERIAL CH340 driver installation',
-      '5. Unplug and reconnect the GSM modem'
-    ]
-  };
-  
-  res.json(debugInfo);
-});
 
 // Firebase quota status
 app.get('/api/quota-status', (req, res) => {
@@ -986,12 +880,17 @@ app.listen(PORT, '0.0.0.0', async () => {
   // Start bin health monitoring system
   console.log('[SERVER] Starting bin health monitoring system...');
   binHealthMonitor.start();
-
-
+  
+  // Initialize GPS fallback service
+  await gpsFallbackService.initialize();
+  console.log('✅ GPS fallback service initialized');
+  
+  // Initialize SMS notification service
+  await smsNotificationService.initialize();
+  console.log('✅ SMS notification service initialized');
+  
+  // Start real-time monitoring
+  setupRealTimeMonitoring();
+  console.log('✅ Real-time monitoring started');
 });
 
-// Move modem initialization to after server startup
-// Start modem connection after server is running
-setTimeout(() => {
-  connectModem();
-}, 1000); // Wait 1 second after server starts

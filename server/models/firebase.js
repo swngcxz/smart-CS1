@@ -32,11 +32,12 @@ if (!admin.apps.length) {
   }
 }
 
-let db = null, bucket = null;
+let db = null, bucket = null, rtdb = null;
 
 if (admin.apps.length > 0) {
   db = admin.firestore();
   bucket = admin.storage().bucket();
+  rtdb = admin.database();
   console.log('✅ Firebase services ready');
 } else {
   console.error('❌ Firebase services not available - app not initialized');
@@ -45,5 +46,6 @@ if (admin.apps.length > 0) {
 module.exports = {
   db,
   bucket,
+  rtdb,
   admin
 };

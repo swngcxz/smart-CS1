@@ -6,6 +6,8 @@ class AutomaticTaskService {
   constructor() {
     this.createdTasks = new Set(); // Track created tasks to avoid duplicates
     this.thresholdCrossed = new Map(); // Track when bin crosses 85% threshold
+    this.lastTaskCreation = new Map(); // Track last task creation time per bin
+    this.MIN_CREATION_INTERVAL = 30000; // 30 seconds minimum between task creations
   }
 
   /**
@@ -53,12 +55,12 @@ class AutomaticTaskService {
       return { success: false, reason: 'Task already created', message: 'Duplicate suppressed (memory)' };
     }
 
-    // Additional check: Look for existing pending tasks for this bin
+    // Check for existing pending or in-progress tasks for this bin in the database
     try {
       // Get all recent activity logs and filter in-memory to avoid Firestore index issues
       const allLogsSnapshot = await db.collection('activitylogs')
         .orderBy('created_at', 'desc')
-        .limit(50) // Get recent logs
+        .limit(100) // Get more recent logs
         .get();
       
       const recentLogs = allLogsSnapshot.docs.map(doc => ({
@@ -66,22 +68,35 @@ class AutomaticTaskService {
         ...doc.data()
       }));
       
-      // Filter for pending automatic tasks for this bin in the last 30 minutes
+      // Filter for pending or in-progress automatic tasks for this bin
       const existingTasks = recentLogs.filter(log => 
         log.bin_id === binId &&
-        log.status === 'pending' &&
-        log.source === 'automatic_monitoring' &&
-        new Date(log.created_at) > new Date(Date.now() - 30 * 60 * 1000)
+        (log.status === 'pending' || log.status === 'in_progress') &&
+        log.source === 'automatic_monitoring'
       );
       
       if (existingTasks.length > 0) {
-        console.log(`[AUTOMATIC TASK] Found ${existingTasks.length} existing pending tasks for ${binId}, skipping creation`);
-        console.log(`[AUTOMATIC TASK] Existing tasks:`, existingTasks.map(t => ({ id: t.id, created_at: t.created_at })));
-        return { success: false, reason: 'Pending task already exists' };
+        console.log(`[AUTOMATIC TASK] Found ${existingTasks.length} existing tasks for ${binId}, skipping creation`);
+        console.log(`[AUTOMATIC TASK] Existing tasks:`, existingTasks.map(t => ({ 
+          id: t.id, 
+          status: t.status, 
+          created_at: t.created_at 
+        })));
+        return { success: false, reason: 'Task already exists (pending or in-progress)' };
       }
     } catch (checkError) {
       console.log(`[AUTOMATIC TASK] Could not check existing tasks: ${checkError.message}`);
     }
+
+    // Check time-based duplicate prevention
+    const now = Date.now();
+    const lastCreation = this.lastTaskCreation.get(binId);
+    if (lastCreation && (now - lastCreation) < this.MIN_CREATION_INTERVAL) {
+      console.log(`[AUTOMATIC TASK] Skipping task creation for ${binId} - too soon (${Math.round((now - lastCreation) / 1000)}s ago)`);
+      return { success: false, reason: 'Too soon since last creation', message: 'Rate limited' };
+    }
+
+    console.log(`[AUTOMATIC TASK] No existing tasks found for ${binId} - creating new task at ${binLevel}%`);
 
     try {
       // Determine priority based on bin level
@@ -111,38 +126,14 @@ class AutomaticTaskService {
         acceptance_deadline: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 minutes to accept
       };
 
-      // Save to activity logs collection using idempotent document id
-      // Use Firestore create() so it fails if document already exists
-      const docRefId = taskKey;
-      try {
-        const docRef = db.collection('activitylogs').doc(docRefId);
-        const existing = await docRef.get();
-        if (existing.exists) {
-          this.createdTasks.add(taskKey);
-          console.log(`[AUTOMATIC TASK] Found existing doc ${docRefId}, skipping create`);
-          return { success: false, reason: 'Task already exists', message: 'Duplicate suppressed (pre-exists)' };
-        }
-        await docRef.create(taskData);
-      } catch (e) {
-        if (e.code === 6 || e.message?.includes('ALREADY_EXISTS')) { // already exists
-          this.createdTasks.add(taskKey);
-          console.log(`[AUTOMATIC TASK] Skipped creating duplicate task doc ${docRefId}`);
-          return { success: false, reason: 'Task already exists', message: 'Duplicate suppressed (firestore)' };
-        }
-        throw e;
-      }
-      
-      // Mark task as created
-      this.createdTasks.add(taskKey);
-      
-      // Clean up old task keys (keep only last 100)
-      if (this.createdTasks.size > 100) {
-        const keysArray = Array.from(this.createdTasks);
-        this.createdTasks.clear();
-        keysArray.slice(-50).forEach(key => this.createdTasks.add(key));
-      }
+      // Save to activity logs collection
+      const docRef = await db.collection('activitylogs').add(taskData);
+      const docRefId = docRef.id;
 
       console.log(`[AUTOMATIC TASK] ✅ Created task ${docRefId} for ${binId} at ${binLevel}%`);
+      
+      // Update last creation time
+      this.lastTaskCreation.set(binId, now);
       
       // Send built-in notification
       await this.sendTaskCreatedNotification({
@@ -254,6 +245,7 @@ class AutomaticTaskService {
   }
 
   /**
+<<<<<<< HEAD
    * Get available tasks for janitor acceptance
    * @returns {Promise<Array>} Available tasks
    */
@@ -278,6 +270,22 @@ class AutomaticTaskService {
       console.error('[AUTOMATIC TASK] Error getting available tasks:', error);
       return [];
     }
+  }
+
+  /**
+   * Reset all tracking for a specific bin (useful when tasks are deleted)
+   * @param {string} binId - Bin ID to reset
+   */
+  resetAllTracking(binId) {
+    // Reset threshold flag
+    const thresholdKey = `${binId}_threshold_crossed`;
+    this.thresholdCrossed.delete(thresholdKey);
+    
+    // Reset memory-based task tracking for this bin
+    const keysToDelete = Array.from(this.createdTasks).filter(key => key.startsWith(`${binId}_`));
+    keysToDelete.forEach(key => this.createdTasks.delete(key));
+    
+    console.log(`[AUTOMATIC TASK] Reset all tracking for ${binId} - removed ${keysToDelete.length} memory entries`);
   }
 
   /**

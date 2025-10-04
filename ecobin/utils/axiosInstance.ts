@@ -20,7 +20,7 @@ const FALLBACK_URLS = {
 // You can switch these as needed for web, mobile, or local
 export const BASE_URLS = {
   web: API_FALLBACK_LOCALHOST || FALLBACK_URLS.web, // Web deployment - localhost for local development
-  mobile: API_BASE_URL || FALLBACK_URLS.mobile, // Mobile (Expo/React Native) - use actual IP for device access
+  mobile: 'http://192.168.1.13:8000', // Mobile (Expo/React Native) - use actual IP for device access
   local: API_FALLBACK_LOCALHOST || FALLBACK_URLS.local, // Local development
   android_emulator: API_FALLBACK_ANDROID_EMULATOR || FALLBACK_URLS.android_emulator, // Android emulator host
 };

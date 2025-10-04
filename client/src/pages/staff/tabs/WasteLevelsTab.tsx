@@ -244,7 +244,6 @@ export function WasteLevelsTab() {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const { wasteBins, loading, error, bin1Data } = useRealTimeData();
-  const { gsmStatus, gsmLoading, gsmError } = useGSMStatus();
 
   // Debug logging
   console.log("🔍 WasteLevelsTab Debug:", {
@@ -539,45 +538,6 @@ export function WasteLevelsTab() {
 
           {/* Status Indicators */}
           <div className="flex items-center gap-4 text-sm">
-            {/* GSM Connection Status */}
-            <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-full ${
-                gsmLoading
-                  ? "bg-yellow-100 text-yellow-800"
-                  : gsmError
-                  ? "bg-red-100 text-red-800"
-                  : gsmStatus.modemStatus === "connected"
-                  ? "bg-green-100 text-green-800"
-                  : gsmStatus.modemStatus === "disconnected"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              <div
-                className={`w-2 h-2 rounded-full ${
-                  gsmLoading
-                    ? "bg-yellow-500 animate-pulse"
-                    : gsmError
-                    ? "bg-red-500"
-                    : gsmStatus.modemStatus === "connected"
-                    ? "bg-green-500 animate-pulse"
-                    : gsmStatus.modemStatus === "disconnected"
-                    ? "bg-red-500"
-                    : "bg-gray-500"
-                }`}
-              ></div>
-              <span className="text-xs font-medium">
-                {gsmLoading
-                  ? "GSM Loading..."
-                  : gsmError
-                  ? "GSM Error"
-                  : gsmStatus.modemStatus === "connected"
-                  ? "GSM Connected"
-                  : gsmStatus.modemStatus === "disconnected"
-                  ? "GSM Disconnected"
-                  : "GSM Unknown"}
-              </span>
-            </div>
 
             {/* Live Data Status */}
             <div
