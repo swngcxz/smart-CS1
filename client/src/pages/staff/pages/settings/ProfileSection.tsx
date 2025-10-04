@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Pencil, Camera, Save, X } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useUserInfo } from "@/hooks/useUserInfo";
 
 export const ProfileSection = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const { user } = useCurrentUser();
+  const { userInfo, updateProfileFields, updateUserInfo, getProfileImageUrl } = useUserInfo();
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -20,20 +22,75 @@ export const ProfileSection = () => {
     website: "",
   });
   const [imageUrl, setImageUrl] = useState<string>("");
+  const [saving, setSaving] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleEdit = (field: string) => setIsEditing(field);
-  const handleSave = (field: string, value: string) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
-    setIsEditing(null);
+  const handleSave = async (field: string, value: string) => {
+    setSaving(field);
+    try {
+      // Map field names to API field names
+      const apiFieldMap: { [key: string]: string } = {
+        location: 'location',
+        bio: 'bio',
+        website: 'website'
+      };
+      
+      const apiField = apiFieldMap[field];
+      if (apiField) {
+        // Update userInfo fields (bio, website, location)
+        const result = await updateProfileFields({
+          [apiField]: value
+        });
+        
+        if (result.success) {
+          setProfile((prev) => ({ ...prev, [field]: value }));
+          setIsEditing(null);
+        } else {
+          console.error('Failed to save:', result.error);
+          alert('Failed to save changes. Please try again.');
+        }
+      } else {
+        // For other fields (name, email, phone), update local state only
+        // You might want to add API calls for these fields later
+        setProfile((prev) => ({ ...prev, [field]: value }));
+        setIsEditing(null);
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      alert('Failed to save changes. Please try again.');
+    } finally {
+      setSaving(null);
+    }
   };
   const handleCancel = () => setIsEditing(null);
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Show preview immediately
       const reader = new FileReader();
       reader.onloadend = () => setImageUrl(reader.result as string);
       reader.readAsDataURL(file);
+      
+      // Upload to server
+      try {
+        setSaving('profileImage');
+        const formData = new FormData();
+        formData.append('profileImage', file);
+        
+        const result = await updateUserInfo(formData);
+        if (result.success) {
+          console.log('Profile image uploaded successfully');
+        } else {
+          console.error('Failed to upload image:', result.error);
+          alert('Failed to upload image. Please try again.');
+        }
+      } catch (error) {
+        console.error('Image upload error:', error);
+        alert('Failed to upload image. Please try again.');
+      } finally {
+        setSaving(null);
+      }
     }
   };
   const triggerFileSelect = () => fileInputRef.current?.click();
@@ -44,12 +101,19 @@ export const ProfileSection = () => {
       name: user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" "),
       email: user.email || "",
       phone: user.phone || "",
-      bio: "",
-      location: user.address || "",
-      website: "",
+      bio: userInfo?.bio || "",
+      location: userInfo?.address || user.address || "",
+      website: userInfo?.website || "",
     });
-    setImageUrl(user.avatarUrl || "");
-  }, [user]);
+    
+    // Set image URL from userInfo or user avatar
+    if (userInfo?.profileImagePath) {
+      const profileImageUrl = getProfileImageUrl();
+      setImageUrl(profileImageUrl || "");
+    } else {
+      setImageUrl(user.avatarUrl || "");
+    }
+  }, [user, userInfo, getProfileImageUrl]);
 
   const EditableField = ({
     field,
@@ -69,10 +133,19 @@ export const ProfileSection = () => {
         {isEditing === field ? (
           <div className="flex items-center gap-2">
             <Input type={type} value={tempValue} onChange={(e) => setTempValue(e.target.value)} className="flex-1" />
-            <Button size="sm" onClick={() => handleSave(field, tempValue)} className="bg-green-600 hover:bg-green-700">
-              <Save className="w-4 h-4" />
+            <Button 
+              size="sm" 
+              onClick={() => handleSave(field, tempValue)} 
+              className="bg-green-600 hover:bg-green-700"
+              disabled={saving === field}
+            >
+              {saving === field ? (
+                <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
             </Button>
-            <Button size="sm" variant="outline" onClick={handleCancel}>
+            <Button size="sm" variant="outline" onClick={handleCancel} disabled={saving === field}>
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -113,8 +186,13 @@ export const ProfileSection = () => {
                 onClick={triggerFileSelect}
                 size="sm"
                 className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0 bg-blue-600 hover:bg-blue-700"
+                disabled={saving === 'profileImage'}
               >
-                <Camera className="w-4 h-4" />
+                {saving === 'profileImage' ? (
+                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <Camera className="w-4 h-4" />
+                )}
               </Button>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </div>

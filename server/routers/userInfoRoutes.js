@@ -9,6 +9,9 @@ router.get('/userinfo', userInfoController.getUserInfo);
 // Update user info (with file upload)
 router.put('/userinfo', userInfoController.updateUserInfo);
 
+// Update profile fields only (no file upload)
+router.patch('/userinfo/profile-fields', userInfoController.updateProfileFields);
+
 // Delete profile image
 router.delete('/userinfo/profile-image', userInfoController.deleteProfileImage);
 

@@ -78,7 +78,9 @@ const updateUserInfo = async (req, res) => {
       
       try {
         const updateData = {
-          address: req.body.address || '',
+          address: req.body.address || req.body.location || '', // Handle both 'address' and 'location' fields
+          bio: req.body.bio || '',
+          website: req.body.website || '',
           updatedAt: new Date().toISOString()
         };
         
@@ -134,6 +136,48 @@ const updateUserInfo = async (req, res) => {
     
   } catch (error) {
     console.error('[USER INFO] Error in updateUserInfo:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Update profile fields only (no file upload)
+const updateProfileFields = async (req, res) => {
+  try {
+    const userEmail = getUserIdFromToken(req);
+    
+    // Find user by email to get user ID
+    const snapshot = await withRetry(() => 
+      db.collection('users').where('email', '==', userEmail).get()
+    );
+    
+    if (snapshot.empty) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userDoc = snapshot.docs[0];
+    const userId = userDoc.id;
+    
+    const updateData = {
+      address: req.body.address || req.body.location || '', // Handle both 'address' and 'location' fields
+      bio: req.body.bio || '',
+      website: req.body.website || '',
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Upsert user info
+    await UserInfoModel.upsertUserInfo(userId, updateData);
+    
+    // Get updated user info
+    const updatedUserInfo = await UserInfoModel.getUserInfo(userId);
+    
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      userInfo: updatedUserInfo
+    });
+    
+  } catch (error) {
+    console.error('[USER INFO] Error updating profile fields:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -214,6 +258,7 @@ const serveProfileImage = async (req, res) => {
 module.exports = {
   getUserInfo,
   updateUserInfo,
+  updateProfileFields,
   deleteProfileImage,
   serveProfileImage
 };

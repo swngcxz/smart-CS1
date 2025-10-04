@@ -7,11 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Pencil, Camera, Save, X, Mail, Github, Facebook, Loader2 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useUserInfo } from "@/hooks/useUserInfo";
 import api from "@/lib/api";
 
 export const ProfileSection = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const { user, refreshUser } = useCurrentUser();
+  const { userInfo, updateProfileFields, updateUserInfo, getProfileImageUrl } = useUserInfo();
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -21,6 +23,7 @@ export const ProfileSection = () => {
     website: "",
   });
   const [imageUrl, setImageUrl] = useState<string>("");
+  const [saving, setSaving] = useState<string | null>(null);
   const [connectedAccounts, setConnectedAccounts] = useState({
     google: { connected: false, email: null, name: null, picture: null },
     github: { connected: false, username: null, name: null, avatar: null },
@@ -33,37 +36,56 @@ export const ProfileSection = () => {
   const handleEdit = (field: string) => setIsEditing(field);
   
   const handleSave = async (field: string, value: string) => {
+    setSaving(field);
     try {
-      setLoading(true);
+      // Map field names to determine which API to use
+      const userInfoFields = ['bio', 'website', 'location'];
+      const userFields = ['name', 'phone', 'email'];
       
-      // Prepare the update data - map frontend field names to backend field names
-      const fieldMapping: { [key: string]: string } = {
-        name: 'fullName',
-        phone: 'phone',
-        location: 'address',
-        bio: 'bio',
-        website: 'website'
-      };
-      
-      const backendField = fieldMapping[field] || field;
-      const updateData = { [backendField]: value };
-      
-      // Call the backend API to update the user profile
-      const response = await api.patch('/auth/me', updateData);
-      
-      if (response.data.message) {
-        // Update local state immediately for better UX
-        setProfile((prev) => ({ ...prev, [field]: value }));
-        setIsEditing(null);
+      if (userInfoFields.includes(field)) {
+        // Update userInfo fields (bio, website, location)
+        const apiFieldMap: { [key: string]: string } = {
+          location: 'location',
+          bio: 'bio',
+          website: 'website'
+        };
         
-        // Refresh user data from backend to get the latest information
-        await refreshUser();
+        const apiField = apiFieldMap[field];
+        if (apiField) {
+          const result = await updateProfileFields({
+            [apiField]: value
+          });
+          
+          if (result.success) {
+            setProfile((prev) => ({ ...prev, [field]: value }));
+            setIsEditing(null);
+            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+            setTimeout(() => setMessage(null), 3000);
+          } else {
+            setMessage({ type: 'error', text: result.error || 'Failed to update profile' });
+            setTimeout(() => setMessage(null), 5000);
+          }
+        }
+      } else if (userFields.includes(field)) {
+        // Update user table fields (name, phone, email)
+        const fieldMapping: { [key: string]: string } = {
+          name: 'fullName',
+          phone: 'phone',
+          email: 'email'
+        };
         
-        // Show success message
-        setMessage({ type: 'success', text: 'Profile updated successfully!' });
+        const backendField = fieldMapping[field] || field;
+        const updateData = { [backendField]: value };
         
-        // Clear message after 3 seconds
-        setTimeout(() => setMessage(null), 3000);
+        const response = await api.patch('/auth/me', updateData);
+        
+        if (response.data.message) {
+          setProfile((prev) => ({ ...prev, [field]: value }));
+          setIsEditing(null);
+          await refreshUser();
+          setMessage({ type: 'success', text: 'Profile updated successfully!' });
+          setTimeout(() => setMessage(null), 3000);
+        }
       }
     } catch (error: any) {
       console.error('Error updating profile:', error);
@@ -71,11 +93,9 @@ export const ProfileSection = () => {
         type: 'error', 
         text: error.response?.data?.error || 'Failed to update profile. Please try again.' 
       });
-      
-      // Clear error message after 5 seconds
       setTimeout(() => setMessage(null), 5000);
     } finally {
-      setLoading(false);
+      setSaving(null);
     }
   };
   
@@ -86,34 +106,32 @@ export const ProfileSection = () => {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // For now, we'll convert the file to a data URL and save it as avatarUrl
-      // In a production app, you'd upload this to a cloud storage service
+      // Show preview immediately
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const dataUrl = reader.result as string;
-        setImageUrl(dataUrl);
-        
-        try {
-          setLoading(true);
-          const response = await api.patch('/auth/me', { avatarUrl: dataUrl });
-          
-          if (response.data.message) {
-            await refreshUser();
-            setMessage({ type: 'success', text: 'Profile picture updated successfully!' });
-            setTimeout(() => setMessage(null), 3000);
-          }
-        } catch (error: any) {
-          console.error('Error updating profile picture:', error);
-          setMessage({ 
-            type: 'error', 
-            text: 'Failed to update profile picture. Please try again.' 
-          });
-          setTimeout(() => setMessage(null), 5000);
-        } finally {
-          setLoading(false);
-        }
-      };
+      reader.onloadend = () => setImageUrl(reader.result as string);
       reader.readAsDataURL(file);
+      
+      // Upload to server using userInfo API
+      try {
+        setSaving('profileImage');
+        const formData = new FormData();
+        formData.append('profileImage', file);
+        
+        const result = await updateUserInfo(formData);
+        if (result.success) {
+          setMessage({ type: 'success', text: 'Profile picture updated successfully!' });
+          setTimeout(() => setMessage(null), 3000);
+        } else {
+          setMessage({ type: 'error', text: result.error || 'Failed to update profile picture' });
+          setTimeout(() => setMessage(null), 5000);
+        }
+      } catch (error: any) {
+        console.error('Image upload error:', error);
+        setMessage({ type: 'error', text: 'Failed to update profile picture. Please try again.' });
+        setTimeout(() => setMessage(null), 5000);
+      } finally {
+        setSaving(null);
+      }
     }
   };
   const triggerFileSelect = () => fileInputRef.current?.click();
@@ -173,11 +191,18 @@ export const ProfileSection = () => {
       name: user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" "),
       email: user.email || "",
       phone: user.phone || "",
-      bio: user.bio || "",
-      location: user.address || "",
-      website: user.website || "",
+      bio: userInfo?.bio || user.bio || "",
+      location: userInfo?.address || user.address || "",
+      website: userInfo?.website || user.website || "",
     });
-    setImageUrl(user.avatarUrl || "");
+    
+    // Set image URL from userInfo or user avatar
+    if (userInfo?.profileImagePath) {
+      const profileImageUrl = getProfileImageUrl();
+      setImageUrl(profileImageUrl || "");
+    } else {
+      setImageUrl(user.avatarUrl || "");
+    }
     
     // Fetch connected accounts
     fetchConnectedAccounts();
@@ -204,7 +229,7 @@ export const ProfileSection = () => {
     if (linked || error) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [user]);
+  }, [user, userInfo, getProfileImageUrl]);
 
   // Dynamic connected accounts data
   const accountsData = [
@@ -260,7 +285,7 @@ export const ProfileSection = () => {
                 onChange={(e) => setTempValue(e.target.value)} 
                 className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 resize-none"
                 rows={3}
-                disabled={loading}
+                disabled={saving === field}
                 placeholder="Tell us about yourself..."
               />
             ) : (
@@ -269,7 +294,7 @@ export const ProfileSection = () => {
                 value={tempValue} 
                 onChange={(e) => setTempValue(e.target.value)} 
                 className="flex-1"
-                disabled={loading}
+                disabled={saving === field}
               />
             )}
             <div className="flex items-center gap-2">
@@ -277,9 +302,9 @@ export const ProfileSection = () => {
                 size="sm" 
                 onClick={() => handleSave(field, tempValue)} 
                 className="bg-green-600 hover:bg-green-700"
-                disabled={loading}
+                disabled={saving === field}
               >
-                {loading ? (
+                {saving === field ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Save className="w-4 h-4" />
@@ -289,7 +314,7 @@ export const ProfileSection = () => {
                 size="sm" 
                 variant="outline" 
                 onClick={handleCancel}
-                disabled={loading}
+                disabled={saving === field}
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -313,7 +338,7 @@ export const ProfileSection = () => {
               variant="ghost"
               onClick={() => handleEdit(field)}
               className="opacity-60 hover:opacity-100 transition-opacity mt-1"
-              disabled={loading}
+              disabled={saving === field}
             >
               <Pencil className="w-4 h-4" />
             </Button>
@@ -363,9 +388,9 @@ export const ProfileSection = () => {
                 onClick={triggerFileSelect}
                 size="sm"
                 className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 p-0 bg-blue-600 hover:bg-blue-700"
-                disabled={loading}
+                disabled={saving === 'profileImage'}
               >
-                {loading ? (
+                {saving === 'profileImage' ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Camera className="w-4 h-4" />
