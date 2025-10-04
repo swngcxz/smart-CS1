@@ -4,41 +4,87 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { useAccount } from "@/hooks/useAccount";
+import { useUserInfo } from "@/hooks/useUserInfo";
 import axiosInstance from "@/utils/axiosInstance";
-import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from "react-native";
 
 export default function EditProfileScreen() {
   const router = useRouter();
 
   const { account, loading: accountLoading, error: accountError } = useAccount();
+  const { userInfo, loading: userInfoLoading, updateUserInfo, getProfileImageUrl, setUserInfo, fetchUserInfo } = useUserInfo();
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (account) {
       setName(account.fullName || "");
       setEmail(account.email || "");
-      setAddress(account.address || "");
-      setPhone(account.phone || "");
+      // Handle both phone and contactNumber fields for compatibility
+      setPhone(account.phone || (account as any).contactNumber || "");
     }
   }, [account]);
 
+  useEffect(() => {
+    if (userInfo) {
+      setAddress(userInfo.address || "");
+      // Set profile image from userInfo if available
+      if (userInfo.profileImagePath) {
+        setProfileImage(getProfileImageUrl());
+      }
+    }
+  }, [userInfo, getProfileImageUrl]);
+
   const handleSave = async () => {
+    setIsSaving(true);
     try {
-      // PATCH user info (assumes /auth/me supports PATCH)
-      await axiosInstance.patch('/auth/me', {
-        fullName: name,
-        email,
-        address,
-        phone,
-      });
-      Alert.alert("Success", "Profile updated successfully.");
-      router.replace("/(tabs)/settings");
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Add address to form data
+      formData.append('address', address);
+      
+      // Add profile image if selected
+      if (profileImage && profileImage.startsWith('file://')) {
+        // This is a local file from image picker
+        formData.append('profileImage', {
+          uri: profileImage,
+          type: 'image/jpeg',
+          name: 'profile.jpg',
+        } as any);
+      }
+      
+      // Update userInfo (address and profile image)
+      const userInfoResult = await updateUserInfo(formData);
+      
+      if (userInfoResult.success) {
+        // Also update basic user info (name, phone) via auth endpoint
+        try {
+          await axiosInstance.patch('/auth/me', {
+            fullName: name,
+            phone,
+          });
+        } catch (authErr) {
+          console.warn('Failed to update auth info:', authErr);
+          // Don't fail the whole operation if auth update fails
+        }
+        
+        Alert.alert("Success", "Profile updated successfully.");
+        // Refresh userInfo to get the latest data
+        await fetchUserInfo();
+        router.replace("/(tabs)/settings");
+      } else {
+        Alert.alert("Error", userInfoResult.error || 'Failed to update profile');
+      }
     } catch (err: any) {
-      Alert.alert("Error", err.response?.data?.error || 'Failed to update profile');
+      console.error('Save error:', err);
+      Alert.alert("Error", err.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -103,8 +149,19 @@ export default function EditProfileScreen() {
         <Text style={styles.label}>Address</Text>
         <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Enter your address" />
 
-        <TouchableOpacity style={styles.button} onPress={handleSave}>
-          <Text style={styles.buttonText}>Save Changes</Text>
+        <TouchableOpacity 
+          style={[styles.button, isSaving && styles.buttonDisabled]} 
+          onPress={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#fff" />
+              <Text style={styles.buttonText}>Saving...</Text>
+            </View>
+          ) : (
+            <Text style={styles.buttonText}>Save Changes</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -190,5 +247,13 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
+  },
+  buttonDisabled: {
+    backgroundColor: "#a0a0a0",
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

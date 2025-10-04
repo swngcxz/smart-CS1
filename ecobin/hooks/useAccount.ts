@@ -8,6 +8,7 @@ export interface AccountData {
   role: string;
   address?: string;
   phone?: string;
+  contactNumber?: string; // Fallback field name
 }
 
 export function useAccount() {

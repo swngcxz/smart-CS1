@@ -15,12 +15,17 @@ const updateCurrentUser = async (req, res) => {
     const userDoc = snapshot.docs[0];
     const updates = {};
     const allowedFields = [
-      'fullName','firstName','lastName','address','phone','avatarUrl','bio','website','timezone','fcmToken','status'
+      'fullName','firstName','lastName','address','phone','contactNumber','avatarUrl','bio','website','timezone','fcmToken','status'
     ];
     for (const key of allowedFields) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
         updates[key] = req.body[key];
       }
+    }
+    
+    // Handle phone field mapping - if phone is provided, also update contactNumber
+    if (Object.prototype.hasOwnProperty.call(req.body, 'phone')) {
+      updates.contactNumber = req.body.phone;
     }
     updates.updatedAt = new Date().toISOString();
     await withRetry(() => userDoc.ref.update(updates));
@@ -66,7 +71,7 @@ const getCurrentUser = async (req, res) => {
       email: user.email,
       role: user.role || user.acc_type || 'user',
       address: user.address || '',
-      phone: user.phone || '',
+      phone: user.phone || user.contactNumber || '', // Map contactNumber to phone for compatibility
       bio: user.bio || '',
       website: user.website || '',
       status: user.status || 'active',

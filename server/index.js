@@ -31,6 +31,7 @@ const feedbackRoutes = require('./routers/feedbackRoutes');
 const performanceRoutes = require('./routers/performanceRoutes');
 const binHealthRoutes = require('./routers/binHealthRoutes');
 const gpsBackupRoutes = require('./routers/gpsBackupRoutes');
+const userInfoRoutes = require('./routers/userInfoRoutes');
 const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
 const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
@@ -121,6 +122,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/bin-health', binHealthRoutes);
 app.use('/api/gps-backup', gpsBackupRoutes);
+app.use('/api', userInfoRoutes);
 
 app.use(errorHandler);
 

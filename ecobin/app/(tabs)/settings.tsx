@@ -4,8 +4,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React from "react";
 import { useState } from "react";
+import { useFocusEffect } from '@react-navigation/native';
 import { useAccount } from "@/hooks/useAccount";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserInfo } from "@/hooks/useUserInfo";
 import { Alert, Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
 export default function SettingsScreen() {
@@ -14,6 +16,15 @@ export default function SettingsScreen() {
   const [faceIDEnabled, setFaceIDEnabled] = useState(false);
   const router = useRouter();
   const { account, loading: accountLoading, error: accountError } = useAccount();
+  const { userInfo, getProfileImageUrl, fetchUserInfo } = useUserInfo();
+
+  // Refresh userInfo when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('👤 Settings screen focused, refreshing user info...');
+      fetchUserInfo();
+    }, [fetchUserInfo])
+  );
 
   const { logout } = useAuth();
   const handleLogout = () => {
@@ -46,7 +57,14 @@ export default function SettingsScreen() {
       {/* Profile Header */}
       <View style={styles.profileContainer}>
       <View style={styles.profileHeader}>
-        <Image source={{ uri: "https://i.pravatar.cc/100?u=" + (account?.email || 'user') }} style={styles.avatar} />
+        <Image 
+          source={
+            userInfo?.profileImagePath 
+              ? { uri: getProfileImageUrl() || undefined }
+              : { uri: "https://i.pravatar.cc/100?u=" + (account?.email || 'user') }
+          } 
+          style={styles.avatar} 
+        />
         <View>
           {accountLoading ? (
             <Text style={[styles.name, { color: textColor }]}>Loading...</Text>
