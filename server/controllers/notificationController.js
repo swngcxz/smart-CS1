@@ -322,3 +322,70 @@ exports.getNotificationRateLimitStats = async (req, res) => {
     });
   }
 };
+
+// Send automatic task notification to all janitors (for integration with automaticTaskService)
+exports.sendAutomaticTaskNotification = async (taskData) => {
+  try {
+    const { taskId, binId, binLevel, binLocation, priority } = taskData;
+    
+    // Get all janitor users
+    const notificationModel = require('../models/notificationModel');
+    const fcmService = require('../services/fcmService');
+    
+    const janitorUsers = await notificationModel.getUsersByRoles(['janitor', 'staff']);
+    
+    if (janitorUsers.length === 0) {
+      console.log('[AUTOMATIC TASK NOTIFICATION] No janitor users found');
+      return { success: false, message: 'No janitors found' };
+    }
+
+    const priorityEmoji = priority === 'urgent' ? '🔴' : priority === 'high' ? '🟠' : '🟡';
+    const title = `🚨 Automatic Task Created`;
+    const message = `Bin ${binId} at ${binLocation} is ${binLevel}% full and needs immediate attention! Priority: ${priorityEmoji} ${priority}`;
+
+    const notificationPayload = {
+      binId: binId,
+      type: 'automatic_task_created',
+      title: title,
+      message: message,
+      status: 'PENDING_ASSIGNMENT',
+      binLevel: binLevel,
+      binLocation: binLocation,
+      priority: priority,
+      taskId: taskId,
+      timestamp: new Date(),
+      read: false,
+      source: 'automatic_monitoring'
+    };
+
+    // Send to all janitors
+    const notificationPromises = janitorUsers.map(janitor => {
+      const fcmPromise = janitor.fcmToken ? 
+        fcmService.sendToUser(janitor.fcmToken, notificationPayload).catch(err => 
+          console.error(`[AUTOMATIC TASK NOTIFICATION] FCM failed for ${janitor.id}:`, err)
+        ) : Promise.resolve();
+
+      const inAppPromise = notificationModel.createNotification({
+        ...notificationPayload,
+        janitorId: janitor.id
+      }).catch(err => 
+        console.error(`[AUTOMATIC TASK NOTIFICATION] In-app notification failed for ${janitor.id}:`, err)
+      );
+
+      return Promise.all([fcmPromise, inAppPromise]);
+    });
+
+    await Promise.all(notificationPromises);
+    
+    console.log(`[AUTOMATIC TASK NOTIFICATION] ✅ Sent notifications to ${janitorUsers.length} janitors`);
+    return { 
+      success: true, 
+      message: `Sent automatic task notifications to ${janitorUsers.length} janitors`,
+      recipientCount: janitorUsers.length
+    };
+    
+  } catch (error) {
+    console.error('[AUTOMATIC TASK NOTIFICATION] Error:', error);
+    return { success: false, error: error.message };
+  }
+};

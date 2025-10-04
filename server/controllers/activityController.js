@@ -18,7 +18,8 @@ const getAssignedActivityLogs = async (req, res, next) => {
 
 const { db } = require("../models/firebase");
 const notificationModel = require('../models/notificationModel');
-const { db: realtimeDb } = require("../models/firebase");
+const { admin } = require("../models/firebase");
+const realtimeDb = admin.database();
 
 // Helper function to create notifications in Realtime Database
 const createRealtimeNotification = async (userId, notificationData) => {
@@ -30,7 +31,14 @@ const createRealtimeNotification = async (userId, notificationData) => {
       createdAt: new Date().toISOString()
     };
     
-    await realtimeDb.ref(`notifications/${userId}`).push(notification);
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Realtime Database timeout')), 3000)
+    );
+    
+    const notificationPromise = realtimeDb.ref(`notifications/${userId}`).push(notification);
+    
+    await Promise.race([notificationPromise, timeoutPromise]);
     console.log(`[REALTIME NOTIFICATION] Created notification for user ${userId}: ${notification.title}`);
     return true;
   } catch (error) {
@@ -200,9 +208,18 @@ const assignTaskAtomically = async (req, res, next) => {
       });
     }
     
+    // Mark notifications as read for the accepting janitor
+    try {
+      await markNotificationsAsReadForTask(assigned_janitor_id, result.data.bin_id, activityId);
+    } catch (markErr) {
+      console.error('[TASK ASSIGNMENT] Failed to mark notifications as read:', markErr);
+      // Don't fail the main operation if marking fails
+    }
+
     // Send notification to staff when janitor accepts task
     try {
-      await sendTaskAcceptanceNotification({
+      // Add timeout to prevent hanging
+      const notificationPromise = sendTaskAcceptanceNotification({
         activityId: activityId,
         binId: result.data.bin_id,
         binLocation: result.data.bin_location,
@@ -213,6 +230,13 @@ const assignTaskAtomically = async (req, res, next) => {
         priority: result.data.priority || 'medium',
         timestamp: new Date()
       });
+      
+      // Wait for notification with timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Notification timeout')), 5000)
+      );
+      
+      await Promise.race([notificationPromise, timeoutPromise]);
     } catch (notifyErr) {
       console.error('[TASK ASSIGNMENT] Failed to send task acceptance notification:', notifyErr);
       // Don't fail the main operation if notification fails
@@ -299,6 +323,23 @@ const saveActivityLog = async (req, res, next) => {
         });
       } catch (notifyErr) {
         console.error('[ACTIVITY LOG] Failed to send janitor assignment notification:', notifyErr);
+        // Don't fail the main operation if notification fails
+      }
+    } else {
+      // If no assigned janitor, create notifications for all janitors (task available for acceptance)
+      try {
+        await sendTaskAvailableNotification({
+          binId: bin_id,
+          binLocation: bin_location,
+          binLevel: bin_level,
+          taskNote: task_note,
+          activityType: activity_type,
+          priority: data.priority,
+          activityId: activityRef.id,
+          timestamp: now
+        });
+      } catch (notifyErr) {
+        console.error('[ACTIVITY LOG] Failed to send task available notification:', notifyErr);
         // Don't fail the main operation if notification fails
       }
     }
@@ -1037,6 +1078,8 @@ const sendTaskAcceptanceNotification = async (notificationData) => {
     // Get all staff users to notify them about task acceptance
     const staffUsers = await notificationModel.getUsersByRoles(['staff', 'admin', 'supervisor']);
     
+    console.log(`[TASK ACCEPTANCE] Found ${staffUsers.length} staff users:`, staffUsers.map(u => ({ id: u.id, email: u.email, role: u.role })));
+    
     if (staffUsers.length === 0) {
       console.log('[TASK ACCEPTANCE] No staff users found to notify.');
       return false;
@@ -1060,19 +1103,141 @@ const sendTaskAcceptanceNotification = async (notificationData) => {
       read: false
     };
 
-    // Send notification to all staff users
-    const notificationPromises = staffUsers.map(staff =>
-      createRealtimeNotification(staff.id, notificationPayload).catch(err =>
-        console.error(`[TASK ACCEPTANCE] Failed to create notification for ${staff.email}:`, err)
-      )
-    );
+    // Send notification to all staff users using Realtime Database (like the rest of the system)
+    const notificationPromises = staffUsers.map(async (staff) => {
+      try {
+        // Create notification in Realtime Database (same as other notifications)
+        await createRealtimeNotification(staff.id, notificationPayload);
+        console.log(`[TASK ACCEPTANCE] Created Realtime Database notification for staff ${staff.email}`);
+        return true;
+      } catch (err) {
+        console.error(`[TASK ACCEPTANCE] Failed to create notification for ${staff.email}:`, err);
+        return false;
+      }
+    });
 
-    await Promise.all(notificationPromises);
-    console.log(`[TASK ACCEPTANCE] Sent task acceptance notification to ${staffUsers.length} staff members.`);
-    return true;
+    const results = await Promise.all(notificationPromises);
+    const successCount = results.filter(r => r === true).length;
+    console.log(`[TASK ACCEPTANCE] Sent task acceptance notification to ${successCount}/${staffUsers.length} staff members.`);
+    return successCount > 0;
   } catch (error) {
     console.error('[TASK ACCEPTANCE] Error sending task acceptance notification:', error);
     return false;
+  }
+};
+
+// Helper function to mark notifications as read when a task is accepted
+const markNotificationsAsReadForTask = async (janitorId, binId, activityId) => {
+  try {
+    console.log(`[MARK NOTIFICATIONS AS READ] Marking notifications as read for janitor ${janitorId}, bin ${binId}, activity ${activityId}`);
+    
+    // Find and mark notifications as read for this specific task
+    const notificationsSnapshot = await db.collection('notifications')
+      .where('janitorId', '==', janitorId)
+      .where('binId', '==', binId)
+      .where('read', '==', false)
+      .get();
+    
+    if (notificationsSnapshot.empty) {
+      console.log(`[MARK NOTIFICATIONS AS READ] No unread notifications found for janitor ${janitorId} and bin ${binId}`);
+      return;
+    }
+    
+    // Mark all matching notifications as read
+    const batch = db.batch();
+    notificationsSnapshot.docs.forEach(doc => {
+      batch.update(doc.ref, {
+        read: true,
+        read_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    });
+    
+    await batch.commit();
+    
+    console.log(`[MARK NOTIFICATIONS AS READ] ✅ Marked ${notificationsSnapshot.docs.length} notifications as read for janitor ${janitorId}`);
+    
+  } catch (error) {
+    console.error('[MARK NOTIFICATIONS AS READ] Error marking notifications as read:', error);
+    throw error;
+  }
+};
+
+// Helper function to send task available notifications to all janitors
+const sendTaskAvailableNotification = async (notificationData) => {
+  try {
+    const {
+      binId,
+      binLocation,
+      binLevel,
+      taskNote,
+      activityType,
+      priority,
+      activityId,
+      timestamp
+    } = notificationData;
+
+    // Get all janitor users to notify them about the available task
+    const janitorUsers = await notificationModel.getUsersByRoles(['janitor', 'staff']);
+    
+    if (janitorUsers.length === 0) {
+      console.log('[TASK AVAILABLE NOTIFICATION] No janitor users found to notify');
+      return;
+    }
+
+    const priorityEmoji = priority === 'high' ? '🔴' : priority === 'medium' ? '🟡' : '🟢';
+    const binLevelText = binLevel ? ` (${binLevel}% full)` : '';
+    const locationText = binLocation ? ` at ${binLocation}` : '';
+    
+    const title = '🚮 Bin Needs Collection';
+    const message = `Bin ${binId}${locationText}${binLevelText} needs collection. Please accept this task.\n📝 ${taskNote}\n\nPriority: ${priorityEmoji} ${priority}\n\n⚠️ Click to accept this task!`;
+
+    const notificationPayload = {
+      binId: binId,
+      type: 'bin_full',
+      title: title,
+      message: message,
+      status: 'AVAILABLE_FOR_ACCEPTANCE',
+      binLevel: binLevel,
+      gps: { lat: 0, lng: 0 }, // Default GPS, can be updated with actual location
+      timestamp: timestamp || new Date(),
+      activityId: activityId,
+      priority: priority,
+      availableForAcceptance: true
+    };
+
+    // Send notifications to all janitors
+    const notificationPromises = janitorUsers.map(janitor => {
+      // Send push notification if FCM token exists
+      const fcmPromise = janitor.fcmToken ? 
+        fcmService.sendToUser(janitor.fcmToken, notificationPayload).catch(err => 
+          console.error(`[TASK AVAILABLE NOTIFICATION] FCM failed for ${janitor.id}:`, err)
+        ) : Promise.resolve();
+
+      // Create in-app notification record
+      const inAppPromise = notificationModel.createNotification({
+        ...notificationPayload,
+        janitorId: janitor.id
+      }).catch(err => 
+        console.error(`[TASK AVAILABLE NOTIFICATION] In-app notification failed for ${janitor.id}:`, err)
+      );
+
+      return Promise.all([fcmPromise, inAppPromise]);
+    });
+
+    await Promise.all(notificationPromises);
+    
+    console.log(`[TASK AVAILABLE NOTIFICATION] ✅ Sent task available notifications to ${janitorUsers.length} janitors`);
+    console.log(`🔔 TASK AVAILABLE NOTIFICATIONS:`);
+    console.log(`   Activity ID: ${activityId}`);
+    console.log(`   Bin: ${binId} at ${binLocation}`);
+    console.log(`   Level: ${binLevel}% (Priority: ${priority})`);
+    console.log(`   Time: ${new Date().toLocaleString()}`);
+    console.log(`   Recipients: ${janitorUsers.length} janitors`);
+    
+  } catch (error) {
+    console.error('[TASK AVAILABLE NOTIFICATION] Error sending task available notifications:', error);
+    throw error;
   }
 };
 
@@ -1206,6 +1371,8 @@ module.exports = {
   assignTaskAtomically,
   getActivityStatsSimple,
   getLoginHistory,
+  markNotificationsAsReadForTask,
+  sendTaskAvailableNotification,
   sendJanitorAssignmentNotification,
   sendBinCollectionNotification,
   sendActivityCompletedNotification,

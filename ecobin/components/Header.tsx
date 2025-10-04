@@ -2,6 +2,9 @@ import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from "react-native";
+import { useNotificationBadge } from "@/hooks/useNotificationBadge";
+import { useAccount } from "@/hooks/useAccount";
+
 interface HeaderProps {
   showIcons?: boolean;
   style?: ViewStyle;
@@ -9,6 +12,8 @@ interface HeaderProps {
 
 const Header = ({ showIcons = true, style }: HeaderProps) => {
   const router = useRouter();
+  const { account } = useAccount();
+  const { badgeData } = useNotificationBadge(account?.id);
 
   return (
     <View style={[styles.headerContainer, style]}>
@@ -20,8 +25,15 @@ const Header = ({ showIcons = true, style }: HeaderProps) => {
       {/* Icons (right-aligned) */}
       {showIcons && (
         <View style={styles.iconContainer}>
-          <TouchableOpacity onPress={() => router.push("/screens/notification")}>
+          <TouchableOpacity onPress={() => router.push("/screens/notification")} style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#000" />
+            {badgeData.hasNotifications && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {badgeData.unreadCount > 99 ? '99+' : badgeData.unreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push("/(tabs)/settings")}>
@@ -60,6 +72,28 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#000",
+  },
+  notificationButton: {
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: "#FF4444",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
 

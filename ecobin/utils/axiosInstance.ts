@@ -4,8 +4,9 @@ import axios from 'axios';
 // You can switch these as needed for web, mobile, or local
 export const BASE_URLS = {
   web: 'http://localhost:8000', // Web deployment - localhost for local development
-  mobile: 'http://192.168.1.4:8000', // Mobile (Expo/React Native) - use actual IP for device access
+  mobile: 'http://192.168.254.114:8000', // Mobile (Expo/React Native) - use actual IP for device access
   local: 'http://localhost:8000', // Local development
+  android_emulator: 'http://10.0.2.2:8000', // Android emulator host
 };
 
 // Default to mobile for now

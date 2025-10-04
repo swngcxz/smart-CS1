@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const binNotificationController = require('../controllers/binNotificationController');
+const { db } = require('../models/firebase');
 
 /**
  * @route POST /api/bin-notifications/check-and-notify
@@ -179,6 +180,52 @@ router.get('/bin-notifications/test', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message
+    });
+  }
+});
+
+/**
+ * @route GET /api/bin-notifications/debug/:janitorId
+ * @desc Debug endpoint to check if janitor exists and has notifications
+ * @access Public (for debugging)
+ */
+router.get('/bin-notifications/debug/:janitorId', async (req, res) => {
+  try {
+    const { janitorId } = req.params;
+    console.log(`[DEBUG] Checking janitor: ${janitorId}`);
+    
+    // Check if user exists in users collection
+    const userSnapshot = await db.collection('users').doc(janitorId).get();
+    const userExists = userSnapshot.exists;
+    
+    // Check if user has any notifications
+    const notificationsSnapshot = await db.collection('notifications')
+      .where('janitorId', '==', janitorId)
+      .limit(5)
+      .get();
+    
+    const notifications = notificationsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    res.status(200).json({
+      success: true,
+      debug: {
+        janitorId,
+        userExists,
+        userData: userExists ? userSnapshot.data() : null,
+        notificationCount: notifications.length,
+        notifications: notifications
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[DEBUG] Error checking janitor:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
     });
   }
 });

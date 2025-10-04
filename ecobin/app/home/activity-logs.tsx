@@ -26,7 +26,7 @@ export default function ActivityLogsScreen() {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch logs from backend
-  const fetchActivityLogs = async () => {
+  const fetchActivityLogs = useCallback(async () => {
     if (!account?.id) {
       setLoading(false);
       return;
@@ -46,23 +46,38 @@ export default function ActivityLogsScreen() {
       
       // Filter activities based on status and assignment
       const filteredActivities = allActivities.filter((activity: any) => {
-        // Show all pending tasks to all janitors (no assigned janitor)
-        if (activity.status === 'pending' && !activity.assigned_janitor_id) {
-          console.log('📱 Mobile App - Including pending task:', activity.id, 'for all janitors');
-          return true;
-        }
+        console.log('📱 Mobile App - Filtering activity:', {
+          id: activity.id,
+          bin_id: activity.bin_id,
+          status: activity.status,
+          assigned_janitor_id: activity.assigned_janitor_id,
+          user_id: account.id
+        });
         
-        // Show in-progress and done tasks only to assigned janitor
+        // Only show tasks that are assigned to this user (in_progress or done)
+        // Exclude all pending tasks from activity logs unless they are accepted by this user
         if ((activity.status === 'in_progress' || activity.status === 'done') && 
             activity.assigned_janitor_id === account.id) {
-          console.log('📱 Mobile App - Including assigned task:', activity.id, 'for user:', account.id);
+          console.log('✅ INCLUDING assigned task:', activity.id, 'for user:', account.id);
           return true;
         }
         
+        // Do not show pending tasks in activity logs - they should only appear in notifications
+        if (activity.status === 'pending') {
+          console.log('❌ HIDING pending task (should only show in notifications):', activity.id);
+          return false;
+        }
+        
+        console.log('❌ HIDING other activity:', activity.id, 'status:', activity.status);
         return false;
       });
       
       console.log('📱 Mobile App - Filtered activities count:', filteredActivities.length);
+      
+      // Additional debug info
+      if (filteredActivities.length === 0 && allActivities.length > 0) {
+        console.log('📱 Mobile App - All activities were filtered out. Original activities:', allActivities.map(a => ({ id: a.id, status: a.status, assigned_janitor_id: a.assigned_janitor_id })));
+      }
       
       // Debug: Log each activity's status fields
       filteredActivities.forEach((activity: any, index: number) => {
@@ -95,7 +110,7 @@ export default function ActivityLogsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [account?.id, account?.email]);
 
   // Fetch specific activity log by ID
   const fetchActivityLogById = async (activityId: string) => {
@@ -113,14 +128,14 @@ export default function ActivityLogsScreen() {
   // Fetch logs from backend on mount
   useEffect(() => {
     fetchActivityLogs();
-  }, [account?.id, account?.email]);
+  }, [fetchActivityLogs]);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       console.log('📱 Mobile App - Activity logs screen focused, refreshing data...');
       fetchActivityLogs();
-    }, [account?.id, account?.email])
+    }, [fetchActivityLogs])
   );
 
   // Map backend fields to UI-expected fields

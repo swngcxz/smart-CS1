@@ -179,10 +179,10 @@ class NotificationModel {
    */
   async getNotificationsForJanitor(janitorId, limit = 50) {
     try {
+      // Use a simpler query without orderBy to avoid index requirements
       const snapshot = await withRetry(() =>
         db.collection(this.collections.notifications)
           .where('janitorId', '==', janitorId)
-          .orderBy('timestamp', 'desc')
           .limit(limit)
           .get()
       );
@@ -193,6 +193,13 @@ class NotificationModel {
           id: doc.id,
           ...doc.data()
         });
+      });
+
+      // Sort in-memory by timestamp descending
+      notifications.sort((a, b) => {
+        const timestampA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+        const timestampB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp);
+        return timestampB - timestampA;
       });
 
       return notifications;
