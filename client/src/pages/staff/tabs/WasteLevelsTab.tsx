@@ -56,185 +56,6 @@ function useGSMStatus() {
   return { gsmStatus, gsmLoading, gsmError };
 }
 
-// Fallback janitorial staff list (will be replaced by backend data)
-const fallbackJanitorialStaff = [
-  { id: "1", fullName: "Janitor Alice", location: "Central Plaza", role: "Janitor" },
-  { id: "2", fullName: "Janitor Bob", location: "Park Avenue", role: "Janitor" },
-  { id: "3", fullName: "Janitor Charlie", location: "Mall District", role: "Janitor" },
-  { id: "4", fullName: "Janitor Daisy", location: "Residential Area", role: "Janitor" },
-  { id: "5", fullName: "Janitor Ethan", location: "Central Plaza", role: "Janitor" },
-];
-// Your waste data with multiple bins in "Central Plaza"
-const detailedWasteData: WasteBin[] = [
-  // Central Plaza
-  {
-    id: "1",
-    location: "Central Plaza",
-    level: 85,
-    status: "critical",
-    lastCollected: "2 hours ago",
-    capacity: "500L",
-    wasteType: "Mixed",
-    nextCollection: "Today 3:00 PM",
-  },
-  {
-    id: "2",
-    location: "Central Plaza",
-    level: 60,
-    status: "warning",
-    lastCollected: "3 hours ago",
-    capacity: "450L",
-    wasteType: "Organic",
-    nextCollection: "Today 4:30 PM",
-  },
-  {
-    id: "3",
-    location: "Central Plaza",
-    level: 90,
-    status: "critical",
-    lastCollected: "1 hour ago",
-    capacity: "600L",
-    wasteType: "Recyclable",
-    nextCollection: "Today 5:30 PM",
-  },
-  {
-    id: "4",
-    location: "Central Plaza",
-    level: 50,
-    status: "normal",
-    lastCollected: "5 hours ago",
-    capacity: "550L",
-    wasteType: "Mixed",
-    nextCollection: "Today 6:00 PM",
-  },
-
-  // Park Avenue
-  {
-    id: "5",
-    location: "Park Avenue",
-    level: 45,
-    status: "normal",
-    lastCollected: "1 day ago",
-    capacity: "300L",
-    wasteType: "Organic",
-    nextCollection: "Tomorrow 9:00 AM",
-  },
-  {
-    id: "6",
-    location: "Park Avenue",
-    level: 75,
-    status: "warning",
-    lastCollected: "3 hours ago",
-    capacity: "350L",
-    wasteType: "Mixed",
-    nextCollection: "Today 7:00 PM",
-  },
-  {
-    id: "7",
-    location: "Park Avenue",
-    level: 90,
-    status: "critical",
-    lastCollected: "2 hours ago",
-    capacity: "500L",
-    wasteType: "Recyclable",
-    nextCollection: "Today 8:00 PM",
-  },
-  {
-    id: "8",
-    location: "Park Avenue",
-    level: 30,
-    status: "normal",
-    lastCollected: "10 hours ago",
-    capacity: "400L",
-    wasteType: "Organic",
-    nextCollection: "Tomorrow 10:00 AM",
-  },
-
-  // Mall District
-  {
-    id: "9",
-    location: "Mall District",
-    level: 70,
-    status: "warning",
-    lastCollected: "4 hours ago",
-    capacity: "750L",
-    wasteType: "Recyclable",
-    nextCollection: "Today 5:00 PM",
-  },
-  {
-    id: "10",
-    location: "Mall District",
-    level: 60,
-    status: "warning",
-    lastCollected: "6 hours ago",
-    capacity: "650L",
-    wasteType: "Mixed",
-    nextCollection: "Today 7:00 PM",
-  },
-  {
-    id: "11",
-    location: "Mall District",
-    level: 95,
-    status: "critical",
-    lastCollected: "1 hour ago",
-    capacity: "800L",
-    wasteType: "Recyclable",
-    nextCollection: "Today 6:30 PM",
-  },
-  {
-    id: "12",
-    location: "Mall District",
-    level: 35,
-    status: "normal",
-    lastCollected: "9 hours ago",
-    capacity: "700L",
-    wasteType: "Organic",
-    nextCollection: "Tomorrow 8:00 AM",
-  },
-
-  // Residential Area
-  {
-    id: "13",
-    location: "Residential Area",
-    level: 30,
-    status: "normal",
-    lastCollected: "6 hours ago",
-    capacity: "400L",
-    wasteType: "Mixed",
-    nextCollection: "Tomorrow 11:00 AM",
-  },
-  {
-    id: "14",
-    location: "Residential Area",
-    level: 55,
-    status: "normal",
-    lastCollected: "7 hours ago",
-    capacity: "350L",
-    wasteType: "Organic",
-    nextCollection: "Tomorrow 1:00 PM",
-  },
-  {
-    id: "15",
-    location: "Residential Area",
-    level: 80,
-    status: "critical",
-    lastCollected: "2 hours ago",
-    capacity: "450L",
-    wasteType: "Recyclable",
-    nextCollection: "Today 9:00 PM",
-  },
-  {
-    id: "16",
-    location: "Residential Area",
-    level: 65,
-    status: "warning",
-    lastCollected: "8 hours ago",
-    capacity: "420L",
-    wasteType: "Mixed",
-    nextCollection: "Tomorrow 3:00 PM",
-  },
-];
-
 export function WasteLevelsTab() {
   const [selectedLocation, setSelectedLocation] = useState("Central Plaza");
   const [selectedBin, setSelectedBin] = useState<WasteBin | null>(null);
@@ -447,60 +268,58 @@ export function WasteLevelsTab() {
     console.log("Modal should open now");
   };
 
- const handleAssignTask = async () => {
-  if (!selectedJanitorId || !selectedBin) {
-    toast({
-      title: "Error",
-      description: "Please select a janitor and ensure bin data is available",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  try {
-    const selectedJanitor = janitors.find((j) => j.id === selectedJanitorId);
-    if (!selectedJanitor) {
+  const handleAssignTask = async () => {
+    if (!selectedJanitorId || !selectedBin) {
       toast({
         title: "Error",
-        description: "Selected janitor not found",
+        description: "Please select a janitor and ensure bin data is available",
         variant: "destructive",
       });
       return;
     }
 
-    await logActivity({
-      user_id: "staff-user",
-      bin_id: selectedBin.id,
-      bin_location: selectedBin.location,
-      bin_status: selectedBin.status,
-      bin_level: selectedBin.level,
-      assigned_janitor_id: selectedJanitorId,
-      assigned_janitor_name: selectedJanitor.fullName,
-      task_note: taskNote,
-      activity_type: "task_assignment",
-    });
+    try {
+      const selectedJanitor = janitors.find((j) => j.id === selectedJanitorId);
+      if (!selectedJanitor) {
+        toast({
+          title: "Error",
+          description: "Selected janitor not found",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    // ✅ Close modal first
-    setIsModalOpen(false);
+      await logActivity({
+        user_id: "staff-user",
+        bin_id: selectedBin.id,
+        bin_location: selectedBin.location,
+        bin_status: selectedBin.status,
+        bin_level: selectedBin.level,
+        assigned_janitor_id: selectedJanitorId,
+        assigned_janitor_name: selectedJanitor.fullName,
+        task_note: taskNote,
+        activity_type: "task_assignment",
+      });
 
-    // ✅ Then show toast
-    toast({
-      title: "Success",
-      description: `Task assigned to ${selectedJanitor.fullName}.`,
-      duration: 2000,
-    });
+      // ✅ Close modal first
+      setIsModalOpen(false);
 
-    window.dispatchEvent(new CustomEvent("activityLogCreated"));
-  } catch (error) {
-    toast({
-      title: "Error",
-      description:
-        error instanceof Error ? error.message : "Failed to assign task",
-      variant: "destructive",
-    });
-  }
-};
+      // ✅ Then show toast
+      toast({
+        title: "Success",
+        description: `Task assigned to ${selectedJanitor.fullName}.`,
+        duration: 2000,
+      });
 
+      window.dispatchEvent(new CustomEvent("activityLogCreated"));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to assign task",
+        variant: "destructive",
+      });
+    }
+  };
 
   const filteredJanitors = selectedBin
     ? janitors.filter((j) => {
@@ -529,7 +348,7 @@ export function WasteLevelsTab() {
     selectedBinLocation: selectedBin?.location,
     filteredJanitors: filteredJanitors.map((j) => ({ name: j.fullName, location: j.location })),
   });
-
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
   return (
     <>
       <div className="space-y-6">
@@ -570,10 +389,11 @@ export function WasteLevelsTab() {
             {/* Data Details */}
             {bin1Data && (
               <div className="text-xs text-gray-600 dark:text-gray-400">
-                | Updated: {(() => {
-                    const date = new Date(bin1Data.timestamp || Date.now());
-                    return isNaN(date.getTime()) ? 'Invalid timestamp' : date.toLocaleTimeString();
-                  })()}
+                | Updated:{" "}
+                {(() => {
+                  const date = new Date(bin1Data.timestamp || Date.now());
+                  return isNaN(date.getTime()) ? "Invalid timestamp" : date.toLocaleTimeString();
+                })()}
               </div>
             )}
           </div>
@@ -607,7 +427,7 @@ export function WasteLevelsTab() {
                             : "bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100"
                         }`}
                       >
-                        {bin.status}
+                        {capitalize(bin.status)}
                       </span>
                     </div>
 
@@ -641,247 +461,197 @@ export function WasteLevelsTab() {
         </Card>
       </div>
 
-{isModalOpen && selectedBin && (
-  <div className="fixed inset-0 w-screen h-screen z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
-    <div className="bg-white dark:bg-gray-900 rounded-md shadow-lg w-full max-w-xl p-6 relative">
-      {/* Modal Header */}
-      <div className="flex justify-between items-center border-b pb-3">
-        <div className="flex items-center gap-3">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-            Bin Information - {selectedBin.location}
-          </h3>
-        </div>
-        <button
-          onClick={() => setIsModalOpen(false)}
-          className="text-gray-500 hover:text-gray-600 text-lg font-bold"
-        >
-          ×
-        </button>
-      </div>
-
-      {/* Bin Info Grid */}
-      <div className="grid grid-cols-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-4 rounded-md border border-gray-200 dark:border-gray-700 mt-4">
-        <div>
-          <strong className="text-base font-semibold text-gray-900 dark:text-white">
-            {selectedBin.location} Bin:
-          </strong>{" "}
-          {selectedBin.id}
-        </div>
-
-        {/* Fill Level with Progress Bar */}
-        <div className="col-span-2">
-          <div className="flex items-center justify-between">
-            <strong className="text-base font-semibold text-gray-900 dark:text-white">
-              Fill Level:
-            </strong>
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                selectedBin.status === "critical"
-                  ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                  : selectedBin.status === "warning"
-                  ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
-                  : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-              }`}
-            >
-              {selectedBin.status.toUpperCase()}
-            </span>
-          </div>
-          <div className="flex items-center justify-between mt-2">
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-              <div
-                className={`h-3 rounded-full ${
-                  selectedBin.level >= 80
-                    ? "bg-red-500"
-                    : selectedBin.level >= 50
-                    ? "bg-yellow-500"
-                    : "bg-green-500"
-                }`}
-                style={{ width: `${selectedBin.level}%` }}
-              ></div>
+      {isModalOpen && selectedBin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm transition-opacity">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-xl p-6 relative transform transition-transform duration-300 scale-100">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Bin Information - {selectedBin.location}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl font-bold transition-colors"
+              >
+                ×
+              </button>
             </div>
-            <span className="ml-2 text-sm font-medium text-gray-600 dark:text-gray-300">
-              {selectedBin.level}%
-            </span>
-          </div>
-        </div>
 
-        {/* Last Collected and GPS */}
-        <div className="mt-2">
-          <strong className="text-base font-semibold text-gray-900 dark:text-white">
-            Last Collected:
-          </strong>{" "}
-          {selectedBin.lastCollected}
-        </div>
-        <div className="mt-2">
-          <strong className="text-base font-semibold text-gray-900 dark:text-white">
-            GPS:
-          </strong>{" "}
-          <span
-            className={`font-semibold ${
-              bin1Data?.gps_valid
-                ? "text-green-700 dark:text-green-400"
-                : "text-red-700 dark:text-red-400"
-            }`}
-          >
-            {bin1Data?.gps_valid ? "Online" : "Offline"}
-          </span>
-        </div>
+            {/* Bin Info Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300">
+              {/* Bin ID */}
+              <div>
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {selectedBin.location.charAt(0).toUpperCase() + selectedBin.location.slice(1)} Bin:
+                </span>{" "}
+                {selectedBin.id}
+              </div>
 
-    {/* Weight and Height */}
-<div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
-  {/* Weight */}
-  <div className="pr-3">
-    <div className="flex justify-between items-center">
-      <span className="text-base font-semibold text-gray-900 dark:text-white">
-        Weight
-      </span>
-      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-        {(bin1Data?.weight_kg ?? 0).toFixed(3)} kg
-      </span>
-    </div>
-    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-      <div
-        className={`h-2 rounded-full ${
-          (bin1Data?.weight_percent ?? 0) >= 90
-            ? "bg-red-500"
-            : (bin1Data?.weight_percent ?? 0) >= 60
-            ? "bg-yellow-500"
-            : "bg-green-500"
-        }`}
-        style={{
-          width: `${Math.max(
-            0,
-            Math.min(100, bin1Data?.weight_percent ?? 0)
-          )}%`,
-        }}
-      ></div>
-    </div>
-  </div>
+              {/* GPS Status */}
+              <div>
+                <span className="font-semibold text-gray-900 dark:text-white">GPS:</span>{" "}
+                <span
+                  className={`font-semibold ${
+                    bin1Data?.gps_valid ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
+                  }`}
+                >
+                  {bin1Data?.gps_valid ? "Online" : "Offline"}
+                </span>
+              </div>
 
-  {/* Height */}
-  <div className="pr-3">
-    <div className="flex justify-between items-center">
-      <span className="text-base font-semibold text-gray-900 dark:text-white">
-        Height
-      </span>
-      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-        {Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%
-      </span>
-    </div>
-    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-      <div
-        className={`h-2 rounded-full ${
-          (bin1Data?.height_percent ?? 0) >= 90
-            ? "bg-red-500"
-            : (bin1Data?.height_percent ?? 0) >= 60
-            ? "bg-yellow-500"
-            : "bg-green-500"
-        }`}
-        style={{
-          width: `${Math.max(
-            0,
-            Math.min(100, bin1Data?.height_percent ?? 0)
-          )}%`,
-        }}
-      ></div>
-    </div>
-  </div>
-</div>
+              {/* Fill Level */}
+              <div className="col-span-2">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-semibold text-gray-900 dark:text-white">Fill Level</span>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      selectedBin.status === "critical"
+                        ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                        : selectedBin.status === "warning"
+                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                        : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                    }`}
+                  >
+                    {selectedBin.status.toUpperCase()}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                  <div
+                    className={`h-3 rounded-full transition-all duration-500 ${
+                      selectedBin.level >= 80
+                        ? "bg-red-500"
+                        : selectedBin.level >= 50
+                        ? "bg-yellow-500"
+                        : "bg-green-500"
+                    }`}
+                    style={{ width: `${selectedBin.level}%` }}
+                  ></div>
+                </div>
+              </div>
 
-      </div>
+              {/* Last Collected */}
+              <div className="mb-1">
+                <span className="font-semibold text-gray-900 dark:text-white">Last Collected:</span>{" "}
+                {selectedBin.lastCollected}
+              </div>
 
-      {/* Suggested Action */}
-      <div className="text-sm text-gray-600 dark:text-gray-400 rounded-md mt-2">
-        <strong className="text-base font-semibold text-gray-900 dark:text-white">
-          Suggested Action:
-        </strong>{" "}
-        {selectedBin.status === "critical"
-          ? "Immediate collection required."
-          : selectedBin.status === "warning"
-          ? "Monitor closely and prepare for collection."
-          : "No action needed at the moment."}
-      </div>
+              {/* Weight & Height */}
+              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-2 p-0 border-0 shadow-none bg-transparent -mt-1">
+                {/* Weight Section */}
+                <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <div className="flex justify-between mb-1">
+                    <span className="font-semibold text-gray-900">Weight</span>
+                    <span className="text-sm font-medium text-gray-700">{(bin1Data?.weight_kg ?? 0).toFixed()} kg</span>
+                  </div>
+                  <div className="w-full bg-gray-200 h-2 rounded-full">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        (bin1Data?.weight_percent ?? 0) >= 90
+                          ? "bg-red-500"
+                          : (bin1Data?.weight_percent ?? 0) >= 60
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }`}
+                      style={{ width: `${Math.max(0, Math.min(100, bin1Data?.weight_percent ?? 0))}%` }}
+                    />
+                  </div>
+                </div>
 
-      {/* Assign Janitor */}
-      <div className="mt-4">
-        <label className="block text-base font-semibold text-gray-900 dark:text-white mb-2">
-          Assign to Janitor ({filteredJanitors.length} available)
-        </label>
-        <Select onValueChange={(val) => setSelectedJanitorId(val)}>
-          <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
-            <SelectValue
-              placeholder={janitorsLoading ? "Loading..." : "Select Janitor"}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {janitorsLoading ? (
-              <SelectItem disabled value="loading">
-                Loading...
-              </SelectItem>
-            ) : filteredJanitors.length > 0 ? (
-              filteredJanitors.map((janitor) => (
-                <SelectItem key={janitor.id} value={janitor.id}>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{janitor.fullName}</span>
-                    <span className="text-xs text-gray-500">
-                      {janitor.location && `${janitor.location}`} • Role:{" "}
-                      {janitor.role || "Janitor"}
+                {/* Height Section */}
+                <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <div className="flex justify-between mb-1">
+                    <span className="font-semibold text-gray-900">Height</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      {Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%
                     </span>
                   </div>
-                </SelectItem>
-              ))
-            ) : (
-              <SelectItem disabled value="none">
-                No janitors available
-              </SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-        {janitorsError && (
-          <p className="text-sm text-red-600 mt-1">
-            Error loading janitors: {janitorsError}
-          </p>
-        )}
-        {!janitorsLoading && filteredJanitors.length === 0 && (
-          <p className="text-sm text-yellow-600 mt-1">
-            No janitors available for {selectedBin?.location}. Consider assigning
-            a general janitor.
-          </p>
-        )}
-      </div>
+                  <div className="w-full bg-gray-200 h-2 rounded-full">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        (bin1Data?.height_percent ?? 0) >= 90
+                          ? "bg-red-500"
+                          : (bin1Data?.height_percent ?? 0) >= 60
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                      }`}
+                      style={{ width: `${Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
 
-      {/* Task Note */}
-      <div className="mt-4">
-        <label className="block text-base font-semibold text-gray-900 dark:text-white mb-2">
-          Task Notes (Optional)
-        </label>
-        <textarea
-          className="w-full h-15 rounded-md border bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-800 dark:text-white p-2"
-          placeholder="e.g, Clean the Bin."
-          value={taskNote}
-          onChange={(e) => setTaskNote(e.target.value)}
-        />
-      </div>
+              {/* Suggested Action */}
+              <div className="col-span-2 mt-3 text-sm text-gray-700 dark:text-gray-300 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <span className="font-semibold text-gray-900 dark:text-white">Suggested Action:</span>{" "}
+                {selectedBin.status === "critical"
+                  ? "Immediate collection required."
+                  : selectedBin.status === "warning"
+                  ? "Monitor closely and prepare for collection."
+                  : "No action needed at the moment."}
+              </div>
+            </div>
 
-      {/* Buttons */}
-      <div className="flex justify-end gap-2 mt-4">
-        <Button
-          onClick={handleAssignTask}
-          disabled={activityLoading || !selectedJanitorId}
-          className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-        >
-          {activityLoading ? "Assigning..." : "Assign Task"}
-        </Button>
-      </div>
+            {/* Assign & Task Notes */}
+            <div className="mt-4 space-y-4">
+              {/* Assign Janitor */}
+              <div>
+                <label className="block font-semibold text-gray-900 dark:text-white mb-2">
+                  Assign to Janitor ({filteredJanitors.length} available)
+                </label>
+                <Select onValueChange={(val) => setSelectedJanitorId(val)}>
+                  <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
+                    <SelectValue placeholder={janitorsLoading ? "Loading..." : "Select Janitor"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {janitorsLoading ? (
+                      <SelectItem disabled value="loading">
+                        Loading...
+                      </SelectItem>
+                    ) : filteredJanitors.length > 0 ? (
+                      filteredJanitors.map((janitor) => (
+                        <SelectItem key={janitor.id} value={janitor.id}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{janitor.fullName}</span>
+                            <span className="text-xs text-gray-500">
+                              {/* {janitor.location} • Role: {janitor.role || "Janitor"} */}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem disabled value="none">
+                        No janitors available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
 
-      {activityError && (
-        <p className="text-sm text-red-600 mt-2">Error: {activityError}</p>
+              {/* Task Notes */}
+              <div>
+                <label className="block font-semibold text-gray-900 dark:text-white mb-2">Task Notes (Optional)</label>
+                <textarea
+                  className="w-full h-16 p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white"
+                  placeholder="e.g., Clean the Bin."
+                  value={taskNote}
+                  onChange={(e) => setTaskNote(e.target.value)}
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleAssignTask}
+                  disabled={activityLoading || !selectedJanitorId}
+                  className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition"
+                >
+                  {activityLoading ? "Assigning..." : "Assign Task"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
-  </div>
-)}
-
-
     </>
   );
 }
