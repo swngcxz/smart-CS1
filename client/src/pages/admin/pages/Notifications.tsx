@@ -72,6 +72,13 @@ const Notifications = () => {
 
   // Only use backend notifications
   const backendNotifications: NotificationType[] = Array.isArray(notifications) ? notifications : [];
+  
+  // Debug logging to see what notifications we're getting
+  if (currentUser?.role === 'admin' && backendNotifications.length > 0) {
+    console.log('Notifications - Admin notifications:', backendNotifications);
+    console.log('Notifications - Current user role:', currentUser.role);
+  }
+  
   const unreadCount = backendNotifications.filter((n) => !n.read).length;
 
   // Mark a single notification as read in the backend
@@ -135,7 +142,19 @@ const Notifications = () => {
     })
     .filter((notification) => {
       // Exclude admin login notifications (since admin doesn't need to be notified about their own logins)
-      if (notification.type === "login" && notification.message && notification.message.includes("(admin)")) {
+      const isAdminLogin = (
+        // Check by type and message
+        (notification.type === "login" && notification.message && notification.message.includes("(admin)")) ||
+        // Check by title and message
+        (notification.title === "User Login" && notification.message && notification.message.includes("(admin)")) ||
+        // Check if message contains admin role
+        (notification.message && notification.message.includes("(admin)")) ||
+        // Check if message contains admin email or name
+        (notification.message && notification.message.toLowerCase().includes("angel canete"))
+      );
+      
+      if (isAdminLogin) {
+        console.log('Notifications - Filtering out admin login notification:', notification);
         return false;
       }
       return true;
@@ -186,13 +205,23 @@ const Notifications = () => {
       .filter((notification) => {
         // Exclude filtered types/messages (logic from the main component)
         if (notification.type === "info" && (!notification.title || !notification.message)) return false;
-        if (
-          notification.type !== "info" &&
-          notification.type === "login" &&
-          notification.message &&
-          notification.message.includes("(admin)")
-        )
+        if (notification.type === "info") return false;
+        
+        // Exclude admin login notifications
+        const isAdminLogin = (
+          // Check by type and message
+          (notification.type === "login" && notification.message && notification.message.includes("(admin)")) ||
+          // Check by title and message
+          (notification.title === "User Login" && notification.message && notification.message.includes("(admin)")) ||
+          // Check if message contains admin role
+          (notification.message && notification.message.includes("(admin)")) ||
+          // Check if message contains admin email or name
+          (notification.message && notification.message.toLowerCase().includes("angel canete"))
+        );
+        
+        if (isAdminLogin) {
           return false;
+        }
 
         const statusMatch =
           status === "all" || (status === "read" && notification.read) || (status === "unread" && !notification.read);

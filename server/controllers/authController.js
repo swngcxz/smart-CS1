@@ -617,6 +617,15 @@ async function getLoginHistory(req, res) {
     const logs = [];
     snapshot.forEach(doc => {
       const data = doc.data();
+      const role = data.role?.toLowerCase().trim() || '';
+      const userEmail = data.userEmail?.toLowerCase().trim() || '';
+      
+      // Exclude admin logs from the response
+      if (role === 'admin' || role === 'administrator' || userEmail.includes('admin')) {
+        console.log(`[AUTH] Excluding admin log: ${data.userEmail} with role: "${data.role}"`);
+        return; // Skip this log entry
+      }
+      
       logs.push({
         id: doc.id,
         userEmail: data.userEmail || 'Unknown',
@@ -633,7 +642,7 @@ async function getLoginHistory(req, res) {
       });
     });
     
-    console.log(`[AUTH] Retrieved ${logs.length} login history records`);
+    console.log(`[AUTH] Retrieved ${logs.length} login history records (admin logs excluded)`);
     
     res.status(200).json({
       success: true,

@@ -57,11 +57,32 @@ export function NotificationPopover() {
 
   const backendNotifications: NotificationType[] = Array.isArray(notifications) ? notifications : [];
   
+  // Debug logging to see what notifications we're getting
+  if (currentUser?.role === 'admin' && backendNotifications.length > 0) {
+    console.log('NotificationPopover - Admin notifications:', backendNotifications);
+    console.log('NotificationPopover - Current user role:', currentUser.role);
+  }
+  
   // Filter out admin login notifications for admin users
   const filteredNotifications = backendNotifications.filter((notification) => {
     // Exclude admin login notifications (since admin doesn't need to be notified about their own logins)
-    if (currentUser?.role === 'admin' && notification.type === 'login' && notification.message && notification.message.includes('(admin)')) {
-      return false;
+    if (currentUser?.role === 'admin') {
+      // Check if this is an admin login notification in multiple ways
+      const isAdminLogin = (
+        // Check by type and message
+        (notification.type === 'login' && notification.message && notification.message.includes('(admin)')) ||
+        // Check by title and message
+        (notification.title === 'User Login' && notification.message && notification.message.includes('(admin)')) ||
+        // Check if message contains admin role
+        (notification.message && notification.message.includes('(admin)')) ||
+        // Check if message contains admin email or name
+        (notification.message && notification.message.toLowerCase().includes('angel canete'))
+      );
+      
+      if (isAdminLogin) {
+        console.log('NotificationPopover - Filtering out admin login notification:', notification);
+        return false;
+      }
     }
     return true;
   });

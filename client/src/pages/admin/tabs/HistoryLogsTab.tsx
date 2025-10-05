@@ -51,11 +51,18 @@ export const HistoryLogsTab = () => {
       setError(null);
       console.log("🔄 Fetching login history...");
 
-      const response = await api.get("/auth/login-history");
+      const response = await api.get(`/auth/login-history?t=${Date.now()}`);
       console.log("📊 Login history response:", response.data);
       console.log("📊 Response status:", response.status);
 
       const loginLogs = response.data.logs || response.data;
+      console.log("🔍 Raw API response:", response.data);
+      console.log("🔍 All login logs received:", loginLogs);
+      console.log("🔍 Admin logs in response:", loginLogs.filter(log => 
+        log.role?.toLowerCase().trim() === 'admin' || 
+        log.role?.toLowerCase().trim() === 'administrator' ||
+        log.userEmail?.toLowerCase().includes('admin')
+      ));
       setLogs(loginLogs);
       console.log(`✅ Loaded ${loginLogs.length} login history records`);
       console.log("📋 Sample record:", loginLogs[0]);
@@ -128,9 +135,10 @@ export const HistoryLogsTab = () => {
 
   const getRoleBadge = (role: string) => {
     const colors = {
-      admin: "bg-purple-100 text-purple-800",
       staff: "bg-blue-100 text-blue-800",
       janitor: "bg-green-100 text-green-800",
+      driver: "bg-purple-100 text-purple-800",
+      maintenance: "bg-orange-100 text-orange-800",
     };
     return (
       <Badge className={colors[role.toLowerCase() as keyof typeof colors] || "bg-gray-100 text-gray-800"}>{role}</Badge>
@@ -169,8 +177,17 @@ export const HistoryLogsTab = () => {
 
   // Filter and search logic
   const filteredLogs = logs.filter((log) => {
-    // Exclude admin logs from display
-    if (log.role.toLowerCase() === "admin") {
+    // Exclude admin logs from display (comprehensive admin exclusion)
+    const role = log.role?.toLowerCase().trim() || '';
+    const userEmail = log.userEmail?.toLowerCase().trim() || '';
+    
+    if (role === "admin" || role === "administrator" || userEmail.includes("admin")) {
+      console.log("🚫 Frontend filtering out admin log:", {
+        userEmail: log.userEmail,
+        role: log.role,
+        trimmedRole: role,
+        trimmedEmail: userEmail
+      });
       return false;
     }
 
@@ -223,7 +240,10 @@ export const HistoryLogsTab = () => {
   const paginatedLogs = sortedLogs.slice(startIndex, startIndex + itemsPerPage);
 
   // Calculate analytics from filtered data (excluding admin logs)
-  const nonAdminLogs = logs.filter((log) => log.role.toLowerCase() !== "admin");
+  const nonAdminLogs = logs.filter((log) => {
+    const role = log.role?.toLowerCase() || '';
+    return role !== "admin" && role !== "administrator" && !log.userEmail?.toLowerCase().includes("admin");
+  });
   const activeSessions = nonAdminLogs.filter((log) => (log.status || "offline") === "active").length;
   const offlineSessions = nonAdminLogs.filter((log) => {
     const status = log.status || "offline";
@@ -334,9 +354,10 @@ export const HistoryLogsTab = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Roles</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
-                      <SelectItem value="user">Janitor</SelectItem>
+                      <SelectItem value="janitor">Janitor</SelectItem>
+                      <SelectItem value="driver">Driver</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

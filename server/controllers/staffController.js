@@ -213,13 +213,13 @@ const staffController = {
         }
       }
 
-      // Get all users and filter for staff roles (janitors, drivers, maintenance), excluding current user
+      // Get all users and filter for staff roles (janitors, drivers, maintenance, staff), excluding current user
       const users = await StaffModel.getAllUsers();
       
-      // Filter for janitors, drivers, and maintenance staff, excluding current user
+      // Filter for janitors, drivers, maintenance, and staff, excluding current user
       const staffMembers = users.filter(user => {
         const role = user.role && user.role.toLowerCase();
-        const isStaffRole = role === 'janitor' || role === 'driver' || role === 'maintenance';
+        const isStaffRole = role === 'janitor' || role === 'driver' || role === 'maintenance' || role === 'staff';
         const isNotCurrentUser = !currentUserEmail || user.email !== currentUserEmail;
         return isStaffRole && isNotCurrentUser;
       });
@@ -268,10 +268,10 @@ const staffController = {
       console.log('Current user email:', currentUserEmail);
       console.log('Raw users data:', users.map(u => ({ id: u.id, fullName: u.fullName, email: u.email, role: u.role, contactNumber: u.contactNumber })));
       
-      // Filter for janitors, drivers, and maintenance staff, excluding current user
+      // Filter for janitors, drivers, maintenance, and staff, excluding current user
       const staffMembers = users.filter(user => {
         const role = user.role && user.role.toLowerCase();
-        const isStaffRole = role === 'janitor' || role === 'driver' || role === 'maintenance';
+        const isStaffRole = role === 'janitor' || role === 'driver' || role === 'maintenance' || role === 'staff';
         const isNotCurrentUser = !currentUserEmail || user.email !== currentUserEmail;
         return isStaffRole && isNotCurrentUser;
       }).map(member => {

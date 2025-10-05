@@ -166,7 +166,20 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
                   <TableCell className="font-medium">{staff.fullName}</TableCell>
                   <TableCell>{staff.email}</TableCell>
                   <TableCell>{staff.contactNumber || "N/A"}</TableCell>
-                  <TableCell>{staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}</TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant="outline" 
+                      className={
+                        staff.role === 'staff' ? 'bg-blue-100 text-blue-800' :
+                        staff.role === 'janitor' ? 'bg-green-100 text-green-800' :
+                        staff.role === 'driver' ? 'bg-purple-100 text-purple-800' :
+                        staff.role === 'maintenance' ? 'bg-orange-100 text-orange-800' :
+                        'bg-gray-100 text-gray-800'
+                      }
+                    >
+                      {staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{staff.location || ""}</TableCell>
                  <TableCell>
   <Badge

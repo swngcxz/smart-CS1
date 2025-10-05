@@ -901,25 +901,38 @@ const getLoginHistory = async (req, res, next) => {
     // Get all login logs from the logs collection
     const snapshot = await db.collection("logs").orderBy("loginTime", "desc").get();
     
-    const logs = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        userEmail: data.userEmail || 'Unknown',
-        role: data.role || 'Unknown',
-        loginTime: data.loginTime || new Date().toISOString(),
-        logoutTime: data.logoutTime || null,
-        sessionDuration: data.logoutTime ? 
-          Math.round((new Date(data.logoutTime).getTime() - new Date(data.loginTime).getTime()) / (1000 * 60)) : 
-          null, // Duration in minutes
-        status: data.logoutTime ? 'completed' : 'active',
-        ipAddress: data.ipAddress || 'Unknown',
-        userAgent: data.userAgent || 'Unknown',
-        location: data.location || 'Unknown'
-      };
-    });
+    const logs = snapshot.docs
+      .filter(doc => {
+        const data = doc.data();
+        const role = data.role?.toLowerCase().trim() || '';
+        const userEmail = data.userEmail?.toLowerCase().trim() || '';
+        
+        // Exclude admin logs from the response
+        const isAdmin = role === 'admin' || role === 'administrator' || userEmail.includes('admin');
+        if (isAdmin) {
+          console.log(`[LOGIN HISTORY] Excluding admin log: ${data.userEmail} with role: "${data.role}"`);
+        }
+        return !isAdmin;
+      })
+      .map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          userEmail: data.userEmail || 'Unknown',
+          role: data.role || 'Unknown',
+          loginTime: data.loginTime || new Date().toISOString(),
+          logoutTime: data.logoutTime || null,
+          sessionDuration: data.logoutTime ? 
+            Math.round((new Date(data.logoutTime).getTime() - new Date(data.loginTime).getTime()) / (1000 * 60)) : 
+            null, // Duration in minutes
+          status: data.logoutTime ? 'completed' : 'active',
+          ipAddress: data.ipAddress || 'Unknown',
+          userAgent: data.userAgent || 'Unknown',
+          location: data.location || 'Unknown'
+        };
+      });
 
-    console.log(`[LOGIN HISTORY] Found ${logs.length} login history records`);
+    console.log(`[LOGIN HISTORY] Found ${logs.length} login history records (admin logs excluded)`);
     
     res.status(200).json({ 
       logs,
