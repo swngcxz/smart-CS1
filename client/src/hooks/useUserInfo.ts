@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 
 export interface UserInfoData {
@@ -6,6 +6,7 @@ export interface UserInfoData {
   address?: string;
   bio?: string;
   website?: string;
+  phone?: string;
   profileImagePath?: string;
   profileImageName?: string;
   profileImageOriginalName?: string;
@@ -44,12 +45,13 @@ export function useUserInfo() {
     }
   };
 
-  const updateProfileFields = async (fields: { bio?: string; website?: string; location?: string }) => {
+  const updateProfileFields = async (fields: { bio?: string; website?: string; location?: string; phone?: string }) => {
     try {
-      console.log('🌐 Web App - Updating profile fields...');
+      console.log('🌐 Web App - Updating profile fields...', fields);
       const res = await axios.patch('http://localhost:8000/api/userinfo/profile-fields', fields, {
         withCredentials: true
       });
+      console.log('🌐 Web App - API Response:', res.data);
       
       if (res.data.success && res.data.userInfo) {
         setUserInfo(res.data.userInfo);
@@ -60,7 +62,13 @@ export function useUserInfo() {
       }
     } catch (err: any) {
       console.error('🌐 Web App - Failed to update profile fields:', err);
-      const errorMessage = err.response?.data?.error || 'Failed to update profile fields';
+      console.error('🌐 Web App - Error details:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message
+      });
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to update profile fields';
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
@@ -114,7 +122,7 @@ export function useUserInfo() {
     }
   };
 
-  const getProfileImageUrl = () => {
+  const getProfileImageUrl = useCallback(() => {
     if (!userInfo?.profileImagePath) return null;
     
     // Extract filename from the path
@@ -124,7 +132,7 @@ export function useUserInfo() {
     // Return the full URL to the image via the API endpoint
     const baseUrl = axios.defaults.baseURL || window.location.origin;
     return `${baseUrl}/api/userinfo/profile-image/${filename}`;
-  };
+  }, [userInfo?.profileImagePath]);
 
   useEffect(() => {
     fetchUserInfo();

@@ -5,17 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Pencil, Camera, Save, X } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Camera } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserInfo } from "@/hooks/useUserInfo";
 
 export const ProfileSection = () => {
-  const [isEditing, setIsEditing] = useState<string | null>(null);
   const { user } = useCurrentUser();
   const { userInfo, updateProfileFields, updateUserInfo, getProfileImageUrl } = useUserInfo();
   const [profile, setProfile] = useState({
     name: "",
-   E32UYE0U
+    email: "",
+    phone: "",
+    bio: "",
     location: "",
     website: "",
   });
@@ -23,45 +25,55 @@ export const ProfileSection = () => {
   const [saving, setSaving] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleEdit = (field: string) => setIsEditing(field);
   const handleSave = async (field: string, value: string) => {
     setSaving(field);
     try {
-      // Map field names to API field names
-      const apiFieldMap: { [key: string]: string } = {
-        location: 'location',
-        bio: 'bio',
-        website: 'website'
-      };
+      // Map field names to determine which API to use
+      const userInfoFields = ['bio', 'website', 'location'];
+      const userFields = ['name', 'phone', 'email'];
       
-      const apiField = apiFieldMap[field];
-      if (apiField) {
+      if (userInfoFields.includes(field)) {
         // Update userInfo fields (bio, website, location)
-        const result = await updateProfileFields({
-          [apiField]: value
-        });
+        const apiFieldMap: { [key: string]: string } = {
+          location: 'location',
+          bio: 'bio',
+          website: 'website'
+        };
+        
+        const apiField = apiFieldMap[field];
+        console.log('ProfileSection - Saving userInfo field:', field, 'value:', value, 'apiField:', apiField);
+        
+        const updateData = { [apiField]: value };
+        console.log('ProfileSection - Sending to userInfo API:', updateData);
+        
+        const result = await updateProfileFields(updateData);
         
         if (result.success) {
+          console.log('ProfileSection - userInfo save successful');
           setProfile((prev) => ({ ...prev, [field]: value }));
-          setIsEditing(null);
+          alert(`${field} saved successfully!`);
         } else {
-          console.error('Failed to save:', result.error);
-          alert('Failed to save changes. Please try again.');
+          console.error('Failed to save userInfo field:', result.error);
+          alert(`Failed to save ${field}: ${result.error}`);
         }
-      } else {
-        // For other fields (name, email, phone), update local state only
-        // You might want to add API calls for these fields later
+      } else if (userFields.includes(field)) {
+        // Update user table fields (name, phone, email) - these should go to /auth/me
+        console.log('ProfileSection - Saving user field:', field, 'value:', value);
+        alert(`${field} update not implemented yet. This field should be updated via the user profile API.`);
         setProfile((prev) => ({ ...prev, [field]: value }));
-        setIsEditing(null);
+      } else {
+        // For other fields, update local state only
+        console.log('ProfileSection - Field not mapped to any API, updating local state only');
+        setProfile((prev) => ({ ...prev, [field]: value }));
+        alert(`${field} updated locally (not saved to server)`);
       }
     } catch (error) {
       console.error('Save error:', error);
-      alert('Failed to save changes. Please try again.');
+      alert(`Failed to save ${field}. Please check your connection and try again.`);
     } finally {
       setSaving(null);
     }
   };
-  const handleCancel = () => setIsEditing(null);
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -95,14 +107,24 @@ export const ProfileSection = () => {
 
   useEffect(() => {
     if (!user) return;
-    setProfile({
+    
+    console.log('ProfileSection - User data:', user);
+    console.log('ProfileSection - UserInfo data:', userInfo);
+    
+    const profileData = {
       name: user.fullName || [user.firstName, user.lastName].filter(Boolean).join(" "),
       email: user.email || "",
-      phone: user.phone || "",
+      phone: userInfo?.phone || user.phone || "",
       bio: userInfo?.bio || "",
       location: userInfo?.address || user.address || "",
       website: userInfo?.website || "",
-    });
+    };
+    
+    console.log('ProfileSection - Setting profile data:', profileData);
+    console.log('ProfileSection - Phone from userInfo:', userInfo?.phone);
+    console.log('ProfileSection - Address from userInfo:', userInfo?.address);
+    console.log('ProfileSection - Website from userInfo:', userInfo?.website);
+    setProfile(profileData);
     
     // Set image URL from userInfo or user avatar
     if (userInfo?.profileImagePath) {
@@ -125,41 +147,92 @@ export const ProfileSection = () => {
     type?: string;
   }) => {
     const [tempValue, setTempValue] = useState(value);
+    const [isEditing, setIsEditing] = useState(false);
+    const prevValueRef = React.useRef(value);
+    
+    // Update tempValue when value changes from external source
+    React.useEffect(() => {
+      if (prevValueRef.current !== value && !isEditing) {
+        setTempValue(value);
+        prevValueRef.current = value;
+      }
+    }, [value, isEditing]);
+
+    const handleSaveField = async () => {
+      if (tempValue !== value) {
+        console.log('EditableField - Auto-saving field:', field, 'tempValue:', tempValue);
+        await handleSave(field, tempValue);
+        prevValueRef.current = tempValue;
+      }
+      setIsEditing(false);
+    };
+
+    const handleCancelField = () => {
+      setTempValue(value);
+      setIsEditing(false);
+    };
+
+    const handleInputChange = (newValue: string) => {
+      setTempValue(newValue);
+      setIsEditing(true);
+    };
+
+    const handleBlur = () => {
+      handleSaveField();
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && type !== 'textarea') {
+        e.preventDefault();
+        handleSaveField();
+      } else if (e.key === 'Escape') {
+        handleCancelField();
+      }
+    };
+
+    const displayValue = value || "Not set";
+    const isEmpty = !value || value.trim() === "";
+    const hasChanged = tempValue !== value;
+
     return (
       <div className="space-y-2">
         <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</Label>
-        {isEditing === field ? (
-          <div className="flex items-center gap-2">
-            <Input type={type} value={tempValue} onChange={(e) => setTempValue(e.target.value)} className="flex-1" />
-            <Button 
-              size="sm" 
-              onClick={() => handleSave(field, tempValue)} 
-              className="bg-green-600 hover:bg-green-700"
-              disabled={saving === field}
-            >
-              {saving === field ? (
-                <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleCancel} disabled={saving === field}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+        
+        {type === "textarea" ? (
+          <Textarea 
+            value={tempValue || ""} 
+            onChange={(e) => handleInputChange(e.target.value)} 
+            className={`flex-1 ${hasChanged ? 'ring-2 ring-blue-500' : ''}`}
+            placeholder={`Enter ${label.toLowerCase()}`}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            rows={3}
+          />
         ) : (
-          <div className="flex items-center gap-2 group">
-            <span className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
-              {value}
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleEdit(field)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Pencil className="w-4 h-4" />
-            </Button>
+          <Input 
+            type={type} 
+            value={tempValue || ""} 
+            onChange={(e) => handleInputChange(e.target.value)} 
+            className={`flex-1 ${hasChanged ? 'ring-2 ring-blue-500' : ''}`}
+            placeholder={`Enter ${label.toLowerCase()}`}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+          />
+        )}
+        
+        {/* Show save indicator when changed */}
+        {hasChanged && (
+          <div className="flex items-center gap-2 text-xs text-blue-600">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span>Press Enter to save, Escape to cancel</span>
+          </div>
+        )}
+        
+        {/* Show saving indicator */}
+        {saving === field && (
+          <div className="flex items-center gap-2 text-xs text-green-600">
+            <div className="w-4 h-4 animate-spin rounded-full border-2 border-green-500 border-t-transparent"></div>
+            <span>Saving...</span>
           </div>
         )}
       </div>
@@ -206,15 +279,15 @@ export const ProfileSection = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <EditableField field="name" value={profile.name} label="Full Name" />
-            <EditableField field="email" value={profile.email} label="Email" type="email" />
-            <EditableField field="phone" value={profile.phone} label="Phone Number" />
-            <EditableField field="location" value={profile.location} label="Location" />
+            <EditableField field="name" value={profile.name || ""} label="Full Name" />
+            <EditableField field="email" value={profile.email || ""} label="Email" type="email" />
+            <EditableField field="phone" value={profile.phone || ""} label="Phone Number" />
+            <EditableField field="location" value={profile.location || ""} label="Location" />
             <div className="md:col-span-2">
-              <EditableField field="website" value={profile.website} label="Website" type="url" />
+              <EditableField field="website" value={profile.website || ""} label="Website" type="url" />
             </div>
             <div className="md:col-span-2">
-              <EditableField field="bio" value={profile.bio} label="Bio" />
+              <EditableField field="bio" value={profile.bio || ""} label="Bio" type="textarea" />
             </div>
           </div>
         </CardContent>

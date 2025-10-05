@@ -1,6 +1,6 @@
 
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 
 export interface Notification {
@@ -43,7 +43,7 @@ export function useNotifications(userId: string) {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch notifications
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       let res;
       
@@ -68,7 +68,7 @@ export function useNotifications(userId: string) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -77,7 +77,7 @@ export function useNotifications(userId: string) {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 5000);
     return () => clearInterval(interval);
-  }, [userId]);
+  }, [userId, fetchNotifications]);
 
   // Mark a single notification as read
   const markAsRead = async (key: string) => {

@@ -137,7 +137,7 @@ export const ProfileSection = () => {
   const triggerFileSelect = () => fileInputRef.current?.click();
 
   // Fetch connected accounts from API
-  const fetchConnectedAccounts = async () => {
+  const fetchConnectedAccounts = React.useCallback(async () => {
     try {
       const response = await api.get('/auth/connected-accounts');
       if (response.data.success) {
@@ -146,7 +146,7 @@ export const ProfileSection = () => {
     } catch (error) {
       console.error('Error fetching connected accounts:', error);
     }
-  };
+  }, []);
 
   // Handle unlinking an account
   const handleUnlinkAccount = async (provider: string) => {
@@ -203,10 +203,17 @@ export const ProfileSection = () => {
     } else {
       setImageUrl(user.avatarUrl || "");
     }
-    
-    // Fetch connected accounts
-    fetchConnectedAccounts();
-    
+  }, [user, userInfo]);
+
+  // Separate useEffect for fetching connected accounts
+  useEffect(() => {
+    if (user) {
+      fetchConnectedAccounts();
+    }
+  }, [user, fetchConnectedAccounts]);
+
+  // Separate useEffect for URL parameter handling
+  useEffect(() => {
     // Check for URL parameters (success/error messages)
     const urlParams = new URLSearchParams(window.location.search);
     const linked = urlParams.get('linked');
@@ -229,7 +236,7 @@ export const ProfileSection = () => {
     if (linked || error) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [user, userInfo, getProfileImageUrl]);
+  }, []);
 
   // Dynamic connected accounts data
   const accountsData = [

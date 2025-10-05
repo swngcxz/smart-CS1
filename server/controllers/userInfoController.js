@@ -77,12 +77,29 @@ const updateUserInfo = async (req, res) => {
       }
       
       try {
+        // Only update fields that are actually provided in the request
         const updateData = {
-          address: req.body.address || req.body.location || '', // Handle both 'address' and 'location' fields
-          bio: req.body.bio || '',
-          website: req.body.website || '',
           updatedAt: new Date().toISOString()
         };
+        
+        // Add fields only if they are provided in the request body
+        if (req.body.address !== undefined) {
+          updateData.address = req.body.address;
+        } else if (req.body.location !== undefined) {
+          updateData.address = req.body.location;
+        }
+        
+        if (req.body.bio !== undefined) {
+          updateData.bio = req.body.bio;
+        }
+        
+        if (req.body.website !== undefined) {
+          updateData.website = req.body.website;
+        }
+        
+        if (req.body.phone !== undefined) {
+          updateData.phone = req.body.phone;
+        }
         
         // If file was uploaded, add the file path
         if (req.file) {
@@ -143,7 +160,14 @@ const updateUserInfo = async (req, res) => {
 // Update profile fields only (no file upload)
 const updateProfileFields = async (req, res) => {
   try {
+    console.log('[USER INFO] Update profile fields request:', {
+      body: req.body,
+      headers: req.headers,
+      cookies: req.cookies
+    });
+    
     const userEmail = getUserIdFromToken(req);
+    console.log('[USER INFO] User email from token:', userEmail);
     
     // Find user by email to get user ID
     const snapshot = await withRetry(() => 
@@ -151,24 +175,47 @@ const updateProfileFields = async (req, res) => {
     );
     
     if (snapshot.empty) {
+      console.log('[USER INFO] User not found in database');
       return res.status(404).json({ error: 'User not found' });
     }
     
     const userDoc = snapshot.docs[0];
     const userId = userDoc.id;
+    console.log('[USER INFO] User ID:', userId);
     
+    // Only update fields that are actually provided in the request
     const updateData = {
-      address: req.body.address || req.body.location || '', // Handle both 'address' and 'location' fields
-      bio: req.body.bio || '',
-      website: req.body.website || '',
       updatedAt: new Date().toISOString()
     };
     
+    // Add fields only if they are provided in the request body
+    if (req.body.address !== undefined) {
+      updateData.address = req.body.address;
+    } else if (req.body.location !== undefined) {
+      updateData.address = req.body.location;
+    }
+    
+    if (req.body.bio !== undefined) {
+      updateData.bio = req.body.bio;
+    }
+    
+    if (req.body.website !== undefined) {
+      updateData.website = req.body.website;
+    }
+    
+    if (req.body.phone !== undefined) {
+      updateData.phone = req.body.phone;
+    }
+    
+    console.log('[USER INFO] Update data:', updateData);
+    
     // Upsert user info
     await UserInfoModel.upsertUserInfo(userId, updateData);
+    console.log('[USER INFO] User info upserted successfully');
     
     // Get updated user info
     const updatedUserInfo = await UserInfoModel.getUserInfo(userId);
+    console.log('[USER INFO] Updated user info:', updatedUserInfo);
     
     res.json({
       success: true,
