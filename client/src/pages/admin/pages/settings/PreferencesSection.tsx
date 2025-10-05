@@ -14,7 +14,6 @@ export const PreferencesSection = () => {
     notifications: {
       email: true,
       push: false,
-      sms: false,
       marketing: true,
     },
     accessibility: {
@@ -96,16 +95,6 @@ export const PreferencesSection = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-sm font-medium">SMS Notifications</Label>
-                <p className="text-sm text-slate-600">Receive important updates via SMS</p>
-              </div>
-              <Switch
-                checked={preferences.notifications.sms}
-                onCheckedChange={(value) => handleNotificationChange("sms", value)}
-              />
-            </div>
           </div>
         </CardContent>
       </Card>

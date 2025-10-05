@@ -253,10 +253,6 @@ class HybridMonitoringService {
       this.sendWebhookAlert(alert);
     }
 
-    // SMS alerts for critical issues
-    if (getConfig('notifications.SMS_ALERTS') && alert.type === 'critical') {
-      this.sendSMSAlert(alert);
-    }
   }
 
   /**
@@ -277,14 +273,6 @@ class HybridMonitoringService {
     console.log(`[MONITORING] Webhook alert sent: ${alert.message}`);
   }
 
-  /**
-   * Send SMS alert
-   * @param {Object} alert - Alert object
-   */
-  sendSMSAlert(alert) {
-    // Implementation would depend on your SMS service
-    console.log(`[MONITORING] SMS alert sent: ${alert.message}`);
-  }
 
   /**
    * Calculate average processing time

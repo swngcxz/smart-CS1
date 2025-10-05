@@ -16,7 +16,7 @@ const getAssignedActivityLogs = async (req, res, next) => {
 // ...existing code...
 
 
-const { db } = require("../models/firebase");
+const { db, rtdb } = require("../models/firebase");
 const notificationModel = require('../models/notificationModel');
 const { admin } = require("../models/firebase");
 const realtimeDb = admin.database();
@@ -47,6 +47,24 @@ const createRealtimeNotification = async (userId, notificationData) => {
   }
 };
 const fcmService = require('../services/fcmService');
+const smsNotificationService = require('../services/smsNotificationService');
+const gsmService = require('../services/gsmService');
+
+// Database health check function
+const checkDatabaseHealth = async () => {
+  try {
+    if (!rtdb) {
+      return { isHealthy: false, error: 'Realtime Database not initialized' };
+    }
+    
+    // Test database connection with a simple query
+    const testRef = rtdb.ref('.info/connected');
+    const snapshot = await testRef.once('value');
+    return { isHealthy: true, connected: snapshot.val() };
+  } catch (error) {
+    return { isHealthy: false, error: error.message };
+  }
+};
 
 // Get activity statistics for overview cards
 const getActivityStatsSimple = async (req, res, next) => {
@@ -319,7 +337,8 @@ const saveActivityLog = async (req, res, next) => {
           activityType: activity_type,
           priority: data.priority,
           activityId: activityRef.id,
-          timestamp: now
+          timestamp: now,
+          isTaskAssignment: true
         });
       } catch (notifyErr) {
         console.error('[ACTIVITY LOG] Failed to send janitor assignment notification:', notifyErr);
@@ -782,6 +801,33 @@ const updateActivityLog = async (req, res, next) => {
     // Send notifications based on status change
     // Note: Task acceptance notifications are handled by assignTaskAtomically function
     // to avoid duplicate notifications
+
+    // Send SMS notification when janitor is assigned
+    if (assigned_janitor_id && assigned_janitor_name && status === 'in_progress') {
+      try {
+        console.log(`[ACTIVITY UPDATE] Sending SMS notification for janitor assignment: ${assigned_janitor_name}`);
+        await sendJanitorAssignmentNotification({
+          janitorId: assigned_janitor_id,
+          janitorName: assigned_janitor_name,
+          binId: originalData.bin_id,
+          binLocation: originalData.bin_location,
+          binLevel: originalData.bin_level,
+          taskNote: originalData.task_note || '',
+          activityType: originalData.activity_type || 'task_assignment',
+          priority: originalData.priority || 'medium',
+          activityId: activityId,
+          timestamp: new Date(),
+          isTaskAssignment: true,
+          assignmentType: 'manual' // Manual assignment via activity update
+        });
+        console.log(`[ACTIVITY UPDATE] ✅ SMS notification sent to ${assigned_janitor_name}`);
+      } catch (smsError) {
+        console.error('[ACTIVITY UPDATE] SMS notification error:', smsError);
+        // Don't fail the main operation if SMS fails
+      }
+    }
+
+    // If status is 'done', send notification to staff
     if (status === 'done') {
       // Task was completed
       try {
@@ -1265,6 +1311,9 @@ const sendJanitorAssignmentNotification = async (notificationData) => {
       return;
     }
 
+    // Debug logging
+    console.log(`[JANITOR NOTIFICATION DEBUG] isTaskAssignment: ${isTaskAssignment}, contactNumber: ${janitor.contactNumber}`);
+
     // Determine notification type and content
     const notificationType = isTaskAssignment ? 'task_assignment' : 'activity_assignment';
     const priorityEmoji = priority === 'high' ? '🔴' : priority === 'medium' ? '🟡' : '🟢';
@@ -1309,12 +1358,222 @@ const sendJanitorAssignmentNotification = async (notificationData) => {
 
     console.log(`[JANITOR NOTIFICATION] In-app notification created for janitor ${janitorId}`);
 
+    // Send SMS notification for manual task assignments
+    console.log(`[JANITOR NOTIFICATION DEBUG] SMS check - isTaskAssignment: ${isTaskAssignment}, hasContactNumber: ${!!janitor.contactNumber}`);
+    if (isTaskAssignment && janitor.contactNumber) {
+      try {
+        console.log(`[JANITOR NOTIFICATION] Sending SMS notification to janitor: ${janitorId}`);
+        
+        // Fetch real-time bin data from database
+        let binWeight = 0;
+        let binHeight = 0;
+        let binCoordinates = { latitude: 0, longitude: 0 };
+        let currentBinLevel = binLevel || 0;
+        let dataSource = 'fallback'; // Track data source for logging
+        
+        // Check database health before attempting to fetch
+        const dbHealth = await checkDatabaseHealth();
+        if (!dbHealth.isHealthy) {
+          console.warn(`[JANITOR NOTIFICATION] ⚠️ Database not healthy: ${dbHealth.error}, using fallback values`);
+        } else {
+          try {
+            console.log(`[JANITOR NOTIFICATION] Fetching real-time data for bin: ${binId}`);
+            const binRef = rtdb.ref(`monitoring/${binId}`);
+            
+            // Add timeout protection for database query
+            const fetchPromise = binRef.once('value');
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Database query timeout')), 5000)
+            );
+            
+            const binSnapshot = await Promise.race([fetchPromise, timeoutPromise]);
+            const binData = binSnapshot.val();
+          
+            if (binData) {
+              binWeight = binData.weight_kg || 0;
+              binHeight = binData.height_percent || 0;
+              currentBinLevel = binData.bin_level || binLevel || 0;
+              dataSource = 'database';
+              
+              // Get coordinates if available
+              if (binData.gps_latitude && binData.gps_longitude) {
+                binCoordinates = {
+                  latitude: binData.gps_latitude,
+                  longitude: binData.gps_longitude
+                };
+              } else if (binData.latitude && binData.longitude) {
+                binCoordinates = {
+                  latitude: binData.latitude,
+                  longitude: binData.longitude
+                };
+              }
+              
+              console.log(`[JANITOR NOTIFICATION] ✅ Fetched bin data for ${binId}:`, {
+                weight: binWeight,
+                height: binHeight,
+                level: currentBinLevel,
+                coordinates: binCoordinates,
+                source: dataSource
+              });
+            } else {
+              console.warn(`[JANITOR NOTIFICATION] ⚠️ Bin data not found for ${binId}, using fallback values`);
+            }
+          } catch (fetchError) {
+            console.error(`[JANITOR NOTIFICATION] ❌ Error fetching bin data for ${binId}:`, fetchError);
+            console.log(`[JANITOR NOTIFICATION] Using fallback values for SMS`);
+          }
+        }
+        
+        // Validate and sanitize data before sending SMS
+        const sanitizedData = {
+          binName: `Bin ${binId}`,
+          binLocation: (binLocation && binLocation.trim()) || 'Unknown Location',
+          binLevel: Math.max(0, Math.min(100, currentBinLevel)), // Ensure 0-100 range
+          weight: Math.max(0, binWeight), // Ensure non-negative weight
+          height: Math.max(0, Math.min(100, binHeight)), // Ensure 0-100 range
+          coordinates: {
+            latitude: binCoordinates.latitude || 0,
+            longitude: binCoordinates.longitude || 0
+          },
+          taskNotes: (taskNote && taskNote.trim()) || '',
+          assignedBy: (janitorName && janitorName.trim()) || 'Staff',
+          dataSource: dataSource, // Include data source for debugging
+          assignmentType: notificationData.assignmentType || 'automatic' // Add assignment type
+        };
+
+        console.log(`[JANITOR NOTIFICATION] Sending SMS with sanitized data:`, {
+          binId,
+          dataSource,
+          weight: sanitizedData.weight,
+          height: sanitizedData.height,
+          level: sanitizedData.binLevel
+        });
+
+        const smsResult = await smsNotificationService.sendManualTaskSMS(sanitizedData, janitorId);
+
+        if (smsResult.success) {
+          console.log(`[JANITOR NOTIFICATION] ✅ SMS sent successfully to ${smsResult.janitor.name}`);
+        } else {
+          console.error(`[JANITOR NOTIFICATION] ❌ SMS failed: ${smsResult.error}`);
+        }
+      } catch (smsError) {
+        console.error('[JANITOR NOTIFICATION] SMS notification error:', smsError);
+        // Don't fail the main operation if SMS fails
+      }
+    } else if (isTaskAssignment && !janitor.contactNumber) {
+      console.log(`[JANITOR NOTIFICATION] No contact number found for janitor ${janitorId}, skipping SMS notification`);
+    }
+
     // Log the assignment for tracking
     console.log(`[JANITOR NOTIFICATION] Successfully notified janitor ${janitorId} (${janitor.name || janitorName || 'Unknown'}) about ${isTaskAssignment ? 'task' : 'activity'} assignment for bin ${binId}`);
 
+    // Return success result
+    return {
+      success: true,
+      message: 'Janitor notification sent successfully',
+      janitor: {
+        id: janitorId,
+        name: janitor.name || janitorName || 'Unknown',
+        contactNumber: janitor.contactNumber
+      },
+      binId: binId,
+      isTaskAssignment: isTaskAssignment
+    };
+
   } catch (error) {
     console.error('[JANITOR NOTIFICATION] Error sending janitor assignment notification:', error);
-    throw error;
+    return {
+      success: false,
+      error: error.message,
+      message: 'Failed to send janitor notification'
+    };
+  }
+};
+
+// Manual task assignment endpoint
+const assignTaskManually = async (req, res, next) => {
+  try {
+    const { activityId, janitorId, janitorName, taskNote } = req.body;
+    
+    if (!activityId || !janitorId) {
+      return res.status(400).json({
+        success: false,
+        error: 'activityId and janitorId are required'
+      });
+    }
+
+    console.log(`[MANUAL ASSIGNMENT] Assigning task ${activityId} to janitor ${janitorId}`);
+
+    // Get the activity log to extract bin information
+    const activityRef = db.collection("activitylogs").doc(activityId);
+    const activityDoc = await activityRef.get();
+    
+    if (!activityDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'Activity log not found'
+      });
+    }
+
+    const activityData = activityDoc.data();
+    const binId = activityData.bin_id;
+    const binLocation = activityData.bin_location;
+    const binLevel = activityData.bin_level;
+
+    // Update the activity log with janitor assignment
+    const updateData = {
+      assigned_janitor_id: janitorId,
+      assigned_janitor_name: janitorName || 'Staff Assigned',
+      status: 'in_progress',
+      bin_status: 'in_progress',
+      updated_at: new Date().toISOString(),
+      assignment_type: 'manual',
+      assignment_timestamp: new Date().toISOString()
+    };
+
+    await activityRef.update(updateData);
+
+    // Send SMS notification to the assigned janitor
+    try {
+      await sendJanitorAssignmentNotification({
+        janitorId,
+        janitorName: janitorName || 'Staff Assigned',
+        binId,
+        binLocation: binLocation || 'Unknown Location',
+        binLevel: binLevel || 0,
+        taskNote: taskNote || '',
+        activityType: 'manual_assignment',
+        priority: binLevel >= 80 ? 'high' : binLevel >= 50 ? 'medium' : 'low',
+        activityId: activityId,
+        timestamp: new Date(),
+        isTaskAssignment: true,
+        assignmentType: 'manual' // Add indicator for manual assignment
+      });
+
+      console.log(`[MANUAL ASSIGNMENT] ✅ Task ${activityId} assigned to janitor ${janitorId} with SMS notification`);
+    } catch (smsError) {
+      console.error('[MANUAL ASSIGNMENT] SMS notification error:', smsError);
+      // Don't fail the assignment if SMS fails
+    }
+
+    res.json({
+      success: true,
+      message: 'Task assigned successfully',
+      data: {
+        activityId,
+        assigned_janitor_id: janitorId,
+        assigned_janitor_name: janitorName || 'Staff Assigned',
+        status: 'in_progress',
+        assignment_type: 'manual'
+      }
+    });
+
+  } catch (error) {
+    console.error('[MANUAL ASSIGNMENT] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 };
 
@@ -1377,5 +1636,6 @@ module.exports = {
   sendBinCollectionNotification,
   sendActivityCompletedNotification,
   sendTaskAcceptanceNotification,
+  assignTaskManually,
   testJanitorNotification
 };

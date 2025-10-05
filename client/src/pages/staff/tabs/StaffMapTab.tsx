@@ -14,12 +14,12 @@ import { toast } from "sonner";
 export function MapTab() {
   const { wasteBins, loading, error, bin1Data, dynamicBinLocations } = useRealTimeData();
   const { updateBin, isLoading: isUpdating, error: updateError } = useUpdateBin();
-  
+
   // Form state for updating bin details
   const [binForm, setBinForm] = useState({
     binName: "",
     binType: "",
-    mainLocation: ""
+    mainLocation: "",
   });
   const [isEditing, setIsEditing] = useState(false);
   const [selectedBinId, setSelectedBinId] = useState<string>("");
@@ -48,16 +48,16 @@ export function MapTab() {
 
   // Handle form input changes
   const handleInputChange = (field: string, value: string) => {
-    setBinForm(prev => ({
+    setBinForm((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedBinId) {
       toast.error("Please select a bin to update");
       return;
@@ -65,7 +65,7 @@ export function MapTab() {
 
     try {
       const success = await updateBin(selectedBinId, binForm);
-      
+
       if (success) {
         toast.success("Bin details updated successfully!");
         setIsEditing(false);
@@ -74,7 +74,7 @@ export function MapTab() {
         setBinForm({
           binName: "",
           binType: "",
-          mainLocation: ""
+          mainLocation: "",
         });
       } else {
         toast.error("Failed to update bin details");
@@ -90,7 +90,7 @@ export function MapTab() {
     setBinForm({
       binName: bin.name || bin.binData?.name || "",
       binType: bin.type || bin.binData?.type || "",
-      mainLocation: bin.mainLocation || bin.binData?.mainLocation || ""
+      mainLocation: bin.mainLocation || bin.binData?.mainLocation || "",
     });
     setSelectedBinId(bin.id || "");
     setIsEditing(true);
@@ -98,7 +98,7 @@ export function MapTab() {
 
   // Function to be called from map component when bin is clicked
   const handleBinClick = (binId: string) => {
-    const selectedBin = updatedLocationData.find(bin => bin.id === binId);
+    const selectedBin = updatedLocationData.find((bin) => bin.id === binId);
     if (selectedBin) {
       loadBinForEdit(selectedBin);
     }
@@ -107,7 +107,7 @@ export function MapTab() {
   // Handle route selection
   const handleRouteSelect = (route: string) => {
     setSelectedRoute(route);
-    toast.success(`${route.charAt(0).toUpperCase() + route.slice(1).replace('-', ' ')} route selected`);
+    toast.success(`${route.charAt(0).toUpperCase() + route.slice(1).replace("-", " ")} route selected`);
   };
 
   // Toggle location dropdown
@@ -158,17 +158,14 @@ export function MapTab() {
             </CardContent>
           </Card>
 
-
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="w-full justify-between p-0 h-auto hover:bg-transparent"
                 onClick={toggleLocationDropdown}
               >
-                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  Location List
-                </CardTitle>
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">Location List</CardTitle>
                 {isLocationDropdownOpen ? (
                   <ChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 ) : (
@@ -177,126 +174,111 @@ export function MapTab() {
               </Button>
             </CardHeader>
 
-<CardContent
-  className={`transition-all duration-300 ease-in-out ${
-    isLocationDropdownOpen
-      ? "max-h-96 opacity-100 p-4"
-      : "max-h-0 opacity-0 overflow-hidden p-0"
-  }`}
->
-  <div className="space-y-3">
-    {/* Central Plaza Route */}
-    <Button
-      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
+            <CardContent
+              className={`transition-all duration-300 ease-in-out ${
+                isLocationDropdownOpen ? "max-h-96 opacity-100 p-4" : "max-h-0 opacity-0 overflow-hidden p-0"
+              }`}
+            >
+              <div className="space-y-3">
+                {/* Central Plaza Route */}
+                <Button
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
         ${
           selectedRoute === "central-plaza"
             ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
             : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
         }`}
-      onClick={() => handleRouteSelect("central-plaza")}
-    >
-      <div className="flex items-center gap-3 w-full">
-        <MapPin className="w-5 h-5 flex-shrink-0" />
-        <div className="flex-1 font-semibold text-sm">Central Plaza</div>
-        <Badge
-          className={`text-xs ${
-            selectedRoute === "central-plaza"
-              ? "bg-green-700 text-white"
-              : "bg-gray-300 text-black"
-          }`}
-        >
-          Active
-        </Badge>
-      </div>
-    </Button>
+                  onClick={() => handleRouteSelect("central-plaza")}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <MapPin className="w-5 h-5 flex-shrink-0" />
+                    <div className="flex-1 font-semibold text-sm">Central Plaza</div>
+                    <Badge
+                      className={`text-xs ${
+                        selectedRoute === "central-plaza" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
+                      }`}
+                    >
+                      Active
+                    </Badge>
+                  </div>
+                </Button>
 
-    {/* Park Avenue Route */}
-    <Button
-      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
+                {/* Park Avenue Route */}
+                <Button
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
         ${
           selectedRoute === "park-avenue"
             ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
             : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
         }`}
-      onClick={() => handleRouteSelect("park-avenue")}
-    >
-      <div className="flex items-center gap-3 w-full">
-        <MapPin className="w-5 h-5 flex-shrink-0" />
-        <div className="flex-1 font-semibold text-sm">Park Avenue</div>
-        <Badge
-          className={`text-xs ${
-            selectedRoute === "park-avenue"
-              ? "bg-green-700 text-white"
-              : "bg-gray-300 text-black"
-          }`}
-        >
-          Active
-        </Badge>
-      </div>
-    </Button>
+                  onClick={() => handleRouteSelect("park-avenue")}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <MapPin className="w-5 h-5 flex-shrink-0" />
+                    <div className="flex-1 font-semibold text-sm">Park Avenue</div>
+                    <Badge
+                      className={`text-xs ${
+                        selectedRoute === "park-avenue" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
+                      }`}
+                    >
+                      Active
+                    </Badge>
+                  </div>
+                </Button>
 
-    {/* Mall District Route */}
-    <Button
-      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
+                {/* Mall District Route */}
+                <Button
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
         ${
           selectedRoute === "mall-district"
             ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
             : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
         }`}
-      onClick={() => handleRouteSelect("mall-district")}
-    >
-      <div className="flex items-center gap-3 w-full">
-        <MapPin className="w-5 h-5 flex-shrink-0" />
-        <div className="flex-1 font-semibold text-sm">Mall District</div>
-        <Badge
-          className={`text-xs ${
-            selectedRoute === "mall-district"
-              ? "bg-green-700 text-white"
-              : "bg-gray-300 text-black"
-          }`}
-        >
-          Active
-        </Badge>
-      </div>
-    </Button>
+                  onClick={() => handleRouteSelect("mall-district")}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <MapPin className="w-5 h-5 flex-shrink-0" />
+                    <div className="flex-1 font-semibold text-sm">Mall District</div>
+                    <Badge
+                      className={`text-xs ${
+                        selectedRoute === "mall-district" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
+                      }`}
+                    >
+                      Active
+                    </Badge>
+                  </div>
+                </Button>
 
-    {/* Residential Route */}
-    <Button
-      className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
+                {/* Residential Route */}
+                <Button
+                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
         ${
           selectedRoute === "residential"
             ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
             : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
         }`}
-      onClick={() => handleRouteSelect("residential")}
-    >
-      <div className="flex items-center gap-3 w-full">
-        <MapPin className="w-5 h-5 flex-shrink-0" />
-        <div className="flex-1 font-semibold text-sm">Residential Area</div>
-        <Badge
-          className={`text-xs ${
-            selectedRoute === "residential"
-              ? "bg-green-700 text-white"
-              : "bg-gray-300 text-black"
-          }`}
-        >
-          Active
-        </Badge>
-      </div>
-    </Button>
-  </div>
-</CardContent>
-
-
-
+                  onClick={() => handleRouteSelect("residential")}
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <MapPin className="w-5 h-5 flex-shrink-0" />
+                    <div className="flex-1 font-semibold text-sm">Residential Area</div>
+                    <Badge
+                      className={`text-xs ${
+                        selectedRoute === "residential" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
+                      }`}
+                    >
+                      Active
+                    </Badge>
+                  </div>
+                </Button>
+              </div>
+            </CardContent>
           </Card>
 
           {/* Bin Update Form */}
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                 Bin Details
-              </CardTitle>
+              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">Bin Details</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -345,7 +327,10 @@ export function MapTab() {
                   <Label htmlFor="mainLocation" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Main Location
                   </Label>
-                  <Select value={binForm.mainLocation} onValueChange={(value) => handleInputChange("mainLocation", value)}>
+                  <Select
+                    value={binForm.mainLocation}
+                    onValueChange={(value) => handleInputChange("mainLocation", value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select main location" />
                     </SelectTrigger>
@@ -358,26 +343,25 @@ export function MapTab() {
                   </Select>
                 </div>
 
-
                 <div className="flex gap-2 pt-2">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                     disabled={isUpdating || !selectedBinId}
                   >
                     <Save className="w-4 h-4 mr-2" />
                     {isUpdating ? "Updating..." : "Save Changes"}
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => {
                       setIsEditing(false);
                       setSelectedBinId("");
                       setBinForm({
                         binName: "",
                         binType: "",
-                        mainLocation: ""
+                        mainLocation: "",
                       });
                     }}
                     className="flex-1"

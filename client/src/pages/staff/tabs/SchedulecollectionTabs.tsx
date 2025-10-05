@@ -3,9 +3,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Clock, MapPin, Truck, Plus, Wrench, Trash2 } from "lucide-react";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, parse } from "date-fns";
 import { AddScheduleDialog, Schedule, Collector } from "../pages/AddScheduleDialog";
 import { useTruckSchedulesList, useCreateTruckSchedule, useUpdateTruckScheduleStatus } from "@/hooks/useTruckSchedules";
 import { useCreateSchedule, useSchedulesList } from "@/hooks/useSchedules";
@@ -23,10 +30,15 @@ export function ScheduleCollectionTabs() {
   // Read: load schedules from backend
   const { data: truckSchedules } = useTruckSchedulesList();
   const { data: regularSchedules } = useSchedulesList();
-  
+  function formatTimeRange(timeRange: string) {
+    const [start, end] = timeRange.split(" - ");
+    const startDate = parse(start, "HH:mm", new Date());
+    const endDate = parse(end, "HH:mm", new Date());
+    return `${format(startDate, "h:mm a")} - ${format(endDate, "h:mm a")}`;
+  }
   useEffect(() => {
     const allSchedules: Schedule[] = [];
-    
+
     // Load truck schedules (collection)
     if (truckSchedules) {
       const truckMapped: Schedule[] = (truckSchedules as any[]).map((t) => ({
@@ -45,7 +57,7 @@ export function ScheduleCollectionTabs() {
       }));
       allSchedules.push(...truckMapped);
     }
-    
+
     // Load regular schedules (maintenance)
     if (regularSchedules) {
       const regularMapped: Schedule[] = (regularSchedules as any[]).map((s) => ({
@@ -63,19 +75,19 @@ export function ScheduleCollectionTabs() {
       }));
       allSchedules.push(...regularMapped);
     }
-    
+
     console.log("📅 Loaded schedules:", {
       truckSchedules: truckSchedules?.length || 0,
       regularSchedules: regularSchedules?.length || 0,
       totalSchedules: allSchedules.length,
-      schedules: allSchedules.map(s => ({
+      schedules: allSchedules.map((s) => ({
         id: s.id,
         date: s.date,
         serviceType: s.serviceType,
-        location: s.location
-      }))
+        location: s.location,
+      })),
     });
-    
+
     setScheduleData(allSchedules);
   }, [truckSchedules, regularSchedules]);
 
@@ -117,20 +129,16 @@ export function ScheduleCollectionTabs() {
   };
 
   const getServiceTypeColor = (serviceType: string) => {
-    return serviceType === "collection" 
-      ? "bg-green-100 text-green-800" 
-      : "bg-blue-100 text-blue-800";
+    return serviceType === "collection" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800";
   };
 
   const getSchedulesForDate = (date: Date) => {
-    return scheduleData.filter(schedule => 
-      isSameDay(new Date(schedule.date), date)
-    );
+    return scheduleData.filter((schedule) => isSameDay(new Date(schedule.date), date));
   };
 
   const handleDateClick = (date: Date | undefined) => {
     if (!date) return;
-    
+
     const daySchedules = getSchedulesForDate(date);
     if (daySchedules.length > 0) {
       setSelectedDateSchedules(daySchedules);
@@ -142,43 +150,50 @@ export function ScheduleCollectionTabs() {
   const dayContent = (day: Date) => {
     const daySchedules = getSchedulesForDate(day);
     const hasSchedules = daySchedules.length > 0;
-    
+
     // Debug logging for specific dates
     if (hasSchedules) {
-      console.log(`📅 ${day.toDateString()} has ${daySchedules.length} schedules:`, daySchedules.map(s => ({
-        serviceType: s.serviceType,
-        location: s.location,
-        time: s.time
-      })));
+      console.log(
+        `📅 ${day.toDateString()} has ${daySchedules.length} schedules:`,
+        daySchedules.map((s) => ({
+          serviceType: s.serviceType,
+          location: s.location,
+          time: s.time,
+        }))
+      );
     }
-    
+
     return (
       <div className="w-full h-full p-1 flex flex-col items-center justify-start min-h-[80px] cursor-pointer">
         <span className="text-sm font-medium mb-1">{day.getDate()}</span>
-        
+
         {hasSchedules && (
           <div className="w-full space-y-1">
             {daySchedules.slice(0, 2).map((schedule, index) => (
               <div
                 key={index}
                 className={`text-xs p-1 rounded text-center truncate flex items-center justify-center gap-1 border ${
-                  schedule.serviceType === "collection" 
-                    ? schedule.status === 'scheduled' ? 'bg-green-500 text-white border-green-600' :
-                      schedule.status === 'completed' ? 'bg-green-600 text-white border-green-700' :
-                      'bg-red-500 text-white border-red-600'
-                    : schedule.status === 'scheduled' ? 'bg-blue-500 text-white border-blue-600' :
-                      schedule.status === 'completed' ? 'bg-blue-600 text-white border-blue-700' :
-                      'bg-red-500 text-white border-red-600'
+                  schedule.serviceType === "collection"
+                    ? schedule.status === "scheduled"
+                      ? "bg-green-500 text-white border-green-600"
+                      : schedule.status === "completed"
+                      ? "bg-green-600 text-white border-green-700"
+                      : "bg-red-500 text-white border-red-600"
+                    : schedule.status === "scheduled"
+                    ? "bg-blue-500 text-white border-blue-600"
+                    : schedule.status === "completed"
+                    ? "bg-blue-600 text-white border-blue-700"
+                    : "bg-red-500 text-white border-red-600"
                 }`}
-                title={`${schedule.serviceType === "collection" ? "Trash Collection" : "Maintenance"} - ${schedule.location} at ${schedule.time}`}
+                title={`${schedule.serviceType === "collection" ? "Trash Collection" : "Maintenance"} - ${
+                  schedule.location
+                } at ${schedule.time}`}
               >
                 <span className="truncate">{schedule.location}</span>
               </div>
             ))}
             {daySchedules.length > 2 && (
-              <div className="text-xs text-gray-500 text-center">
-                +{daySchedules.length - 2} more
-              </div>
+              <div className="text-xs text-gray-500 text-center">+{daySchedules.length - 2} more</div>
             )}
           </div>
         )}
@@ -250,7 +265,7 @@ export function ScheduleCollectionTabs() {
     }
   }, [createMaintErr]);
 
-  const handleAddSchedule = (newSchedule: Omit<Schedule, 'id'>) => {
+  const handleAddSchedule = (newSchedule: Omit<Schedule, "id">) => {
     // Validate driver selection (backend requires staffId)
     if (!newSchedule.collector?.id) {
       window.alert("Please select a driver before saving the schedule.");
@@ -294,7 +309,11 @@ export function ScheduleCollectionTabs() {
   const [updateTargetId, setUpdateTargetId] = useState<string | null>(null);
   const [updateStatusValue, setUpdateStatusValue] = useState<string>("");
   const [triggerUpdate, setTriggerUpdate] = useState(false);
-  const { data: updateRes, error: updateErr } = useUpdateTruckScheduleStatus(updateTargetId, updateStatusValue, triggerUpdate);
+  const { data: updateRes, error: updateErr } = useUpdateTruckScheduleStatus(
+    updateTargetId,
+    updateStatusValue,
+    triggerUpdate
+  );
   useEffect(() => {
     if (!triggerUpdate) return;
     if (updateRes || updateErr) {
@@ -313,7 +332,11 @@ export function ScheduleCollectionTabs() {
   const handleUpdateStatus = (id: string | undefined, status: string) => {
     if (!id) return;
     // Optimistic
-    setScheduleData((prev) => prev.map((s) => (s.id === id ? { ...s, status: status as "scheduled" | "in-progress" | "completed" | "cancelled" } : s)));
+    setScheduleData((prev) =>
+      prev.map((s) =>
+        s.id === id ? { ...s, status: status as "scheduled" | "in-progress" | "completed" | "cancelled" } : s
+      )
+    );
     setUpdateTargetId(id);
     setUpdateStatusValue(status);
     setTriggerUpdate(true);
@@ -337,8 +360,8 @@ export function ScheduleCollectionTabs() {
                 </div>
               </div> */}
             </div>
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)} 
+            <Button
+              onClick={() => setIsAddDialogOpen(true)}
               className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -346,7 +369,7 @@ export function ScheduleCollectionTabs() {
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent className="p-3">
           <Calendar
             mode="single"
@@ -368,13 +391,14 @@ export function ScheduleCollectionTabs() {
               row: "flex w-full mt-2",
               cell: "flex-1 text-center p-1 relative border border-gray-100 min-h-[100px]",
               day: "w-full h-full p-0 font-normal hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground rounded-none",
-              day_selected: "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary focus:bg-primary/20 focus:text-primary",
+              day_selected:
+                "bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary focus:bg-primary/20 focus:text-primary",
               day_today: "bg-accent text-accent-foreground font-bold",
               day_outside: "text-muted-foreground opacity-50",
               day_disabled: "text-muted-foreground opacity-30",
             }}
             components={{
-              DayContent: ({ date }) => dayContent(date)
+              DayContent: ({ date }) => dayContent(date),
             }}
           />
         </CardContent>
@@ -388,10 +412,10 @@ export function ScheduleCollectionTabs() {
               Schedules for {selectedDate && format(selectedDate, "MMMM dd, yyyy")}
             </DialogTitle>
             <DialogDescription>
-              {selectedDateSchedules.length} Schedule{selectedDateSchedules.length > 1 ? 's' : ''} for this date
+              {selectedDateSchedules.length} Schedule{selectedDateSchedules.length > 1 ? "s" : ""} for this date
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-3 max-h-80 overflow-y-auto py-4">
             {selectedDateSchedules.map((schedule) => (
               <div key={schedule.id} className="p-4 bg-gray-50 rounded-lg border">
@@ -404,7 +428,7 @@ export function ScheduleCollectionTabs() {
                       </Badge>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between text-sm text-gray-600">
                     <div className="flex items-center space-x-2">
                       {schedule.serviceType === "collection" ? (
@@ -416,27 +440,25 @@ export function ScheduleCollectionTabs() {
                           MAINTENANCE
                         </span>
                       )}
-                     
                     </div>
 
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-1">
                         <Clock className="h-4 w-4" />
-                        <span>{schedule.time}</span>
+                        <span className="font-xs">{formatTimeRange(schedule.time)}</span>
                       </div>
 
-                        {schedule.priority && (
-                    <div className="text-sm text-gray-700">
-                      <span className="font-medium">Priority:</span> {schedule.priority}
-                    </div>
-                  )}
+                      {schedule.priority && (
+                        <div className="text-sm text-gray-700">
+                          <span className="font-medium">Priority:</span> {schedule.priority}
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {schedule.collector && (
                     <div className="text-sm text-gray-700">
-                      <span className="font-medium">Worker:</span>{" "}
-                      {schedule.collector.name}
+                      <span className="font-medium">Worker:</span> {schedule.collector.name}
                       {schedule.collector.phone ? (
                         <span className="text-gray-500"> ({schedule.collector.phone})</span>
                       ) : null}
@@ -457,11 +479,11 @@ export function ScheduleCollectionTabs() {
                       <span className="font-medium">Notes:</span> {schedule.notes}
                     </div>
                   )}
-                  
+
                   {schedule.capacity && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500">
-                        {schedule.status === 'completed' ? 'Collected' : 'Expected Capacity'}
+                        {schedule.status === "completed" ? "Collected" : "Expected Capacity"}
                       </span>
                       <div className={`text-sm font-semibold ${getCapacityColor(schedule.capacity)}`}>
                         {schedule.capacity}
@@ -475,11 +497,7 @@ export function ScheduleCollectionTabs() {
         </DialogContent>
       </Dialog>
 
-      <AddScheduleDialog 
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        onAddSchedule={handleAddSchedule}
-      />
+      <AddScheduleDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onAddSchedule={handleAddSchedule} />
     </div>
   );
 }

@@ -98,7 +98,6 @@ const config = {
     CRITICAL_ALERT_INTERVAL: 5 * 60 * 1000,  // 5 minutes
     WARNING_ALERT_INTERVAL: 30 * 60 * 1000,  // 30 minutes
     EMAIL_ALERTS: true,
-    SMS_ALERTS: false,
     WEBHOOK_ALERTS: true
   },
 

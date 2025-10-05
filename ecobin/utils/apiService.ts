@@ -17,7 +17,9 @@ const FALLBACK_ENDPOINTS = [
 
 // Try multiple endpoints for mobile development
 const API_ENDPOINTS = [
+  'http://192.168.1.13:8000', // Computer's current IP address
   API_BASE_URL || FALLBACK_ENDPOINTS[0],                    // Primary endpoint from .env
+  'http://192.168.1.4:8000',  // Previous IP address (fallback)
   API_FALLBACK_LOCALHOST || FALLBACK_ENDPOINTS[2],          // Fallback for simulator
   API_FALLBACK_ANDROID_EMULATOR || FALLBACK_ENDPOINTS[3],   // Android emulator host
   ...FALLBACK_ENDPOINTS,                                     // Additional fallbacks
