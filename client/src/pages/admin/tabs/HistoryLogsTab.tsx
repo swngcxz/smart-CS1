@@ -13,9 +13,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { History, Logs, Search, Filter, Calendar, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { History, Logs, Search, Filter, Calendar, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import api from "@/lib/api";
-
+import { useToast } from "@/components/ui/use-toast";
 interface LoginHistoryLog {
   id: string;
   userEmail: string;
@@ -39,19 +39,22 @@ export const HistoryLogsTab = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<keyof LoginHistoryLog>("loginTime");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const itemsPerPage = 12;
 
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const { toast } = useToast();
+
+  const itemsPerPage = logs.length >= 1000 ? 5 : 10;
   // Fetch login history from API
   const fetchLoginHistory = async () => {
     try {
       setLoading(true);
       setError(null);
       console.log("🔄 Fetching login history...");
-      
+
       const response = await api.get("/auth/login-history");
       console.log("📊 Login history response:", response.data);
       console.log("📊 Response status:", response.status);
-      
+
       const loginLogs = response.data.logs || response.data;
       setLogs(loginLogs);
       console.log(`✅ Loaded ${loginLogs.length} login history records`);
@@ -60,7 +63,9 @@ export const HistoryLogsTab = () => {
       console.error("💥 Error fetching login history:", err);
       console.error("💥 Error response:", err.response);
       console.error("💥 Error message:", err.message);
-      setError(err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to load login history");
+      setError(
+        err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to load login history"
+      );
     } finally {
       setLoading(false);
     }
@@ -69,6 +74,20 @@ export const HistoryLogsTab = () => {
   useEffect(() => {
     fetchLoginHistory();
   }, []);
+
+  const handleClearLogs = async () => {
+    try {
+      setLoading(true);
+      await api.delete("/auth/clear-history"); // replace with your backend route
+      toast({ title: "History Cleared", description: "All history logs have been deleted." });
+      setLogs([]);
+    } catch (error: any) {
+      toast({ title: "Error", description: "Failed to clear logs. Try again later.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+      setShowConfirmModal(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -83,31 +102,29 @@ export const HistoryLogsTab = () => {
     }
   };
 
-const formatDateTime = (dateString: string | null) => {
-  if (!dateString) return "Active";
-  const date = new Date(dateString);
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return "Active";
+    const date = new Date(dateString);
 
-  const datePart = date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "2-digit",
-  });
+    const datePart = date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "2-digit",
+    });
 
-  const timePart = date.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+    const timePart = date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
 
-  return (
-    <>
-      <div>{datePart}</div>
-      <div>{timePart}</div>
-    </>
-  );
-};
-
-
+    return (
+      <>
+        <div>{datePart}</div>
+        <div>{timePart}</div>
+      </>
+    );
+  };
 
   const getRoleBadge = (role: string) => {
     const colors = {
@@ -115,7 +132,9 @@ const formatDateTime = (dateString: string | null) => {
       staff: "bg-blue-100 text-blue-800",
       janitor: "bg-green-100 text-green-800",
     };
-    return <Badge className={colors[role.toLowerCase() as keyof typeof colors] || "bg-gray-100 text-gray-800"}>{role}</Badge>;
+    return (
+      <Badge className={colors[role.toLowerCase() as keyof typeof colors] || "bg-gray-100 text-gray-800"}>{role}</Badge>
+    );
   };
 
   const formatDuration = (minutes: number | null) => {
@@ -151,18 +170,18 @@ const formatDateTime = (dateString: string | null) => {
   // Filter and search logic
   const filteredLogs = logs.filter((log) => {
     // Exclude admin logs from display
-    if (log.role.toLowerCase() === 'admin') {
+    if (log.role.toLowerCase() === "admin") {
       return false;
     }
 
     const matchesSearch =
       log.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (log.ipAddress || 'Unknown').toLowerCase().includes(searchTerm.toLowerCase());
+      (log.ipAddress || "Unknown").toLowerCase().includes(searchTerm.toLowerCase());
 
-    const logStatus = log.status || 'offline';
+    const logStatus = log.status || "offline";
     // Treat "completed" status as "offline" for display purposes
-    const displayStatus = logStatus === 'completed' ? 'offline' : logStatus;
+    const displayStatus = logStatus === "completed" ? "offline" : logStatus;
     const matchesStatus = statusFilter === "all" || displayStatus.toLowerCase() === statusFilter.toLowerCase();
     const matchesRole = roleFilter === "all" || log.role.toLowerCase() === roleFilter.toLowerCase();
 
@@ -204,80 +223,65 @@ const formatDateTime = (dateString: string | null) => {
   const paginatedLogs = sortedLogs.slice(startIndex, startIndex + itemsPerPage);
 
   // Calculate analytics from filtered data (excluding admin logs)
-  const nonAdminLogs = logs.filter((log) => log.role.toLowerCase() !== 'admin');
-  const activeSessions = nonAdminLogs.filter((log) => (log.status || 'offline') === "active").length;
+  const nonAdminLogs = logs.filter((log) => log.role.toLowerCase() !== "admin");
+  const activeSessions = nonAdminLogs.filter((log) => (log.status || "offline") === "active").length;
   const offlineSessions = nonAdminLogs.filter((log) => {
-    const status = log.status || 'offline';
+    const status = log.status || "offline";
     return status === "completed" || status === "offline";
   }).length;
-  const averageSessionDuration = nonAdminLogs
-    .filter((log) => log.sessionDuration !== null)
-    .reduce((sum, log) => sum + (log.sessionDuration || 0), 0) / 
+  const averageSessionDuration =
+    nonAdminLogs
+      .filter((log) => log.sessionDuration !== null)
+      .reduce((sum, log) => sum + (log.sessionDuration || 0), 0) /
     Math.max(nonAdminLogs.filter((log) => log.sessionDuration !== null).length, 1);
 
-return (
-  <div className="space-y-6 p-4 sm:p-2">
-    {/* Section Title */}
-    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-      History Logs
-    </h2>
+  return (
+    <div className="space-y-6 p-4 sm:p-2">
+      {/* Section Title */}
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">History Logs</h2>
+      <div className="flex justify-end"></div>
+      {/* Stats Grid */}
+      {/* History Logs Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Active History Logs */}
+        <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">Active History Logs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{activeSessions}</div>
+          </CardContent>
+        </Card>
 
-    {/* Stats Grid */}
- {/* History Logs Summary Cards */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-  {/* Active History Logs */}
-  <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-        Active History Logs
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-        {activeSessions}
+        {/* Total History Logs */}
+        <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">Total History Logs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{nonAdminLogs.length}</div>
+          </CardContent>
+        </Card>
+
+        {/* Avg Session Duration */}
+        <Card className="transition-all hover:shadow-md sm:col-span-2 lg:col-span-1 dark:bg-gray-900 dark:border-gray-700">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">Avg Session Duration</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {formatDuration(Math.round(averageSessionDuration))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </CardContent>
-  </Card>
-
-  {/* Total History Logs */}
-  <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-        Total History Logs
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-        {nonAdminLogs.length}
-      </div>
-    </CardContent>
-  </Card>
-
-  {/* Avg Session Duration */}
-  <Card className="transition-all hover:shadow-md sm:col-span-2 lg:col-span-1 dark:bg-gray-900 dark:border-gray-700">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-        Avg Session Duration
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-gray-900 dark:text-white">
-        {formatDuration(Math.round(averageSessionDuration))}
-      </div>
-    </CardContent>
-  </Card>
-</div>
-
-
 
       {/* Filters and Search - Responsive Layout */}
-      <Card className=" dark:bg-gray-900 dark:border-gray-700">
+      <div className="bg-transparent border-0 shadow-none p-0">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Login History
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2">Login History</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4  dark:bg-gray-900 dark:border-gray-700">
+        <div className="space-y-4">
           {/* Loading and Error States */}
           {loading && (
             <div className="text-center py-8">
@@ -303,121 +307,128 @@ return (
             <>
               {/* Filter Controls */}
               <div className="flex flex-col sm:flex-row gap-4  dark:bg-gray-900 dark:border-gray-700">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search by Email, Role, or IP Address..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 ">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue placeholder="Filter by Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="offline">Offline</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-full sm:w-40">
-                  <SelectValue placeholder="Filter by Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="user">Janitor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by Email, Role, or IP Address..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 ">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Filter by Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="offline">Offline</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Filter by Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="user">Janitor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowConfirmModal(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="w-2 h-2" />
+                </Button>
+              </div>
 
-          {/* Mobile Card View for Small Screens */}
-          <div className="block sm:hidden space-y-4  dark:bg-gray-900 dark:border-gray-700">
-            {paginatedLogs.map((log) => (
-              <Card key={log.id} className="border-l-4 border-l-blue-500">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg">{log.userEmail}</h3>
-                    {getStatusBadge(log.status)}
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Role:</span>
-                      {getRoleBadge(log.role)}
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Login Time:</span>
-                      <span className="font-medium">{new Date(log.loginTime).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Logout Time:</span>
-                      <span className="font-medium">{log.logoutTime ? new Date(log.logoutTime).toLocaleString() : "Active"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Duration:</span>
-                      <span className="font-medium">{formatDuration(log.sessionDuration)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">IP Address:</span>
-                      <span className="font-medium">{log.ipAddress || 'Unknown'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Device:</span>
-                      <span className="font-medium" title={log.userAgent || 'Unknown'}>{formatUserAgent(log.userAgent || 'Unknown')}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+              {/* Mobile Card View for Small Screens */}
+              <div className="block sm:hidden space-y-4  dark:bg-gray-900 dark:border-gray-700">
+                {paginatedLogs.map((log) => (
+                  <Card key={log.id} className="border-l-4 border-l-blue-500">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-lg">{log.userEmail}</h3>
+                        {getStatusBadge(log.status)}
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Role:</span>
+                          {getRoleBadge(log.role)}
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Login Time:</span>
+                          <span className="font-medium">{new Date(log.loginTime).toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Logout Time:</span>
+                          <span className="font-medium">
+                            {log.logoutTime ? new Date(log.logoutTime).toLocaleString() : "Active"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Duration:</span>
+                          <span className="font-medium">{formatDuration(log.sessionDuration)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">IP Address:</span>
+                          <span className="font-medium">{log.ipAddress || "Unknown"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Device:</span>
+                          <span className="font-medium" title={log.userAgent || "Unknown"}>
+                            {formatUserAgent(log.userAgent || "Unknown")}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
 
-          {/* Desktop Table View */}
-          <div className="hidden sm:block overflow-x-auto  dark:bg-gray-900 dark:border-gray-700">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead 
-                    className="min-w-[200px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                    onClick={() => handleSort("userEmail")}
-                  >
-                    <div className="flex items-center gap-2">
-                      User Email
-                      {getSortIcon("userEmail")}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="min-w-[100px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                    onClick={() => handleSort("role")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Role
-                      {getSortIcon("role")}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="min-w-[150px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                    onClick={() => handleSort("loginTime")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Login Time
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="min-w-[150px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                    onClick={() => handleSort("logoutTime")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Logout Time
-                    </div>
-                  </TableHead>
-                  {/* <TableHead 
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto  dark:bg-gray-900 dark:border-gray-700">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead
+                        className="min-w-[200px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                        onClick={() => handleSort("userEmail")}
+                      >
+                        <div className="flex items-center gap-2">
+                          User Email
+                          {getSortIcon("userEmail")}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="min-w-[100px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                        onClick={() => handleSort("role")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Role
+                          {getSortIcon("role")}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="min-w-[150px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                        onClick={() => handleSort("loginTime")}
+                      >
+                        <div className="flex items-center gap-2">Login Time</div>
+                      </TableHead>
+                      <TableHead
+                        className="min-w-[150px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                        onClick={() => handleSort("logoutTime")}
+                      >
+                        <div className="flex items-center gap-2">Logout Time</div>
+                      </TableHead>
+                      {/* <TableHead 
                     className="min-w-[100px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                     onClick={() => handleSort("sessionDuration")}
                   >
@@ -425,49 +436,50 @@ return (
                       Duration
                     </div>
                   </TableHead> */}
-                  <TableHead 
-                    className="min-w-[120px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                    onClick={() => handleSort("ipAddress")}
-                  >
-                    <div className="flex items-center gap-2">
-                      IP Address
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="min-w-[100px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                    onClick={() => handleSort("status")}
-                  >
-                    <div className="flex items-center gap-2">
-                      Status
-                    </div>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedLogs.map((log) => (
-                  <TableRow key={log.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">{log.userEmail}</TableCell>
-                  <TableCell>
-                    <Badge className={getRoleBadge(log.role).props.className.replace(/bg-\S+/g, "bg-transparent")}>
-                      {getRoleBadge(log.role).props.children.charAt(0).toUpperCase() + getRoleBadge(log.role).props.children.slice(1)}
-                    </Badge>
-                  </TableCell>
-                   <TableCell className="text-sm">{formatDateTime(log.loginTime)}</TableCell>
-<TableCell className="text-sm">{formatDateTime(log.logoutTime)}</TableCell>
+                      <TableHead
+                        className="min-w-[120px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                        onClick={() => handleSort("ipAddress")}
+                      >
+                        <div className="flex items-center gap-2">IP Address</div>
+                      </TableHead>
+                      <TableHead
+                        className="min-w-[100px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                        onClick={() => handleSort("status")}
+                      >
+                        <div className="flex items-center gap-2">Status</div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedLogs.map((log) => (
+                      <TableRow key={log.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">{log.userEmail}</TableCell>
+                        <TableCell>
+                          <Badge
+                            className={getRoleBadge(log.role).props.className.replace(/bg-\S+/g, "bg-transparent")}
+                          >
+                            {getRoleBadge(log.role).props.children.charAt(0).toUpperCase() +
+                              getRoleBadge(log.role).props.children.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{formatDateTime(log.loginTime)}</TableCell>
+                        <TableCell className="text-sm">{formatDateTime(log.logoutTime)}</TableCell>
 
-                    {/* <TableCell className="font-medium">{formatDuration(log.sessionDuration)}</TableCell> */}
-                    <TableCell className="font-mono text-xs">{log.ipAddress || 'Unknown'}</TableCell>
-                   <TableCell>
-                    <Badge className={getStatusBadge(log.status).props.className.replace(/bg-\S+/g, "bg-transparent")}>
-                      {getStatusBadge(log.status).props.children.charAt(0).toUpperCase() + getStatusBadge(log.status).props.children.slice(1)}
-                    </Badge>
-                  </TableCell>
-
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                        {/* <TableCell className="font-medium">{formatDuration(log.sessionDuration)}</TableCell> */}
+                        <TableCell className="font-mono text-xs">{log.ipAddress || "Unknown"}</TableCell>
+                        <TableCell>
+                          <Badge
+                            className={getStatusBadge(log.status).props.className.replace(/bg-\S+/g, "bg-transparent")}
+                          >
+                            {getStatusBadge(log.status).props.children.charAt(0).toUpperCase() +
+                              getStatusBadge(log.status).props.children.slice(1)}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -476,35 +488,35 @@ return (
                     Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedLogs.length)} of{" "}
                     {sortedLogs.length} results
                   </div>
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <PaginationItem key={page}>
-                      <PaginationLink
-                        onClick={() => setCurrentPage(page)}
-                        isActive={currentPage === page}
-                        className="cursor-pointer"
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            onClick={() => setCurrentPage(page)}
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
 
               {sortedLogs.length === 0 && (
                 <div className="text-center py-8">
@@ -515,8 +527,27 @@ return (
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+
+          {showConfirmModal && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+              <div className="bg-white dark:bg-gray-900 p-5 rounded-2xl shadow-md w-[90%] sm:w-[360px] text-center space-y-3">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white">Clear all history logs?</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  This will permanently remove all login records.
+                </p>
+                <div className="flex justify-center gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowConfirmModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={handleClearLogs}>
+                    Confirm
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
