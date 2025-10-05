@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
-import { Bell, Trash, Check, ArrowLeft, Filter } from "lucide-react";
+import { Bell, Trash, Check, ArrowLeft, Filter, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,13 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
 
-
 // Notification type from hook
 import type { Notification as NotificationType } from "@/hooks/useNotifications";
 
-
-
-
+// Helper function to format date
+const formatNotificationDate = (timestamp: string) => {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
 const Notifications = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
@@ -42,47 +48,44 @@ const Notifications = () => {
   // Determine notification bucket based on user role
   const getNotificationBucket = (user: { id: string; role: string } | null) => {
     if (!user) return "admin"; // Default to admin for safety
-    
+
     // For admin, use "admin" bucket to see all notifications
     if (user.role === "admin") return "admin";
-    
+
     // For staff roles (staff, janitor, driver, maintenance), use "admin" bucket to see all notifications
     // This ensures they can see login notifications and other system notifications
     if (["staff", "janitor", "driver", "maintenance"].includes(user.role)) {
       return "admin";
     }
-    
+
     // Fallback to user ID for other roles
     return user.id;
   };
-  
+
   const notificationBucket = getNotificationBucket(currentUser);
-  
+
   // Use the hook for notifications based on user role
   const { notifications, loading, error } = useNotifications(notificationBucket);
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [hiddenNotifications, setHiddenNotifications] = useState<string[]>([]);
 
-
   // Only use backend notifications
   const backendNotifications: NotificationType[] = Array.isArray(notifications) ? notifications : [];
   const unreadCount = backendNotifications.filter((n) => !n.read).length;
 
-
-
   // Mark a single notification as read in the backend
   const markAsRead = async (key: string) => {
     try {
-      if (notificationBucket === 'admin') {
+      if (notificationBucket === "admin") {
         await api.patch(`/api/notifications/admin/mark-read/${key}`);
       } else {
         await api.patch(`/api/notifications/${notificationBucket}/mark-read/${key}`);
       }
-      
+
       // Refresh notifications after marking as read
       window.location.reload();
-      
+
       console.log(`${notificationBucket} notification marked as read:`, key);
     } catch (err) {
       console.error(`Failed to mark ${notificationBucket} notification as read:`, err);
@@ -92,15 +95,15 @@ const Notifications = () => {
   // Mark all notifications as read in the backend
   const markAllAsRead = async () => {
     try {
-      if (notificationBucket === 'admin') {
+      if (notificationBucket === "admin") {
         await api.patch(`/api/notifications/admin/mark-all-read`);
       } else {
         await api.patch(`/api/notifications/${notificationBucket}/mark-all-read`);
       }
-      
+
       // Refresh notifications after marking all as read
       window.location.reload();
-      
+
       console.log(`All ${notificationBucket} notifications marked as read`);
     } catch (err) {
       console.error(`Failed to mark all ${notificationBucket} notifications as read:`, err);
@@ -112,17 +115,11 @@ const Notifications = () => {
     setHiddenNotifications((prev) => [...prev, key]);
   };
 
-
-
-
   // Remove duplicate notifications (same title, message, and timestamp, regardless of key)
   const uniqueNotifications = backendNotifications.filter((notif, idx, arr) => {
     return (
       arr.findIndex(
-        n =>
-          n.title === notif.title &&
-          n.message === notif.message &&
-          n.timestamp === notif.timestamp
+        (n) => n.title === notif.title && n.message === notif.message && n.timestamp === notif.timestamp
       ) === idx
     );
   });
@@ -131,14 +128,14 @@ const Notifications = () => {
     .filter((notification) => !hiddenNotifications.includes(notification.key))
     .filter((notification) => {
       // Hide 'info' notifications with no title or message
-      if (notification.type === 'info' && (!notification.title || !notification.message)) {
+      if (notification.type === "info" && (!notification.title || !notification.message)) {
         return false;
       }
-      return notification.type !== 'info';
+      return notification.type !== "info";
     })
     .filter((notification) => {
       // Exclude admin login notifications (since admin doesn't need to be notified about their own logins)
-      if (notification.type === 'login' && notification.message && notification.message.includes('(admin)')) {
+      if (notification.type === "login" && notification.message && notification.message.includes("(admin)")) {
         return false;
       }
       return true;
@@ -183,7 +180,26 @@ const Notifications = () => {
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
     }
   };
+  const countNotifications = (status: string, type: string) => {
+    return uniqueNotifications
+      .filter((notification) => !hiddenNotifications.includes(notification.key))
+      .filter((notification) => {
+        // Exclude filtered types/messages (logic from the main component)
+        if (notification.type === "info" && (!notification.title || !notification.message)) return false;
+        if (
+          notification.type !== "info" &&
+          notification.type === "login" &&
+          notification.message &&
+          notification.message.includes("(admin)")
+        )
+          return false;
 
+        const statusMatch =
+          status === "all" || (status === "read" && notification.read) || (status === "unread" && !notification.read);
+        const typeMatch = type === "all" || notification.type === type;
+        return statusMatch && typeMatch;
+      }).length;
+  };
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -201,7 +217,7 @@ const Notifications = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white dark:from-gray-900 dark:to-gray-950 p-6">
+    <div className="min-h-screen bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 p-6">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -217,61 +233,65 @@ const Notifications = () => {
             <div className="flex items-center space-x-3">
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">All Notifications</h1>
-                <p className="text-gray-600 dark:text-gray-400">
-                {backendNotifications.length} Notifications
-                </p>
+                <p className="text-gray-600 dark:text-gray-400">{backendNotifications.length} Notifications</p>
               </div>
             </div>
           </div>
 
           {unreadCount > 0 && (
-            <Button onClick={markAllAsRead} className="bg-green-600 hover:bg-green-700 text-white">
+            <Button onClick={markAllAsRead} className="bg-green-700 hover:bg-green-800 text-white">
               Mark All as Read
             </Button>
           )}
         </div>
 
         {/* Filters */}
-        <Card className="border-green-200 dark:border-green-700 dark:bg-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-300">
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Status</label>
-                <Select value={filter} onValueChange={setFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Notifications</SelectItem>
-                    <SelectItem value="unread">Unread Only</SelectItem>
-                    <SelectItem value="read">Read Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex-1">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">Type</label>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="login">Login</SelectItem>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="warning">Warning</SelectItem>
-                    <SelectItem value="success">Success</SelectItem>
-                    <SelectItem value="error">Error</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Filters */}
+        <div className="flex gap-4">
+          <div className="flex-1">
+            {/* Status Filter (Icon-only trigger) */}
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger
+                // Minimalist style with Green focus ring
+                className="border-gray-200 dark:border-gray-700 dark:bg-gray-900/50 hover:border-gray-400 focus:ring-1 focus:ring-green-600 transition-all text-sm font-medium"
+              >
+                <div className="flex items-center gap-2">
+                  {/* Icon */}
+                  <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <SelectValue placeholder="Filter by Status" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="dark:bg-gray-900 border-gray-700">
+                <SelectItem value="all">All Notifications</SelectItem>
+                <SelectItem value="unread">Unread Only</SelectItem>
+                <SelectItem value="read">Read Only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1">
+            {/* Type Filter (Icon-only trigger) */}
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger
+                // Minimalist style with Green focus ring
+                className="border-gray-200 dark:border-gray-700 dark:bg-gray-900/50 hover:border-gray-400 focus:ring-1 focus:ring-green-600 transition-all text-sm font-medium"
+              >
+                <div className="flex items-center gap-2">
+                  {/* Icon */}
+                  <Bell className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <SelectValue placeholder="Filter by Type" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className="dark:bg-gray-900 border-gray-700">
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="login">Login</SelectItem>
+                <SelectItem value="info">Info</SelectItem>
+                <SelectItem value="warning">Warning</SelectItem>
+                <SelectItem value="success">Success</SelectItem>
+                <SelectItem value="error">Error</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         {/* Notifications List */}
         <div className="space-y-4">
@@ -280,7 +300,7 @@ const Notifications = () => {
               <CardContent className="pt-6">
                 <div className="text-center py-8">
                   <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No notifications found</h3>
+                  <h3 className="text-lg font-sm text-gray-900 dark:text-white mb-2">No notifications found</h3>
                   <p className="text-gray-500 dark:text-gray-400">
                     Try adjusting your filters to see more notifications.
                   </p>
@@ -291,54 +311,53 @@ const Notifications = () => {
             filteredNotifications.map((notification) => (
               <Card
                 key={notification.key}
-                className={`${getTypeColor("info")} ${
-                  !notification.read ? "ring-2 ring-green-200 dark:ring-green-600" : ""
-                } transition-all hover:shadow-md`}
+                className={`
+    bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 transition-all hover:shadow-md
+    ${!notification.read ? "border-l-4 border-l-green-800" : ""}
+  `}
               >
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
-                        <Badge className={getTypeBadge("info")}>info</Badge>
+                        {/* <Badge className={getTypeBadge("info")}>Info</Badge> */}
                         {!notification.read && (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                            New
-                          </Badge>
+                          <Badge className="bg-green-800 text-white dark:bg-green-900 dark:text-green-200">New</Badge>
                         )}
                       </div>
                       <p className="text-gray-700 dark:text-gray-300 mb-3">{notification.message}</p>
                       {/* Only show timestamp if not already in the message */}
-                      {notification.message && notification.timestamp && !notification.message.includes(new Date(notification.timestamp).toLocaleString()) && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(notification.timestamp).toLocaleString()}
-                        </p>
-                      )}
+                      {notification.message &&
+                        notification.timestamp &&
+                        !notification.message.includes(new Date(notification.timestamp).toLocaleString()) && (
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(notification.timestamp).toLocaleString()}
+                          </p>
+                        )}
                     </div>
                     <div className="flex items-center gap-2 ml-4">
                       {!notification.read && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-green-600 hover:text-green-700 hover:bg-green-100 dark:text-green-300 dark:hover:bg-green-800"
+                          className="text-gray-600 hover:text-green-700 hover:bg-green-100 dark:text-green-300 dark:hover:bg-green-800"
                           onClick={() => markAsRead(notification.key)}
                         >
                           <Check className="h-4 w-4 mr-1" />
-                          Mark as Read
                         </Button>
                       )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900"
+                        className="text-gray-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900"
                         onClick={() => {
-                          if (window.confirm('Are you sure you want to delete this notification?')) {
+                          if (window.confirm("Are you sure you want to delete this notification?")) {
                             deleteNotification(notification.key);
                           }
                         }}
                       >
                         <Trash className="h-4 w-4 mr-1" />
-                        Delete
                       </Button>
                     </div>
                   </div>
