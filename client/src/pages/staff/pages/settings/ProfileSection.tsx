@@ -15,9 +15,7 @@ export const ProfileSection = () => {
   const { userInfo, updateProfileFields, updateUserInfo, getProfileImageUrl } = useUserInfo();
   const [profile, setProfile] = useState({
     name: "",
-    email: "",
-    phone: "",
-    bio: "",
+   E32UYE0U
     location: "",
     website: "",
   });

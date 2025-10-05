@@ -1,4 +1,4 @@
-const { db } = require('../models/firebase');
+const { rtdb } = require('../models/firebase');
 const notificationController = require('../controllers/notificationController');
 
 class BinHealthMonitor {
@@ -117,8 +117,8 @@ class BinHealthMonitor {
    */
   async getBinData() {
     try {
-      const bin1Ref = db.ref('monitoring/bin1');
-      const dataRef = db.ref('monitoring/data');
+      const bin1Ref = rtdb.ref('monitoring/bin1');
+      const dataRef = rtdb.ref('monitoring/data');
       
       const [bin1Snapshot, dataSnapshot] = await Promise.all([
         bin1Ref.once('value'),

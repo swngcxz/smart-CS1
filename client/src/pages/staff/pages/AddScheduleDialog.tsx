@@ -67,6 +67,12 @@ export function AddScheduleDialog({
   const [maintenanceWorkers, setMaintenanceWorkers] = useState<Collector[]>([]);
   const [loadingWorkers, setLoadingWorkers] = useState(false);
   
+  // State for existing schedules validation
+  const [existingSchedules, setExistingSchedules] = useState<any[]>([]);
+  const [existingTruckSchedules, setExistingTruckSchedules] = useState<any[]>([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [validationError, setValidationError] = useState("");
+  
   // Toast for notifications
   const { toast } = useToast();
 
@@ -77,6 +83,7 @@ export function AddScheduleDialog({
   useEffect(() => {
     if (open) {
       fetchWorkers();
+      fetchExistingSchedules();
     }
   }, [open]);
 
@@ -86,6 +93,20 @@ export function AddScheduleDialog({
       setCollectorId(""); // Reset selected worker when service type changes
     }
   }, [serviceType, open]);
+
+  // Clear validation error when form values change and perform real-time validation
+  useEffect(() => {
+    setValidationError("");
+    
+    // Perform real-time validation when all required fields are filled
+    if (location && date && startTime && endTime && !loadingSchedules) {
+      const hasDuplicate = checkForDuplicateSchedule();
+      // Only show error if there's actually a duplicate, not on initial load
+      if (hasDuplicate && (existingSchedules.length > 0 || existingTruckSchedules.length > 0)) {
+        // Error is already set in checkForDuplicateSchedule function
+      }
+    }
+  }, [location, date, startTime, endTime, collectorId, serviceType, existingSchedules, existingTruckSchedules, loadingSchedules]);
 
   const fetchWorkers = async () => {
     setLoadingWorkers(true);
@@ -111,6 +132,25 @@ export function AddScheduleDialog({
     }
   };
 
+  const fetchExistingSchedules = async () => {
+    setLoadingSchedules(true);
+    try {
+      const [schedulesResponse, truckSchedulesResponse] = await Promise.all([
+        api.get("/api/schedules"),
+        api.get("/api/truck-schedules")
+      ]);
+
+      setExistingSchedules(schedulesResponse.data || []);
+      setExistingTruckSchedules(truckSchedulesResponse.data || []);
+    } catch (error) {
+      console.error("Error fetching existing schedules:", error);
+      setExistingSchedules([]);
+      setExistingTruckSchedules([]);
+    } finally {
+      setLoadingSchedules(false);
+    }
+  };
+
   const resetForm = () => {
     setServiceType("collection");
     setLocation("");
@@ -124,12 +164,99 @@ export function AddScheduleDialog({
     setNotes("");
     setContactPerson("");
     setPriority("Normal");
+    setValidationError("");
+  };
+
+  const checkForDuplicateSchedule = (): boolean => {
+    if (!location || !date || !startTime || !endTime) {
+      return false;
+    }
+
+    const formattedDate = format(date, "yyyy-MM-dd");
+    const trimmedLocation = location.trim().toLowerCase();
+
+    // Check for duplicates in the appropriate schedule type
+    if (serviceType === "collection") {
+      const duplicate = existingTruckSchedules.find(schedule => {
+        const scheduleDate = schedule.date || schedule.start_date;
+        const scheduleLocation = (schedule.location || "").toLowerCase();
+        
+        // Check if same location and date
+        if (scheduleLocation === trimmedLocation && scheduleDate === formattedDate) {
+          // Check for time overlap
+          const scheduleStart = schedule.start_collected || schedule.start_time;
+          const scheduleEnd = schedule.end_collected || schedule.end_time;
+          
+          if (scheduleStart && scheduleEnd) {
+            // Check if times overlap (considering same worker or same location)
+            return (
+              (startTime >= scheduleStart && startTime < scheduleEnd) ||
+              (endTime > scheduleStart && endTime <= scheduleEnd) ||
+              (startTime <= scheduleStart && endTime >= scheduleEnd)
+            );
+          }
+          // Even if no time overlap, still consider it a duplicate for the same location on same date
+          return true;
+        }
+        return false;
+      });
+
+      if (duplicate) {
+        const existingStart = duplicate.start_collected || duplicate.start_time;
+        const existingEnd = duplicate.end_collected || duplicate.end_time;
+        setValidationError(`A collection schedule already exists for "${location.trim()}" on ${format(date, "PPP")} from ${existingStart} to ${existingEnd}. Please choose a different time or location.`);
+        return true;
+      }
+    } else {
+      const duplicate = existingSchedules.find(schedule => {
+        const scheduleDate = schedule.date || schedule.start_date;
+        const scheduleLocation = (schedule.location || "").toLowerCase();
+        
+        // Check if same location and date
+        if (scheduleLocation === trimmedLocation && scheduleDate === formattedDate) {
+          // Check for time overlap
+          const scheduleStart = schedule.start_time;
+          const scheduleEnd = schedule.end_time;
+          
+          if (scheduleStart && scheduleEnd) {
+            // Check if times overlap
+            return (
+              (startTime >= scheduleStart && startTime < scheduleEnd) ||
+              (endTime > scheduleStart && endTime <= scheduleEnd) ||
+              (startTime <= scheduleStart && endTime >= scheduleEnd)
+            );
+          }
+          // Even if no time overlap, still consider it a duplicate for the same location on same date
+          return true;
+        }
+        return false;
+      });
+
+      if (duplicate) {
+        const existingStart = duplicate.start_time;
+        const existingEnd = duplicate.end_time;
+        setValidationError(`A maintenance schedule already exists for "${location.trim()}" on ${format(date, "PPP")} from ${existingStart} to ${existingEnd}. Please choose a different time or location.`);
+        return true;
+      }
+    }
+
+    return false;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!location || !startTime || !endTime || !date || !collectorId || collectorId === "loading" || collectorId === "no-workers") {
+      return;
+    }
+
+    // Check for duplicate schedule before submitting
+    if (checkForDuplicateSchedule()) {
+      toast({
+        variant: "destructive",
+        title: "Duplicate Schedule",
+        description: validationError,
+      });
       return;
     }
 
@@ -398,6 +525,22 @@ export function AddScheduleDialog({
             </div>
           </div>
 
+          {/* Validation Error Display */}
+          {validationError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-800">{validationError}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
@@ -405,9 +548,9 @@ export function AddScheduleDialog({
             <Button 
               type="submit" 
               className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition"
-              disabled={!location || !startTime || !endTime || !date || !collectorId || collectorId === "loading" || collectorId === "no-workers" || loadingWorkers}
+              disabled={!location || !startTime || !endTime || !date || !collectorId || collectorId === "loading" || collectorId === "no-workers" || loadingWorkers || loadingSchedules || !!validationError}
             >
-              {loadingWorkers ? "Loading..." : "Add Schedule"}
+              {loadingWorkers || loadingSchedules ? "Loading..." : "Add Schedule"}
             </Button>
           </DialogFooter>
         </form>

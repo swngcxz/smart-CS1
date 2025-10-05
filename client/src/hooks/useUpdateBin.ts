@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
 
 interface UpdateBinData {
   binName: string;
@@ -17,20 +18,8 @@ interface UpdateBinResponse {
 }
 
 const updateBinDetails = async (binId: string, data: UpdateBinData): Promise<UpdateBinResponse> => {
-  const response = await fetch(`/api/bins/${binId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Failed to update bin details');
-  }
-
-  return response.json();
+  const response = await api.put(`/api/bins/${binId}`, data);
+  return response.data;
 };
 
 export const useUpdateBin = () => {

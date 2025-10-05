@@ -25,7 +25,7 @@ export function useUserInfo() {
     setError(null);
     try {
       console.log('🌐 Web App - Fetching user info...');
-      const res = await axios.get('/api/userinfo', {
+      const res = await axios.get('http://localhost:8000/api/userinfo', {
         withCredentials: true // Include cookies for authentication
       });
       console.log('🌐 Web App - User info response:', res.data);
@@ -47,7 +47,7 @@ export function useUserInfo() {
   const updateProfileFields = async (fields: { bio?: string; website?: string; location?: string }) => {
     try {
       console.log('🌐 Web App - Updating profile fields...');
-      const res = await axios.patch('/api/userinfo/profile-fields', fields, {
+      const res = await axios.patch('http://localhost:8000/api/userinfo/profile-fields', fields, {
         withCredentials: true
       });
       
@@ -69,7 +69,7 @@ export function useUserInfo() {
   const updateUserInfo = async (formData: FormData) => {
     try {
       console.log('🌐 Web App - Updating user info with file...');
-      const res = await axios.put('/api/userinfo', formData, {
+      const res = await axios.put('http://localhost:8000/api/userinfo', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -94,7 +94,7 @@ export function useUserInfo() {
   const deleteProfileImage = async () => {
     try {
       console.log('🌐 Web App - Deleting profile image...');
-      const res = await axios.delete('/api/userinfo/profile-image', {
+      const res = await axios.delete('http://localhost:8000/api/userinfo/profile-image', {
         withCredentials: true
       });
       

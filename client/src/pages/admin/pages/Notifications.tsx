@@ -46,13 +46,8 @@ const Notifications = () => {
     // For admin, use "admin" bucket to see all notifications
     if (user.role === "admin") return "admin";
     
-    // For staff roles (staff, janitor, driver, maintenance), use "admin" bucket to see all notifications
-    // This ensures they can see login notifications and other system notifications
-    if (["staff", "janitor", "driver", "maintenance"].includes(user.role)) {
-      return "admin";
-    }
-    
-    // Fallback to user ID for other roles
+    // For all other users (staff, janitor, driver, maintenance), use their individual bucket
+    // Staff users should only see their own task-related notifications, not admin login notifications
     return user.id;
   };
   
