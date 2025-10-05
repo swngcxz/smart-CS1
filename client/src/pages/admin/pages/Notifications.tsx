@@ -7,6 +7,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 
 // Notification type from hook
 import type { Notification as NotificationType } from "@/hooks/useNotifications";
@@ -25,6 +41,9 @@ const Notifications = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
   const [userLoading, setUserLoading] = useState<boolean>(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -72,13 +91,13 @@ const Notifications = () => {
 
   // Only use backend notifications
   const backendNotifications: NotificationType[] = Array.isArray(notifications) ? notifications : [];
-  
+
   // Debug logging to see what notifications we're getting
-  if (currentUser?.role === 'admin' && backendNotifications.length > 0) {
-    console.log('Notifications - Admin notifications:', backendNotifications);
-    console.log('Notifications - Current user role:', currentUser.role);
+  if (currentUser?.role === "admin" && backendNotifications.length > 0) {
+    console.log("Notifications - Admin notifications:", backendNotifications);
+    console.log("Notifications - Current user role:", currentUser.role);
   }
-  
+
   const unreadCount = backendNotifications.filter((n) => !n.read).length;
 
   // Mark a single notification as read in the backend
@@ -116,6 +135,25 @@ const Notifications = () => {
       console.error(`Failed to mark all ${notificationBucket} notifications as read:`, err);
     }
   };
+  // Delete all notifications from the backend
+  const deleteAllNotifications = async () => {
+    if (!window.confirm("Are you sure you want to delete all notifications? This action cannot be undone.")) return;
+
+    try {
+      if (notificationBucket === "admin") {
+        await api.delete(`/api/notifications/admin/clear-all`);
+      } else {
+        await api.delete(`/api/notifications/${notificationBucket}/clear-all`);
+      }
+
+      // Refresh UI after deletion
+      window.location.reload();
+
+      console.log(`All ${notificationBucket} notifications deleted`);
+    } catch (err) {
+      console.error(`Failed to delete all ${notificationBucket} notifications:`, err);
+    }
+  };
 
   // Temporary hide notification (do not delete from backend)
   const deleteNotification = (key: string) => {
@@ -142,7 +180,7 @@ const Notifications = () => {
     })
     .filter((notification) => {
       // Exclude admin login notifications (since admin doesn't need to be notified about their own logins)
-      const isAdminLogin = (
+      const isAdminLogin =
         // Check by type and message
         (notification.type === "login" && notification.message && notification.message.includes("(admin)")) ||
         // Check by title and message
@@ -150,11 +188,10 @@ const Notifications = () => {
         // Check if message contains admin role
         (notification.message && notification.message.includes("(admin)")) ||
         // Check if message contains admin email or name
-        (notification.message && notification.message.toLowerCase().includes("angel canete"))
-      );
-      
+        (notification.message && notification.message.toLowerCase().includes("angel canete"));
+
       if (isAdminLogin) {
-        console.log('Notifications - Filtering out admin login notification:', notification);
+        console.log("Notifications - Filtering out admin login notification:", notification);
         return false;
       }
       return true;
@@ -165,6 +202,30 @@ const Notifications = () => {
       const typeMatch = typeFilter === "all" || notification.type === typeFilter;
       return statusMatch && typeMatch;
     });
+  const totalPages = Math.ceil(filteredNotifications.length / itemsPerPage);
+  const paginatedNotifications = filteredNotifications.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+  const formatLoginMessage = (title?: string, message?: string): string => {
+    if (!message) return "";
+
+    const capitalizeWords = (str: string) => str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+
+    if (title?.toLowerCase() === "user login") {
+      const name = message.replace(/\(.*?\)/g, "").trim();
+      const formattedName = capitalizeWords(name);
+      return `${formattedName} just logged in to their account.`;
+    }
+
+    return message;
+  };
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -206,9 +267,9 @@ const Notifications = () => {
         // Exclude filtered types/messages (logic from the main component)
         if (notification.type === "info" && (!notification.title || !notification.message)) return false;
         if (notification.type === "info") return false;
-        
+
         // Exclude admin login notifications
-        const isAdminLogin = (
+        const isAdminLogin =
           // Check by type and message
           (notification.type === "login" && notification.message && notification.message.includes("(admin)")) ||
           // Check by title and message
@@ -216,9 +277,8 @@ const Notifications = () => {
           // Check if message contains admin role
           (notification.message && notification.message.includes("(admin)")) ||
           // Check if message contains admin email or name
-          (notification.message && notification.message.toLowerCase().includes("angel canete"))
-        );
-        
+          (notification.message && notification.message.toLowerCase().includes("angel canete"));
+
         if (isAdminLogin) {
           return false;
         }
@@ -266,16 +326,46 @@ const Notifications = () => {
               </div>
             </div>
           </div>
+          <TooltipProvider>
+            <div className="flex items-center">
+              {unreadCount > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={markAllAsRead}
+                      variant="ghost"
+                      size="sm"
+                      className="text-green-600 hover:text-green-700 hover:bg-green-50 flex items-center gap-2"
+                    >
+                      <Check className="h-4 w-4" />
+                      Mark all as read
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Mark all as read</TooltipContent>
+                </Tooltip>
+              )}
 
-          {unreadCount > 0 && (
-            <Button onClick={markAllAsRead} className="bg-green-700 hover:bg-green-800 text-white">
-              Mark All as Read
-            </Button>
-          )}
+              {backendNotifications.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => setShowDeleteAllDialog(true)}
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-700 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Delete all</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </TooltipProvider>
         </div>
 
         {/* Filters */}
-        {/* Filters */}
+
         <div className="flex gap-4">
           <div className="flex-1">
             {/* Status Filter (Icon-only trigger) */}
@@ -324,7 +414,7 @@ const Notifications = () => {
 
         {/* Notifications List */}
         <div className="space-y-4">
-          {filteredNotifications.length === 0 ? (
+          {paginatedNotifications.length === 0 ? (
             <Card className="border-green-200 dark:border-green-700 dark:bg-gray-800">
               <CardContent className="pt-6">
                 <div className="text-center py-8">
@@ -337,7 +427,7 @@ const Notifications = () => {
               </CardContent>
             </Card>
           ) : (
-            filteredNotifications.map((notification) => (
+            paginatedNotifications.map((notification) => (
               <Card
                 key={notification.key}
                 className={`
@@ -355,7 +445,9 @@ const Notifications = () => {
                           <Badge className="bg-green-800 text-white dark:bg-green-900 dark:text-green-200">New</Badge>
                         )}
                       </div>
-                      <p className="text-gray-700 dark:text-gray-300 mb-3">{notification.message}</p>
+                      <p className="text-gray-700 dark:text-gray-300 mb-3">
+                        {formatLoginMessage(notification.title, notification.message)}
+                      </p>
                       {/* Only show timestamp if not already in the message */}
                       {notification.message &&
                         notification.timestamp &&
@@ -365,29 +457,41 @@ const Notifications = () => {
                           </p>
                         )}
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      {!notification.read && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-gray-600 hover:text-green-700 hover:bg-green-100 dark:text-green-300 dark:hover:bg-green-800"
-                          onClick={() => markAsRead(notification.key)}
-                        >
-                          <Check className="h-4 w-4 mr-1" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900"
-                        onClick={() => {
-                          if (window.confirm("Are you sure you want to delete this notification?")) {
-                            deleteNotification(notification.key);
-                          }
-                        }}
-                      >
-                        <Trash className="h-4 w-4 mr-1" />
-                      </Button>
+                    <div className="ml-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-gray-500 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="end" className="w-40">
+                          {!notification.read && (
+                            <DropdownMenuItem
+                              onClick={() => markAsRead(notification.key)}
+                              className="text-green-700 hover:bg-green-50 dark:hover:bg-green-900/40 cursor-pointer"
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Mark as Read
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (window.confirm("Are you sure you want to delete this notification?")) {
+                                deleteNotification(notification.key);
+                              }
+                            }}
+                            className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/40 cursor-pointer"
+                          >
+                            <Trash className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>
@@ -395,7 +499,80 @@ const Notifications = () => {
             ))
           )}
         </div>
+        {/* Pagination Controls */}
+        {filteredNotifications.length > itemsPerPage && (
+          <div className="flex items-center justify-center mt-6 space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              className="text-sm dark:border-gray-700 dark:text-gray-300"
+            >
+              Previous
+            </Button>
+
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: totalPages }, (_, i) => (
+                <Button
+                  key={i + 1}
+                  variant={currentPage === i + 1 ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(i + 1)}
+                  className={`w-8 h-8 text-sm ${
+                    currentPage === i + 1
+                      ? "bg-green-700 text-white hover:bg-green-800"
+                      : "dark:border-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {i + 1}
+                </Button>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+              className="text-sm dark:border-gray-700 dark:text-gray-300"
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
+      <Dialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <DialogContent className="max-w-sm rounded-2xl p-6 border border-gray-200 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-white">
+              Delete All Notifications?
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400">
+              This action cannot be undone. All notifications will be permanently removed.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteAllDialog(false)}
+              className="rounded-md text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                await deleteAllNotifications();
+                setShowDeleteAllDialog(false);
+              }}
+              className="rounded-md bg-red-600 text-white hover:bg-red-700"
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
