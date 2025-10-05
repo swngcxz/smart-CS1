@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Bell, Trash, Check, ArrowLeft, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,49 @@ import type { Notification as NotificationType } from "@/hooks/useNotifications"
 
 const Notifications = () => {
   const navigate = useNavigate();
-  // Use the hook for admin notifications
-  const { notifications, loading, error } = useNotifications("admin");
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+  const [userLoading, setUserLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await api.get("/auth/me");
+        if (mounted) {
+          setCurrentUser({ id: res.data.id, role: res.data.role });
+        }
+      } catch (_) {
+        if (mounted) setCurrentUser(null);
+      } finally {
+        if (mounted) setUserLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Determine notification bucket based on user role
+  const getNotificationBucket = (user: { id: string; role: string } | null) => {
+    if (!user) return "admin"; // Default to admin for safety
+    
+    // For admin, use "admin" bucket to see all notifications
+    if (user.role === "admin") return "admin";
+    
+    // For staff roles (staff, janitor, driver, maintenance), use "admin" bucket to see all notifications
+    // This ensures they can see login notifications and other system notifications
+    if (["staff", "janitor", "driver", "maintenance"].includes(user.role)) {
+      return "admin";
+    }
+    
+    // Fallback to user ID for other roles
+    return user.id;
+  };
+  
+  const notificationBucket = getNotificationBucket(currentUser);
+  
+  // Use the hook for notifications based on user role
+  const { notifications, loading, error } = useNotifications(notificationBucket);
   const [filter, setFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [hiddenNotifications, setHiddenNotifications] = useState<string[]>([]);
@@ -33,28 +74,36 @@ const Notifications = () => {
   // Mark a single notification as read in the backend
   const markAsRead = async (key: string) => {
     try {
-      await api.patch(`/api/notifications/admin/mark-read/${key}`);
+      if (notificationBucket === 'admin') {
+        await api.patch(`/api/notifications/admin/mark-read/${key}`);
+      } else {
+        await api.patch(`/api/notifications/${notificationBucket}/mark-read/${key}`);
+      }
       
       // Refresh notifications after marking as read
       window.location.reload();
       
-      console.log('Admin notification marked as read:', key);
+      console.log(`${notificationBucket} notification marked as read:`, key);
     } catch (err) {
-      console.error('Failed to mark admin notification as read:', err);
+      console.error(`Failed to mark ${notificationBucket} notification as read:`, err);
     }
   };
 
   // Mark all notifications as read in the backend
   const markAllAsRead = async () => {
     try {
-      await api.patch(`/api/notifications/admin/mark-all-read`);
+      if (notificationBucket === 'admin') {
+        await api.patch(`/api/notifications/admin/mark-all-read`);
+      } else {
+        await api.patch(`/api/notifications/${notificationBucket}/mark-all-read`);
+      }
       
       // Refresh notifications after marking all as read
       window.location.reload();
       
-      console.log('All admin notifications marked as read');
+      console.log(`All ${notificationBucket} notifications marked as read`);
     } catch (err) {
-      console.error('Failed to mark all admin notifications as read:', err);
+      console.error(`Failed to mark all ${notificationBucket} notifications as read:`, err);
     }
   };
 
@@ -86,6 +135,13 @@ const Notifications = () => {
         return false;
       }
       return notification.type !== 'info';
+    })
+    .filter((notification) => {
+      // Exclude admin login notifications (since admin doesn't need to be notified about their own logins)
+      if (notification.type === 'login' && notification.message && notification.message.includes('(admin)')) {
+        return false;
+      }
+      return true;
     })
     .filter((notification) => {
       const statusMatch =

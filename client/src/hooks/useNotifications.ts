@@ -50,7 +50,9 @@ export function useNotifications(userId: string) {
       // If userId is 'admin', use the admin-specific endpoint
       if (userId === 'admin') {
         res = await api.get('/api/notifications/admin/notifications');
-      } else {
+      } 
+      // For individual users, use the user-specific endpoint
+      else {
         res = await api.get(`/api/notifications/${userId}`);
       }
       
@@ -80,7 +82,11 @@ export function useNotifications(userId: string) {
   // Mark a single notification as read
   const markAsRead = async (key: string) => {
     try {
-      await api.patch(`/api/notifications/${userId}/mark-read/${key}`);
+      if (userId === 'admin') {
+        await api.patch(`/api/notifications/admin/mark-read/${key}`);
+      } else {
+        await api.patch(`/api/notifications/${userId}/mark-read/${key}`);
+      }
       setNotifications((prev) => prev.map((n) => n.key === key ? { ...n, read: true } : n));
     } catch (err) {}
   };
@@ -88,7 +94,11 @@ export function useNotifications(userId: string) {
   // Mark all notifications as read
   const markAllAsRead = async () => {
     try {
-      await api.patch(`/api/notifications/${userId}/mark-all-read`);
+      if (userId === 'admin') {
+        await api.patch(`/api/notifications/admin/mark-all-read`);
+      } else {
+        await api.patch(`/api/notifications/${userId}/mark-all-read`);
+      }
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (err) {}
   };
@@ -96,7 +106,11 @@ export function useNotifications(userId: string) {
   // Delete a notification
   const deleteNotification = async (key: string) => {
     try {
-      await api.delete(`/api/notifications/${userId}/${key}`);
+      if (userId === 'admin') {
+        await api.delete(`/api/notifications/admin/${key}`);
+      } else {
+        await api.delete(`/api/notifications/${userId}/${key}`);
+      }
       setNotifications((prev) => prev.filter((n) => n.key !== key));
     } catch (err) {}
   };

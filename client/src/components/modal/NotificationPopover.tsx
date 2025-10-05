@@ -33,7 +33,24 @@ export function NotificationPopover() {
     };
   }, []);
 
-  const notificationBucket = currentUser?.role === "admin" ? "admin" : currentUser?.id || "none";
+  // Determine notification bucket based on user role
+  const getNotificationBucket = (user: { id: string; role: string } | null) => {
+    if (!user) return "none";
+    
+    // For admin, use "admin" bucket to see all notifications
+    if (user.role === "admin") return "admin";
+    
+    // For staff roles (staff, janitor, driver, maintenance), use "admin" bucket to see all notifications
+    // This ensures they can see login notifications and other system notifications
+    if (["staff", "janitor", "driver", "maintenance"].includes(user.role)) {
+      return "admin";
+    }
+    
+    // Fallback to user ID for other roles
+    return user.id;
+  };
+  
+  const notificationBucket = getNotificationBucket(currentUser);
   const {
     notifications,
     loading,
@@ -44,7 +61,17 @@ export function NotificationPopover() {
   } = useNotifications(notificationBucket);
 
   const backendNotifications: NotificationType[] = Array.isArray(notifications) ? notifications : [];
-  const unreadCount = backendNotifications.filter((n) => !n.read).length;
+  
+  // Filter out admin login notifications for admin users
+  const filteredNotifications = backendNotifications.filter((notification) => {
+    // Exclude admin login notifications (since admin doesn't need to be notified about their own logins)
+    if (currentUser?.role === 'admin' && notification.type === 'login' && notification.message && notification.message.includes('(admin)')) {
+      return false;
+    }
+    return true;
+  });
+  
+  const unreadCount = filteredNotifications.filter((n) => !n.read).length;
 
   const getTypeBadge = (type: string) => {
     switch (type) {
@@ -109,10 +136,10 @@ export function NotificationPopover() {
 
         {/* Notification List (show only latest 3) */}
         <div className="max-h-96 overflow-y-auto">
-          {backendNotifications.length === 0 ? (
+          {filteredNotifications.length === 0 ? (
             <div className="p-4 text-center text-gray-500 dark:text-gray-400">No notifications</div>
           ) : (
-            backendNotifications
+            filteredNotifications
               .slice(0, 3)
               .map((notification) => (
                 <div
@@ -171,7 +198,7 @@ export function NotificationPopover() {
         </div>
 
         {/* Footer */}
-        {backendNotifications.length > 0 && (
+        {filteredNotifications.length > 0 && (
           <div className="p-3 border-t border-gray-200 dark:border-gray-700">
             <Button
               variant="ghost"

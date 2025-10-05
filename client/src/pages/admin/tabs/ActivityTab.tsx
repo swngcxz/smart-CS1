@@ -1,9 +1,9 @@
-import { EnhancedActivityLogs } from "../pages/EnhancedActivityLogs";
+import { RoleBasedActivityLogs } from "@/components/RoleBasedActivityLogs";
 
 export function ActivityTab() {
   return (
     <div className="space-y-6">
-      <EnhancedActivityLogs />
+      <RoleBasedActivityLogs />
     </div>
   );
 }

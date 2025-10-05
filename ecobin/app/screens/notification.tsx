@@ -27,7 +27,7 @@ export default function NotificationScreen() {
   // Function to check task statuses
   const checkTaskStatuses = useCallback(async () => {
     try {
-      const response = await fetch('http://192.168.254.114:8000/api/activitylogs');
+      const response = await fetch('http://10.0.0.117:8000/api/activitylogs');
       const data = await response.json() as any;
       
       const statuses: {[key: string]: 'available' | 'accepted' | 'completed'} = {};
@@ -68,7 +68,7 @@ export default function NotificationScreen() {
   // Function to check if task is accepted by current user
   const isTaskAcceptedByMe = useCallback(async (item: any): Promise<boolean> => {
     try {
-      const response = await fetch('http://192.168.254.114:8000/api/activitylogs');
+      const response = await fetch('http://10.0.0.117:8000/api/activitylogs');
       const data = await response.json() as any;
       
       if (data.activities) {
@@ -119,7 +119,7 @@ export default function NotificationScreen() {
                 // If no activityId, try to find the corresponding activity log
                 if (!activityId || activityId === item.id) {
                   // Fetch available activities to find the right one
-                  const activitiesResponse = await fetch(`http://192.168.254.114:8000/api/activitylogs`);
+                  const activitiesResponse = await fetch(`http://10.0.0.117:8000/api/activitylogs`);
                   const activitiesData = await activitiesResponse.json() as any;
                   
                   // Find pending activity for this bin
@@ -138,7 +138,7 @@ export default function NotificationScreen() {
                 }
 
                 // Call the task assignment endpoint
-                const response = await fetch(`http://192.168.254.114:8000/api/activitylogs/${activityId}/assign`, {
+                const response = await fetch(`http://10.0.0.117:8000/api/activitylogs/${activityId}/assign`, {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json',

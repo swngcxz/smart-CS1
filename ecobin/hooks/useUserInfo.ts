@@ -93,7 +93,7 @@ export function useUserInfo() {
     if (!filename) return null;
     
     // Return the full URL to the image via the API endpoint
-    const baseUrl = axiosInstance.defaults.baseURL || 'http://192.168.254.114:8000';
+    const baseUrl = axiosInstance.defaults.baseURL || 'http://10.0.0.117:8000';
     return `${baseUrl}/api/userinfo/profile-image/${filename}`;
   };
 

@@ -200,7 +200,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const hasRole = (roles: string[]): boolean => {
     if (!user) return false;
-    return roles.includes(user.role);
+    // Trim whitespace and newlines from role to handle server response issues
+    const userRole = user.role?.trim();
+    return roles.includes(userRole);
   };
 
   // Initial auth check on mount

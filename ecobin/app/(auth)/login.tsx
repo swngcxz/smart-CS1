@@ -57,11 +57,27 @@ export default function LoginScreen() {
     console.log('🔐 Mobile App - Attempting login with:', { email });
     const res = await login(email, password);
     console.log('🔐 Mobile App - Login response:', res);
+    console.log('🔐 Mobile App - Response structure:', {
+      hasMessage: !!res?.message,
+      message: res?.message,
+      hasUser: !!res?.user,
+      hasUserId: !!res?.user?.id,
+      hasToken: !!res?.token
+    });
     
-    // Check for successful login response
-    if (res && (res.user?.id || res.token || res.message)) {
+    // Check for successful login response - handle multiple response formats
+    const isLoginSuccessful = res && (
+      (res.message === "Login successful" && res.user?.id) ||
+      (res.user?.id && res.token) ||
+      (res.message === "Login successful")
+    );
+    
+    if (isLoginSuccessful) {
       console.log('✅ Mobile App - Login successful, redirecting to home');
-      router.replace("/(tabs)/home");
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        router.replace("/(tabs)/home");
+      }, 100);
     } else {
       console.log('❌ Mobile App - Login failed, response:', res);
       // Show error popup

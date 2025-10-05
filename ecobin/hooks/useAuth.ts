@@ -80,6 +80,17 @@ export function useAuth() {
       setLoading(false);
       setError(null);
       setValidationErrors({});
+      
+      // Log successful login for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 Auth - Login successful:', {
+          email,
+          hasToken: !!res.data?.token,
+          hasUser: !!res.data?.user,
+          message: res.data?.message
+        });
+      }
+      
       return res.data;
     } catch (err: any) {
       setLoading(false);

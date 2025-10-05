@@ -10,11 +10,11 @@ module.exports = {
     maxBinHistoryUploads: 5,
     
     // Maximum notification uploads per day per user
-    maxNotificationUploads: 5,
+    maxNotificationUploads: 100,
     
     // Global limits (across all bins/users)
     maxGlobalBinHistoryUploads: 50,
-    maxGlobalNotificationUploads: 50
+    maxGlobalNotificationUploads: 500
   },
   
   // Reset configuration

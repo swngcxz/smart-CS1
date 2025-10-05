@@ -18,7 +18,6 @@ const activityStatsRoutes = require('./routers/activityStatsRoutes');
 const analyticsRoutes = require('./routers/analyticsRoutes');
 const wasteRoutes = require('./routers/wasteRoutes');
 const gpsFallbackRoutes = require('./routers/gpsFallbackRoutes');
-const gpsFallbackService = require('./services/gpsFallbackService');
 const { admin, db: firestoreDb } = require('./models/firebase');
 const CacheManager = require('./utils/cacheManager');
 const rateLimiter = require('./utils/rateLimiter');
@@ -255,7 +254,7 @@ app.use("/api/gps-fallback", gpsFallbackRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api', binHistoryRoutes);
 app.use('/api', binNotificationRoutes);
-app.use('/api', pickupRequestRoutes); u
+app.use('/api', pickupRequestRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/performance', performanceRoutes);

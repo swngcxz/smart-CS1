@@ -11,6 +11,7 @@ import { Search, RefreshCw, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ActivityLog } from "@/hooks/useActivityLogsApi";
 import api from "@/lib/api";
+import { toast } from "@/hooks/use-toast";
 
 interface ActivityLogsTableProps {
   logs: ActivityLog[];
@@ -33,7 +34,9 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
   const fetchJanitors = async () => {
     setJanitorsLoading(true);
     try {
+      console.log('Fetching janitors...');
       const response = await api.get("/api/staff/janitors");
+      console.log('Janitors response:', response.data);
       setJanitors(response.data || []);
     } catch (err) {
       console.error("Error fetching janitors:", err);
@@ -44,30 +47,46 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
   };
 
   const handleAssignClick = (activity: ActivityLog) => {
+    console.log('Assign button clicked for activity:', activity);
     setSelectedActivity(activity);
     setAssignModalOpen(true);
     fetchJanitors();
   };
 
   const handleAssignSubmit = async () => {
-    if (!selectedActivity || !selectedJanitor || selectedJanitor === "loading" || selectedJanitor === "no-janitors") return;
+    if (!selectedActivity || !selectedJanitor || selectedJanitor === "loading" || selectedJanitor === "no-janitors") {
+      console.log('Assignment validation failed:', { selectedActivity, selectedJanitor });
+      return;
+    }
 
     try {
+      console.log('Submitting assignment:', { activityId: selectedActivity.id, janitorId: selectedJanitor });
       const selectedJanitorData = janitors.find(j => j.id === selectedJanitor);
       const janitorName = selectedJanitorData ? `${selectedJanitorData.fullName}` : "Unknown Janitor";
 
-      await api.put(`/api/activitylogs/${selectedActivity.id}`, {
+      const response = await api.put(`/api/activitylogs/${selectedActivity.id}`, {
         assigned_janitor_id: selectedJanitor,
         assigned_janitor_name: janitorName,
         status: "in_progress"
       });
 
+      console.log('Assignment successful:', response.data);
+      toast({
+        title: "Task Assigned",
+        description: `Task assigned to ${janitorName} successfully.`,
+      });
       setAssignModalOpen(false);
       setSelectedActivity(null);
       setSelectedJanitor("");
       onRefresh();
     } catch (err: any) {
       console.error("Error assigning task:", err);
+      
+      toast({
+        title: "Assignment Failed",
+        description: err.response?.data?.error || "Failed to assign task. Please try again.",
+        variant: "destructive",
+      });
 
       if (err.response?.status === 409 && err.response?.data?.error === 'Task assignment conflict') {
         setAssignModalOpen(false);
@@ -320,6 +339,62 @@ const getPriorityBadge = (priority: string) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Assignment Modal */}
+      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="activity-description">Activity</Label>
+              <p className="text-sm text-gray-600 mt-1">
+                {selectedActivity?.task_note || selectedActivity?.message || "No description"}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="janitor-select">Assign to Janitor</Label>
+              <Select value={selectedJanitor} onValueChange={setSelectedJanitor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a janitor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {janitorsLoading ? (
+                    <SelectItem value="loading" disabled>Loading janitors...</SelectItem>
+                  ) : janitors.length === 0 ? (
+                    <SelectItem value="no-janitors" disabled>No janitors available</SelectItem>
+                  ) : (
+                    janitors.map((janitor) => (
+                      <SelectItem key={janitor.id} value={janitor.id}>
+                        {janitor.fullName} ({janitor.email})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAssignModalOpen(false);
+                setSelectedActivity(null);
+                setSelectedJanitor("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignSubmit}
+              disabled={!selectedJanitor || selectedJanitor === "loading" || selectedJanitor === "no-janitors"}
+            >
+              Assign Task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

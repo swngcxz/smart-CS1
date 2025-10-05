@@ -1,0 +1,83 @@
+[1mdiff --cc server/index.js[m
+[1mindex 796a75a,ec34b5c..0000000[m
+[1m--- a/server/index.js[m
+[1m+++ b/server/index.js[m
+[36m@@@ -41,18 -37,14 +41,21 @@@[m [mconst BinHistoryProcessor = require('./[m
+  const binNotificationController = require('./controllers/binNotificationController');[m
+  const automaticTaskService = require('./services/automaticTaskService');[m
+  const binHealthMonitor = require('./services/binHealthMonitor');[m
+[32m+ const gpsFallbackService = require('./services/gpsFallbackService');[m
+[32m+ const smsNotificationService = require('./services/smsNotificationService');[m
+[32m+ const gsmService = require('./services/gsmService');[m
+  [m
+  [m
+[31m -const rtdb = admin.database();[m
+[31m -const dataRef = rtdb.ref('monitoring/data');[m
+[31m -const bin1Ref = rtdb.ref('monitoring/bin1');[m
+[32m +[m
+[32m +const realtimeDb = admin.database();[m
+[32m +const dataRef = realtimeDb.ref('monitoring/data');[m
+[32m +const bin1Ref = realtimeDb.ref('monitoring/bin1');[m
+[32m +[m
+[32m +// Throttling variables to reduce Firebase reads[m
+[32m +let lastDataProcessTime = 0;[m
+[32m +let lastBin1ProcessTime = 0;[m
+[32m +const PROCESS_THROTTLE_MS = 30000; // Process at most every 30 seconds[m
+[32m +const GPS_PROCESS_THROTTLE_MS = 60000; // GPS processing at most every minute[m
+  [m
+  [m
+  // Initialize Firebase with env variables[m
+[36m@@@ -126,7 -244,7 +255,7 @@@[m [mapp.use("/api/gps-fallback", gpsFallbac[m
+  app.use('/api/notifications', notificationRoutes);[m
+  app.use('/api', binHistoryRoutes);[m
+  app.use('/api', binNotificationRoutes);[m
+[31m--app.use('/api', pickupRequestRoutes);[m
+[32m++app.use('/api', pickupRequestRoutes); u[m
+  app.use('/api/ratings', ratingRoutes);[m
+  app.use('/api/feedback', feedbackRoutes);[m
+  app.use('/api/performance', performanceRoutes);[m
+[36m@@@ -514,33 -309,19 +429,33 @@@[m [mfunction setupRealTimeMonitoring() [m
+        console.log(` GPS Time: ${data.gps_timestamp || 'N/A'}`);[m
+        console.log('==========================================\n');[m
+        [m
+[31m -      // Process data through bin history system (with quota protection)[m
+[32m +      // Process data through bin history system (with quota protection) - OPTIMIZED[m
+        try {[m
+[31m -        // Apply GPS fallback logic before processing[m
+[31m -        const processedGPSData = await gpsFallbackService.processGPSData('bin1', {[m
+[31m -          latitude: data.latitude,[m
+[31m -          longitude: data.longitude,[m
+[31m -          satellites: data.satellites || 0,[m
+[31m -          last_active: data.last_active,[m
+[31m -          gps_timestamp: data.gps_timestamp,[m
+[31m -          timestamp: Date.now()[m
+[31m -        });[m
+[32m +        // Apply GPS fallback logic before processing - WITH CACHING[m
+[32m +        const gpsCacheKey = CacheManager.generateKey('gps_data', 'bin1', data.latitude, data.longitude);[m
+[32m +        let processedGPSData = CacheManager.get(gpsCacheKey);[m
+[32m +        [m
+[32m +        if (!processedGPSData) {[m
+[32m +          // Rate limit GPS processing[m
+[32m +          if (rateLimiter.isAllowed('gps_processing_bin1', 5, GPS_PROCESS_THROTTLE_MS)) {[m
+[32m +            processedGPSData = await gpsFallbackService.processGPSData('bin1', {[m
+[32m +              latitude: data.latitude,[m
+[32m +              longitude: data.longitude,[m
+[32m +              satellites: data.satellites || 0,[m
+[32m +              last_active: data.last_active,[m
+[32m +              gps_timestamp: data.gps_timestamp,[m
+[32m +              timestamp: Date.now()[m
+[32m +            });[m
+[32m +            [m
+[32m +            // Cache the result for 2 minutes[m
+[32m +            CacheManager.set(gpsCacheKey, processedGPSData, 120);[m
+[32m +          } else {[m
+[32m +            console.log(`[GPS RATE LIMIT] Skipping bin1 GPS processing - rate limited`);[m
+[32m +            return; // Skip processing if GPS is rate limited[m
+[32m +          }[m
+[32m +        }[m
+  [m
+[31m-         // Only process if bin level is significant to reduce Firebase calls[m
+[32m+         // Process bin history for significant levels to reduce Firebase calls[m
+          if (data.bin_level >= 70 || data.bin_level <= 10) {[m
+            const historyResult = await BinHistoryProcessor.processExistingMonitoringData({[m
+              weight: data.weight_percent || 0,[m
