@@ -1,7 +1,17 @@
 const { db } = require("../models/firebase");
+const CacheManager = require("../utils/cacheManager");
 
 const getBinCollectionSummary = async (req, res, next) => {
   try {
+    // Check cache first to reduce Firebase reads
+    const cacheKey = 'bin_collection_summary';
+    const cached = CacheManager.get(cacheKey);
+    
+    if (cached) {
+      console.log("Using cached bin collection summary");
+      return res.status(200).json(cached);
+    }
+    
     console.log("Querying all bins from Firestore collection: bins");
     const snapshot = await db.collection("bins").get();
 
@@ -50,11 +60,16 @@ const getBinCollectionSummary = async (req, res, next) => {
         bin_level: bin.bin_level
       }));
 
-    res.status(200).json({
+    const result = {
       summaryByStation: stationSummary,
       maintenanceAlerts,
       routePriorities
-    });
+    };
+    
+    // Cache the result for 1 minute
+    CacheManager.setBinData(cacheKey, result, 60);
+    
+    res.status(200).json(result);
 
   } catch (err) {
     next(err);

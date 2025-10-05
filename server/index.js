@@ -18,7 +18,10 @@ const activityStatsRoutes = require('./routers/activityStatsRoutes');
 const analyticsRoutes = require('./routers/analyticsRoutes');
 const wasteRoutes = require('./routers/wasteRoutes');
 const gpsFallbackRoutes = require('./routers/gpsFallbackRoutes');
-const { admin } = require('./models/firebase');
+const gpsFallbackService = require('./services/gpsFallbackService');
+const { admin, db: firestoreDb } = require('./models/firebase');
+const CacheManager = require('./utils/cacheManager');
+const rateLimiter = require('./utils/rateLimiter');
 const serialportgsm = require('serialport-gsm');
 
 
@@ -32,6 +35,7 @@ const performanceRoutes = require('./routers/performanceRoutes');
 const binHealthRoutes = require('./routers/binHealthRoutes');
 const gpsBackupRoutes = require('./routers/gpsBackupRoutes');
 const userInfoRoutes = require('./routers/userInfoRoutes');
+const cacheRoutes = require('./routers/cacheRoutes');
 const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
 const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
@@ -40,9 +44,15 @@ const binHealthMonitor = require('./services/binHealthMonitor');
 
 
 
-const db = admin.database();
-const dataRef = db.ref('monitoring/data');
-const bin1Ref = db.ref('monitoring/bin1');
+const realtimeDb = admin.database();
+const dataRef = realtimeDb.ref('monitoring/data');
+const bin1Ref = realtimeDb.ref('monitoring/bin1');
+
+// Throttling variables to reduce Firebase reads
+let lastDataProcessTime = 0;
+let lastBin1ProcessTime = 0;
+const PROCESS_THROTTLE_MS = 30000; // Process at most every 30 seconds
+const GPS_PROCESS_THROTTLE_MS = 60000; // GPS processing at most every minute
 
 
 // Initialize Firebase with env variables
@@ -123,6 +133,7 @@ app.use('/api/performance', performanceRoutes);
 app.use('/api/bin-health', binHealthRoutes);
 app.use('/api/gps-backup', gpsBackupRoutes);
 app.use('/api', userInfoRoutes);
+app.use('/api/cache', cacheRoutes);
 
 app.use(errorHandler);
 
@@ -376,10 +387,20 @@ modem.on('open', data => {
 function setupRealTimeMonitoring() {
   console.log('🔍 Setting up real-time data monitoring...');
   
-  // Monitor monitoring/data (original path)
+  // Monitor monitoring/data (original path) - OPTIMIZED WITH THROTTLING
   dataRef.on('value', async (snapshot) => {
     const data = snapshot.val();
     if (data) {
+      const now = Date.now();
+      
+      // Throttle processing to reduce Firebase reads
+      if (now - lastDataProcessTime < PROCESS_THROTTLE_MS) {
+        console.log(`[THROTTLE] Skipping data processing - too frequent (${Math.round((now - lastDataProcessTime) / 1000)}s ago)`);
+        return;
+      }
+      
+      lastDataProcessTime = now;
+      
       console.log('\n === REAL-TIME DATA UPDATE (monitoring/data) ===');
       console.log(`Timestamp: ${new Date().toLocaleString()}`);
       console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
@@ -391,20 +412,35 @@ function setupRealTimeMonitoring() {
       console.log(` GPS Time: ${data.gps_timestamp || 'N/A'}`);
       console.log('==========================================\n');
        
-      // Apply GPS fallback logic for monitoring/data
+      // Apply GPS fallback logic for monitoring/data - OPTIMIZED WITH CACHING
       try {
-                  const processedGPSData = await gpsFallbackService.processGPSData('data', {
-                    latitude: data.latitude,
-                    longitude: data.longitude,
-                    satellites: data.satellites || 0,
-                    last_active: data.last_active,
-                    gps_timestamp: data.gps_timestamp,
-                    timestamp: Date.now()
-                  });
+        // Check cache first to avoid redundant GPS processing
+        const gpsCacheKey = CacheManager.generateKey('gps_data', 'data', data.latitude, data.longitude);
+        let processedGPSData = CacheManager.get(gpsCacheKey);
         
-        console.log(`[GPS FALLBACK] Data source: ${processedGPSData.coordinates_source}`);
-        if (processedGPSData.coordinates_source === 'gps_fallback') {
-          console.log(`[GPS FALLBACK] Using fallback coordinates: ${processedGPSData.latitude}, ${processedGPSData.longitude}`);
+        if (!processedGPSData) {
+          // Rate limit GPS processing
+          if (rateLimiter.isAllowed('gps_processing', 5, GPS_PROCESS_THROTTLE_MS)) {
+            processedGPSData = await gpsFallbackService.processGPSData('data', {
+              latitude: data.latitude,
+              longitude: data.longitude,
+              satellites: data.satellites || 0,
+              last_active: data.last_active,
+              gps_timestamp: data.gps_timestamp,
+              timestamp: Date.now()
+            });
+            
+            // Cache the result for 2 minutes
+            CacheManager.set(gpsCacheKey, processedGPSData, 120);
+            console.log(`[GPS FALLBACK] Data source: ${processedGPSData.coordinates_source}`);
+            if (processedGPSData.coordinates_source === 'gps_fallback') {
+              console.log(`[GPS FALLBACK] Using fallback coordinates: ${processedGPSData.latitude}, ${processedGPSData.longitude}`);
+            }
+          } else {
+            console.log(`[GPS RATE LIMIT] Skipping GPS processing - rate limited`);
+          }
+        } else {
+          console.log(`[GPS CACHE] Using cached GPS data`);
         }
       } catch (gpsError) {
         console.error('[GPS FALLBACK] Error processing GPS data:', gpsError);
@@ -453,10 +489,20 @@ function setupRealTimeMonitoring() {
     }
   });
   
-  // Monitor monitoring/bin1 (new path)
+  // Monitor monitoring/bin1 (new path) - OPTIMIZED WITH THROTTLING
   bin1Ref.on('value', async (snapshot) => {
     const data = snapshot.val();
     if (data) {
+      const now = Date.now();
+      
+      // Throttle processing to reduce Firebase reads
+      if (now - lastBin1ProcessTime < PROCESS_THROTTLE_MS) {
+        console.log(`[THROTTLE] Skipping bin1 processing - too frequent (${Math.round((now - lastBin1ProcessTime) / 1000)}s ago)`);
+        return;
+      }
+      
+      lastBin1ProcessTime = now;
+      
       console.log('\n === REAL-TIME DATA UPDATE (monitoring/bin1) ===');
       console.log(` Timestamp: ${new Date().toLocaleString()}`);
       console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
@@ -468,17 +514,31 @@ function setupRealTimeMonitoring() {
       console.log(` GPS Time: ${data.gps_timestamp || 'N/A'}`);
       console.log('==========================================\n');
       
-      // Process data through bin history system (with quota protection)
+      // Process data through bin history system (with quota protection) - OPTIMIZED
       try {
-        // Apply GPS fallback logic before processing
-        const processedGPSData = await gpsFallbackService.processGPSData('bin1', {
-          latitude: data.latitude,
-          longitude: data.longitude,
-          satellites: data.satellites || 0,
-          last_active: data.last_active,
-          gps_timestamp: data.gps_timestamp,
-          timestamp: Date.now()
-        });
+        // Apply GPS fallback logic before processing - WITH CACHING
+        const gpsCacheKey = CacheManager.generateKey('gps_data', 'bin1', data.latitude, data.longitude);
+        let processedGPSData = CacheManager.get(gpsCacheKey);
+        
+        if (!processedGPSData) {
+          // Rate limit GPS processing
+          if (rateLimiter.isAllowed('gps_processing_bin1', 5, GPS_PROCESS_THROTTLE_MS)) {
+            processedGPSData = await gpsFallbackService.processGPSData('bin1', {
+              latitude: data.latitude,
+              longitude: data.longitude,
+              satellites: data.satellites || 0,
+              last_active: data.last_active,
+              gps_timestamp: data.gps_timestamp,
+              timestamp: Date.now()
+            });
+            
+            // Cache the result for 2 minutes
+            CacheManager.set(gpsCacheKey, processedGPSData, 120);
+          } else {
+            console.log(`[GPS RATE LIMIT] Skipping bin1 GPS processing - rate limited`);
+            return; // Skip processing if GPS is rate limited
+          }
+        }
 
         // Only process if bin level is significant to reduce Firebase calls
         if (data.bin_level >= 70 || data.bin_level <= 10) {
