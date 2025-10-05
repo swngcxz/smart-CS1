@@ -195,7 +195,22 @@ export function NotificationPopover() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-medium text-sm text-gray-900 dark:text-white">{notification.title}</h4>
+                      {/* Badge with readable type */}
+                      <Badge className={getTypeBadge(notification.type)}>
+                        {notification.type === "bin_maintenance_urgent"
+                          ? "Urgent"
+                          : notification.type === "bin_maintenance"
+                          ? "Maintenance"
+                          : notification.type === "bin_collection_completed"
+                          ? "Completed"
+                          : notification.type === "activity_completed"
+                          ? "Activity"
+                          : notification.type === "task_accepted"
+                          ? "Accepted"
+                          : notification.type || "Info"}
+                      </Badge>
                     </div>
+
                     <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
                       {formatLoginMessage(notification.title, notification.message)}
                     </p>
@@ -299,3 +314,4 @@ export function NotificationPopover() {
     </Popover>
   );
 }
+``;

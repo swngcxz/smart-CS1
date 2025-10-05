@@ -230,7 +230,7 @@ const Notifications = () => {
   const getTypeColor = (type: string) => {
     switch (type) {
       case "login":
-        return "border-purple-200 bg-purple-50 dark:border-purple-700 dark:bg-purple-900";
+        return "border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900";
       case "warning":
         return "border-yellow-200 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900";
       case "error":
@@ -247,7 +247,7 @@ const Notifications = () => {
   const getTypeBadge = (type: string) => {
     switch (type) {
       case "login":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
       case "warning":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
       case "error":
@@ -440,11 +440,36 @@ const Notifications = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
-                        {/* <Badge className={getTypeBadge("info")}>Info</Badge> */}
+
+                        {/* Badge with readable type */}
+                        <Badge className={getTypeBadge(notification.type)}>
+                          {notification.type === "bin_maintenance_urgent"
+                            ? "Urgent"
+                            : notification.type === "bin_maintenance"
+                            ? "Maintenance"
+                            : notification.type === "bin_collection_completed"
+                            ? "Completed"
+                            : notification.type === "activity_completed"
+                            ? "Activity"
+                            : notification.type === "task_accepted"
+                            ? "Accepted"
+                            : notification.type === "login"
+                            ? "Login"
+                            : notification.type === "success"
+                            ? "Success"
+                            : notification.type === "warning"
+                            ? "Warning"
+                            : notification.type === "error"
+                            ? "Error"
+                            : notification.type || "Info"}
+                        </Badge>
+
+                        {/* Optional "New" badge for unread */}
                         {!notification.read && (
                           <Badge className="bg-green-800 text-white dark:bg-green-900 dark:text-green-200">New</Badge>
                         )}
                       </div>
+
                       <p className="text-gray-700 dark:text-gray-300 mb-3">
                         {formatLoginMessage(notification.title, notification.message)}
                       </p>
