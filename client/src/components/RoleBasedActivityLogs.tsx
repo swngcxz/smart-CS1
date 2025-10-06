@@ -55,45 +55,14 @@ export function RoleBasedActivityLogs({ onRefresh }: RoleBasedActivityLogsProps)
   
   return (
     <div className="space-y-4">
-      {/* Role-based header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isAdmin ? 'Completed Activity Logs' : 'All Activity Logs'}
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {isAdmin 
-              ? 'View completed activity logs and task assignments'
-              : 'View and manage all system activity logs and task assignments'
-            }
-          </p>
-        </div>
-        {logs.logs.length > 0 && (
-          <div className="text-sm text-gray-500">
-            {logs.logs.length} {isAdmin ? 'completed' : 'total'} log{logs.logs.length !== 1 ? 's' : ''}
-          </div>
-        )}
-      </div>
-      
       {/* Activity logs table */}
       <ActivityLogsTable
         logs={logs.logs}
         loading={logs.loading}
         error={logs.error}
-        onRefresh={logs.refetch}
+        onRefresh={onRefresh || logs.refetch}
       />
       
-      {/* Empty state with role-specific message - only show for staff */}
-      {!logs.loading && !logs.error && logs.logs.length === 0 && !isAdmin && (
-        <div className="text-center py-12">
-          <div className="text-gray-500 dark:text-gray-400 mb-4">
-            {getEmptyMessage()}
-          </div>
-          <p className="text-sm text-gray-400">
-            You can create new tasks through the bin management system or manual task assignment.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

@@ -9,20 +9,20 @@ interface ActivityOverviewCardsProps {
 }
 
 export function ActivityOverviewCards({ cards, loading = false, error }: ActivityOverviewCardsProps) {
-  // const getIcon = (label: string) => {
-  //   switch (label.toLowerCase()) {
-  //     case "alerts":
-  //       return <AlertTriangle className="h-6 w-6 text-red-500" />;
-  //     case "in-progress":
-  //       return <Activity className="h-6 w-6 text-yellow-500" />;
-  //     case "collections":
-  //       return <Activity className="h-6 w-6 text-green-500" />;
-  //     case "maintenance":
-  //       return <Wrench className="h-6 w-6 text-blue-500" />;
-  //     default:
-  //       return <Activity className="h-6 w-6 text-gray-500" />;
-  //   }
-  // };
+  const getIcon = (label: string) => {
+    switch (label.toLowerCase()) {
+      case "alerts":
+        return <AlertTriangle className="h-6 w-6 text-red-500" />;
+      case "in-progress":
+        return <Activity className="h-6 w-6 text-yellow-500" />;
+      case "collections":
+        return <Activity className="h-6 w-6 text-green-500" />;
+      case "maintenance":
+        return <Wrench className="h-6 w-6 text-blue-500" />;
+      default:
+        return <Activity className="h-6 w-6 text-gray-500" />;
+    }
+  };
 
   const getCardColor = (label: string) => {
     switch (label.toLowerCase()) {
@@ -71,7 +71,7 @@ export function ActivityOverviewCards({ cards, loading = false, error }: Activit
                   </p>
                 </div>
                 <div className="w-12 h-12 flex items-center justify-center">
-                  {/* {getIcon(card.label)} */}
+                  {getIcon(card.label)}
                 </div>
               </div>
             </CardContent>

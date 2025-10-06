@@ -215,6 +215,11 @@ const getPriorityBadge = (priority: string) => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Activity Filters Label */}
+          <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+            Activity Filters
+          </div>
+          
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">

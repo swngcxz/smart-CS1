@@ -17,27 +17,16 @@ const FALLBACK_URLS = {
   android_emulator: 'http://10.0.2.2:8000',
 };
 
-// You can switch these as needed for web, mobile, or local
+// Build BASE_URLS prioritizing environment variables
 export const BASE_URLS = {
-  web: API_FALLBACK_LOCALHOST || FALLBACK_URLS.web, // Web deployment - localhost for local development
-  mobile: 'http://10.0.0.117:8000', // Mobile (Expo/React Native) - use actual IP for device access
-  local: API_FALLBACK_LOCALHOST || FALLBACK_URLS.local, // Local development
-  android_emulator: API_FALLBACK_ANDROID_EMULATOR || FALLBACK_URLS.android_emulator, // Android emulator host
+  web: API_FALLBACK_LOCALHOST || API_BASE_URL || FALLBACK_URLS.web,
+  mobile: API_BASE_URL || API_FALLBACK_LOCALHOST || FALLBACK_URLS.mobile,
+  local: API_FALLBACK_LOCALHOST || API_BASE_URL || FALLBACK_URLS.local,
+  android_emulator: API_FALLBACK_ANDROID_EMULATOR || API_BASE_URL || FALLBACK_URLS.android_emulator,
 };
 
-// Debug logging
-if (API_DEBUG === 'true') {
-  console.log('🔧 Axios Instance - Environment Variables:', {
-    API_BASE_URL,
-    API_FALLBACK_LOCALHOST,
-    API_FALLBACK_ANDROID_EMULATOR,
-    API_TIMEOUT,
-    API_DEBUG,
-  });
-  console.log('🔧 Axios Instance - Base URLs:', BASE_URLS);
-}
 
-// Default to mobile for now
+// Create axios instance with environment variable priority
 const instance = axios.create({
   baseURL: BASE_URLS.mobile,
   timeout: parseInt(API_TIMEOUT) || 10000,
@@ -46,6 +35,18 @@ const instance = axios.create({
   },
   withCredentials: true, // Enable cookies for authentication
 });
+
+// Enhanced debug logging to show which URL is being used
+if (API_DEBUG === 'true') {
+  console.log('🔧 Axios Instance - Environment Variables Status:', {
+    API_BASE_URL: API_BASE_URL || 'NOT SET',
+    API_FALLBACK_LOCALHOST: API_FALLBACK_LOCALHOST || 'NOT SET',
+    API_FALLBACK_ANDROID_EMULATOR: API_FALLBACK_ANDROID_EMULATOR || 'NOT SET',
+    API_TIMEOUT: API_TIMEOUT || 'NOT SET',
+  });
+  console.log('🔧 Axios Instance - Available Base URLs:', BASE_URLS);
+  console.log('🔧 Axios Instance - Using Mobile URL:', BASE_URLS.mobile);
+}
 
 // Add request interceptor for debugging
 instance.interceptors.request.use(

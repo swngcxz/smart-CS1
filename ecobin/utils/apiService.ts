@@ -9,37 +9,70 @@ import {
 
 // Fallback endpoints in case environment variables are not loaded
 const FALLBACK_ENDPOINTS = [
-  'http://10.0.0.117:8000',        // Current IP from .env
-  'http://192.168.254.114:8000',   // Previous IP
   'http://localhost:8000',          // Localhost fallback
   'http://10.0.2.2:8000',          // Android emulator
+  'http://192.168.254.114:8000',   // Previous IP
 ];
 
-// Try multiple endpoints for mobile development
-const API_ENDPOINTS = [
-  'http://10.0.0.117:8000', // Current server IP address
-  'http://192.168.56.1:8000', // Alternative IP address
-  API_BASE_URL || FALLBACK_ENDPOINTS[0],                    // Primary endpoint from .env
-  'http://192.168.1.13:8000', // Previous IP address (fallback)
-  'http://192.168.1.4:8000',  // Previous IP address (fallback)
-  API_FALLBACK_LOCALHOST || FALLBACK_ENDPOINTS[2],          // Fallback for simulator
-  API_FALLBACK_ANDROID_EMULATOR || FALLBACK_ENDPOINTS[3],   // Android emulator host
-  ...FALLBACK_ENDPOINTS,                                     // Additional fallbacks
-];
+// Build endpoints array prioritizing environment variables
+const buildAPIEndpoints = () => {
+  const endpoints = [];
+  
+  // Add primary endpoint from .env first
+  if (API_BASE_URL) {
+    endpoints.push(API_BASE_URL);
+  }
+  
+  // Add fallback endpoints from .env
+  if (API_FALLBACK_LOCALHOST && API_FALLBACK_LOCALHOST !== API_BASE_URL) {
+    endpoints.push(API_FALLBACK_LOCALHOST);
+  }
+  
+  if (API_FALLBACK_ANDROID_EMULATOR && API_FALLBACK_ANDROID_EMULATOR !== API_BASE_URL) {
+    endpoints.push(API_FALLBACK_ANDROID_EMULATOR);
+  }
+  
+  // Add static fallbacks only if not already in the list
+  const staticFallbacks = [
+    'http://10.0.0.117:8000', // Current server IP address
+    'http://192.168.56.1:8000', // Alternative IP address
+    'http://192.168.1.13:8000', // Previous IP address (fallback)
+    'http://192.168.1.4:8000',  // Previous IP address (fallback)
+  ];
+  
+  staticFallbacks.forEach(endpoint => {
+    if (!endpoints.includes(endpoint)) {
+      endpoints.push(endpoint);
+    }
+  });
+  
+  // Add additional fallbacks
+  FALLBACK_ENDPOINTS.forEach(endpoint => {
+    if (!endpoints.includes(endpoint)) {
+      endpoints.push(endpoint);
+    }
+  });
+  
+  return endpoints;
+};
+
+const API_ENDPOINTS = buildAPIEndpoints();
 
 let currentEndpoint = API_ENDPOINTS[0];
 
-// Debug logging
+// Enhanced debug logging to show environment variable usage
 if (API_DEBUG === 'true') {
-  console.log('🔧 API Service - Environment Variables:', {
-    API_BASE_URL,
-    API_FALLBACK_LOCALHOST,
-    API_FALLBACK_ANDROID_EMULATOR,
-    API_TIMEOUT,
-    API_DEBUG,
+  console.log('🔧 API Service - Environment Variables Status:', {
+    API_BASE_URL: API_BASE_URL || 'NOT SET',
+    API_FALLBACK_LOCALHOST: API_FALLBACK_LOCALHOST || 'NOT SET',
+    API_FALLBACK_ANDROID_EMULATOR: API_FALLBACK_ANDROID_EMULATOR || 'NOT SET',
+    API_TIMEOUT: API_TIMEOUT || 'NOT SET',
+    API_DEBUG: API_DEBUG || 'NOT SET',
   });
-  console.log('🔧 API Service - Available Endpoints:', API_ENDPOINTS);
+  console.log('🔧 API Service - Final Endpoint Priority:', API_ENDPOINTS);
+  console.log('🔧 API Service - Using Primary Endpoint:', currentEndpoint);
 }
+
 
 const api = axios.create({
   baseURL: currentEndpoint,

@@ -1168,6 +1168,28 @@ const sendTaskAcceptanceNotification = async (notificationData) => {
         // Create notification in Realtime Database (same as other notifications)
         await createRealtimeNotification(staff.id, notificationPayload);
         console.log(`[TASK ACCEPTANCE] Created Realtime Database notification for staff ${staff.email}`);
+        
+        // Send push notification if FCM token exists
+        if (staff.fcmToken) {
+          try {
+            await fcmService.sendToUser(staff.fcmToken, notificationPayload);
+            console.log(`[TASK ACCEPTANCE] Push notification sent to staff ${staff.email}`);
+          } catch (fcmErr) {
+            console.error(`[TASK ACCEPTANCE] FCM send failed for ${staff.email}:`, fcmErr);
+          }
+        }
+        
+        // Send SMS notification if contact number exists (optional)
+        if (staff.contactNumber) {
+          try {
+            const smsMessage = `Task Accepted: ${janitorName} has accepted task for bin ${binId} at ${binLocation}. Status: In Progress`;
+            // You can implement SMS service here if needed
+            console.log(`[TASK ACCEPTANCE] SMS notification would be sent to ${staff.contactNumber}: ${smsMessage}`);
+          } catch (smsErr) {
+            console.error(`[TASK ACCEPTANCE] SMS send failed for ${staff.email}:`, smsErr);
+          }
+        }
+        
         return true;
       } catch (err) {
         console.error(`[TASK ACCEPTANCE] Failed to create notification for ${staff.email}:`, err);
