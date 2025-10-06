@@ -9,20 +9,14 @@ import {
 } from '@env';
 import { shouldShowErrorPopup, sanitizeErrorMessage } from './errorConfig';
 
-// Fallback URLs in case environment variables are not loaded
-const FALLBACK_URLS = {
+// Direct URL configuration - no fallbacks needed
+
+// Build BASE_URLS - force correct IP for mobile
+export const BASE_URLS = {
   web: 'http://localhost:8000',
-  mobile: 'http://10.0.0.117:8000',
+  mobile: 'http://192.168.254.114:8000', // Force correct IP
   local: 'http://localhost:8000',
   android_emulator: 'http://10.0.2.2:8000',
-};
-
-// Build BASE_URLS prioritizing environment variables
-export const BASE_URLS = {
-  web: API_FALLBACK_LOCALHOST || API_BASE_URL || FALLBACK_URLS.web,
-  mobile: API_BASE_URL || API_FALLBACK_LOCALHOST || FALLBACK_URLS.mobile,
-  local: API_FALLBACK_LOCALHOST || API_BASE_URL || FALLBACK_URLS.local,
-  android_emulator: API_FALLBACK_ANDROID_EMULATOR || API_BASE_URL || FALLBACK_URLS.android_emulator,
 };
 
 
@@ -36,8 +30,8 @@ const instance = axios.create({
   withCredentials: true, // Enable cookies for authentication
 });
 
-// Enhanced debug logging to show which URL is being used
-if (API_DEBUG === 'true') {
+// Enhanced debug logging to show which URL is being used (only in development)
+if (__DEV__) {
   console.log('🔧 Axios Instance - Environment Variables Status:', {
     API_BASE_URL: API_BASE_URL || 'NOT SET',
     API_FALLBACK_LOCALHOST: API_FALLBACK_LOCALHOST || 'NOT SET',
@@ -82,14 +76,24 @@ instance.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Only log errors in debug mode, don't show popups
+    // Enhanced error logging
     if (API_DEBUG === 'true') {
       console.log('📡 Mobile App - Response Error:', {
         status: error.response?.status,
         url: error.config?.url,
+        baseURL: error.config?.baseURL,
         message: error.message,
+        code: error.code,
         data: error.response?.data
       });
+    }
+    
+    // Improve error message for network issues
+    if (!error.response) {
+      if (API_DEBUG === 'true') {
+        console.log('🌐 Mobile App - Network Error: No response from server');
+      }
+      error.message = 'Network error. Please check your internet connection and try again.';
     }
     
     // Check if we should show error popup (usually false for better UX)

@@ -7,51 +7,28 @@ import {
   API_DEBUG,
 } from '@env';
 
-// Fallback endpoints in case environment variables are not loaded
-const FALLBACK_ENDPOINTS = [
-  'http://localhost:8000',          // Localhost fallback
-  'http://10.0.2.2:8000',          // Android emulator
-  'http://192.168.254.114:8000',   // Previous IP
-];
+// Direct endpoint configuration - no old fallbacks
 
-// Build endpoints array prioritizing environment variables
+// Build endpoints array - force correct IP first
 const buildAPIEndpoints = () => {
   const endpoints = [];
   
-  // Add primary endpoint from .env first
-  if (API_BASE_URL) {
+  // Force the correct working IP as first priority
+  endpoints.push('http://192.168.254.114:8000');
+  
+  // Add primary endpoint from .env if different
+  if (API_BASE_URL && API_BASE_URL !== 'http://192.168.254.114:8000') {
     endpoints.push(API_BASE_URL);
   }
   
   // Add fallback endpoints from .env
-  if (API_FALLBACK_LOCALHOST && API_FALLBACK_LOCALHOST !== API_BASE_URL) {
+  if (API_FALLBACK_LOCALHOST && API_FALLBACK_LOCALHOST !== 'http://192.168.254.114:8000') {
     endpoints.push(API_FALLBACK_LOCALHOST);
   }
   
-  if (API_FALLBACK_ANDROID_EMULATOR && API_FALLBACK_ANDROID_EMULATOR !== API_BASE_URL) {
+  if (API_FALLBACK_ANDROID_EMULATOR && API_FALLBACK_ANDROID_EMULATOR !== 'http://192.168.254.114:8000') {
     endpoints.push(API_FALLBACK_ANDROID_EMULATOR);
   }
-  
-  // Add static fallbacks only if not already in the list
-  const staticFallbacks = [
-    'http://10.0.0.117:8000', // Current server IP address
-    'http://192.168.56.1:8000', // Alternative IP address
-    'http://192.168.1.13:8000', // Previous IP address (fallback)
-    'http://192.168.1.4:8000',  // Previous IP address (fallback)
-  ];
-  
-  staticFallbacks.forEach(endpoint => {
-    if (!endpoints.includes(endpoint)) {
-      endpoints.push(endpoint);
-    }
-  });
-  
-  // Add additional fallbacks
-  FALLBACK_ENDPOINTS.forEach(endpoint => {
-    if (!endpoints.includes(endpoint)) {
-      endpoints.push(endpoint);
-    }
-  });
   
   return endpoints;
 };
@@ -60,8 +37,8 @@ const API_ENDPOINTS = buildAPIEndpoints();
 
 let currentEndpoint = API_ENDPOINTS[0];
 
-// Enhanced debug logging to show environment variable usage
-if (API_DEBUG === 'true') {
+// Enhanced debug logging to show environment variable usage (only in development)
+if (__DEV__) {
   console.log('🔧 API Service - Environment Variables Status:', {
     API_BASE_URL: API_BASE_URL || 'NOT SET',
     API_FALLBACK_LOCALHOST: API_FALLBACK_LOCALHOST || 'NOT SET',
@@ -85,12 +62,16 @@ const api = axios.create({
 // Function to try different endpoints
 const tryEndpoints = async (endpointIndex = 0) => {
   if (endpointIndex >= API_ENDPOINTS.length) {
-    throw new Error('All API endpoints failed');
+    throw new Error('Network error. Please check your internet connection and try again.');
   }
   
   const endpoint = API_ENDPOINTS[endpointIndex];
   api.defaults.baseURL = endpoint;
   currentEndpoint = endpoint;
+  
+  if (API_DEBUG === 'true') {
+    console.log(`🔄 Mobile App - Trying endpoint ${endpointIndex + 1}/${API_ENDPOINTS.length}: ${endpoint}`);
+  }
   
   try {
     const response = await api.get('/api/bin1');
@@ -98,9 +79,9 @@ const tryEndpoints = async (endpointIndex = 0) => {
       console.log(`✅ Mobile App - Connected to API at: ${endpoint}`);
     }
     return response;
-  } catch (error) {
+  } catch (error: any) {
     if (API_DEBUG === 'true') {
-      console.log(`❌ Mobile App - Failed to connect to: ${endpoint}`);
+      console.log(`❌ Mobile App - Failed to connect to: ${endpoint}`, error.message);
     }
     return tryEndpoints(endpointIndex + 1);
   }

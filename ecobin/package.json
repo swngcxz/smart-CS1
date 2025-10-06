@@ -3,10 +3,12 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --host tunnel",
+    "start:lan": "expo start --host lan",
+    "start:local": "expo start --host localhost",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo start --android --host lan",
+    "ios": "expo start --ios --host lan",
     "web": "expo start --web",
     "lint": "expo lint"
   },

@@ -76,20 +76,20 @@ export function useAuth() {
     }
 
     try {
+      console.log('🔐 Auth - Attempting login request to:', axiosInstance.defaults.baseURL + '/auth/login');
       const res = await axiosInstance.post('/auth/login', { email, password });
       setLoading(false);
       setError(null);
       setValidationErrors({});
       
       // Log successful login for debugging
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔐 Auth - Login successful:', {
-          email,
-          hasToken: !!res.data?.token,
-          hasUser: !!res.data?.user,
-          message: res.data?.message
-        });
-      }
+      console.log('🔐 Auth - Login successful:', {
+        email,
+        hasToken: !!res.data?.token,
+        hasUser: !!res.data?.user,
+        message: res.data?.message,
+        response: res.data
+      });
       
       return res.data;
     } catch (err: any) {
@@ -99,13 +99,16 @@ export function useAuth() {
       setValidationErrors({});
       
       // Log error for debugging but don't show popup
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔐 Auth - Login failed:', {
-          email,
-          error: errorMessage,
-          status: err.response?.status
-        });
-      }
+      console.log('🔐 Auth - Login failed:', {
+        email,
+        error: errorMessage,
+        status: err.response?.status,
+        response: err.response?.data,
+        message: err.message,
+        code: err.code,
+        baseURL: axiosInstance.defaults.baseURL,
+        fullError: err
+      });
       
       return null;
     }

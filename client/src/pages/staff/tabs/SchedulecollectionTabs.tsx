@@ -30,49 +30,78 @@ export function ScheduleCollectionTabs() {
   // Read: load schedules from backend
   const { data: truckSchedules } = useTruckSchedulesList();
   const { data: regularSchedules } = useSchedulesList();
+  const { data: staffData } = useStaffList();
+  
   function formatTimeRange(timeRange: string) {
-    const [start, end] = timeRange.split(" - ");
-    const startDate = parse(start, "HH:mm", new Date());
-    const endDate = parse(end, "HH:mm", new Date());
-    return `${format(startDate, "h:mm a")} - ${format(endDate, "h:mm a")}`;
+    if (!timeRange || typeof timeRange !== 'string') {
+      return 'Time not specified';
+    }
+    
+    const timeParts = timeRange.split(" - ");
+    if (timeParts.length !== 2) {
+      return timeRange; // Return original if format is unexpected
+    }
+    
+    const [start, end] = timeParts;
+    if (!start || !end) {
+      return timeRange; // Return original if parts are missing
+    }
+    
+    try {
+      const startDate = parse(start, "HH:mm", new Date());
+      const endDate = parse(end, "HH:mm", new Date());
+      return `${format(startDate, "h:mm a")} - ${format(endDate, "h:mm a")}`;
+    } catch (error) {
+      console.warn('Error formatting time range:', timeRange, error);
+      return timeRange; // Return original on parse error
+    }
   }
+  
   useEffect(() => {
     const allSchedules: Schedule[] = [];
 
     // Load truck schedules (collection)
     if (truckSchedules) {
-      const truckMapped: Schedule[] = (truckSchedules as any[]).map((t) => ({
-        id: t.id,
-        location: t.location,
-        serviceType: "collection",
-        type: t.sched_type,
-        time: `${t.start_collected} - ${t.end_collected}`,
-        date: t.date,
-        status: t.status as "scheduled" | "in-progress" | "completed" | "cancelled",
-        collector: t.collector,
-        truckPlate: t.truckPlate,
-        notes: t.notes,
-        contactPerson: t.contactPerson,
-        priority: t.priority,
-      }));
+      const truckMapped: Schedule[] = (truckSchedules as any[]).map((t) => {
+        // Find the staff member by staffId
+        const staffMember = staffData?.find((s: any) => s.id === t.staffId);
+        return {
+          id: t.id,
+          location: t.location,
+          serviceType: "collection",
+          type: t.sched_type,
+          time: `${t.start_collected} - ${t.end_collected}`,
+          date: t.date,
+          status: t.status as "scheduled" | "in-progress" | "completed" | "cancelled",
+          collector: staffMember ? { id: staffMember.id, name: staffMember.fullName, phone: staffMember.phone } : undefined,
+          truckPlate: t.truckPlate,
+          notes: t.notes,
+          contactPerson: t.contactPerson,
+          priority: t.priority,
+        };
+      });
       allSchedules.push(...truckMapped);
     }
 
     // Load regular schedules (maintenance)
     if (regularSchedules) {
-      const regularMapped: Schedule[] = (regularSchedules as any[]).map((s) => ({
-        id: s.id,
-        location: s.location,
-        serviceType: "maintenance",
-        type: s.sched_type,
-        time: `${s.start_time} - ${s.end_time}`,
-        date: s.date,
-        status: s.status as "scheduled" | "in-progress" | "completed" | "cancelled",
-        collector: s.collector,
-        notes: s.notes,
-        contactPerson: s.contactPerson,
-        priority: s.priority,
-      }));
+      const regularMapped: Schedule[] = (regularSchedules as any[]).map((s) => {
+        // Find the staff member by staffId
+        const staffMember = staffData?.find((staff: any) => staff.id === s.staffId);
+        return {
+          id: s.id,
+          location: s.location,
+          serviceType: "maintenance",
+          type: s.sched_type,
+          time: `${s.start_time} - ${s.end_time}`,
+          date: s.date,
+          status: s.status as "scheduled" | "in-progress" | "completed" | "cancelled",
+          collector: staffMember ? { id: staffMember.id, name: staffMember.fullName, phone: staffMember.phone } : undefined,
+          notes: s.notes,
+          contactPerson: s.contactPerson,
+          priority: s.priority,
+        };
+      });
       allSchedules.push(...regularMapped);
     }
 
@@ -89,10 +118,9 @@ export function ScheduleCollectionTabs() {
     });
 
     setScheduleData(allSchedules);
-  }, [truckSchedules, regularSchedules]);
+  }, [truckSchedules, regularSchedules, staffData]);
 
   // Load staff and derive drivers as collectors
-  const { data: staffData } = useStaffList();
   const drivers: Collector[] = useMemo(() => {
     const list = Array.isArray(staffData) ? staffData : [];
     const drivers = list
@@ -140,10 +168,8 @@ export function ScheduleCollectionTabs() {
     if (!date) return;
 
     const daySchedules = getSchedulesForDate(date);
-    if (daySchedules.length > 0) {
       setSelectedDateSchedules(daySchedules);
       setIsSchedulePopupOpen(true);
-    }
     setSelectedDate(date);
   };
 
@@ -234,7 +260,17 @@ export function ScheduleCollectionTabs() {
   useEffect(() => {
     if (createErr) {
       console.error("Failed to create collection schedule:", createErr);
-      window.alert(typeof createErr === "string" ? createErr : "Failed to create collection schedule");
+      
+      // Remove the optimistic update on error
+      setScheduleData((prev) => prev.filter(schedule => schedule.id));
+      
+      // Show user-friendly error message
+      const errorMessage = createErr?.response?.data?.error || createErr?.message || "Failed to create schedule";
+      if (errorMessage.includes("already exists")) {
+        console.warn("Schedule already exists for this driver on this date");
+      } else {
+        console.error("Unexpected error creating schedule:", errorMessage);
+      }
     }
   }, [createErr]);
 
@@ -261,14 +297,25 @@ export function ScheduleCollectionTabs() {
   useEffect(() => {
     if (createMaintErr) {
       console.error("Failed to create maintenance schedule:", createMaintErr);
-      window.alert(typeof createMaintErr === "string" ? createMaintErr : "Failed to create maintenance schedule");
+      
+      // Remove the optimistic update on error
+      setScheduleData((prev) => prev.filter(schedule => schedule.id));
+      
+      // Show user-friendly error message
+      const errorMessage = createMaintErr?.response?.data?.error || createMaintErr?.message || "Failed to create schedule";
+      if (errorMessage.includes("already exists")) {
+        console.warn("Schedule already exists for this maintenance worker on this date");
+      } else {
+        console.error("Unexpected error creating maintenance schedule:", errorMessage);
+      }
     }
   }, [createMaintErr]);
 
   const handleAddSchedule = (newSchedule: Omit<Schedule, "id">) => {
     // Validate driver selection (backend requires staffId)
     if (!newSchedule.collector?.id) {
-      window.alert("Please select a driver before saving the schedule.");
+      console.error("Please select a driver before saving the schedule.");
+      // You can add a toast notification here instead if needed
       return;
     }
     // Optimistic UI
@@ -287,7 +334,12 @@ export function ScheduleCollectionTabs() {
         location: newSchedule.location,
         status: "scheduled",
         date: newSchedule.date,
+        contactPerson: newSchedule.contactPerson,
+        notes: newSchedule.notes,
+        priority: newSchedule.priority,
+        truckPlate: newSchedule.truckPlate,
       };
+      console.log('🚛 Sending truck schedule payload:', payload);
       setCreateBody(payload);
       setTriggerCreate(true);
     } else {
@@ -299,7 +351,11 @@ export function ScheduleCollectionTabs() {
         location: newSchedule.location,
         status: "scheduled",
         date: newSchedule.date,
+        contactPerson: newSchedule.contactPerson,
+        notes: newSchedule.notes,
+        priority: newSchedule.priority,
       };
+      console.log('🔧 Sending maintenance schedule payload:', payload);
       setCreateMaintBody(payload);
       setTriggerCreateMaint(true);
     }
@@ -325,7 +381,8 @@ export function ScheduleCollectionTabs() {
   useEffect(() => {
     if (updateErr) {
       console.error("Failed to update schedule status:", updateErr);
-      window.alert(typeof updateErr === "string" ? updateErr : "Failed to update schedule status");
+      // Remove window.alert to prevent localhost notification
+      // You can add a toast notification here instead if needed
     }
   }, [updateErr]);
 
@@ -417,7 +474,13 @@ export function ScheduleCollectionTabs() {
           </DialogHeader>
 
           <div className="space-y-3 max-h-80 overflow-y-auto py-4">
-            {selectedDateSchedules.map((schedule) => (
+            {selectedDateSchedules.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No schedules for this date.</p>
+                <p className="text-sm mt-2">Click "Add Schedule" to create a new schedule.</p>
+              </div>
+            ) : (
+              selectedDateSchedules.map((schedule) => (
               <div key={schedule.id} className="p-4 bg-gray-50 rounded-lg border">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -456,29 +519,53 @@ export function ScheduleCollectionTabs() {
                     </div>
                   </div>
 
-                  {schedule.collector && (
+                  {/* Assign Driver/Worker Section */}
+                  <div className="pt-2 border-t border-gray-200">
                     <div className="text-sm text-gray-700">
-                      <span className="font-medium">Worker:</span> {schedule.collector.name}
-                      {schedule.collector.phone ? (
-                        <span className="text-gray-500"> ({schedule.collector.phone})</span>
-                      ) : null}
+                      <span className="font-medium">Assign Driver:</span> 
+                      {schedule.collector ? (
+                        <span className="ml-1">
+                          {schedule.collector.name}
+                          {schedule.collector.phone ? (
+                            <span className="text-gray-500"> ({schedule.collector.phone})</span>
+                          ) : null}
+                        </span>
+                      ) : (
+                        <span className="ml-1 text-gray-500 italic">Not assigned</span>
+                      )}
                     </div>
-                  )}
-                  {schedule.truckPlate && (
+                    {schedule.truckPlate && (
+                      <div className="text-sm text-gray-700 mt-1">
+                        <span className="font-medium">Vehicle:</span> {schedule.truckPlate}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Contact Person Section */}
+                  <div className="pt-2 border-t border-gray-200">
                     <div className="text-sm text-gray-700">
-                      <span className="font-medium">Vehicle:</span> {schedule.truckPlate}
+                      <span className="font-medium">Contact Person:</span> 
+                      {schedule.contactPerson ? (
+                        <span className="ml-1">{schedule.contactPerson}</span>
+                      ) : (
+                        <span className="ml-1 text-gray-500 italic">Not specified</span>
+                      )}
                     </div>
-                  )}
-                  {schedule.contactPerson && (
+                  </div>
+
+                  {/* Notes Section */}
+                  <div className="pt-2 border-t border-gray-200">
                     <div className="text-sm text-gray-700">
-                      <span className="font-medium">Contact:</span> {schedule.contactPerson}
+                      <span className="font-medium">Notes:</span> 
+                      {schedule.notes ? (
+                        <div className="mt-1 p-2 bg-gray-100 rounded text-gray-600 text-xs">
+                          {schedule.notes}
+                        </div>
+                      ) : (
+                        <span className="ml-1 text-gray-500 italic">No additional notes</span>
+                      )}
                     </div>
-                  )}
-                  {schedule.notes && (
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Notes:</span> {schedule.notes}
-                    </div>
-                  )}
+                  </div>
 
                   {schedule.capacity && (
                     <div className="flex justify-between items-center">
@@ -492,7 +579,8 @@ export function ScheduleCollectionTabs() {
                   )}
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>

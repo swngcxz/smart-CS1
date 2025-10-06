@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import axiosInstance from '../utils/axiosInstance';
 
 export interface UserInfoData {
@@ -17,18 +17,33 @@ export function useUserInfo() {
   const [userInfo, setUserInfo] = useState<UserInfoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Debug: Log state changes (only in development) - REMOVED to prevent infinite loops
 
-  const fetchUserInfo = async () => {
+  const fetchUserInfo = useCallback(async () => {
+    if (__DEV__) {
+      console.log('🔄 useUserInfo - fetchUserInfo called');
+    }
     setLoading(true);
     setError(null);
     try {
-      console.log('👤 Mobile App - Fetching user info...');
+      if (__DEV__) {
+        console.log('👤 Mobile App - Fetching user info...');
+      }
       const res = await axiosInstance.get('/api/userinfo');
-      console.log('👤 Mobile App - User info response:', res.data);
+      if (__DEV__) {
+        console.log('👤 Mobile App - User info response:', res.data);
+      }
       
       if (res.data.success && res.data.userInfo) {
+        if (__DEV__) {
+          console.log('👤 Mobile App - Setting user info:', res.data.userInfo);
+        }
         setUserInfo(res.data.userInfo);
       } else {
+        if (__DEV__) {
+          console.log('👤 Mobile App - No user info found, setting to null');
+        }
         setUserInfo(null);
       }
     } catch (err: any) {
@@ -38,11 +53,13 @@ export function useUserInfo() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const updateUserInfo = async (formData: FormData) => {
+  const updateUserInfo = useCallback(async (formData: FormData) => {
     try {
-      console.log('👤 Mobile App - Updating user info...');
+      if (__DEV__) {
+        console.log('👤 Mobile App - Updating user info...');
+      }
       const res = await axiosInstance.put('/api/userinfo', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -51,7 +68,9 @@ export function useUserInfo() {
       
       if (res.data.success && res.data.userInfo) {
         setUserInfo(res.data.userInfo);
-        console.log('👤 Mobile App - User info updated successfully');
+        if (__DEV__) {
+          console.log('👤 Mobile App - User info updated successfully');
+        }
         return { success: true, data: res.data.userInfo };
       } else {
         throw new Error('Update failed');
@@ -62,17 +81,21 @@ export function useUserInfo() {
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
-  };
+  }, []);
 
-  const deleteProfileImage = async () => {
+  const deleteProfileImage = useCallback(async () => {
     try {
-      console.log('👤 Mobile App - Deleting profile image...');
+      if (__DEV__) {
+        console.log('👤 Mobile App - Deleting profile image...');
+      }
       const res = await axiosInstance.delete('/api/userinfo/profile-image');
       
       if (res.data.success) {
         // Refresh user info to get updated data
         await fetchUserInfo();
-        console.log('👤 Mobile App - Profile image deleted successfully');
+        if (__DEV__) {
+          console.log('👤 Mobile App - Profile image deleted successfully');
+        }
         return { success: true };
       } else {
         throw new Error('Delete failed');
@@ -83,9 +106,9 @@ export function useUserInfo() {
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
-  };
+  }, [fetchUserInfo]);
 
-  const getProfileImageUrl = () => {
+  const getProfileImageUrl = useCallback(() => {
     if (!userInfo?.profileImagePath) return null;
     
     // Extract filename from the path
@@ -93,13 +116,14 @@ export function useUserInfo() {
     if (!filename) return null;
     
     // Return the full URL to the image via the API endpoint
-    const baseUrl = axiosInstance.defaults.baseURL || 'http://10.0.0.117:8000';
+    const baseUrl = axiosInstance.defaults.baseURL || 'http://192.168.254.114:8000';
     return `${baseUrl}/api/userinfo/profile-image/${filename}`;
-  };
+  }, [userInfo?.profileImagePath]);
 
   useEffect(() => {
+    console.log('🔄 useUserInfo - useEffect triggered (mount)');
     fetchUserInfo();
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   return {
     userInfo,

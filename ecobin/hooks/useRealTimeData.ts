@@ -260,18 +260,18 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
 
   const refetch = useCallback(async () => {
     await fetchData(true);
-  }, [fetchData]);
+  }, []); // Empty dependency array - fetchData is stable
 
   useEffect(() => {
     // Initial fetch
     fetchData(true);
-  }, [fetchData]);
+  }, []); // Empty dependency array - only run once on mount
 
   // Set up interval for real-time updates
   useEffect(() => {
     const interval = setInterval(() => fetchData(false), refreshInterval);
     return () => clearInterval(interval);
-  }, [fetchData, refreshInterval]);
+  }, [refreshInterval]); // Only depend on refreshInterval
 
   // Memoize expensive calculations
   const binLocations = useMemo(() => getDynamicBinLocations(), [getDynamicBinLocations]);

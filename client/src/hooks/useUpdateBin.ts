@@ -40,6 +40,7 @@ export const useUpdateBin = () => {
       queryClient.invalidateQueries({ queryKey: ['bins'] });
       queryClient.invalidateQueries({ queryKey: ['binLocations'] });
       queryClient.invalidateQueries({ queryKey: ['realTimeData'] });
+      queryClient.invalidateQueries({ queryKey: ['bin1'] }); // Specifically invalidate bin1 data
       
       console.log('Bin updated successfully:', data);
     },

@@ -170,7 +170,7 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
         <div className="p-3 min-w-[250px]">
           <div className="flex items-center gap-2 mb-3">
          <h3 className="font-semibold text-gray-900">
-            {bin.name}: {bin.id.charAt(0).toUpperCase() + bin.id.slice(1)}
+            {bin.name}
           </h3>
 
 

@@ -9,6 +9,7 @@ const {
 
 const StaffModel= require("../models/staffModel");
 async function createNewTruckSchedule(req, res) {
+  console.log('🚛 Creating new truck schedule with data:', req.body);
   const {
     staffId,
     sched_type,
@@ -17,7 +18,10 @@ async function createNewTruckSchedule(req, res) {
     location,
     status,
     date,
-    priority
+    priority,
+    contactPerson,
+    notes,
+    truckPlate
   } = req.body;
 
   if (!staffId || !sched_type || !start_collected || !end_collected || !location || !status || !date) {
@@ -51,8 +55,13 @@ async function createNewTruckSchedule(req, res) {
       status,
       date,
       ...(priority ? { priority } : {}),
+      ...(contactPerson ? { contactPerson } : {}),
+      ...(notes ? { notes } : {}),
+      ...(truckPlate ? { truckPlate } : {}),
       createdAt: new Date().toISOString()
     };
+    
+    console.log('💾 Saving truck schedule data to Firebase:', data);
 
     const docRef = await createTruckSchedule(data);
     return res.status(201).json({ message: "Truck schedule created", id: docRef.id });

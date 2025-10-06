@@ -103,20 +103,20 @@ export function useRealTimeData() {
     return () => clearInterval(interval);
   }, []);
 
-  // Convert Firebase data to waste bin format - ONLY use bin1 for Central Plaza
+  // Convert Firebase data to waste bin format - use actual data from Firebase
   const getWasteBins = (): WasteBin[] => {
     const bins: WasteBin[] = [];
     
-    // ONLY use bin1 data for Central Plaza as requested
+    // Use actual bin1 data from Firebase
     if (bin1Data) {
       bins.push({
         id: 'bin1',
-        location: 'Central Plaza', // Map to Central Plaza for integration
+        location: bin1Data.name || 'Central Plaza', // Use actual name from Firebase
         level: bin1Data.bin_level || 0,
         status: getStatusFromLevel(bin1Data.bin_level || 0),
         lastCollected: getTimeAgo(bin1Data.timestamp),
         capacity: '500L',
-        wasteType: 'Mixed',
+        wasteType: bin1Data.type || 'Mixed',
         nextCollection: getNextCollectionTime(bin1Data.bin_level || 0),
         binData: bin1Data
       });
@@ -147,7 +147,7 @@ export function useRealTimeData() {
       
       locations.push({
         id: 'bin1',
-        name: 'Central Plaza',
+        name: bin1Data.name || 'Central Plaza', // Use actual name from Firebase
         position: coordinates,
         level: bin1Data.bin_level || 0,
         status: getStatusFromLevel(bin1Data.bin_level || 0),
@@ -160,7 +160,9 @@ export function useRealTimeData() {
         distance_cm: bin1Data.distance_cm,
         coordinates_source: coordinatesSource,
         last_active: bin1Data.last_active,
-        gps_timestamp: bin1Data.gps_timestamp
+        gps_timestamp: bin1Data.gps_timestamp,
+        type: bin1Data.type, // Include type from Firebase
+        mainLocation: bin1Data.mainLocation // Include mainLocation from Firebase
       });
     }
     
@@ -175,12 +177,22 @@ export function useRealTimeData() {
     gpsHistory,
     loading,
     error,
-    refresh: () => {
+    refresh: async () => {
       setLoading(true);
-      // Trigger a refresh by refetching data
-      api.get('/api/bin1').then(res => setBin1Data(res.data)).catch(console.error);
-      api.get('/api/bin').then(res => setMonitoringData(res.data)).catch(console.error);
-      setLoading(false);
+      try {
+        // Trigger a refresh by refetching data
+        const bin1Response = await api.get('/api/bin1');
+        if (bin1Response.data) {
+          console.log('🔄 Manual refresh - bin1 data:', bin1Response.data);
+          setBin1Data(bin1Response.data);
+        }
+        setError(null);
+      } catch (err: any) {
+        console.error('❌ Error during manual refresh:', err);
+        setError(err.message || 'Failed to refresh data');
+      } finally {
+        setLoading(false);
+      }
     },
     // GPS utility functions
     getCurrentGPSLocation: () => {

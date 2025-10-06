@@ -16,14 +16,14 @@ export default function SettingsScreen() {
   const [faceIDEnabled, setFaceIDEnabled] = useState(false);
   const router = useRouter();
   const { account, loading: accountLoading, error: accountError } = useAccount();
-  const { userInfo, getProfileImageUrl, fetchUserInfo } = useUserInfo();
+  const { userInfo, fetchUserInfo } = useUserInfo();
 
   // Refresh userInfo when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       console.log('👤 Settings screen focused, refreshing user info...');
       fetchUserInfo();
-    }, [fetchUserInfo])
+    }, []) // Empty dependency array to prevent infinite loops
   );
 
   const { logout } = useAuth();
@@ -60,7 +60,7 @@ export default function SettingsScreen() {
         <Image 
           source={
             userInfo?.profileImagePath 
-              ? { uri: getProfileImageUrl() || undefined }
+              ? { uri: `http://192.168.254.114:8000/api/userinfo/profile-image/${userInfo.profileImagePath.split('/').pop()}` }
               : { uri: "https://i.pravatar.cc/100?u=" + (account?.email || 'user') }
           } 
           style={styles.avatar} 

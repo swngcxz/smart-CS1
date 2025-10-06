@@ -12,7 +12,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
 
   const { account, loading: accountLoading, error: accountError } = useAccount();
-  const { userInfo, loading: userInfoLoading, updateUserInfo, getProfileImageUrl, setUserInfo, fetchUserInfo } = useUserInfo();
+  const { userInfo, loading: userInfoLoading, updateUserInfo, setUserInfo, fetchUserInfo } = useUserInfo();
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -27,17 +27,26 @@ export default function EditProfileScreen() {
       // Handle both phone and contactNumber fields for compatibility
       setPhone(account.phone || (account as any).contactNumber || "");
     }
-  }, [account]);
+  }, [account?.id, account?.fullName, account?.email, account?.phone]); // Only depend on specific fields
 
   useEffect(() => {
     if (userInfo) {
       setAddress(userInfo.address || "");
       // Set profile image from userInfo if available
       if (userInfo.profileImagePath) {
-        setProfileImage(getProfileImageUrl());
+        // Build the image URL directly to avoid dependency on getProfileImageUrl
+        const filename = userInfo.profileImagePath.split('/').pop();
+        if (filename) {
+          const baseUrl = 'http://192.168.254.114:8000'; // Use the correct IP directly
+          const imageUrl = `${baseUrl}/api/userinfo/profile-image/${filename}`;
+          setProfileImage(imageUrl);
+        }
+      } else {
+        // Clear profile image if no path
+        setProfileImage(null);
       }
     }
-  }, [userInfo, getProfileImageUrl]);
+  }, [userInfo?.id, userInfo?.address, userInfo?.profileImagePath]); // Only depend on specific fields
 
   const handleSave = async () => {
     setIsSaving(true);

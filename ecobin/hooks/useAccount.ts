@@ -15,6 +15,8 @@ export function useAccount() {
   const [account, setAccount] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Debug: Log state changes (only in development) - REMOVED to prevent infinite loops
 
   useEffect(() => {
     const fetchAccount = async () => {
@@ -35,7 +37,7 @@ export function useAccount() {
       }
     };
     fetchAccount();
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   return { account, loading, error };
 }

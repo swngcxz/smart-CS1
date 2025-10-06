@@ -12,7 +12,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export function MapTab() {
-  const { wasteBins, loading, error, bin1Data, dynamicBinLocations } = useRealTimeData();
+  const { wasteBins, loading, error, bin1Data, dynamicBinLocations, refresh } = useRealTimeData();
   const { updateBin, isLoading: isUpdating, error: updateError } = useUpdateBin();
 
   // Form state for updating bin details
@@ -28,16 +28,25 @@ export function MapTab() {
 
   // Use ONLY real-time bin locations from database - no hardcoded coordinates
   const updatedLocationData =
-    dynamicBinLocations.length > 0
+    dynamicBinLocations && dynamicBinLocations.length > 0
       ? dynamicBinLocations.map((bin) => ({
           id: bin.id,
           name: bin.name,
-          lat: bin.position[0].toString(),
-          lng: bin.position[1].toString(),
+          lat: bin.position?.[0]?.toString() || '0',
+          lng: bin.position?.[1]?.toString() || '0',
           status: bin.status,
           level: bin.level,
           lastCollected: bin.lastCollection,
           binData: bin,
+          // Include all the real-time data properties
+          position: bin.position,
+          weight_kg: bin.weight_kg,
+          distance_cm: bin.distance_cm,
+          satellites: bin.satellites,
+          gps_valid: bin.gps_valid,
+          coordinates_source: bin.coordinates_source,
+          last_active: bin.last_active,
+          gps_timestamp: bin.gps_timestamp,
         }))
       : []; // No fallback to hardcoded coordinates - only show real-time data
 
@@ -68,6 +77,8 @@ export function MapTab() {
 
       if (success) {
         toast.success("Bin details updated successfully!");
+        // Refresh the real-time data to get updated information
+        await refresh();
         setIsEditing(false);
         setSelectedBinId("");
         // Reset form
@@ -87,10 +98,12 @@ export function MapTab() {
 
   // Load bin data for editing (called when clicking on map bin)
   const loadBinForEdit = (bin: any) => {
+    // Map the real-time database structure to form fields
+    // Use actual data from Firebase
     setBinForm({
-      binName: bin.name || bin.binData?.name || "",
-      binType: bin.type || bin.binData?.type || "",
-      mainLocation: bin.mainLocation || bin.binData?.mainLocation || "",
+      binName: bin.name || bin.id || "",
+      binType: bin.type || "general", // Use actual type from Firebase
+      mainLocation: bin.mainLocation || "central-plaza", // Use actual mainLocation from Firebase
     });
     setSelectedBinId(bin.id || "");
     setIsEditing(true);
@@ -98,9 +111,15 @@ export function MapTab() {
 
   // Function to be called from map component when bin is clicked
   const handleBinClick = (binId: string) => {
+    console.log('🔍 Bin clicked:', binId);
+    console.log('📊 Available bins:', updatedLocationData);
+    
     const selectedBin = updatedLocationData.find((bin) => bin.id === binId);
     if (selectedBin) {
+      console.log('✅ Selected bin data:', selectedBin);
       loadBinForEdit(selectedBin);
+    } else {
+      console.warn('⚠️ Bin not found in updatedLocationData:', binId);
     }
   };
 
@@ -275,6 +294,7 @@ export function MapTab() {
             </CardContent>
           </Card>
 
+
           {/* Bin Update Form */}
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
@@ -282,14 +302,6 @@ export function MapTab() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Selected Bin Info */}
-                {selectedBinId && (
-                  <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                      Editing: {binForm.binName || `Bin ${selectedBinId}`}
-                    </p>
-                  </div>
-                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
