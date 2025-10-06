@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@/components/theme-provider"; 
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,7 +15,9 @@ import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/AdminDashboard";
 import Feedback from "./pages/users/Feedback";
 import Notifications from "./pages/admin/pages/Notifications";
-import StaffNotifications from "./pages/staff/pages/StaffNotifications";
+import Notification from "./pages/staff/pages/StaffNotification";
+import StaffNotifications from "./pages/staff/pages/StaffNotification";
+import StaffNotification from "./pages/staff/pages/StaffNotifications";
 import StaffDashboard from "./pages/StaffDashboard";
 import OtpVerification from "./pages/auth/OtpVerification";
 import PasswordResetOtp from "./pages/auth/PasswordResetOtp";
@@ -39,28 +41,56 @@ const AppContent = () => {
         <AuthProvider>
           <NotificationProvider>
             <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/password-reset-otp" element={<PasswordResetOtp />} />
-            <Route path="/admin" element={<RequireAuth allowedRoles={["admin"]}><AdminDashboard /></RequireAuth>} />
-            <Route path="/admin/notifications" element={<RequireAuth allowedRoles={["admin"]}><Notifications /></RequireAuth>} />
-            <Route path="/staff" element={<RequireAuth allowedRoles={["staff","admin"]}><StaffDashboard /></RequireAuth>} />
-            <Route path="/staff/notifications" element={<RequireAuth allowedRoles={["staff","admin"]}><StaffNotifications /></RequireAuth>} />
-            <Route path="/feedback" element={<Feedback />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/verify-otp" element={<OtpVerification />} />
-            <Route path="*" element={<NotFound />} />
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/password-reset-otp" element={<PasswordResetOtp />} />
+              <Route
+                path="/admin"
+                element={
+                  <RequireAuth allowedRoles={["admin"]}>
+                    <AdminDashboard />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/admin/notifications"
+                element={
+                  <RequireAuth allowedRoles={["admin"]}>
+                    <Notifications />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/staff"
+                element={
+                  <RequireAuth allowedRoles={["staff", "admin"]}>
+                    <StaffDashboard />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/staff/notifications"
+                element={
+                  <RequireAuth allowedRoles={["staff", "admin"]}>
+                    <Notification />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/feedback" element={<Feedback />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/verify-otp" element={<OtpVerification />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </NotificationProvider>
         </AuthProvider>
       </BrowserRouter>
-      
+
       {/* Smart Floating Rating Button - appears after user interaction */}
-      <SmartFloatingRatingButton 
+      <SmartFloatingRatingButton
         showAfterDelay={5000}
-        hideOnPages={['/login', '/register', '/forgot-password', '/verify-otp']}
+        hideOnPages={["/login", "/register", "/forgot-password", "/verify-otp"]}
         showOnlyAfterActions={true}
       />
     </>
