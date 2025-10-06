@@ -349,7 +349,7 @@ export function ScheduleCollectionTabs() {
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-2xl">Schedules</CardTitle>
-              {/* <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+              <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-green-500 rounded"></div>
                   <span>Trash Collection</span>
@@ -358,7 +358,7 @@ export function ScheduleCollectionTabs() {
                   <div className="w-3 h-3 bg-blue-500 rounded"></div>
                   <span>Maintenance</span>
                 </div>
-              </div> */}
+              </div>
             </div>
             <Button
               onClick={() => setIsAddDialogOpen(true)}
