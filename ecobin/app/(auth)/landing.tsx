@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import React from "react";
 import { useEffect, useRef } from "react";
-import { Animated, Image, Platform, Pressable, SafeAreaView, Text, View, useWindowDimensions } from "react-native";
+import { Animated, Image, Platform, Pressable, Text, View, useWindowDimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // ✅ Load Poppins here
 import { Poppins_400Regular, Poppins_600SemiBold, useFonts } from "@expo-google-fonts/poppins";

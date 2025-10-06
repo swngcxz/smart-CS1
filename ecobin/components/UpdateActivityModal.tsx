@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axiosInstance from '../utils/axiosInstance';
-import { useAccount } from '../hooks/useAccount';
+import { useAccount } from '../contexts/AccountContext';
 
 interface UpdateActivityModalProps {
   visible: boolean;

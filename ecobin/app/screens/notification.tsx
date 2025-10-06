@@ -11,9 +11,10 @@ import {
   RefreshControl,
 } from "react-native";
 
-import { useAccount } from "@/hooks/useAccount"; // current user info from /auth/me
+import { useAccount } from "@/contexts/AccountContext"; // current user info from /auth/me
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNotificationBadge } from "@/hooks/useNotificationBadge";
+import axiosInstance from "@/utils/axiosInstance";
 
 export default function NotificationScreen() {
   const { account } = useAccount();
@@ -27,8 +28,8 @@ export default function NotificationScreen() {
   // Function to check task statuses
   const checkTaskStatuses = useCallback(async () => {
     try {
-      const response = await fetch('http://192.168.254.114:8000/api/activitylogs');
-      const data = await response.json() as any;
+      const response = await axiosInstance.get('/api/activitylogs');
+      const data = response.data;
       
       const statuses: {[key: string]: 'available' | 'accepted' | 'completed'} = {};
       
@@ -49,6 +50,8 @@ export default function NotificationScreen() {
       setTaskStatuses(statuses);
     } catch (error) {
       console.error('Error checking task statuses:', error);
+      // Set empty statuses on error to prevent UI issues
+      setTaskStatuses({});
     }
   }, []);
 
@@ -57,10 +60,24 @@ export default function NotificationScreen() {
     if (notifications.length > 0) {
       checkTaskStatuses();
     }
-  }, [notifications, checkTaskStatuses]);
+  }, [notifications.length, checkTaskStatuses]); // Only depend on length to prevent excessive calls
 
   // Function to get task status for a notification
   const getTaskStatus = useCallback((item: any): 'available' | 'accepted' | 'completed' => {
+    // First check if the notification has been updated with new status fields
+    if (item.taskStatus) {
+      return item.taskStatus;
+    }
+    
+    // Check if notification has been marked as accepted or completed
+    if (item.status === 'ACCEPTED' || item.acceptedBy) {
+      return 'accepted';
+    }
+    if (item.status === 'COMPLETED' || item.completedBy) {
+      return 'completed';
+    }
+    
+    // Fallback to checking activity logs
     const key = `${item.binId}_${item.type || 'task_assignment'}`;
     return taskStatuses[key] || 'available';
   }, [taskStatuses]);
@@ -68,8 +85,8 @@ export default function NotificationScreen() {
   // Function to check if task is accepted by current user
   const isTaskAcceptedByMe = useCallback(async (item: any): Promise<boolean> => {
     try {
-      const response = await fetch('http://192.168.254.114:8000/api/activitylogs');
-      const data = await response.json() as any;
+      const response = await axiosInstance.get('/api/activitylogs');
+      const data = response.data;
       
       if (data.activities) {
         const activity = data.activities.find((activity: any) => 
@@ -119,8 +136,8 @@ export default function NotificationScreen() {
                 // If no activityId, try to find the corresponding activity log
                 if (!activityId || activityId === item.id) {
                   // Fetch available activities to find the right one
-                  const activitiesResponse = await fetch(`http://192.168.254.114:8000/api/activitylogs`);
-                  const activitiesData = await activitiesResponse.json() as any;
+                  const activitiesResponse = await axiosInstance.get('/api/activitylogs');
+                  const activitiesData = activitiesResponse.data;
                   
                   // Find pending activity for this bin
                   const pendingActivity = activitiesData.activities?.find((activity: any) => 
@@ -138,29 +155,18 @@ export default function NotificationScreen() {
                 }
 
                 // Call the task assignment endpoint
-                const response = await fetch(`http://192.168.254.114:8000/api/activitylogs/${activityId}/assign`, {
-                  method: 'PUT',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    assigned_janitor_id: janitorId,
-                    assigned_janitor_name: account?.fullName || 'Janitor',
-                    status: 'in_progress'
-                  })
+                const response = await axiosInstance.put(`/api/activitylogs/${activityId}/assign`, {
+                  assigned_janitor_id: janitorId,
+                  assigned_janitor_name: account?.fullName || 'Janitor',
+                  status: 'in_progress'
                 });
 
-                if (response.ok) {
-                  Alert.alert("Success", "Task accepted successfully!");
-                  // Automatically mark the notification as read
-                  await markAsRead(item.id);
-                  // Refresh notifications and task statuses
-                  await refresh();
-                  await checkTaskStatuses();
-                } else {
-                  const errorData = await response.json() as any;
-                  Alert.alert("Error", errorData.message || "Failed to accept task");
-                }
+                Alert.alert("Success", "Task accepted successfully!");
+                // Automatically mark the notification as read
+                await markAsRead(item.id);
+                // Refresh notifications and task statuses
+                await refresh();
+                await checkTaskStatuses();
               } catch (fetchError) {
                 console.error('Error in task acceptance:', fetchError);
                 Alert.alert("Error", "Failed to accept task");
@@ -204,9 +210,14 @@ export default function NotificationScreen() {
     
     if (isTaskNotification) {
       const taskStatus = getTaskStatus(n);
-      // Only show task notifications if the task is still available or completed by this user
+      // Show task notifications if:
+      // 1. Task is still available (can be accepted)
+      // 2. Task is accepted/completed but notification is unread (user should see the update)
+      // 3. Task is completed and notification is read (for reference)
       const isTaskStillRelevant = taskStatus === 'available' || 
-                                 (taskStatus === 'completed' && !n.read);
+                                 (taskStatus === 'accepted' && !n.read) ||
+                                 (taskStatus === 'completed' && !n.read) ||
+                                 (taskStatus === 'completed' && n.read);
       return passesReadFilter && isTaskStillRelevant;
     }
     
@@ -345,10 +356,20 @@ export default function NotificationScreen() {
                       <Text style={styles.statusTextAvailable}>🟢 Task Available</Text>
                     )}
                     {taskStatus === 'accepted' && (
-                      <Text style={styles.statusTextAccepted}>🟠 Task Accepted by Someone</Text>
+                      <View>
+                        <Text style={styles.statusTextAccepted}>🟠 Task Accepted by Someone</Text>
+                        {(item as any).acceptedBy && (
+                          <Text style={styles.acceptedByText}>Accepted by: {(item as any).acceptedBy}</Text>
+                        )}
+                      </View>
                     )}
                     {taskStatus === 'completed' && (
-                      <Text style={styles.statusTextCompleted}>✅ Task Completed</Text>
+                      <View>
+                        <Text style={styles.statusTextCompleted}>✅ Task Completed</Text>
+                        {(item as any).completedBy && (
+                          <Text style={styles.completedByText}>Completed by: {(item as any).completedBy}</Text>
+                        )}
+                      </View>
                     )}
                   </View>
                 )}
@@ -379,7 +400,21 @@ export default function NotificationScreen() {
                         style={[styles.markButton, styles.disabledButton]}
                         disabled={true}
                       >
-                        <Text style={styles.disabledButtonText}>Task Accepted</Text>
+                        <Text style={styles.disabledButtonText}>
+                          {(item as any).acceptedBy ? `Accepted by ${(item as any).acceptedBy}` : 'Task Accepted'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    
+                    {/* Show disabled button for completed tasks */}
+                    {isTaskNotification && taskStatus === 'completed' && (
+                      <TouchableOpacity
+                        style={[styles.markButton, styles.disabledButton]}
+                        disabled={true}
+                      >
+                        <Text style={styles.disabledButtonText}>
+                          {(item as any).completedBy ? `Completed by ${(item as any).completedBy}` : 'Task Completed'}
+                        </Text>
                       </TouchableOpacity>
                     )}
                     
@@ -503,6 +538,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#2196F3",
     fontWeight: "bold",
+  },
+  acceptedByText: {
+    fontSize: 10,
+    color: "#FF6B35",
+    fontStyle: "italic",
+    marginTop: 2,
+  },
+  completedByText: {
+    fontSize: 10,
+    color: "#2196F3",
+    fontStyle: "italic",
+    marginTop: 2,
   },
   notificationHeader: {
     flexDirection: "row",

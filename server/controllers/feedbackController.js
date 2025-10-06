@@ -156,8 +156,8 @@ const feedbackController = {
       const { limit = 20, offset = 0, status, category } = req.query;
       
       const options = {
-        limit: parseInt(limit),
-        offset: parseInt(offset),
+        limit: parseInt(limit) || 20,
+        offset: parseInt(offset) || 0,
         orderBy: 'createdAt',
         orderDirection: 'desc'
       };

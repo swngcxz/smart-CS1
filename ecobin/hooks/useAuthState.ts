@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAccount } from './useAccount';
+import { useAccount } from '../contexts/AccountContext';
 
 export function useAuthState() {
   const { account, loading, error } = useAccount();

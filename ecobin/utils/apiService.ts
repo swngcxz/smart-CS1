@@ -41,7 +41,7 @@ if (API_DEBUG === 'true') {
 
 const api = axios.create({
   baseURL: currentEndpoint,
-  timeout: parseInt(API_TIMEOUT) || 10000,
+  timeout: parseInt(API_TIMEOUT) || 3000, // Reduced from 10s to 3s - OPTIMIZED
   headers: {
     'Content-Type': 'application/json',
   },

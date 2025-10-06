@@ -214,7 +214,7 @@ export function StaffActivityLogs() {
   };
 
   // Assignment handlers
-  const handleAssignJanitor = (activity: any) => {
+  const handleAssignClick = (activity: any) => {
     setAssigningActivity(activity);
     setSelectedJanitorId("");
     setAssignModalOpen(true);
@@ -232,8 +232,8 @@ export function StaffActivityLogs() {
         status: "in_progress" // Automatically change to in_progress when assigned
       };
 
-      // Call API to update the activity
-      await api.put(`/api/activitylogs/${assigningActivity.id}`, updatedData);
+      // Call API to assign the task
+      await api.put(`/api/activity-logs/${assigningActivity.id}/assign`, updatedData);
       
       // Close the modal and refresh
       setAssignModalOpen(false);
@@ -709,11 +709,26 @@ export function StaffActivityLogs() {
 
                       <div>
                         <span className="font-medium text-gray-500 dark:text-gray-400">Assigned To:</span>
-                          <div className="text-gray-900 dark:text-white">
-                          {activity.assigned_janitor_name && activity.assigned_janitor_name.trim() !== "" 
-                            ? activity.assigned_janitor_name 
-                            : "Unassigned"}
-                          </div>
+                        <div className="text-gray-900 dark:text-white">
+                          {activity.assigned_janitor_name && activity.assigned_janitor_name.trim() !== "" ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">{activity.assigned_janitor_name}</span>
+                            </div>
+                          ) : activity.status === 'pending' ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAssignClick(activity)}
+                              className="text-xs border-gray-300 hover:bg-gray-50"
+                            >
+                              Assign To
+                            </Button>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div>

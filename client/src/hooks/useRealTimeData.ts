@@ -98,7 +98,7 @@ export function useRealTimeData() {
         console.error('❌ Error fetching real-time data:', err);
         setError(err.message || 'Failed to fetch real-time data');
       }
-    }, 5000); // Poll every 5 seconds
+    }, 1500); // Poll every 1.5 seconds - OPTIMIZED
 
     return () => clearInterval(interval);
   }, []);

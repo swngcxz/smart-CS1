@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from 'react';
 import { apiService, BinLocation, Bin1Data } from '../utils/apiService';
 
 export interface BinData {
@@ -46,7 +46,16 @@ export interface UseRealTimeDataReturn {
   getTimeSinceLastGPS: (timestamp: number) => string;
 }
 
-export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeDataReturn => {
+interface RealTimeDataContextType extends UseRealTimeDataReturn {}
+
+const RealTimeDataContext = createContext<RealTimeDataContextType | undefined>(undefined);
+
+interface RealTimeDataProviderProps {
+  children: ReactNode;
+  refreshInterval?: number;
+}
+
+export function RealTimeDataProvider({ children, refreshInterval = 2000 }: RealTimeDataProviderProps) {
   const [bin1Data, setBin1Data] = useState<BinData | null>(null);
   const [monitoringData, setMonitoringData] = useState<BinData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +69,7 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
   } | null>(null);
 
   // GPS fallback functions
-  const getTimeSinceLastGPS = (timestamp: number) => {
+  const getTimeSinceLastGPS = useCallback((timestamp: number) => {
     if (!timestamp) return 'Unknown';
     
     const now = Date.now();
@@ -73,18 +82,22 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
     if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
     if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
     return 'Just now';
-  };
+  }, []);
 
-  const getSafeCoordinates = () => {
-    // Check if we have valid GPS data
+  // Update last known GPS when bin1Data changes (separate from getSafeCoordinates to avoid render-time state updates)
+  useEffect(() => {
     if (bin1Data?.gps_valid && bin1Data?.latitude && bin1Data?.longitude) {
-      // Update last known GPS
       setLastKnownGPS({
         latitude: bin1Data.latitude,
         longitude: bin1Data.longitude,
         timestamp: bin1Data.timestamp
       });
-      
+    }
+  }, [bin1Data?.gps_valid, bin1Data?.latitude, bin1Data?.longitude, bin1Data?.timestamp]);
+
+  const getSafeCoordinates = useCallback(() => {
+    // Check if we have valid GPS data
+    if (bin1Data?.gps_valid && bin1Data?.latitude && bin1Data?.longitude) {
       return {
         latitude: bin1Data.latitude,
         longitude: bin1Data.longitude,
@@ -110,9 +123,9 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
       isOffline: true,
       timeSinceLastGPS: 'No GPS data'
     };
-  };
+  }, [bin1Data, lastKnownGPS, getTimeSinceLastGPS]);
 
-  // Fetch data function (shared by initial and real-time)
+  // Fetch data function - OPTIMIZED
   const fetchData = useCallback(async (isInitial = false) => {
     try {
       if (isInitial) {
@@ -120,53 +133,52 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
         console.log('🔄 Mobile App - Fetching initial data from Firebase...');
       }
       
-      // Only fetch bin1 data as requested (from API)
+      // Only fetch bin1 data as requested (from API) - OPTIMIZED: Single fetch
       const bin1Response = await apiService.getBin1Data();
 
-      // Fetch GPS/telemetry directly from Firebase RTDB and merge
-      let firebaseData: Partial<BinData> | null = null;
-      try {
-        const rtdbUrl = 'https://smartwaste-b3f0f-default-rtdb.firebaseio.com/monitoring/bin1.json';
-        const res = await fetch(rtdbUrl);
-        if (res.ok) {
-          const json = await res.json();
-          firebaseData = {
-            bin_level: json?.bin_level,
-            weight_kg: json?.weight_kg,
-            weight_percent: json?.weight_percent,
-            distance_cm: json?.distance_cm,
-            height_percent: json?.height_percent,
-            latitude: json?.latitude,
-            longitude: json?.longitude,
-            gps_valid: Boolean(json?.gps_valid),
-            satellites: typeof json?.satellites === 'number' ? json.satellites : 0,
-            timestamp: json?.gps_timestamp ? Date.parse(json.gps_timestamp) : json?.timestamp,
-            last_active: json?.last_active,
-            coordinates_source: json?.coordinates_source,
-            gps_timestamp: json?.gps_timestamp
-          } as Partial<BinData>;
-        } else {
-          console.log('ℹ️ RTDB fetch not ok:', res.status);
-        }
-      } catch (e) {
-        console.log('ℹ️ RTDB fetch failed, will rely on API data:', e);
-      }
-
-      console.log('📡 Mobile App - API Response:', bin1Response);
       if (bin1Response) {
-        const merged = { ...bin1Response, ...(firebaseData || {}) } as BinData;
-        console.log('🔥 Mobile App - Real-time bin1 data (merged):', merged);
-        console.log('📊 Mobile App - Bin Level:', merged.bin_level, 'Status:', getStatusFromLevel(merged.bin_level || 0));
-        setBin1Data(merged);
-        setLastUpdate(new Date().toISOString());
+        const merged = bin1Response as BinData;
         
-        // Track GPS history if valid
+        // Only update state if data has actually changed to prevent unnecessary re-renders
+        setBin1Data(prevData => {
+          if (!prevData || 
+              prevData.bin_level !== merged.bin_level ||
+              prevData.timestamp !== merged.timestamp ||
+              prevData.latitude !== merged.latitude ||
+              prevData.longitude !== merged.longitude) {
+            
+            // Only log when data actually changes
+            console.log('📡 Mobile App - API Response:', bin1Response);
+            console.log('🔥 Mobile App - Real-time bin1 data (merged):', merged);
+            console.log('📊 Mobile App - Bin Level:', merged.bin_level, 'Status:', getStatusFromLevel(merged.bin_level || 0));
+            
+            // Only update lastUpdate when data changes
+            setLastUpdate(new Date().toISOString());
+            
+            return merged;
+          }
+          return prevData;
+        });
+        
+        // Track GPS history if valid - OPTIMIZED to prevent unnecessary updates
         if (merged.gps_valid && merged.latitude && merged.longitude) {
-          setGpsHistory(prev => [...prev, {
-            lat: merged.latitude!,
-            lng: merged.longitude!,
-            timestamp: merged.timestamp
-          }].slice(-50)); // Keep last 50 points
+          setGpsHistory(prev => {
+            const newPoint = {
+              lat: merged.latitude!,
+              lng: merged.longitude!,
+              timestamp: merged.timestamp
+            };
+            
+            // Only add if it's a new point (avoid duplicate entries)
+            const lastPoint = prev[prev.length - 1];
+            if (!lastPoint || 
+                lastPoint.lat !== newPoint.lat || 
+                lastPoint.lng !== newPoint.lng ||
+                lastPoint.timestamp !== newPoint.timestamp) {
+              return [...prev, newPoint].slice(-50); // Keep last 50 points
+            }
+            return prev;
+          });
         }
       } else {
         console.log('⚠️ Mobile App - No bin1 data received from API');
@@ -248,15 +260,15 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
   }, [bin1Data]);
 
   // GPS utility functions
-  const getCurrentGPSLocation = () => {
+  const getCurrentGPSLocation = useCallback(() => {
     return bin1Data?.gps_valid ? bin1Data : monitoringData?.gps_valid ? monitoringData : null;
-  };
+  }, [bin1Data, monitoringData]);
 
-  const isGPSValid = () => {
+  const isGPSValid = useCallback(() => {
     // Check if we have any valid GPS data (live or cached)
     return Boolean((bin1Data?.latitude && bin1Data?.longitude) ||
                    (monitoringData?.latitude && monitoringData?.longitude));
-  };
+  }, [bin1Data, monitoringData]);
 
   const refetch = useCallback(async () => {
     await fetchData(true);
@@ -267,17 +279,20 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
     fetchData(true);
   }, [fetchData]);
 
-  // Set up interval for real-time updates
+  // Set up interval for real-time updates - OPTIMIZED to prevent memory leaks
   useEffect(() => {
+    // Only start interval if we're not in loading state
+    if (loading) return;
+    
     const interval = setInterval(() => fetchData(false), refreshInterval);
     return () => clearInterval(interval);
-  }, [fetchData, refreshInterval]);
+  }, [fetchData, refreshInterval, loading]);
 
   // Memoize expensive calculations
   const binLocations = useMemo(() => getDynamicBinLocations(), [getDynamicBinLocations]);
   const wasteBins = useMemo(() => getWasteBins(), [getWasteBins]);
 
-  return {
+  const value = {
     binLocations,
     bin1Data,
     wasteBins,
@@ -292,7 +307,21 @@ export const useRealTimeData = (refreshInterval: number = 2000): UseRealTimeData
     getSafeCoordinates,
     getTimeSinceLastGPS
   };
-};
+
+  return (
+    <RealTimeDataContext.Provider value={value}>
+      {children}
+    </RealTimeDataContext.Provider>
+  );
+}
+
+export function useRealTimeData() {
+  const context = useContext(RealTimeDataContext);
+  if (context === undefined) {
+    throw new Error('useRealTimeData must be used within a RealTimeDataProvider');
+  }
+  return context;
+}
 
 // Helper functions
 function getStatusFromLevel(level: number): 'normal' | 'warning' | 'critical' {

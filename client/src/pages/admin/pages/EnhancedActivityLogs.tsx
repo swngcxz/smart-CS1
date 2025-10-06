@@ -6,7 +6,7 @@ import { useActivityLogsApi } from "@/hooks/useActivityLogsApi";
 
 export function EnhancedActivityLogs() {
   const { stats, overviewCards, loading: statsLoading, error: statsError, refetch: refetchStats } = useActivityStats();
-  const { logs, loading: logsLoading, error: logsError, refetch: refetchLogs } = useActivityLogsApi();
+  const { logs, loading: logsLoading, error: logsError, refetch: refetchLogs } = useActivityLogsApi(100, 0, undefined, undefined, 30000);
 
   const handleRefresh = () => {
     refetchStats();

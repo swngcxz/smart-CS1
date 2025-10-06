@@ -1,7 +1,7 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Alert,
@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import axiosInstance from "../../utils/axiosInstance";
-import { useAccount } from "../../hooks/useAccount";
+import { useAccount } from "../../contexts/AccountContext";
 import { safeTextRenderers } from "../../utils/textErrorHandler";
 
 export default function ActivityLogsScreen() {
@@ -75,25 +75,24 @@ export default function ActivityLogsScreen() {
       
       console.log('📱 Mobile App - Filtered activities count:', filteredActivities.length);
       
-      // Additional debug info
-      if (filteredActivities.length === 0 && allActivities.length > 0) {
-        console.log('📱 Mobile App - All activities were filtered out. Original activities:', allActivities.map(a => ({ id: a.id, status: a.status, assigned_janitor_id: a.assigned_janitor_id })));
+      // Additional debug info (only in development)
+      if (__DEV__ && filteredActivities.length === 0 && allActivities.length > 0) {
+        console.log('📱 Mobile App - All activities were filtered out. Original activities:', 
+          allActivities.map(a => ({ id: a.id, status: a.status, assigned_janitor_id: a.assigned_janitor_id }))
+        );
       }
       
-      // Debug: Log each activity's status fields
-      filteredActivities.forEach((activity: any, index: number) => {
-        console.log(`📱 Mobile App - Activity ${index}:`, {
-          bin_id: activity.bin_id,
-          status: activity.status,
-          bin_status: activity.bin_status,
-          assigned_janitor_id: activity.assigned_janitor_id,
-          assigned_janitor_name: activity.assigned_janitor_name,
-          completed_at: activity.completed_at,
-          proof_image: activity.proof_image,
-          photos: activity.photos,
-          user_id: activity.user_id
-        });
-      });
+      // Debug: Log each activity's status fields (only in development)
+      if (__DEV__ && filteredActivities.length > 0) {
+        console.log(`📱 Mobile App - ${filteredActivities.length} filtered activities:`, 
+          filteredActivities.map((activity: any) => ({
+            id: activity.id,
+            bin_id: activity.bin_id,
+            status: activity.status,
+            assigned_janitor_id: activity.assigned_janitor_id,
+          }))
+        );
+      }
       
       setLogs(filteredActivities);
       
@@ -133,7 +132,7 @@ export default function ActivityLogsScreen() {
 
   // Refresh data when screen comes into focus
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       console.log('📱 Mobile App - Activity logs screen focused, refreshing data...');
       fetchActivityLogs();
     }, [fetchActivityLogs])

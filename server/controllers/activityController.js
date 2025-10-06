@@ -140,7 +140,8 @@ const assignTaskAtomically = async (req, res, next) => {
     const { activityId } = req.params;
     const { assigned_janitor_id, assigned_janitor_name, status = 'in_progress' } = req.body;
 
-    if (!assigned_janitor_id) {
+    // Allow null assignment_id to clear assignment
+    if (assigned_janitor_id === undefined) {
       return res.status(400).json({ error: "assigned_janitor_id is required" });
     }
 
@@ -156,43 +157,56 @@ const assignTaskAtomically = async (req, res, next) => {
       
       const originalData = activityDoc.data();
       
-      // Check if task is already assigned to a different janitor
-      if (originalData.assigned_janitor_id && 
-          originalData.assigned_janitor_id !== assigned_janitor_id) {
+      // Handle clearing assignment (null assignment)
+      if (assigned_janitor_id === null) {
+        if (!originalData.assigned_janitor_id) {
+          console.log("ℹ️ TRANSACTION REDUNDANT: Task already unassigned");
+          return {
+            success: true,
+            redundant: true,
+            message: "Task already unassigned",
+            data: originalData
+          };
+        }
+      } else {
+        // Check if task is already assigned to a different janitor
+        if (originalData.assigned_janitor_id && 
+            originalData.assigned_janitor_id !== assigned_janitor_id) {
+          
+          console.log("🚫 TRANSACTION CONFLICT:", {
+            activityId,
+            currentAssignee: originalData.assigned_janitor_name,
+            currentAssigneeId: originalData.assigned_janitor_id,
+            attemptedAssignee: assigned_janitor_name,
+            attemptedAssigneeId: assigned_janitor_id
+          });
+          
+          throw new Error(`CONFLICT: Task already assigned to ${originalData.assigned_janitor_name}`);
+        }
         
-        console.log("🚫 TRANSACTION CONFLICT:", {
-          activityId,
-          currentAssignee: originalData.assigned_janitor_name,
-          currentAssigneeId: originalData.assigned_janitor_id,
-          attemptedAssignee: assigned_janitor_name,
-          attemptedAssigneeId: assigned_janitor_id
-        });
-        
-        throw new Error(`CONFLICT: Task already assigned to ${originalData.assigned_janitor_name}`);
+        // Check if task is already assigned to the same janitor
+        if (originalData.assigned_janitor_id === assigned_janitor_id && 
+            originalData.status === 'in_progress') {
+          
+          console.log("ℹ️ TRANSACTION REDUNDANT:", {
+            activityId,
+            janitor: originalData.assigned_janitor_name,
+            janitorId: originalData.assigned_janitor_id
+          });
+          
+          return {
+            success: true,
+            redundant: true,
+            message: "Task already assigned to this janitor",
+            data: originalData
+          };
+        }
       }
       
-      // Check if task is already assigned to the same janitor
-      if (originalData.assigned_janitor_id === assigned_janitor_id && 
-          originalData.status === 'in_progress') {
-        
-        console.log("ℹ️ TRANSACTION REDUNDANT:", {
-          activityId,
-          janitor: originalData.assigned_janitor_name,
-          janitorId: originalData.assigned_janitor_id
-        });
-        
-        return {
-          success: true,
-          redundant: true,
-          message: "Task already assigned to this janitor",
-          data: originalData
-        };
-      }
-      
-      // Perform the assignment
+      // Perform the assignment or clear assignment
       const updateData = {
-        assigned_janitor_id,
-        assigned_janitor_name,
+        assigned_janitor_id: assigned_janitor_id || null,
+        assigned_janitor_name: assigned_janitor_name || null,
         status,
         bin_status: status,
         updated_at: new Date().toISOString()
@@ -204,13 +218,14 @@ const assignTaskAtomically = async (req, res, next) => {
         activityId,
         assignedTo: assigned_janitor_name,
         assignedToId: assigned_janitor_id,
-        status
+        status,
+        action: assigned_janitor_id ? 'assigned' : 'cleared'
       });
       
       return {
         success: true,
         redundant: false,
-        message: "Task assigned successfully",
+        message: assigned_janitor_id ? "Task assigned successfully" : "Assignment cleared successfully",
         data: { ...originalData, ...updateData }
       };
     });
@@ -226,6 +241,22 @@ const assignTaskAtomically = async (req, res, next) => {
       });
     }
     
+    // Update task notifications to show they've been accepted
+    try {
+      console.log(`[TASK ASSIGNMENT] Updating task notifications for accepted task`);
+      const updatedCount = await notificationModel.updateTaskNotifications(
+        result.data.bin_id,
+        activityId,
+        'in_progress',
+        assigned_janitor_name,
+        assigned_janitor_id
+      );
+      console.log(`[TASK ASSIGNMENT] ✅ Updated ${updatedCount} task notifications`);
+    } catch (updateError) {
+      console.error('[TASK ASSIGNMENT] Error updating task notifications:', updateError);
+      // Don't fail the main operation if notification update fails
+    }
+
     // Mark notifications as read for the accepting janitor
     try {
       await markNotificationsAsReadForTask(assigned_janitor_id, result.data.bin_id, activityId);
@@ -801,6 +832,24 @@ const updateActivityLog = async (req, res, next) => {
     // Send notifications based on status change
     // Note: Task acceptance notifications are handled by assignTaskAtomically function
     // to avoid duplicate notifications
+
+    // Update existing task notifications when status changes
+    if (assigned_janitor_id && assigned_janitor_name && (status === 'in_progress' || status === 'done')) {
+      try {
+        console.log(`[ACTIVITY UPDATE] Updating task notifications for status change: ${status}`);
+        const updatedCount = await notificationModel.updateTaskNotifications(
+          originalData.bin_id,
+          activityId,
+          status,
+          assigned_janitor_name,
+          assigned_janitor_id
+        );
+        console.log(`[ACTIVITY UPDATE] ✅ Updated ${updatedCount} task notifications`);
+      } catch (updateError) {
+        console.error('[ACTIVITY UPDATE] Error updating task notifications:', updateError);
+        // Don't fail the main operation if notification update fails
+      }
+    }
 
     // Send SMS notification when janitor is assigned
     if (assigned_janitor_id && assigned_janitor_name && status === 'in_progress') {

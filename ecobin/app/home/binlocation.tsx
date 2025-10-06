@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View, TouchableOpacity, ActivityIndicator
 import { ProgressBar } from "react-native-paper";
 import BackButton from "@/components/BackButton";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useRealTimeData } from "../../hooks/useRealTimeData";
+import { useRealTimeData } from "../../contexts/RealTimeDataContext";
 
 export default function LocationBinsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

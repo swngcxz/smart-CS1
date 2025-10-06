@@ -255,6 +255,86 @@ class NotificationModel {
   }
 
   /**
+   * Update notifications for a specific task when status changes
+   * @param {string} binId - Bin identifier
+   * @param {string} activityId - Activity identifier
+   * @param {string} newStatus - New status (e.g., 'in_progress', 'completed')
+   * @param {string} assignedJanitorName - Name of janitor who accepted the task
+   * @param {string} assignedJanitorId - ID of janitor who accepted the task
+   * @returns {Promise<number>} Number of updated notifications
+   */
+  async updateTaskNotifications(binId, activityId, newStatus, assignedJanitorName, assignedJanitorId) {
+    try {
+      console.log(`[NOTIFICATION MODEL] Updating task notifications for bin ${binId}, activity ${activityId}, status ${newStatus}`);
+      
+      // Find all notifications for this bin and activity that are task-related
+      const snapshot = await withRetry(() =>
+        db.collection(this.collections.notifications)
+          .where('binId', '==', binId)
+          .where('type', 'in', ['automatic_task_available', 'task_assignment', 'automatic_task_created'])
+          .where('read', '==', false)
+          .get()
+      );
+
+      if (snapshot.empty) {
+        console.log(`[NOTIFICATION MODEL] No unread task notifications found for bin ${binId}`);
+        return 0;
+      }
+
+      const batch = db.batch();
+      let updatedCount = 0;
+
+      snapshot.docs.forEach(doc => {
+        const notificationData = doc.data();
+        
+        // Update notification based on new status
+        let updatedNotification = {
+          updated_at: new Date().toISOString()
+        };
+
+        if (newStatus === 'in_progress') {
+          // Task has been accepted by someone
+          updatedNotification = {
+            ...updatedNotification,
+            status: 'ACCEPTED',
+            title: '🟠 Task Accepted by Someone',
+            message: `${assignedJanitorName || 'A janitor'} has accepted the task for bin ${binId}. Status: In Progress`,
+            acceptedBy: assignedJanitorName,
+            acceptedById: assignedJanitorId,
+            taskStatus: 'accepted',
+            availableForAcceptance: false
+          };
+        } else if (newStatus === 'done') {
+          // Task has been completed
+          updatedNotification = {
+            ...updatedNotification,
+            status: 'COMPLETED',
+            title: '✅ Task Completed',
+            message: `The task for bin ${binId} has been completed by ${assignedJanitorName || 'a janitor'}.`,
+            completedBy: assignedJanitorName,
+            completedById: assignedJanitorId,
+            taskStatus: 'completed',
+            availableForAcceptance: false
+          };
+        }
+
+        batch.update(doc.ref, updatedNotification);
+        updatedCount++;
+      });
+
+      if (updatedCount > 0) {
+        await withRetry(() => batch.commit());
+        console.log(`[NOTIFICATION MODEL] ✅ Updated ${updatedCount} notifications for bin ${binId}`);
+      }
+
+      return updatedCount;
+    } catch (error) {
+      console.error('[NOTIFICATION MODEL] Error updating task notifications:', error);
+      throw new Error(`Failed to update task notifications: ${error.message}`);
+    }
+  }
+
+  /**
    * Delete old notifications (cleanup)
    * @param {number} daysOld - Delete notifications older than this many days
    * @returns {Promise<number>} Number of deleted notifications

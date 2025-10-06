@@ -29,12 +29,13 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
   const [selectedJanitor, setSelectedJanitor] = useState("");
   const [janitors, setJanitors] = useState<any[]>([]);
   const [janitorsLoading, setJanitorsLoading] = useState(false);
+  const [taskNotes, setTaskNotes] = useState("");
 
   const fetchJanitors = async () => {
     setJanitorsLoading(true);
     try {
-      const response = await api.get("/api/staff/janitors");
-      setJanitors(response.data || []);
+      const response = await api.get("/api/janitors/available");
+      setJanitors(response.data.janitors || []);
     } catch (err) {
       console.error("Error fetching janitors:", err);
       setJanitors([]);
@@ -44,9 +45,20 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
   };
 
   const handleAssignClick = (activity: ActivityLog) => {
+    console.log("Assign button clicked for activity:", activity);
     setSelectedActivity(activity);
+    setSelectedJanitor("");
+    setTaskNotes(""); // Clear task notes for user input
     setAssignModalOpen(true);
+    console.log("Modal should open now");
     fetchJanitors();
+  };
+
+  const handleModalClose = () => {
+    setAssignModalOpen(false);
+    setSelectedActivity(null);
+    setSelectedJanitor("");
+    setTaskNotes(""); // Clear task notes when modal closes
   };
 
   const handleAssignSubmit = async () => {
@@ -56,25 +68,21 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
       const selectedJanitorData = janitors.find(j => j.id === selectedJanitor);
       const janitorName = selectedJanitorData ? `${selectedJanitorData.fullName}` : "Unknown Janitor";
 
-      await api.put(`/api/activitylogs/${selectedActivity.id}`, {
-        assigned_janitor_id: selectedJanitor,
-        assigned_janitor_name: janitorName,
-        status: "in_progress"
+      await api.post("/api/assign-task", {
+        activityId: selectedActivity.id,
+        janitorId: selectedJanitor,
+        janitorName: janitorName,
+        taskNote: taskNotes || "" // Use user-entered task notes
       });
 
       setAssignModalOpen(false);
       setSelectedActivity(null);
       setSelectedJanitor("");
+      setTaskNotes(""); // Clear task notes
       onRefresh();
     } catch (err: any) {
       console.error("Error assigning task:", err);
-
-      if (err.response?.status === 409 && err.response?.data?.error === 'Task assignment conflict') {
-        setAssignModalOpen(false);
-        setSelectedActivity(null);
-        setSelectedJanitor("");
-        onRefresh();
-      }
+      alert("Failed to assign task. Please try again.");
     }
   };
 
@@ -254,27 +262,27 @@ const getPriorityBadge = (priority: string) => {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-full">
                 <TableHeader>
                   <TableRow className="border-gray-200 dark:border-gray-700">
-                    <TableHead className="text-gray-900 dark:text-white font-semibold">Date & Time</TableHead>
-                    <TableHead className="text-gray-900 dark:text-white font-semibold">Description</TableHead>
-                    <TableHead className="text-gray-900 dark:text-white font-semibold">Assigned To</TableHead>
-                    <TableHead className="text-gray-900 dark:text-white font-semibold">Location</TableHead>
-                    <TableHead className="text-gray-900 dark:text-white font-semibold">Status</TableHead>
-                    <TableHead className="text-gray-900 dark:text-white font-semibold">Priority</TableHead>
+                    <TableHead className="text-gray-900 dark:text-white font-semibold w-32">Date & Time</TableHead>
+                    <TableHead className="text-gray-900 dark:text-white font-semibold w-64">Description</TableHead>
+                    <TableHead className="text-gray-900 dark:text-white font-semibold w-32">Assigned To</TableHead>
+                    <TableHead className="text-gray-900 dark:text-white font-semibold w-24">Location</TableHead>
+                    <TableHead className="text-gray-900 dark:text-white font-semibold w-20">Status</TableHead>
+                    <TableHead className="text-gray-900 dark:text-white font-semibold w-20">Priority</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredLogs.map((log) => (
                     <TableRow key={log.id} className="border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <TableCell className="text-sm text-gray-900 dark:text-white">
+                      <TableCell className="text-sm text-gray-900 dark:text-white w-32">
                         <div className="flex items-center gap-2">
                           <div>
-                            <div className="font-medium">
+                            <div className="font-medium text-xs">
                               {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleDateString('en-US', {
                                 year: 'numeric',
-                                month: 'long',
+                                month: 'short',
                                 day: 'numeric'
                               })}
                             </div>
@@ -284,13 +292,15 @@ const getPriorityBadge = (priority: string) => {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm text-gray-900 dark:text-white max-w-xs">
-                        <div className="truncate">{log.task_note || log.message || "No description"}</div>
+                      <TableCell className="text-sm text-gray-900 dark:text-white w-64">
+                        <div className="break-words whitespace-pre-wrap leading-relaxed text-xs">
+                          {log.task_note || log.message || "No description"}
+                        </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="w-32">
                         {log.assigned_janitor_name && log.status !== 'pending' ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-900 dark:text-white">{log.assigned_janitor_name}</span>
+                            <span className="text-xs text-gray-900 dark:text-white">{log.assigned_janitor_name}</span>
                           </div>
                         ) : log.status === 'pending' ? (
                           <Button
@@ -299,19 +309,21 @@ const getPriorityBadge = (priority: string) => {
                             onClick={() => handleAssignClick(log)}
                             className="text-xs border-gray-300 hover:bg-gray-50"
                           >
-                            Assign Task
+                            +Assign task
                           </Button>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Unassigned</span>
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-gray-900 dark:text-white">
-                        {log.bin_location || log.location || "Unknown"}
+                      <TableCell className="text-sm text-gray-900 dark:text-white w-24">
+                        <div className="text-xs">
+                          {log.bin_location || log.location || "Unknown"}
+                        </div>
                       </TableCell>
-                      <TableCell>{getStatusBadge(log.status || "")}</TableCell>
-                      <TableCell>{getPriorityBadge(log.priority || "")}</TableCell>
+                      <TableCell className="w-20">{getStatusBadge(log.status || "")}</TableCell>
+                      <TableCell className="w-20">{getPriorityBadge(log.priority || "")}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -320,6 +332,88 @@ const getPriorityBadge = (priority: string) => {
           )}
         </CardContent>
       </Card>
+
+      {/* Assignment Modal */}
+      {console.log("Rendering modal - assignModalOpen:", assignModalOpen, "selectedActivity:", selectedActivity)}
+      <Dialog open={assignModalOpen} onOpenChange={handleModalClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Task Details
+              </Label>
+              <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                <p className="text-sm text-gray-900 dark:text-white">
+                  {selectedActivity?.task_note || selectedActivity?.activity_type}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Location: {selectedActivity?.bin_location || "Unknown"}
+                </p>
+              </div>
+            </div>
+            
+            <div>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Select Janitor
+              </Label>
+              <Select value={selectedJanitor} onValueChange={setSelectedJanitor}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Choose a janitor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {janitorsLoading ? (
+                    <SelectItem value="loading" disabled>
+                      Loading janitors...
+                    </SelectItem>
+                  ) : janitors.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No janitors available
+                    </SelectItem>
+                  ) : (
+                    janitors.map((janitor) => (
+                      <SelectItem key={janitor.id} value={janitor.id}>
+                        {janitor.fullName || janitor.name || janitor.email}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Task Notes (Optional)
+              </Label>
+              <textarea
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                rows={3}
+                placeholder="Add any additional notes for the janitor..."
+                value={taskNotes}
+                onChange={(e) => setTaskNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter className="flex justify-end gap-2 mt-6">
+            <Button
+              variant="outline"
+              onClick={handleModalClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignSubmit}
+              disabled={!selectedJanitor}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Assign Task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

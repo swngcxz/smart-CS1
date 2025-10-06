@@ -5,7 +5,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View, ActivityIndicator, Platform } from "react-native";
 import { ProgressBar } from "react-native-paper";
-import { useRealTimeData } from "../../hooks/useRealTimeData";
+import { useRealTimeData } from "../../contexts/RealTimeDataContext";
 
 // Platform-specific imports
 let MapView: any, Marker: any, PROVIDER_GOOGLE: any;

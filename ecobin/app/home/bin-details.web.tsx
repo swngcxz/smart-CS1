@@ -4,7 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import { ProgressBar } from "react-native-paper";
-import { useRealTimeData } from "../../hooks/useRealTimeData";
+import { useRealTimeData } from "../../contexts/RealTimeDataContext";
 
 // Web fallback components
 const MapView = ({ children, style, region, ...props }: any) => (

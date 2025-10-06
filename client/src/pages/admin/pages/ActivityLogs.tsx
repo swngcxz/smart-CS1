@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// Dialog component removed - using simple modal instead
 import { useAllActivityLogs } from "@/hooks/useActivityLogsApi";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ArrowUpDown, ArrowUp, ArrowDown, Search, RefreshCw } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import api from "@/lib/api";
 
 interface ActivityLogsProps {
   onRefresh?: () => void;
@@ -24,12 +26,25 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [sortField, setSortField] = useState<SortField>("timestamp");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  
+  // Assignment modal state
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
+  const [selectedJanitor, setSelectedJanitor] = useState("");
+  const [janitors, setJanitors] = useState<any[]>([]);
+  const [janitorsLoading, setJanitorsLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   const { logs, loading, error, totalCount } = useAllActivityLogs(
     100,
     0,
     activityType !== "all" ? activityType : undefined
   );
+
+  // Debug modal state changes
+  useEffect(() => {
+    console.log("Modal state changed - assignModalOpen:", assignModalOpen);
+  }, [assignModalOpen]);
 
   const getActivityTypeColor = (type: string) => {
     switch (type) {
@@ -185,6 +200,84 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
     setSortDirection("desc");
   };
 
+  // Assignment modal functions
+  const fetchJanitors = async () => {
+    setJanitorsLoading(true);
+    try {
+      const response = await api.get("/api/janitors/available");
+      setJanitors(response.data.janitors || []);
+    } catch (err) {
+      console.error("Error fetching janitors:", err);
+      setJanitors([]);
+    } finally {
+      setJanitorsLoading(false);
+    }
+  };
+
+  const handleAssignClick = (activity: any) => {
+    console.log("Assign button clicked for activity:", activity);
+    console.log("Current assignModalOpen state:", assignModalOpen);
+    setSelectedActivity(activity);
+    setSelectedJanitor("");
+    setAssignModalOpen(true);
+    console.log("Modal should open now - assignModalOpen set to true");
+    fetchJanitors();
+  };
+
+  const handleAssignSubmit = async () => {
+    if (!selectedActivity || !selectedJanitor) return;
+    
+    setAssigning(true);
+    try {
+      const janitor = janitors.find(j => j.id === selectedJanitor);
+      if (!janitor) throw new Error("Janitor not found");
+
+      await api.post("/api/assign-task", {
+        activityId: selectedActivity.id,
+        janitorId: selectedJanitor,
+        janitorName: janitor.fullName || janitor.name || janitor.email,
+        taskNote: selectedActivity.task_note || ""
+      });
+
+      // Refresh the data
+      if (onRefresh) onRefresh();
+      
+      setAssignModalOpen(false);
+      setSelectedActivity(null);
+      setSelectedJanitor("");
+    } catch (err) {
+      console.error("Error assigning task:", err);
+      alert("Failed to assign task. Please try again.");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleClearAssignment = async () => {
+    if (!selectedActivity) return;
+    
+    setAssigning(true);
+    try {
+      await api.put(`/api/activitylogs/${selectedActivity.id}`, {
+        assigned_janitor_id: null,
+        assigned_janitor_name: null,
+        status: 'pending'
+      });
+
+      // Refresh the data
+      if (onRefresh) onRefresh();
+      
+      setAssignModalOpen(false);
+      setSelectedActivity(null);
+      setSelectedJanitor("");
+    } catch (err) {
+      console.error("Error clearing assignment:", err);
+      alert("Failed to clear assignment. Please try again.");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   return (
     <ErrorBoundary>
       <Card className="bg-white dark:bg-gray-800 border-0 shadow-lg">
@@ -276,7 +369,31 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
                         <TableCell>
                           {activity.bin_id && `${activity.bin_id} at ${activity.bin_location || "Unknown Location"}`}
                         </TableCell>
-                        <TableCell>{activity.assigned_janitor_name || activity.user_id || "Unassigned"}</TableCell>
+                        <TableCell>
+                          {console.log("Activity status check:", activity.status, "assigned_janitor_name:", activity.assigned_janitor_name)}
+                          {activity.assigned_janitor_name ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-900 dark:text-white">{activity.assigned_janitor_name}</span>
+                            </div>
+                          ) : activity.status === 'pending' ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                console.log("Button clicked! Activity:", activity);
+                                alert("Assign Task button clicked! Check console for details.");
+                                handleAssignClick(activity);
+                              }}
+                              className="text-xs border-gray-300 hover:bg-gray-50"
+                            >
+                              Assign To
+                            </Button>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{activity.bin_location || "Unknown"}</TableCell>
                         <TableCell>
                           {activity.status && (
@@ -330,6 +447,102 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Test Button */}
+      <div className="mb-4 p-4 bg-yellow-100 border border-yellow-300 rounded">
+        <p className="text-sm text-yellow-800 mb-2">Debug: Test the modal functionality</p>
+        <Button 
+          onClick={() => {
+            console.log("Test button clicked - setting modal to true");
+            setAssignModalOpen(true);
+          }} 
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          Test Modal (Click Me)
+        </Button>
+        <p className="text-xs text-yellow-700 mt-2">Current modal state: {assignModalOpen ? 'OPEN' : 'CLOSED'}</p>
+      </div>
+
+      {/* Assignment Modal - Simple Version */}
+      {console.log("Rendering modal check - assignModalOpen:", assignModalOpen, "selectedActivity:", selectedActivity)}
+      {assignModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center" style={{ zIndex: 9999 }}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Assign Task
+              </h3>
+              <button
+                onClick={() => setAssignModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Task Details
+                </label>
+                <div className="mt-1 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                  <p className="text-sm text-gray-900 dark:text-white">
+                    {selectedActivity?.task_note || selectedActivity?.activity_type}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Location: {selectedActivity?.bin_location || "Unknown"}
+                  </p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Select Janitor
+                </label>
+                <Select value={selectedJanitor} onValueChange={setSelectedJanitor}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Choose a janitor..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {janitorsLoading ? (
+                      <SelectItem value="loading" disabled>
+                        Loading janitors...
+                      </SelectItem>
+                    ) : janitors.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No janitors available
+                      </SelectItem>
+                    ) : (
+                      janitors.map((janitor) => (
+                        <SelectItem key={janitor.id} value={janitor.id}>
+                          {janitor.fullName || janitor.name || janitor.email}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setAssignModalOpen(false)}
+                disabled={assigning}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAssignSubmit}
+                disabled={assigning || !selectedJanitor}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {assigning ? "Assigning..." : "Assign Task"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </ErrorBoundary>
   );
 }

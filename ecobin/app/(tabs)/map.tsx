@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator, Pla
 import { useRouter } from "expo-router";
 import { ProgressBar } from "react-native-paper";
 import * as Location from 'expo-location';
-import { useRealTimeData } from '../../hooks/useRealTimeData';
+import { useRealTimeData } from '../../contexts/RealTimeDataContext';
 import { DynamicBinMarker } from '../../components/DynamicBinMarker';
 import { GPSMarker } from '../../components/GPSMarker';
 import { BinLocation } from '../../utils/apiService';
@@ -40,7 +40,7 @@ if (Platform.OS !== 'web') {
 }
 
 export default function MapScreen() {
-  const { binLocations, bin1Data, loading, error, lastUpdate, refetch, isGPSValid } = useRealTimeData(5000);
+  const { binLocations, bin1Data, loading, error, lastUpdate, refetch, isGPSValid } = useRealTimeData();
   const [region, setRegion] = useState({
     latitude: 10.2098,
     longitude: 123.758,

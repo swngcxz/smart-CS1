@@ -114,9 +114,17 @@ console.log('[INDEX] binRoutes mounted successfully');
 // Manual task assignment endpoint (must be before activity routes)
 app.post('/api/assign-task', async (req, res) => {
   try {
+    console.log('[MANUAL ASSIGNMENT API] Request received:', {
+      body: req.body,
+      headers: req.headers,
+      method: req.method,
+      url: req.url
+    });
+    
     const { activityId, janitorId, janitorName, taskNote } = req.body;
     
     if (!activityId || !janitorId) {
+      console.log('[MANUAL ASSIGNMENT API] Missing required fields:', { activityId, janitorId });
       return res.status(400).json({
         success: false,
         error: 'activityId and janitorId are required'

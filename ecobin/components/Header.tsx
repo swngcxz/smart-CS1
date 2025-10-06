@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from "react-native";
 import { useNotificationBadge } from "@/hooks/useNotificationBadge";
-import { useAccount } from "@/hooks/useAccount";
+import { useAccount } from "@/contexts/AccountContext";
 
 interface HeaderProps {
   showIcons?: boolean;
