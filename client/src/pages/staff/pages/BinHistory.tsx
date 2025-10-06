@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Clock, MapPin, Trash2, AlertTriangle, CheckCircle, XCircle, Filter, Download } from "lucide-react";
+import { Calendar, Clock, MapPin, Trash2, AlertTriangle, CheckCircle, XCircle, Filter, Download, Loader2 } from "lucide-react";
 import api from "@/lib/api";
 
 interface BinHistoryRecord {
@@ -40,6 +40,8 @@ export function BinHistory() {
   const [filteredHistory, setFilteredHistory] = useState<BinHistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [locationCache, setLocationCache] = useState<Map<string, string>>(new Map());
+  const [loadingLocations, setLoadingLocations] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState<BinHistoryStats>({
     totalRecords: 0,
     criticalCount: 0,
@@ -61,6 +63,87 @@ export function BinHistory() {
   useEffect(() => {
     fetchBinHistory();
   }, []);
+
+  // Reverse geocoding function to get location name from coordinates
+  const getLocationName = useCallback(async (lat: number, lng: number): Promise<string> => {
+    const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+    
+    // Check cache first
+    if (locationCache.has(cacheKey)) {
+      return locationCache.get(cacheKey)!;
+    }
+
+    // Check if already loading this location
+    if (loadingLocations.has(cacheKey)) {
+      return "Loading...";
+    }
+
+    try {
+      // Add to loading set
+      setLoadingLocations(prev => new Set(prev).add(cacheKey));
+
+      // Use OpenStreetMap Nominatim API (free, no API key required)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch location');
+      }
+
+      const data = await response.json();
+      
+      let locationName = "Unknown Location";
+      
+      if (data && data.address) {
+        // Extract barangay and city/municipality from address components
+        const address = data.address;
+        const barangay = address.village || address.suburb || address.hamlet || address.neighbourhood;
+        const city = address.city || address.town || address.municipality;
+        
+        if (barangay && city) {
+          locationName = `${barangay}, ${city}`;
+        } else if (city) {
+          locationName = city;
+        } else if (barangay) {
+          locationName = barangay;
+        } else if (data.display_name) {
+          // Fallback: try to extract from display_name
+          const parts = data.display_name.split(', ');
+          if (parts.length >= 2) {
+            locationName = `${parts[0]}, ${parts[1]}`;
+          } else {
+            locationName = parts[0] || "Unknown Location";
+          }
+        }
+      } else if (data && data.display_name) {
+        // Fallback to display_name parsing
+        const parts = data.display_name.split(', ');
+        if (parts.length >= 2) {
+          locationName = `${parts[0]}, ${parts[1]}`;
+        } else {
+          locationName = parts[0] || "Unknown Location";
+        }
+      }
+
+      // Cache the result
+      setLocationCache(prev => new Map(prev).set(cacheKey, locationName));
+      
+      return locationName;
+    } catch (error) {
+      console.error('Error fetching location:', error);
+      const fallbackName = `Coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      setLocationCache(prev => new Map(prev).set(cacheKey, fallbackName));
+      return fallbackName;
+    } finally {
+      // Remove from loading set
+      setLoadingLocations(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(cacheKey);
+        return newSet;
+      });
+    }
+  }, [locationCache, loadingLocations]);
 
   // Apply filters
   useEffect(() => {
@@ -256,7 +339,68 @@ export function BinHistory() {
   };
 
   const formatCoordinates = (gps: { lat: number; lng: number }) => {
-    return `${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}`;
+    // Format coordinates in a more readable way
+    const lat = gps.lat.toFixed(4);
+    const lng = gps.lng.toFixed(4);
+    
+    // Add cardinal directions for better understanding
+    const latDir = gps.lat >= 0 ? 'N' : 'S';
+    const lngDir = gps.lng >= 0 ? 'E' : 'W';
+    
+    return `${Math.abs(parseFloat(lat))}°${latDir}, ${Math.abs(parseFloat(lng))}°${lngDir}`;
+  };
+
+  // Location display component with async loading
+  const LocationDisplay = ({ gps, gpsValid }: { gps: { lat: number; lng: number }, gpsValid: boolean }) => {
+    const [locationName, setLocationName] = useState<string>("");
+    const [isLoading, setIsLoading] = useState(true);
+    const cacheKey = `${gps.lat.toFixed(4)},${gps.lng.toFixed(4)}`;
+
+    useEffect(() => {
+      if (!gpsValid) {
+        setIsLoading(false);
+        return;
+      }
+
+      const fetchLocation = async () => {
+        try {
+          const name = await getLocationName(gps.lat, gps.lng);
+          setLocationName(name);
+        } catch (error) {
+          setLocationName("Unknown Location");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchLocation();
+    }, [gps.lat, gps.lng, gpsValid, getLocationName]);
+
+    if (!gpsValid) {
+      return (
+        <div className="flex items-center gap-1 text-red-500">
+          <AlertTriangle className="w-3 h-3" />
+          <span className="text-xs">Invalid GPS</span>
+        </div>
+      );
+    }
+
+    if (isLoading || loadingLocations.has(cacheKey)) {
+      return (
+        <div className="flex items-center gap-1">
+          <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+          <span className="text-xs text-gray-500">Loading location...</span>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <span className="text-xs font-medium text-gray-700 max-w-[200px] truncate" title={locationName}>
+          {locationName}
+        </span>
+      </div>
+    );
   };
 
   const exportToCSV = () => {
@@ -268,14 +412,19 @@ export function BinHistory() {
       "Status",
       "Error Message",
     ];
-    const csvData = filteredHistory.map((record) => [
-      record.binId,
-      record.timestamp,
-      record.binLevel,
-      formatCoordinates(record.gps),
-      record.status,
-      record.errorMessage || "",
-    ]);
+    const csvData = filteredHistory.map((record) => {
+      const cacheKey = `${record.gps.lat.toFixed(4)},${record.gps.lng.toFixed(4)}`;
+      const locationName = locationCache.get(cacheKey) || (record.gpsValid ? `Coordinates: ${record.gps.lat.toFixed(4)}, ${record.gps.lng.toFixed(4)}` : "Invalid GPS");
+      
+      return [
+        record.binId,
+        record.timestamp,
+        record.binLevel,
+        locationName,
+        record.status,
+        record.errorMessage || "",
+      ];
+    });
 
     const csvContent = [headers, ...csvData].map((row) => row.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -528,11 +677,7 @@ export function BinHistory() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs font-mono">
-                                {record.gpsValid ? formatCoordinates(record.gps) : "Invalid GPS"}
-                              </span>
-                            </div>
+                            <LocationDisplay gps={record.gps} gpsValid={record.gpsValid} />
                           </TableCell>
                           <TableCell>{getStatusBadge(record.status)}</TableCell>
                         </TableRow>
