@@ -30,6 +30,7 @@ export interface WasteBin {
 export function useRealTimeData() {
   const [bin1Data, setBin1Data] = useState<BinData | null>(null);
   const [monitoringData, setMonitoringData] = useState<BinData | null>(null);
+  const [backupCoordinates, setBackupCoordinates] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gpsHistory, setGpsHistory] = useState<Array<{lat: number, lng: number, timestamp: number}>>([]);
@@ -41,10 +42,18 @@ export function useRealTimeData() {
         setLoading(true);
         console.log('🔄 Fetching initial data from Firebase...');
         
-        // Only fetch bin1 data as requested
-        const bin1Response = await api.get('/api/bin1');
+        // Fetch bin1 data and backup coordinates
+        const [bin1Response, backupResponse] = await Promise.all([
+          api.get('/api/bin1'),
+          api.get('/api/gps-backup/display/bin1').catch(err => {
+            console.warn('⚠️ Backup coordinates not available:', err.message);
+            return { data: null };
+          })
+        ]);
 
         console.log('📡 API Response:', bin1Response);
+        console.log('📡 Backup Response:', backupResponse);
+        
         if (bin1Response.data) {
           console.log('🔥 Real-time bin1 data received:', bin1Response.data);
           console.log('📊 Bin Level:', bin1Response.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.data.bin_level));
@@ -59,6 +68,11 @@ export function useRealTimeData() {
           }
         } else {
           console.log('⚠️ No bin1 data received from API');
+        }
+        
+        if (backupResponse.data) {
+          console.log('🔥 Backup coordinates received:', backupResponse.data);
+          setBackupCoordinates(backupResponse.data);
         }
         
         setError(null);
@@ -77,7 +91,13 @@ export function useRealTimeData() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const bin1Response = await api.get('/api/bin1');
+        const [bin1Response, backupResponse] = await Promise.all([
+          api.get('/api/bin1'),
+          api.get('/api/gps-backup/display/bin1').catch(err => {
+            console.warn('⚠️ Backup coordinates not available in polling:', err.message);
+            return { data: null };
+          })
+        ]);
 
         if (bin1Response.data) {
           console.log('🔄 Polling update - bin1 data:', bin1Response.data);
@@ -93,12 +113,17 @@ export function useRealTimeData() {
           }
         }
         
+        if (backupResponse.data) {
+          console.log('🔄 Polling update - backup coordinates:', backupResponse.data);
+          setBackupCoordinates(backupResponse.data);
+        }
+        
         setError(null);
       } catch (err: any) {
         console.error('❌ Error fetching real-time data:', err);
         setError(err.message || 'Failed to fetch real-time data');
       }
-    }, 5000); // Poll every 5 seconds
+    }, 1500); // Poll every 1.5 seconds - OPTIMIZED
 
     return () => clearInterval(interval);
   }, []);
@@ -162,7 +187,9 @@ export function useRealTimeData() {
         last_active: bin1Data.last_active,
         gps_timestamp: bin1Data.gps_timestamp,
         type: bin1Data.type, // Include type from Firebase
-        mainLocation: bin1Data.mainLocation // Include mainLocation from Firebase
+        mainLocation: bin1Data.mainLocation, // Include mainLocation from Firebase
+        // Include backup coordinates timestamp for proper time calculation
+        backup_timestamp: backupCoordinates?.coordinates?.timestamp || backupCoordinates?.backup_timestamp
       });
     }
     

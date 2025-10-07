@@ -4,6 +4,7 @@ import { AntDesign, FontAwesome, FontAwesome5, Ionicons } from "@expo/vector-ico
 import { router } from "expo-router";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAccount } from "@/contexts/AccountContext";
 import { LoginErrorPopup } from "@/components/LoginErrorPopup";
 
 import {
@@ -52,6 +53,7 @@ export default function LoginScreen() {
   const [showErrorPopup, setShowErrorPopup] = useState(false);
   const [errorType, setErrorType] = useState<'invalid_credentials' | 'network_error' | 'server_error' | 'validation_error' | 'generic'>('generic');
   const { login, loading, error, validationErrors } = useAuth();
+  const { updateAccountFromLogin } = useAccount();
 
   const handleLogin = async () => {
     console.log('🔐 Mobile App - Attempting login with:', { email });
@@ -74,10 +76,9 @@ export default function LoginScreen() {
     
     if (isLoginSuccessful) {
       console.log('✅ Mobile App - Login successful, redirecting to home');
-      // Small delay to ensure state is updated
-      setTimeout(() => {
-        router.replace("/(tabs)/home");
-      }, 100);
+      // Update account context with login data immediately
+      updateAccountFromLogin(res);
+      router.replace("/(tabs)/home");
     } else {
       console.log('❌ Mobile App - Login failed, response:', res);
       // Show error popup

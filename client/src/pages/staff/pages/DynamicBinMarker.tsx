@@ -2,6 +2,7 @@ import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { MapPin, AlertTriangle, CheckCircle, Clock, Wifi, WifiOff } from "lucide-react";
 import { useEffect, useState } from "react";
+import { getActiveTimeAgo } from "../../../utils/timeUtils";
 
 interface DynamicBinMarkerProps {
   bin: {
@@ -25,20 +26,7 @@ interface DynamicBinMarkerProps {
   onBinClick?: (binId: string) => void;
 }
 
-// Helper function to calculate time ago
-const getTimeAgo = (timestamp: number | string): string => {
-  const now = Date.now();
-  const lastUpdate = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
-  const diffInMs = now - lastUpdate;
-  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-  const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-  if (diffInMinutes < 1) return 'Just now';
-  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  if (diffInHours < 24) return `${diffInHours}h ago`;
-  return `${diffInDays}d ago`;
-};
+// Use the new timeUtils for consistent formatting
 
 const createDynamicIcon = (status: string, level: number, isLive: boolean, gpsValid: boolean, coordinatesSource?: string) => {
   const iconSize = 40;

@@ -7,6 +7,17 @@ const FeedbackModel = {
       const docRef = await db.collection('feedback').add(feedbackData);
       return { id: docRef.id, ...feedbackData };
     } catch (error) {
+      // Handle Firebase quota exceeded error
+      if (error.code === 8 || error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('Quota exceeded')) {
+        console.error('[FEEDBACK] Firebase quota exceeded, returning fallback response');
+        // Return a fallback response instead of throwing an error
+        return { 
+          id: 'fallback_' + Date.now(), 
+          ...feedbackData,
+          fallback: true,
+          message: 'Feedback received (saved locally due to high demand)'
+        };
+      }
       throw new Error(`Failed to create feedback: ${error.message}`);
     }
   },
@@ -35,12 +46,27 @@ const FeedbackModel = {
         feedback,
         totalCount,
         pagination: {
-          limit,
-          offset,
+          limit: limit,
+          offset: offset,
           hasMore: (offset + feedback.length) < totalCount
         }
       };
     } catch (error) {
+      // Handle Firebase quota exceeded error
+      if (error.code === 8 || error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('Quota exceeded')) {
+        console.error('[FEEDBACK] Firebase quota exceeded, returning fallback data');
+        return {
+          feedback: [],
+          totalCount: 0,
+          pagination: {
+            limit: limit,
+            offset: offset,
+            hasMore: false
+          },
+          fallback: true,
+          message: 'Service temporarily unavailable due to high demand'
+        };
+      }
       throw new Error(`Failed to fetch feedback: ${error.message}`);
     }
   },

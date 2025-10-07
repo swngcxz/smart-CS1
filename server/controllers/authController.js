@@ -183,7 +183,44 @@ async function login(req, res) {
   try {
     console.log('[AUTH] Looking for user with email:', email);
     // find user by email
-    const snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
+    let snapshot;
+    try {
+      snapshot = await withRetry(() => db.collection("users").where("email", "==", email).get());
+    } catch (firebaseError) {
+      // Handle Firebase quota exceeded error
+      if (firebaseError.code === 8 || firebaseError.message?.includes('RESOURCE_EXHAUSTED') || firebaseError.message?.includes('Quota exceeded')) {
+        console.error('[AUTH] Firebase quota exceeded, using fallback authentication');
+        
+        // Try fallback authentication
+        const { fallbackLogin } = require('../utils/fallbackAuth');
+        const fallbackResult = fallbackLogin(email, password);
+        
+        if (fallbackResult.success) {
+          console.log('[AUTH] Fallback authentication successful for:', email);
+          
+          // Set cookie with fallback token
+          res.cookie("token", fallbackResult.token, { 
+            httpOnly: false,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000, // 24 hours
+            path: '/'
+          });
+          
+          return res.json({ 
+            message: "Login successful (fallback mode)",
+            user: fallbackResult.user,
+            fallback: true
+          });
+        } else {
+          return res.status(401).json({ 
+            error: "Invalid credentials (fallback mode)",
+            fallback: true
+          });
+        }
+      }
+      throw firebaseError;
+    }
 
     console.log('[AUTH] Found', snapshot.docs.length, 'users with email:', email);
     if (snapshot.empty) {

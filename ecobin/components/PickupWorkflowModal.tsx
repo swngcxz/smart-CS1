@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ProgressBar } from 'react-native-paper';
-import { useRealTimeData } from '../hooks/useRealTimeData';
-import { useAccount } from '../hooks/useAccount';
+import { useRealTimeData } from '../contexts/RealTimeDataContext';
+import { useAccount } from '../contexts/AccountContext';
 import axiosInstance from '../utils/axiosInstance';
 
 // Platform-specific imports

@@ -5,12 +5,12 @@ import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import { useRealTimeData } from "../../hooks/useRealTimeData";
+import { useRealTimeData } from "../../contexts/RealTimeDataContext";
 import { ProgressBar } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import axiosInstance from "../../utils/axiosInstance";
-import { useAccount } from "../../hooks/useAccount";
+import { useAccount } from "../../contexts/AccountContext";
 import PickupWorkflowModal from "@/components/PickupWorkflowModal";
 import { safeTextRenderers } from "../../utils/textErrorHandler";
 
@@ -24,6 +24,7 @@ export default function HomeScreen() {
   const [alertedBins, setAlertedBins] = useState<Set<string>>(new Set());
 
   // Activity logs from backend - MOVED TO TOP to avoid hooks after early return
+  // Initialize with empty array and ensure it's never undefined
   const [logs, setLogs] = useState<any[]>([]);
 
   // Get bin1 data - MOVED TO TOP to avoid issues with alertBin
@@ -40,8 +41,8 @@ export default function HomeScreen() {
     }
   }, [account, accountLoading]);
 
-  // Fetch activity logs function
-  const fetchActivityLogs = async () => {
+  // Fetch activity logs function - MEMOIZED to prevent infinite re-renders
+  const fetchActivityLogs = useCallback(async () => {
     if (!account?.id) return;
 
     try {
@@ -49,7 +50,10 @@ export default function HomeScreen() {
 
       // Get all activity logs from the server
       const response = await axiosInstance.get('/api/activitylogs');
-      const allActivities = response.data.activities || [];
+      console.log("📱 Mobile App - Raw API response:", response.data);
+      
+      const allActivities = response.data?.activities || [];
+      console.log("📱 Mobile App - Extracted activities:", allActivities);
       
       console.log("📱 Mobile App - Total activities from server:", allActivities.length);
       
@@ -73,35 +77,34 @@ export default function HomeScreen() {
       
       console.log("📱 Mobile App - Filtered activities count:", filteredActivities.length);
       
-      // Debug: Log all activities for analysis
-      allActivities.forEach((activity: any, index: number) => {
-        console.log(`📱 Mobile App - Activity ${index}:`, {
-          bin_id: activity.bin_id,
-          status: activity.status,
-          bin_status: activity.bin_status,
-          assigned_janitor_id: activity.assigned_janitor_id,
-          assigned_janitor_name: activity.assigned_janitor_name,
-          completed_at: activity.completed_at,
-          proof_image: activity.proof_image,
-          photos: activity.photos,
-          user_id: activity.user_id,
-        });
-      });
+      // Debug: Log all activities for analysis (only in development)
+      if (__DEV__ && allActivities.length > 0) {
+        console.log(`📱 Mobile App - All ${allActivities.length} activities:`, 
+          allActivities.map((activity: any) => ({
+            id: activity.id,
+            bin_id: activity.bin_id,
+            status: activity.status,
+            assigned_janitor_id: activity.assigned_janitor_id,
+          }))
+        );
+      }
 
       // Update state with filtered activities (only show relevant ones)
-      setLogs(filteredActivities);
+      // Ensure we never set logs to undefined - double safety check
+      const safeFilteredActivities = Array.isArray(filteredActivities) ? filteredActivities : [];
+      setLogs(safeFilteredActivities);
 
       console.log(`📱 Mobile App - Found ${filteredActivities.length} filtered activity logs for ${account.email}`);
     } catch (err) {
       console.error("📱 Mobile App - Failed to fetch activity logs:", err);
       setLogs([]);
     }
-  };
+  }, [account?.id, account?.email]);
 
   // Fetch activity logs on component mount
   useEffect(() => {
     fetchActivityLogs();
-  }, [account?.id, account?.email]);
+  }, [fetchActivityLogs]);
 
   // Refresh activity logs when screen comes back into focus
   useFocusEffect(
@@ -110,50 +113,72 @@ export default function HomeScreen() {
       if (account?.id) {
         fetchActivityLogs();
       }
-    }, [account?.id, account?.email])
+    }, [fetchActivityLogs, account?.id])
   );
 
-  // Bin alert effect - MOVED TO TOP to avoid hooks after early return
+  // Bin alert effect - FIXED to prevent infinite loops
   useEffect(() => {
     // Only run this effect after authentication is loaded
     if (accountLoading) return;
 
-    console.log("🔍 DEBUG - Checking bin alert logic:");
-    console.log("🔍 DEBUG - wasteBins:", wasteBins);
-    console.log("🔍 DEBUG - wasteBins length:", wasteBins?.length);
-    console.log("🔍 DEBUG - centralPlazaRealTimeBins:", centralPlazaRealTimeBins);
-    console.log("🔍 DEBUG - bin1 found:", bin1);
-    console.log("🔍 DEBUG - bin1 level:", bin1?.level);
-    console.log("🔍 DEBUG - bin1 binData:", bin1?.binData);
-    console.log("🔍 DEBUG - alertedBins:", Array.from(alertedBins));
-    console.log("🔍 DEBUG - pickupModalVisible:", pickupModalVisible);
+    // Debug logging only in development
+    if (__DEV__) {
+      console.log("🔍 DEBUG - Checking bin alert logic:");
+      console.log("🔍 DEBUG - wasteBins:", wasteBins);
+      console.log("🔍 DEBUG - wasteBins length:", wasteBins?.length);
+      console.log("🔍 DEBUG - centralPlazaRealTimeBins:", centralPlazaRealTimeBins);
+      console.log("🔍 DEBUG - bin1 found:", bin1);
+      console.log("🔍 DEBUG - bin1 level:", bin1?.level);
+      console.log("🔍 DEBUG - bin1 binData:", bin1?.binData);
+      console.log("🔍 DEBUG - alertedBins:", Array.from(alertedBins));
+      console.log("🔍 DEBUG - pickupModalVisible:", pickupModalVisible);
+    }
 
     if (!bin1 || typeof bin1.level !== "number") {
-      console.log("🔍 DEBUG - No valid bin1 found or level not a number");
+      if (__DEV__) {
+        console.log("🔍 DEBUG - No valid bin1 found or level not a number");
+      }
       return;
     }
 
     // Don't show alert if modal is already visible
     if (pickupModalVisible) {
-      console.log("🔍 DEBUG - Pickup modal already visible, skipping alert logic");
+      if (__DEV__) {
+        console.log("🔍 DEBUG - Pickup modal already visible, skipping alert logic");
+      }
       return;
     }
 
-    if (bin1.level >= 85 && !alertedBins.has("bin1")) {
-      console.log(`🚨 BIN1 CRITICAL: ${bin1.level}% - SHOWING PICKUP WORKFLOW MODAL`);
-      setPickupModalVisible(true);
-      setAlertedBins((prev) => new Set([...prev, "bin1"]));
-    } else if (bin1.level < 85 && alertedBins.has("bin1")) {
-      console.log(`🔍 DEBUG - Bin1 level ${bin1.level}% is below 85%, removing from alerted bins`);
+    // Use functional state updates to avoid dependency on alertedBins
+    if (bin1.level >= 85) {
       setAlertedBins((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete("bin1");
-        return newSet;
+        if (!prev.has("bin1")) {
+          if (__DEV__) {
+            console.log(`🚨 BIN1 CRITICAL: ${bin1.level}% - SHOWING PICKUP WORKFLOW MODAL`);
+          }
+          setPickupModalVisible(true);
+          return new Set([...prev, "bin1"]);
+        }
+        return prev;
+      });
+    } else if (bin1.level < 85) {
+      setAlertedBins((prev) => {
+        if (prev.has("bin1")) {
+          if (__DEV__) {
+            console.log(`🔍 DEBUG - Bin1 level ${bin1.level}% is below 85%, removing from alerted bins`);
+          }
+          const newSet = new Set(prev);
+          newSet.delete("bin1");
+          return newSet;
+        }
+        return prev;
       });
     } else {
-      console.log(`🔍 DEBUG - Bin1 level ${bin1.level}%, already alerted: ${alertedBins.has("bin1")}`);
+      if (__DEV__) {
+        console.log(`🔍 DEBUG - Bin1 level ${bin1.level}%, already alerted: ${alertedBins.has("bin1")}`);
+      }
     }
-  }, [accountLoading, wasteBins, alertedBins, bin1, pickupModalVisible]);
+  }, [accountLoading, wasteBins, bin1, pickupModalVisible]); // REMOVED alertedBins from dependencies
 
   // Show loading while checking authentication
   if (accountLoading) {
@@ -188,9 +213,9 @@ export default function HomeScreen() {
     .filter((bin) => bin && typeof bin.level === "number")
     .map((bin) => bin.level);
   const centralPlazaAvg =
-    centralPlazaLevels.length > 0 ? centralPlazaLevels.reduce((s, v) => s + v, 0) / centralPlazaLevels.length : 0;
-  const centralPlazaNearlyFull = centralPlazaLevels.filter((v) => v >= 80).length;
-  const centralPlazaLastCollected = allCentralPlazaBins.length > 0 ? allCentralPlazaBins[0].lastCollected : "Unknown";
+    Array.isArray(centralPlazaLevels) && centralPlazaLevels.length > 0 ? centralPlazaLevels.reduce((s, v) => s + v, 0) / centralPlazaLevels.length : 0;
+  const centralPlazaNearlyFull = Array.isArray(centralPlazaLevels) ? centralPlazaLevels.filter((v) => v >= 80).length : 0;
+  const centralPlazaLastCollected = Array.isArray(allCentralPlazaBins) && allCentralPlazaBins.length > 0 ? allCentralPlazaBins[0].lastCollected : "Unknown";
 
   // Pickup modal handler
   const handlePickupRequest = () => {
@@ -219,8 +244,8 @@ export default function HomeScreen() {
   // Get bin1 for alerts - bin1 is already defined at the top
   const alertBin = bin1;
 
-  // Map backend fields to UI-expected fields
-  const mappedLogs = logs.map((log) => ({
+  // Map backend fields to UI-expected fields - SAFE: Check if logs exists before mapping
+  const mappedLogs = (logs || []).map((log) => ({
     ...log,
     type: log.activity_type || "task_assignment",
     message: log.task_note && log.task_note.trim() !== "" ? log.task_note : `Task for bin ${log.bin_id}`,
@@ -230,28 +255,37 @@ export default function HomeScreen() {
     date: log.date,
     // Apply proper status logic: completed > in_progress > pending
     status: (() => {
-      const hasProof = log.status === "done" || log.completed_at || log.proof_image || log.photos?.length > 0;
+      const hasProof = log.status === "done" || log.completed_at || log.proof_image || (log.photos && log.photos.length > 0);
       const hasJanitor = log.assigned_janitor_id;
 
-      console.log("🔍 Homepage Status Debug:", {
-        bin_id: log.bin_id,
-        original_status: log.status,
-        assigned_janitor_id: log.assigned_janitor_id,
-        hasProof,
-        hasJanitor,
-        completed_at: log.completed_at,
-        proof_image: log.proof_image,
-        photos_length: log.photos?.length,
-      });
+      // Debug logging only in development
+      if (__DEV__) {
+        console.log("🔍 Homepage Status Debug:", {
+          bin_id: log.bin_id,
+          original_status: log.status,
+          assigned_janitor_id: log.assigned_janitor_id,
+          hasProof,
+          hasJanitor,
+          completed_at: log.completed_at,
+          proof_image: log.proof_image,
+          photos_length: log.photos?.length || 0,
+        });
+      }
 
       if (hasProof) {
-        console.log("✅ Status: done (has proof)");
+        if (__DEV__) {
+          console.log("✅ Status: done (has proof)");
+        }
         return "done"; // Task is completed (has proof)
       } else if (hasJanitor) {
-        console.log("🔄 Status: in_progress (janitor assigned)");
+        if (__DEV__) {
+          console.log("🔄 Status: in_progress (janitor assigned)");
+        }
         return "in_progress"; // Janitor assigned but not completed
       } else {
-        console.log("⏳ Status: pending (no janitor)");
+        if (__DEV__) {
+          console.log("⏳ Status: pending (no janitor)");
+        }
         return "pending"; // No janitor assigned
       }
     })(),
@@ -262,34 +296,17 @@ export default function HomeScreen() {
     .filter((log) => {
       // Show pending tasks to all janitors (unassigned)
       if (log.status === "pending" && !log.assigned_janitor_id) {
-        console.log("🔍 Filter Debug - Pending (unassigned):", {
-          bin_id: log.bin_id,
-          status: log.status,
-          assigned_janitor_id: log.assigned_janitor_id,
-          shouldShow: true,
-        });
+        // Debug logging removed to prevent infinite loops
         return true;
       }
       
       // Show in_progress tasks only to assigned janitor
       if (log.status === "in_progress" && log.assigned_janitor_id === account?.id) {
-        console.log("🔍 Filter Debug - In Progress (assigned to me):", {
-          bin_id: log.bin_id,
-          status: log.status,
-          assigned_janitor_id: log.assigned_janitor_id,
-          my_id: account?.id,
-          shouldShow: true,
-        });
+        // Debug logging removed to prevent infinite loops
         return true;
       }
       
-      console.log("🔍 Filter Debug - Excluded:", {
-        bin_id: log.bin_id,
-        status: log.status,
-        assigned_janitor_id: log.assigned_janitor_id,
-        my_id: account?.id,
-        shouldShow: false,
-      });
+      // Debug logging removed to prevent infinite loops
       return false;
     }) // Only show pending (unassigned) and in_progress (assigned to me)
     .sort((a, b) => {
@@ -305,15 +322,20 @@ export default function HomeScreen() {
       return dateB.getTime() - dateA.getTime();
     });
 
-  console.log("📊 Homepage Filtered Logs:", {
-    total: mappedLogs.length,
-    filtered: filteredAndSortedLogs.length,
-    logs: filteredAndSortedLogs.map((log) => ({
-      bin_id: log.bin_id,
-      status: log.status,
-      assigned_janitor_id: log.assigned_janitor_id,
-    })),
-  });
+  // Only log when data actually changes to prevent infinite logging
+  useEffect(() => {
+    if (__DEV__ && Array.isArray(filteredAndSortedLogs) && filteredAndSortedLogs.length > 0) {
+      console.log("📊 Homepage Filtered Logs:", {
+        total: Array.isArray(mappedLogs) ? mappedLogs.length : 0,
+        filtered: filteredAndSortedLogs.length,
+        logs: filteredAndSortedLogs.map((log) => ({
+          bin_id: log.bin_id,
+          status: log.status,
+          assigned_janitor_id: log.assigned_janitor_id,
+        })),
+      });
+    }
+  }, [mappedLogs.length, filteredAndSortedLogs.length]);
 
   const getStatusColor = (val: number) => {
     if (val >= 90) return "#f44336";
@@ -413,7 +435,7 @@ export default function HomeScreen() {
             style={styles.progress}
           />
           <Text style={styles.subText}>
-            Nearly full bins: {centralPlazaNearlyFull} / {centralPlazaLevels.length}
+            Nearly full bins: {centralPlazaNearlyFull} / {Array.isArray(centralPlazaLevels) ? centralPlazaLevels.length : 0}
           </Text>
           <Text style={styles.subText}>Last collected: {centralPlazaLastCollected}</Text>
         </TouchableOpacity>
@@ -456,35 +478,7 @@ export default function HomeScreen() {
             <Text style={styles.sectionTitle}>Activity Logs</Text>
             <TouchableOpacity
               onPress={() => {
-                // Refresh activity logs
-                const fetchActivityLogs = async () => {
-                  if (!account?.id) return;
-
-                  try {
-                    console.log("🔄 Mobile App - Refreshing activity logs for user:", account.email, "ID:", account.id);
-
-                    // Try multiple endpoints to get user's activity logs
-                    let response;
-                    try {
-                      // First try: Get logs assigned to this user (as janitor)
-                      response = await axiosInstance.get(`/api/activitylogs/assigned/${account.id}`);
-                      console.log("🔄 Mobile App - Got assigned logs:", response.data);
-                    } catch (assignedErr) {
-                      console.log("🔄 Mobile App - No assigned logs, trying user logs...");
-                      // Second try: Get logs created by this user
-                      response = await axiosInstance.get(`/api/activitylogs/${account.id}`);
-                      console.log("🔄 Mobile App - Got user logs:", response.data);
-                    }
-
-                    const activities = response.data.activities || response.data.activities || [];
-                    setLogs(activities);
-
-                    console.log(`🔄 Mobile App - Refreshed ${activities.length} activity logs for ${account.email}`);
-                  } catch (err: any) {
-                    console.error("🔄 Mobile App - Failed to refresh activity logs:", err);
-                  }
-                };
-
+                // Use the memoized fetchActivityLogs function
                 fetchActivityLogs();
               }}
               style={styles.refreshButton}

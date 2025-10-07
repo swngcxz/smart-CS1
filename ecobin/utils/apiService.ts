@@ -1,11 +1,11 @@
 import axios from 'axios';
-import {
-  API_BASE_URL,
-  API_FALLBACK_LOCALHOST,
-  API_FALLBACK_ANDROID_EMULATOR,
-  API_TIMEOUT,
-  API_DEBUG,
-} from '@env';
+
+// Environment variables (hardcoded for now to avoid dotenv issues)
+const API_BASE_URL = 'http://192.168.1.26:8000';
+const API_FALLBACK_LOCALHOST = 'http://localhost:8000';
+const API_FALLBACK_ANDROID_EMULATOR = 'http://10.0.2.2:8000';
+const API_TIMEOUT = '10000';
+const API_DEBUG = 'true';
 
 // Direct endpoint configuration - no old fallbacks
 
@@ -53,7 +53,7 @@ if (__DEV__) {
 
 const api = axios.create({
   baseURL: currentEndpoint,
-  timeout: parseInt(API_TIMEOUT) || 10000,
+  timeout: parseInt(API_TIMEOUT) || 3000, // Reduced from 10s to 3s - OPTIMIZED
   headers: {
     'Content-Type': 'application/json',
   },
@@ -194,6 +194,45 @@ export const apiService = {
         console.error('Error fetching GPS history:', error);
       }
       return [];
+    }
+  },
+
+  // Get coordinates for display (live GPS or backup)
+  async getBinCoordinatesForDisplay(binId: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/gps-backup/display/${binId}`);
+      return response.data;
+    } catch (error) {
+      if (API_DEBUG === 'true') {
+        console.error('Error fetching display coordinates:', error);
+      }
+      throw new Error('Failed to fetch display coordinates');
+    }
+  },
+
+  // Get dynamic bin status
+  async getDynamicBinStatus(binId: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/gps-backup/dynamic-status/${binId}`);
+      return response.data;
+    } catch (error) {
+      if (API_DEBUG === 'true') {
+        console.error('Error fetching dynamic bin status:', error);
+      }
+      throw new Error('Failed to fetch dynamic bin status');
+    }
+  },
+
+  // Get all bins with dynamic status
+  async getAllBinsDynamicStatus(): Promise<any> {
+    try {
+      const response = await api.get('/api/gps-backup/dynamic-status');
+      return response.data;
+    } catch (error) {
+      if (API_DEBUG === 'true') {
+        console.error('Error fetching all bins dynamic status:', error);
+      }
+      throw new Error('Failed to fetch all bins dynamic status');
     }
   }
 };

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Validation functions
 const validateEmail = (email: string): string | null => {
@@ -78,6 +79,13 @@ export function useAuth() {
     try {
       console.log('🔐 Auth - Attempting login request to:', axiosInstance.defaults.baseURL + '/auth/login');
       const res = await axiosInstance.post('/auth/login', { email, password });
+      
+      // Store token in AsyncStorage for persistence
+      if (res.data.token) {
+        await AsyncStorage.setItem('auth_token', res.data.token);
+        console.log('🔐 Auth - Token stored successfully');
+      }
+      
       setLoading(false);
       setError(null);
       setValidationErrors({});

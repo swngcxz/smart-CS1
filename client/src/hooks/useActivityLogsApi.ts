@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 
 export interface ActivityLog {
@@ -19,49 +19,13 @@ export interface ActivityLog {
   [key: string]: any;
 }
 
-export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_id?: string) {
+export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_id?: string, autoRefreshInterval: number = 30000) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const params = new URLSearchParams();
-        if (limit) params.append('limit', limit.toString());
-        if (offset) params.append('offset', offset.toString());
-        if (type) params.append('type', type);
-        if (user_id) params.append('user_id', user_id);
-
-        const url = `/api/activitylogs?${params.toString()}`;
-        console.log('🔍 useAllActivityLogs - Fetching from:', url);
-        const response = await api.get(url);
-        
-        console.log('🔍 useAllActivityLogs - Response:', {
-          activitiesCount: response.data.activities?.length || 0,
-          totalCount: response.data.totalCount || 0,
-          activities: response.data.activities
-        });
-        
-        setLogs(response.data.activities || []);
-        setTotalCount(response.data.totalCount || 0);
-      } catch (err: any) {
-        setError(err?.response?.data?.message || err.message || "Failed to fetch activity logs");
-        setLogs([]);
-        setTotalCount(0);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLogs();
-  }, [limit, offset, type, user_id]);
-
-  const refetch = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -73,7 +37,14 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
       if (user_id) params.append('user_id', user_id);
 
       const url = `/api/activitylogs?${params.toString()}`;
+      console.log('🔍 useAllActivityLogs - Fetching from:', url);
       const response = await api.get(url);
+      
+      console.log('🔍 useAllActivityLogs - Response:', {
+        activitiesCount: response.data.activities?.length || 0,
+        totalCount: response.data.totalCount || 0,
+        activities: response.data.activities
+      });
       
       setLogs(response.data.activities || []);
       setTotalCount(response.data.totalCount || 0);
@@ -84,7 +55,26 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit, offset, type, user_id]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  // Auto-refresh if interval is set
+  useEffect(() => {
+    if (autoRefreshInterval > 0) {
+      const interval = setInterval(() => {
+        fetchLogs();
+      }, autoRefreshInterval);
+      
+      return () => clearInterval(interval);
+    }
+  }, [fetchLogs, autoRefreshInterval]);
+
+  const refetch = useCallback(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
   return { logs, loading, error, totalCount, refetch };
 }

@@ -1,126 +1,252 @@
-const GpsBackupModel = require('../models/gpsBackupModel');
+const gpsBackupService = require('../services/gpsBackupService');
 
-class GpsBackupController {
-  // Get all GPS backup records
-  static async getAllGpsBackups(req, res) {
+class GPSBackupController {
+  // Get GPS backup service status
+  static async getStatus(req, res) {
     try {
-      const backups = await GpsBackupModel.getAllGpsBackups();
-      res.json(backups);
+      const status = gpsBackupService.getStatus();
+      res.json({
+        success: true,
+        status: status
+      });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('[GPS BACKUP API] Error getting status:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
     }
   }
 
-  // Get GPS backup for specific bin
-  static async getBinGpsBackup(req, res) {
+  // Get coordinates for display (live GPS or backup)
+  static async getDisplayCoordinates(req, res) {
     try {
       const { binId } = req.params;
-      const backup = await GpsBackupModel.getLastKnownCoordinates(binId);
+      const coordinates = await gpsBackupService.getDisplayCoordinates(binId);
       
-      if (backup) {
-        res.json(backup);
+      if (coordinates) {
+        res.json({
+          success: true,
+          binId: binId,
+          coordinates: coordinates
+        });
       } else {
-        res.status(404).json({ error: 'GPS backup not found for this bin' });
-      }
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-
-  // Save last known coordinates (called when GPS malfunctions)
-  static async saveLastKnownCoordinates(req, res) {
-    try {
-      const { binId, coordinates, timestamp } = req.body;
-      
-      if (!binId || !coordinates) {
-        return res.status(400).json({ error: 'binId and coordinates are required' });
-      }
-
-      const backup = await GpsBackupModel.saveLastKnownCoordinates(binId, coordinates, timestamp);
-      res.json(backup);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-
-  // Update GPS status (online/offline)
-  static async updateGpsStatus(req, res) {
-    try {
-      const { binId } = req.params;
-      const { isOnline, currentCoordinates } = req.body;
-      
-      if (typeof isOnline !== 'boolean') {
-        return res.status(400).json({ error: 'isOnline must be a boolean' });
-      }
-
-      const updateData = await GpsBackupModel.updateGpsStatus(binId, isOnline, currentCoordinates);
-      res.json(updateData);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-
-  // Delete GPS backup
-  static async deleteGpsBackup(req, res) {
-    try {
-      const { binId } = req.params;
-      await GpsBackupModel.deleteGpsBackup(binId);
-      res.json({ message: 'GPS backup deleted successfully' });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
-
-  // Check GPS status for multiple bins
-  static async checkMultipleBinsGpsStatus(req, res) {
-    try {
-      const { bins } = req.body; // Array of bin objects with current coordinates
-      
-      if (!Array.isArray(bins)) {
-        return res.status(400).json({ error: 'bins must be an array' });
-      }
-
-      const results = [];
-      
-      for (const bin of bins) {
-        const isMalfunctioning = GpsBackupModel.isGpsMalfunctioning(
-          bin.latitude || bin.position?.[0], 
-          bin.longitude || bin.position?.[1]
-        );
-        
-        let backupData = null;
-        if (isMalfunctioning) {
-          // Get last known coordinates
-          backupData = await GpsBackupModel.getLastKnownCoordinates(bin.id);
-          
-          // If no backup exists, we can't help
-          if (!backupData) {
-            results.push({
-              binId: bin.id,
-              status: 'no_backup',
-              message: 'No backup coordinates available'
-            });
-            continue;
-          }
-        }
-
-        results.push({
-          binId: bin.id,
-          isGpsMalfunctioning: isMalfunctioning,
-          backupData: backupData,
-          currentCoordinates: {
-            latitude: bin.latitude || bin.position?.[0],
-            longitude: bin.longitude || bin.position?.[1]
-          }
+        res.status(404).json({
+          success: false,
+          error: 'No coordinates found for this bin'
         });
       }
-
-      res.json(results);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error('[GPS BACKUP API] Error getting display coordinates:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Get backup coordinates for a specific bin
+  static async getBackupCoordinates(req, res) {
+    try {
+      const { binId } = req.params;
+      const backupCoordinates = await gpsBackupService.getBackupCoordinates(binId);
+      
+      if (backupCoordinates) {
+        res.json({
+          success: true,
+          binId: binId,
+          coordinates: backupCoordinates
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: `No backup coordinates found for bin ${binId}`
+        });
+      }
+    } catch (error) {
+      console.error('[GPS BACKUP API] Error getting backup coordinates:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Get display coordinates (backup if live GPS is invalid)
+  static async getDisplayCoordinates(req, res) {
+    try {
+      const { binId } = req.params;
+      const displayCoordinates = await gpsBackupService.getDisplayCoordinates(binId);
+      
+      if (displayCoordinates) {
+        res.json({
+          success: true,
+          binId: binId,
+          coordinates: displayCoordinates
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: `No coordinates found for bin ${binId}`
+        });
+      }
+    } catch (error) {
+      console.error('[GPS BACKUP API] Error getting display coordinates:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Manually trigger backup for a specific bin
+  static async triggerBackup(req, res) {
+    try {
+      const { binId } = req.params;
+      const { latitude, longitude } = req.body;
+      
+      if (!latitude || !longitude) {
+        return res.status(400).json({
+          success: false,
+          error: 'Latitude and longitude are required'
+        });
+      }
+      
+      if (!gpsBackupService.isValidCoordinates(latitude, longitude)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid coordinates provided'
+        });
+      }
+      
+      await gpsBackupService.backupValidCoordinates(binId, latitude, longitude);
+      
+      res.json({
+        success: true,
+        message: `Backup triggered for bin ${binId}`,
+        coordinates: {
+          latitude,
+          longitude,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error('[GPS BACKUP API] Error triggering backup:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Get all bins with their coordinate status
+  static async getAllBinsStatus(req, res) {
+    try {
+      const { db } = require('../models/firebase');
+      const snapshot = await db.collection('monitoring').get();
+      
+      const binsStatus = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const binId = doc.id;
+        
+        const hasValidLiveGPS = gpsBackupService.isValidCoordinates(data.latitude, data.longitude);
+        const hasBackupCoordinates = gpsBackupService.isValidCoordinates(data.backup_latitude, data.backup_longitude);
+        
+        binsStatus.push({
+          binId: binId,
+          liveGPS: {
+            latitude: data.latitude || 0,
+            longitude: data.longitude || 0,
+            valid: hasValidLiveGPS,
+            timestamp: data.timestamp
+          },
+          backupGPS: {
+            latitude: data.backup_latitude || 0,
+            longitude: data.backup_longitude || 0,
+            valid: hasBackupCoordinates,
+            timestamp: data.backup_timestamp
+          },
+          displaySource: hasValidLiveGPS ? 'live' : (hasBackupCoordinates ? 'backup' : 'none')
+        });
+      });
+      
+      res.json({
+        success: true,
+        bins: binsStatus
+      });
+    } catch (error) {
+      console.error('[GPS BACKUP API] Error getting all bins status:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Force backup of current valid coordinates
+  static async forceBackup(req, res) {
+    try {
+      await gpsBackupService.performHourlyBackup();
+      
+      res.json({
+        success: true,
+        message: 'Force backup completed',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[GPS BACKUP API] Error during force backup:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Get dynamic bin status
+  static async getDynamicBinStatus(req, res) {
+    try {
+      const { binId } = req.params;
+      const status = await gpsBackupService.getDynamicBinStatus(binId);
+      
+      if (status) {
+        res.json({
+          success: true,
+          binId: binId,
+          status: status
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: 'Bin not found'
+        });
+      }
+    } catch (error) {
+      console.error('[GPS BACKUP API] Error getting dynamic bin status:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  }
+
+  // Get all bins with dynamic status
+  static async getAllBinsDynamicStatus(req, res) {
+    try {
+      const binsStatus = await gpsBackupService.getAllBinsDynamicStatus();
+      
+      res.json({
+        success: true,
+        bins: binsStatus
+      });
+    } catch (error) {
+      console.error('[GPS BACKUP API] Error getting all bins dynamic status:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
     }
   }
 }
 
-module.exports = GpsBackupController;
-
+module.exports = GPSBackupController;

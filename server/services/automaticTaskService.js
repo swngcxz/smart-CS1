@@ -29,33 +29,14 @@ class AutomaticTaskService {
       return { success: false, reason: 'Bin level below threshold', message: 'Below threshold' };
     }
 
-    // Check for archiving logic: If bin reaches 90% and no one accepted previous task
-    if (binLevel >= 90) {
-      await this.archiveUnacceptedTasks(binId, binLevel, timestamp);
-    }
+    // DISABLED: Archive logic removed to keep tasks pending for manual assignment
+    // Tasks will remain pending until manually assigned or completed
+    // if (binLevel >= 90) {
+    //   await this.archiveUnacceptedTasks(binId, binLevel, timestamp);
+    // }
 
-    // Check if we've already crossed the threshold for this bin recently (within last 5 minutes)
-    const thresholdKey = `${binId}_threshold_crossed`;
-    const lastCrossed = this.thresholdCrossed.get(thresholdKey);
-    if (lastCrossed && (timestamp.getTime() - lastCrossed.getTime()) < 5 * 60 * 1000) {
-      console.log(`[AUTOMATIC TASK] Threshold already crossed for ${binId} at ${binLevel}% within last 5 minutes`);
-      return { success: false, reason: 'Threshold already crossed recently' };
-    }
-
-    // Mark threshold as crossed
-    this.thresholdCrossed.set(thresholdKey, timestamp);
-    console.log(`[AUTOMATIC TASK] Threshold crossed for ${binId} at ${binLevel}% - creating task`);
-    
-    // Create unique task key to prevent duplicates - use bin ID and level range
-    const levelRange = Math.floor(binLevel / 5) * 5; // Group by 5% ranges (85-89, 90-94, 95-99, 100+)
-    const taskKey = `${binId}_${levelRange}_${Math.floor(timestamp.getTime() / (10 * 60 * 1000))}`; // 10-minute window
-    
-    if (this.createdTasks.has(taskKey)) {
-      console.log(`[AUTOMATIC TASK] Task already created for ${binId} at ${binLevel}% (range ${levelRange}%)`);
-      return { success: false, reason: 'Task already created', message: 'Duplicate suppressed (memory)' };
-    }
-
-    // Check for existing pending or in-progress tasks for this bin in the database
+    // Check for existing pending or in-progress tasks for this bin in the database FIRST
+    // This is the primary check - only create task if no existing pending/in-progress tasks
     try {
       // Get all recent activity logs and filter in-memory to avoid Firestore index issues
       const allLogsSnapshot = await db.collection('activitylogs')
@@ -84,26 +65,38 @@ class AutomaticTaskService {
         })));
         return { success: false, reason: 'Task already exists (pending or in-progress)' };
       }
+      
+      console.log(`[AUTOMATIC TASK] No existing tasks found for ${binId} - proceeding with task creation at ${binLevel}%`);
     } catch (checkError) {
       console.log(`[AUTOMATIC TASK] Could not check existing tasks: ${checkError.message}`);
+      // Continue with task creation if we can't check existing tasks
+    }
+    
+    // Create unique task key to prevent duplicates - use bin ID and level range
+    const levelRange = Math.floor(binLevel / 5) * 5; // Group by 5% ranges (85-89, 90-94, 95-99, 100+)
+    const taskKey = `${binId}_${levelRange}_${Math.floor(timestamp.getTime() / (10 * 60 * 1000))}`; // 10-minute window
+    
+    if (this.createdTasks.has(taskKey)) {
+      console.log(`[AUTOMATIC TASK] Task already created for ${binId} at ${binLevel}% (range ${levelRange}%)`);
+      return { success: false, reason: 'Task already created', message: 'Duplicate suppressed (memory)' };
     }
 
-    // Check time-based duplicate prevention
-    const now = Date.now();
-    const lastCreation = this.lastTaskCreation.get(binId);
-    if (lastCreation && (now - lastCreation) < this.MIN_CREATION_INTERVAL) {
-      console.log(`[AUTOMATIC TASK] Skipping task creation for ${binId} - too soon (${Math.round((now - lastCreation) / 1000)}s ago)`);
-      return { success: false, reason: 'Too soon since last creation', message: 'Rate limited' };
-    }
+    // Database check already performed above - no need to duplicate
+
+    // Time-based duplicate prevention removed - only check for existing pending/in-progress tasks
 
     console.log(`[AUTOMATIC TASK] No existing tasks found for ${binId} - creating new task at ${binLevel}%`);
 
     try {
+      console.log(`[AUTOMATIC TASK] Starting task creation for ${binId} at ${binLevel}%`);
+      
       // Determine priority based on bin level
       let priority = 'medium';
       if (binLevel >= 95) priority = 'urgent';
       else if (binLevel >= 90) priority = 'high';
       else if (binLevel >= 85) priority = 'high';
+      
+      console.log(`[AUTOMATIC TASK] Priority determined: ${priority}`);
 
       // Create task assignment data - AVAILABLE FOR JANITOR ACCEPTANCE
       const taskData = {
@@ -114,7 +107,7 @@ class AutomaticTaskService {
         bin_level: binLevel,
         assigned_janitor_id: null, // NULL = available for any janitor to accept
         assigned_janitor_name: null, // NULL = available for any janitor to accept
-        task_note: `🚨 AUTOMATIC TASK: Bin level ${binLevel}% exceeds threshold (85%). Bin needs immediate attention. Available for janitor acceptance.`,
+        task_note: `🚨 AUTOMATIC TASK: Bin level ${binLevel}% exceeds threshold (85%). Bin needs immediate attention. Click "Assign To" to assign this task to a janitor.`,
         activity_type: 'task_assignment',
         priority: priority,
         status: 'pending', // PENDING = waiting for janitor to accept
@@ -127,8 +120,13 @@ class AutomaticTaskService {
       };
 
       // Save to activity logs collection
+      console.log(`[AUTOMATIC TASK] Saving task data to Firestore...`);
+      console.log(`[AUTOMATIC TASK] Task data:`, JSON.stringify(taskData, null, 2));
+      
       const docRef = await db.collection('activitylogs').add(taskData);
       const docRefId = docRef.id;
+      
+      console.log(`[AUTOMATIC TASK] Task saved with ID: ${docRefId}`);
 
       console.log(`[AUTOMATIC TASK] ✅ Created task ${docRefId} for ${binId} at ${binLevel}%`);
       

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { ProgressBar } from 'react-native-paper';
 import { BinLocation } from '../utils/apiService';
+import { getActiveTimeAgo, getMostRecentTimestamp } from '../utils/timeUtils';
 
 // Platform-specific imports
 let Marker: any, Callout: any;
@@ -33,28 +34,79 @@ interface DynamicBinMarkerProps {
 }
 
 export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress }) => {
-  const getMarkerColor = (status: string, coordinatesSource?: string) => {
-    // If using cached GPS, show grey regardless of status
-    if (coordinatesSource === 'gps_cached') {
-      return '#6b7280'; // grey-500
+  // Determine GPS status based on bin data (matches server logic)
+  const getGPSStatus = () => {
+    // First check if GPS is explicitly invalid or timed out (highest priority)
+    if (!bin.gps_valid || bin.gps_timeout) {
+      return { status: 'offline', color: '#6b7280', text: 'Offline GPS', opacity: 0.7 };
     }
     
-    // If no GPS data, show dark grey
-    if (coordinatesSource === 'no_data') {
-      return '#374151'; // grey-700
+    // Check if coordinates are invalid (0,0 or null)
+    if (!bin.latitude || !bin.longitude || bin.latitude === 0 || bin.longitude === 0) {
+      return { status: 'offline', color: '#6b7280', text: 'Offline GPS', opacity: 0.7 };
     }
     
-    // Live GPS - use status-based colors
-    switch (status) {
-      case 'critical':
-        return '#ef4444'; // red-500
-      case 'warning':
-        return '#f59e0b'; // amber-500
-      case 'normal':
-      default:
-        return '#10b981'; // emerald-500
+    // Check if GPS is live (fresh data with valid coordinates)
+    if (bin.coordinates_source === 'gps_live' && bin.gps_valid && !bin.gps_timeout) {
+      return { status: 'live', color: '#10b981', text: 'Live GPS', opacity: 1.0 };
+    }
+    
+    // Check if GPS is stale (backup but recent)
+    if (bin.coordinates_source === 'gps_stale') {
+      return { status: 'stale', color: '#f59e0b', text: 'Stale GPS', opacity: 0.7 };
+    }
+    
+    // Check if GPS is using backup coordinates (but still valid)
+    if (bin.coordinates_source === 'gps_backup' && bin.gps_valid && !bin.gps_timeout) {
+      return { status: 'stale', color: '#f59e0b', text: 'Backup GPS', opacity: 0.7 };
+    }
+    
+    // Check if GPS is explicitly offline or default
+    if (bin.coordinates_source === 'offline' || bin.coordinates_source === 'default') {
+      return { status: 'offline', color: '#6b7280', text: 'Offline GPS', opacity: 0.7 };
+    }
+    
+    // Default to offline
+    return { status: 'offline', color: '#6b7280', text: 'Offline GPS', opacity: 0.7 };
+  };
+  
+  const gpsStatus = getGPSStatus();
+  
+  const getMarkerColor = (status: string) => {
+    // If GPS is live, use bin status colors
+    if (gpsStatus.status === 'live') {
+      switch (status) {
+        case 'critical':
+          return '#ef4444'; // red-500
+        case 'warning':
+          return '#f59e0b'; // amber-500
+        case 'normal':
+        default:
+          return '#10b981'; // emerald-500
+      }
+    } else {
+      // For non-live GPS, use bin status colors but with reduced opacity
+      // This ensures percentage is color-coded even when offline
+      switch (status) {
+        case 'critical':
+          return '#ef4444'; // red-500
+        case 'warning':
+          return '#f59e0b'; // amber-500
+        case 'normal':
+        default:
+          return '#10b981'; // emerald-500
+      }
     }
   };
+  
+  // Get bin status based on fill level
+  const getBinStatus = (level: number) => {
+    if (level >= 80) return 'critical';
+    if (level >= 50) return 'warning';
+    return 'normal';
+  };
+  
+  const binStatus = getBinStatus(bin.level || 0);
 
   const getStatusText = (status: string) => {
     switch (status) {
@@ -94,8 +146,8 @@ export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress
       <View style={[
         styles.markerContainer,
         { 
-          backgroundColor: getMarkerColor(bin.status, bin.coordinates_source),
-          opacity: bin.coordinates_source === 'gps_cached' ? 0.7 : 1.0
+          backgroundColor: getMarkerColor(binStatus),
+          opacity: gpsStatus.opacity
         }
       ]}>
         <Text style={styles.markerText}>{bin.level || 0}%</Text>
@@ -124,12 +176,10 @@ export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress
           <View style={styles.infoSection}>
             <Text style={styles.infoText}>📍 {bin.route}</Text>
             <Text style={styles.infoText}>
-              🛰️ GPS: {bin.coordinates_source === 'gps_live' ? 'Live GPS' : 
-                      bin.coordinates_source === 'gps_cached' ? 'Cached GPS' : 
-                      'No GPS'} ({bin.satellites || 0} sats)
+              {gpsStatus.status === 'live' ? '🟢' : gpsStatus.status === 'stale' ? '🟠' : '⚫'} GPS: {gpsStatus.text} ({bin.satellites || 0} sats)
             </Text>
             <Text style={styles.infoText}>
-              🕒 Last Active: {bin.last_active || formatDate(bin.lastCollection)}
+              🕒 Last Update: {getActiveTimeAgo(bin)}
             </Text>
             {bin.gps_timestamp && bin.gps_timestamp !== 'N/A' && (
               <Text style={styles.infoText}>

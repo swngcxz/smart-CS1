@@ -2,12 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapContainer, TileLayer, useMap, Marker, Popup } from "react-leaflet";
 import L, { LatLngTuple } from "leaflet";
 import { DynamicBinMarker } from "../../staff/pages/DynamicBinMarker";
-import { GPSMarker } from "./GPSMarker";
 import { GPSTrackingLine } from "./GPSTrackingLine";
 import { DirectTileLayer } from "@/components/DirectTileLayer";
 import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 import { MapTypeIndicator } from "@/components/MapTypeIndicator";
-import { GPSFallbackIndicator } from "@/components/GPSFallbackIndicator";
+import { GPSStatusIndicator } from "@/components/GPSStatusIndicator";
 import { MAP_CONFIG, MAP_OPTIONS, getSafeZoomLevel } from "@/components/MapConfig";
 import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
@@ -15,6 +14,10 @@ import "@/styles/map-transitions.css";
 import { Viewer } from "mapillary-js";
 import "mapillary-js/dist/mapillary.css";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
+import { MapPin, Wifi, WifiOff } from "lucide-react";
+import { getActiveTimeAgo } from "@/utils/timeUtils";
+import { getDistanceFromMap } from "@/utils/distanceUtils";
+import { Badge } from "@/components/ui/badge";
 
 // Add custom styles for user location marker
 const userLocationStyles = `
@@ -82,6 +85,23 @@ export function MapSection() {
   const [userLocation, setUserLocation] = useState<LatLngTuple | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [selectedBin, setSelectedBin] = useState<any>(null);
+
+  const handleBinClick = (binId: string) => {
+    const bin = updatedBinLocations.find(b => b.id === binId);
+    if (bin) {
+      // Merge with bin1Data to ensure we have all timestamp fields
+      const enrichedBin = {
+        ...bin,
+        // Use bin1Data timestamp fields for consistency
+        last_active: bin1Data?.last_active,
+        gps_timestamp: bin1Data?.gps_timestamp,
+        backup_timestamp: bin1Data?.backup_timestamp,
+        coordinates_source: bin1Data?.coordinates_source || bin.coordinates_source,
+      };
+      setSelectedBin(enrichedBin);
+    }
+  };
 
   // Use ONLY real-time bin locations from database - no hardcoded coordinates
   const updatedBinLocations = dynamicBinLocations.length > 0 
@@ -94,7 +114,15 @@ export function MapSection() {
         lastCollection: bin.lastCollection,
         route: bin.route,
         gps_valid: bin.gps_valid,
-        satellites: bin.satellites
+        satellites: bin.satellites,
+        timestamp: bin.timestamp,
+        weight_kg: bin.weight_kg,
+        distance_cm: bin.distance_cm,
+        // Add timestamp fields for getActiveTimeAgo function
+        last_active: bin.last_active,
+        gps_timestamp: bin.gps_timestamp,
+        backup_timestamp: bin.backup_timestamp,
+        coordinates_source: bin.coordinates_source,
       }))
     : []; // No fallback to hardcoded coordinates - only show real-time data
 
@@ -230,10 +258,12 @@ export function MapSection() {
   }, []);
 
   return (
-    <Card
-      ref={mapContainerRef}
-      className="h-[700px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative"
-    >
+    <>
+      {/* Map Section */}
+      <Card
+        ref={mapContainerRef}
+        className="h-[700px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-8"
+      >
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
           <div className="flex items-center gap-2">Naga City, Cebu</div>
@@ -299,7 +329,7 @@ export function MapSection() {
           {/* Map Type Indicator */}
           <MapTypeIndicator transitionZoomLevel={18} />
           {updatedBinLocations.map((bin) => (
-            <DynamicBinMarker key={bin.id} bin={bin} />
+            <DynamicBinMarker key={bin.id} bin={bin} onBinClick={handleBinClick} />
           ))}
 
           {/* GPS Tracking Line */}
@@ -377,21 +407,6 @@ export function MapSection() {
           </div>
         )}
 
-        {/* GPS Fallback Indicator */}
-        <div className="absolute bottom-4 left-4 z-[1000] max-w-sm">
-          <GPSFallbackIndicator 
-            binId="bin1" 
-            currentGPSStatus={bin1Data ? {
-              gps_valid: bin1Data.gps_valid || false,
-              latitude: bin1Data.latitude || 0,
-              longitude: bin1Data.longitude || 0,
-              coordinates_source: bin1Data.coordinates_source,
-              satellites: bin1Data.satellites || 0,
-              last_active: bin1Data.last_active,
-              gps_timestamp: bin1Data.gps_timestamp
-            } : undefined}
-          />
-        </div>
 
         {/* Pegman Icon */}
         {/* <div
@@ -415,5 +430,311 @@ export function MapSection() {
         </button> */}
       </CardContent>
     </Card>
+
+    {/* Information Card Section - Completely Separate */}
+    <div className="mt-12 px-6 py-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      {selectedBin ? (
+        <div className="mt-8 max-w-sm">
+        <div className={`
+          rounded-lg p-3 border transition-all duration-300
+          ${selectedBin.gps_valid && selectedBin.coordinates_source === 'gps_live'
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+            : 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800'
+          }
+        `}>
+          {/* Header with icon and status */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              {/* GPS Icon with animation */}
+              <div className="relative">
+                <MapPin className={`h-4 w-4 ${selectedBin.gps_valid && selectedBin.coordinates_source === 'gps_live' ? 'text-green-600' : 'text-gray-500'}`} />
+                {selectedBin.gps_valid && selectedBin.coordinates_source === 'gps_live' && (
+                  <div className="absolute inset-0">
+                    <div className="animate-ping">
+                      <MapPin className="h-4 w-4 text-green-600 opacity-75" />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <span className={`text-sm font-medium ${
+                selectedBin.gps_valid && selectedBin.coordinates_source === 'gps_live' ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'
+              }`}>
+                {selectedBin.name}
+              </span>
+            </div>
+            
+            {/* Status Badge */}
+            <Badge 
+              variant="secondary" 
+              className={`
+                ${selectedBin.gps_valid && selectedBin.coordinates_source === 'gps_live'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+                  : selectedBin.coordinates_source === 'gps_backup'
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                  : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                }
+              `}
+            >
+              {selectedBin.gps_valid && selectedBin.coordinates_source === 'gps_live' ? 'LIVE' : 
+               selectedBin.coordinates_source === 'gps_backup' ? 'BACKUP' : 'OFFLINE'}
+            </Badge>
+          </div>
+
+          {/* GPS Details */}
+          <div className="space-y-1">
+            {/* Fill Level */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">Fill Level:</span>
+              <div className="flex items-center gap-1">
+                <div className="w-12 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full transition-all duration-500"
+                    style={{ 
+                      width: `${selectedBin.level}%`,
+                      backgroundColor: selectedBin.status === 'critical' ? '#EF4444' :
+                                       selectedBin.status === 'warning' ? '#F59E0B' :
+                                       '#059162ff'
+                    }}
+                  ></div>
+                </div>
+                <span className="text-xs font-medium" style={{ 
+                  color: selectedBin.status === 'critical' ? '#EF4444' :
+                         selectedBin.status === 'warning' ? '#F59E0B' :
+                         '#059162ff' 
+                }}>
+                  {selectedBin.level}%
+                </span>
+              </div>
+            </div>
+
+            {/* GPS Status */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">GPS Status:</span>
+              <div className="flex items-center space-x-1">
+                {selectedBin.gps_valid ? (
+                  <>
+                    <Wifi className="h-3 w-3 text-green-600" />
+                    <span className="text-green-600 font-medium">Connected</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-3 w-3 text-gray-500" />
+                    <span className="text-gray-500 font-medium">Disconnected</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Coordinates Source */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">Source:</span>
+              <span className={`font-medium ${
+                selectedBin.coordinates_source === 'gps_live' ? 'text-green-600' : 
+                selectedBin.coordinates_source === 'gps_backup' ? 'text-orange-600' : 
+                'text-gray-500'
+              }`}>
+                {selectedBin.coordinates_source === 'gps_live' ? 'Live GPS' : 
+                 selectedBin.coordinates_source === 'gps_backup' ? 'Backup GPS' : 
+                 'No Data'}
+              </span>
+            </div>
+
+            {/* Satellites */}
+            {selectedBin.satellites !== undefined && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 dark:text-gray-400">Satellites:</span>
+                <span className={`font-medium ${
+                  selectedBin.gps_valid ? 'text-green-600' : 'text-gray-500'
+                }`}>
+                  {selectedBin.satellites}
+                </span>
+              </div>
+            )}
+
+            {/* Distance from Map Center */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">Distance:</span>
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {getDistanceFromMap([10.24371, 123.786917], selectedBin.position)}
+              </span>
+            </div>
+
+            {/* Last Update */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">Last Update:</span>
+              <span className={`font-medium ${
+                selectedBin.gps_valid ? 'text-green-600' : 'text-gray-500'
+              }`}>
+                {getActiveTimeAgo(selectedBin)}
+              </span>
+            </div>
+
+            {/* Coordinates */}
+            {selectedBin.position && selectedBin.position[0] && selectedBin.position[1] && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 dark:text-gray-400">Coordinates:</span>
+                <span className={`font-mono text-xs ${
+                  selectedBin.gps_valid ? 'text-green-600' : 'text-gray-500'
+                }`}>
+                  {selectedBin.position[0].toFixed(6)}, {selectedBin.position[1].toFixed(6)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Status Indicator Bar */}
+          <div className="mt-2 h-1 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-500 ${
+                selectedBin.gps_valid && selectedBin.coordinates_source === 'gps_live'
+                  ? 'bg-green-500 animate-pulse' 
+                  : 'bg-gray-400'
+              }`}
+              style={{ width: selectedBin.gps_valid && selectedBin.coordinates_source === 'gps_live' ? '100%' : '30%' }}
+            />
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div className="mt-8 max-w-sm">
+        <div className={`
+          rounded-lg p-3 border transition-all duration-300
+          ${bin1Data?.gps_valid && bin1Data?.coordinates_source === 'gps_live'
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+            : 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800'
+          }
+        `}>
+          {/* Header with icon and status */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              {/* GPS Icon with animation */}
+              <div className="relative">
+                <MapPin className={`h-4 w-4 ${bin1Data?.gps_valid && bin1Data?.coordinates_source === 'gps_live' ? 'text-green-600' : 'text-gray-500'}`} />
+                {bin1Data?.gps_valid && bin1Data?.coordinates_source === 'gps_live' && (
+                  <div className="absolute inset-0">
+                    <div className="animate-ping">
+                      <MapPin className="h-4 w-4 text-green-600 opacity-75" />
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <span className={`text-sm font-medium ${
+                bin1Data?.gps_valid && bin1Data?.coordinates_source === 'gps_live' ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'
+              }`}>
+                Central Plaza
+              </span>
+            </div>
+            
+            {/* Status Badge */}
+            <Badge 
+              variant="secondary" 
+              className={`
+                ${bin1Data?.gps_valid && bin1Data?.coordinates_source === 'gps_live'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+                  : bin1Data?.coordinates_source === 'gps_backup'
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                  : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                }
+              `}
+            >
+              {bin1Data?.gps_valid && bin1Data?.coordinates_source === 'gps_live' ? 'LIVE' : 
+               bin1Data?.coordinates_source === 'gps_backup' ? 'BACKUP' : 'OFFLINE'}
+            </Badge>
+          </div>
+
+          {/* GPS Details */}
+          <div className="space-y-1">
+            {/* GPS Status */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">GPS Status:</span>
+              <div className="flex items-center space-x-1">
+                {bin1Data?.gps_valid ? (
+                  <>
+                    <Wifi className="h-3 w-3 text-green-600" />
+                    <span className="text-green-600 font-medium">Connected</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-3 w-3 text-gray-500" />
+                    <span className="text-gray-500 font-medium">Disconnected</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Coordinates Source */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">Source:</span>
+              <span className={`font-medium ${
+                bin1Data?.coordinates_source === 'gps_live' ? 'text-green-600' : 
+                bin1Data?.coordinates_source === 'gps_backup' ? 'text-orange-600' : 
+                'text-gray-500'
+              }`}>
+                {bin1Data?.coordinates_source === 'gps_live' ? 'Live GPS' : 
+                 bin1Data?.coordinates_source === 'gps_backup' ? 'Backup GPS' : 
+                 'No Data'}
+              </span>
+            </div>
+
+            {/* Satellites */}
+            {bin1Data?.satellites !== undefined && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 dark:text-gray-400">Satellites:</span>
+                <span className={`font-medium ${
+                  bin1Data?.gps_valid ? 'text-green-600' : 'text-gray-500'
+                }`}>
+                  {bin1Data.satellites}
+                </span>
+              </div>
+            )}
+
+            {/* Last Update */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600 dark:text-gray-400">Last Update:</span>
+              <span className={`font-medium ${
+                bin1Data?.gps_valid ? 'text-green-600' : 'text-gray-500'
+              }`}>
+                {getActiveTimeAgo(bin1Data || {})}
+              </span>
+            </div>
+
+            {/* Coordinates */}
+            {bin1Data?.latitude && bin1Data?.longitude && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 dark:text-gray-400">Coordinates:</span>
+                <span className={`font-mono text-xs ${
+                  bin1Data?.gps_valid ? 'text-green-600' : 'text-gray-500'
+                }`}>
+                  {bin1Data.latitude.toFixed(6)}, {bin1Data.longitude.toFixed(6)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Status Indicator Bar */}
+          <div className="mt-2 h-1 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-500 ${
+                bin1Data?.gps_valid && bin1Data?.coordinates_source === 'gps_live'
+                  ? 'bg-green-500 animate-pulse' 
+                  : 'bg-gray-400'
+              }`}
+              style={{ width: bin1Data?.gps_valid && bin1Data?.coordinates_source === 'gps_live' ? '100%' : '30%' }}
+            />
+          </div>
+
+          {/* Instructions */}
+          <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
+            <div className="text-center text-gray-600 dark:text-gray-400">
+              <p className="text-xs">Click on a bin marker to view detailed information</p>
+            </div>
+          </div>
+        </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

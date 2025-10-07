@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import axiosInstance from '../utils/axiosInstance';
-import { useNotifications } from './useNotifications';
 
 export interface NotificationBadge {
   unreadCount: number;
@@ -9,7 +8,7 @@ export interface NotificationBadge {
   lastNotificationTime?: string;
 }
 
-export function useNotificationBadge(janitorId?: string, { auto = true, intervalMs = 5000 }: { auto?: boolean; intervalMs?: number } = {}) {
+export function useNotificationBadge(janitorId?: string, { auto = true, intervalMs = 10000 }: { auto?: boolean; intervalMs?: number } = {}) {
   const [badgeData, setBadgeData] = useState<NotificationBadge>({
     unreadCount: 0,
     totalCount: 0,
@@ -19,12 +18,6 @@ export function useNotificationBadge(janitorId?: string, { auto = true, interval
   const [error, setError] = useState<string | null>(null);
 
   const hasJanitorId = useMemo(() => Boolean(janitorId && janitorId.length > 0), [janitorId]);
-  
-  // Fallback to useNotifications hook for better reliability
-  const { notifications: fallbackNotifications } = useNotifications(janitorId, { 
-    auto: false, // Don't auto-fetch, we'll handle it
-    intervalMs: 10000 
-  });
 
   const fetchNotificationBadge = useCallback(async () => {
     if (!hasJanitorId) {
@@ -88,27 +81,6 @@ export function useNotificationBadge(janitorId?: string, { auto = true, interval
     }
   }, [hasJanitorId, janitorId]);
 
-  // Fallback effect: Use existing useNotifications data when API fails
-  useEffect(() => {
-    if (fallbackNotifications && fallbackNotifications.length >= 0) {
-      const unreadNotifications = fallbackNotifications.filter(n => n && !n.read);
-      const totalCount = fallbackNotifications.length;
-      const unreadCount = unreadNotifications.length;
-      const lastNotification = fallbackNotifications.length > 0 ? fallbackNotifications[0] : null;
-      
-      setBadgeData({
-        unreadCount,
-        totalCount,
-        hasNotifications: unreadCount > 0,
-        lastNotificationTime: lastNotification?.timestamp
-      });
-      
-      // Clear error if we have fallback data
-      if (error) {
-        setError(null);
-      }
-    }
-  }, [fallbackNotifications, error]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     try {

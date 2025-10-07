@@ -12,6 +12,13 @@ export type JanitorNotification = {
   gps?: { lat: number; lng: number };
   timestamp: string | Date;
   read?: boolean;
+  // New fields for task status updates
+  taskStatus?: 'available' | 'accepted' | 'completed';
+  acceptedBy?: string;
+  acceptedById?: string;
+  completedBy?: string;
+  completedById?: string;
+  availableForAcceptance?: boolean;
 };
 
 export function useNotifications(janitorId?: string, { auto = true, intervalMs = 10000 }: { auto?: boolean; intervalMs?: number } = {}) {

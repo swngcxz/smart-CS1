@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator } fr
 import { useRouter } from "expo-router";
 import { ProgressBar } from "react-native-paper";
 import * as Location from 'expo-location';
-import { useRealTimeData } from '../../hooks/useRealTimeData';
+import { useRealTimeData } from '../../contexts/RealTimeDataContext';
 import { DynamicBinMarker } from '../../components/DynamicBinMarker';
 import { GPSMarker } from '../../components/GPSMarker';
 import { BinLocation } from '../../utils/apiService';
@@ -36,7 +36,7 @@ const Callout = ({ children, style }: any) => (
 const PROVIDER_GOOGLE = 'google';
 
 export default function MapScreen() {
-  const { binLocations, bin1Data, loading, error, lastUpdate, refetch, isGPSValid } = useRealTimeData(5000);
+  const { binLocations, bin1Data, loading, error, lastUpdate, refetch, isGPSValid } = useRealTimeData();
   const [region, setRegion] = useState({
     latitude: 10.2098,
     longitude: 123.758,
@@ -214,40 +214,31 @@ export default function MapScreen() {
         showsIndoors={true}
         showsPointsOfInterest={false}
       >
-        {/* Dynamic Bin Markers */}
+        {/* Bin Markers - Green markers showing bin locations from backup coordinates */}
         {(binLocations || []).map((bin) => (
-          <DynamicBinMarker
+          <Marker
             key={bin.id}
-            bin={bin}
-            onPress={handleBinPress}
-          />
+            coordinate={{
+              latitude: bin.position[0],
+              longitude: bin.position[1]
+            }}
+            onPress={() => handleBinPress(bin)}
+          >
+            <View style={styles.binMarker}>
+              <Text style={styles.binMarkerText}>{bin.level || 0}%</Text>
+            </View>
+          </Marker>
         ))}
 
-        {/* GPS Marker for real-time location */}
-        {bin1Data && bin1Data.latitude && bin1Data.longitude && (
-          <GPSMarker
-            gpsData={{
-              latitude: bin1Data.latitude,
-              longitude: bin1Data.longitude,
-              gps_valid: bin1Data.gps_valid,
-              satellites: bin1Data.satellites,
-              timestamp: new Date(bin1Data.timestamp).toISOString(),
-              coordinates_source: bin1Data.coordinates_source,
-              last_active: bin1Data.last_active,
-              gps_timestamp: bin1Data.gps_timestamp
-            }}
-          />
-        )}
-
-        {/* User Location Marker */}
+        {/* User/Janitor Location Marker - Blue marker */}
         {userLocation && (
           <Marker
             coordinate={userLocation}
-            title="Your Location"
-            description="You are here"
+            title="Janitor Location"
+            description="Your current location"
           >
-            <View style={styles.userLocationMarker}>
-              <View style={styles.userLocationInner} />
+            <View style={styles.janitorMarker}>
+              <View style={styles.janitorMarkerInner} />
             </View>
           </Marker>
         )}
@@ -516,5 +507,48 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '500',
+  },
+  // New marker styles
+  binMarker: {
+    backgroundColor: '#10b981', // Green color for bins
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 35,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  binMarkerText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  janitorMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#3b82f6', // Blue color for janitor
+    borderWidth: 3,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  janitorMarkerInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'white',
   },
 });

@@ -3,9 +3,9 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React from "react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useFocusEffect } from '@react-navigation/native';
-import { useAccount } from "@/hooks/useAccount";
+import { useAccount } from "@/contexts/AccountContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserInfo } from "@/hooks/useUserInfo";
 import { Alert, Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
@@ -24,7 +24,7 @@ export default function SettingsScreen() {
 
   // Refresh userInfo when screen comes into focus
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       console.log('👤 Settings screen focused, refreshing user info...');
       fetchUserInfo();
     }, [fetchUserInfo])

@@ -1,24 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const GpsBackupController = require('../controllers/gpsBackupController');
+const GPSBackupController = require('../controllers/gpsBackupController');
 
-// Get all GPS backup records
-router.get('/', GpsBackupController.getAllGpsBackups);
+// Get GPS backup service status
+router.get('/status', GPSBackupController.getStatus);
 
-// Get GPS backup for specific bin
-router.get('/:binId', GpsBackupController.getBinGpsBackup);
+// Get backup coordinates for a specific bin
+router.get('/backup/:binId', GPSBackupController.getBackupCoordinates);
 
-// Save last known coordinates
-router.post('/save', GpsBackupController.saveLastKnownCoordinates);
+// Get display coordinates (backup if live GPS is invalid) for a specific bin
+router.get('/display/:binId', GPSBackupController.getDisplayCoordinates);
 
-// Update GPS status for a bin
-router.put('/:binId/status', GpsBackupController.updateGpsStatus);
+// Get all bins with their coordinate status
+router.get('/bins/status', GPSBackupController.getAllBinsStatus);
 
-// Delete GPS backup for a bin
-router.delete('/:binId', GpsBackupController.deleteGpsBackup);
+// Manually trigger backup for a specific bin
+router.post('/backup/:binId', GPSBackupController.triggerBackup);
 
-// Check GPS status for multiple bins
-router.post('/check-multiple', GpsBackupController.checkMultipleBinsGpsStatus);
+// Force backup of all valid coordinates
+router.post('/force-backup', GPSBackupController.forceBackup);
+
+// Get dynamic bin status
+router.get('/dynamic-status/:binId', GPSBackupController.getDynamicBinStatus);
+
+// Get all bins with dynamic status
+router.get('/dynamic-status', GPSBackupController.getAllBinsDynamicStatus);
 
 module.exports = router;
-

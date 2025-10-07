@@ -1,13 +1,12 @@
 
 import axios from 'axios';
-import {
-  API_BASE_URL,
-  API_FALLBACK_LOCALHOST,
-  API_FALLBACK_ANDROID_EMULATOR,
-  API_TIMEOUT,
-  API_DEBUG,
-} from '@env';
-import { shouldShowErrorPopup, sanitizeErrorMessage } from './errorConfig';
+
+// Environment variables (hardcoded for now to avoid dotenv issues)
+const API_BASE_URL = 'http://192.168.1.26:8000';
+const API_FALLBACK_LOCALHOST = 'http://localhost:8000';
+const API_FALLBACK_ANDROID_EMULATOR = 'http://10.0.2.2:8000';
+const API_TIMEOUT = '10000';
+const API_DEBUG = 'true';
 
 // Direct URL configuration - no fallbacks needed
 
@@ -18,7 +17,6 @@ export const BASE_URLS = {
   local: 'http://localhost:8000',
   android_emulator: 'http://10.0.2.2:8000',
 };
-
 
 // Create axios instance with environment variable priority
 const instance = axios.create({
@@ -102,6 +100,9 @@ instance.interceptors.response.use(
       const sanitizedMessage = sanitizeErrorMessage(error);
       console.warn('🚨 Critical Error:', sanitizedMessage);
     }
+    
+    // Log error for debugging
+    console.warn('🚨 API Error:', error.message);
     
     // Always reject the promise so components can handle errors
     return Promise.reject(error);

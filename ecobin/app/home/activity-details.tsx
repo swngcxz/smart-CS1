@@ -1,7 +1,7 @@
 import BackButton from "@/components/BackButton";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   Image, 
   StyleSheet, 
@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import axiosInstance from '../../utils/axiosInstance';
-import { useAccount } from '../../hooks/useAccount';
+import { useAccount } from '../../contexts/AccountContext';
 
 export default function ProofOfPickupScreen() {
   const { binId, location, activityLog, isReadOnly } = useLocalSearchParams();
@@ -107,6 +107,14 @@ export default function ProofOfPickupScreen() {
       // The database update should already be persisted from the pickup action
       console.log('📱 Mobile App - Activity details modal closing, state should be persisted');
     };
+  }, []);
+
+  // Prevent navigation before component is fully mounted
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
   }, []);
 
   // Fetch activity log data if not provided
@@ -351,12 +359,15 @@ export default function ProofOfPickupScreen() {
           {
             text: 'OK',
             onPress: () => {
-              // Navigate back to activity logs and refresh
-              router.replace("/home/activity-logs");
-              // Force refresh by navigating to home first, then back to activity logs
-              setTimeout(() => {
-                router.push("/home/activity-logs");
-              }, 100);
+              if (isMounted) {
+                // Navigate back to home first, then to activity logs to ensure proper mounting
+                router.replace("/(tabs)/home");
+                setTimeout(() => {
+                  if (isMounted) {
+                    router.push("/home/activity-logs");
+                  }
+                }, 500);
+              }
             },
           },
         ]

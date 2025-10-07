@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ProgressBar } from 'react-native-paper';
 import { BinLocation } from '../utils/apiService';
+import { getActiveTimeAgo } from '../utils/timeUtils';
 
 interface DynamicBinMarkerProps {
   bin: BinLocation;
@@ -46,20 +47,6 @@ export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress
     }
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return 'Unknown';
-    }
-  };
 
   return (
     <Marker
@@ -102,7 +89,7 @@ export const DynamicBinMarker: React.FC<DynamicBinMarkerProps> = ({ bin, onPress
               🛰️ GPS: {bin.gps_valid ? 'Valid' : 'Invalid'} ({bin.satellites || 0} sats)
             </Text>
             <Text style={styles.infoText}>
-              🕒 Last Update: {formatDate(bin.lastCollection)}
+              🕒 Last Update: {getActiveTimeAgo(bin)}
             </Text>
             {bin.weight_kg && (
               <Text style={styles.infoText}>⚖️ Weight: {bin.weight_kg}kg</Text>

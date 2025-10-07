@@ -63,10 +63,6 @@ export const MAP_OPTIONS = {
   touchZoom: true,
   boxZoom: true,
   keyboard: true,
-  maxBounds: [
-    [MAP_CONFIG.bounds.south, MAP_CONFIG.bounds.west],
-    [MAP_CONFIG.bounds.north, MAP_CONFIG.bounds.east]
-  ],
   maxBoundsViscosity: 0.5,
   // Prevent zooming to problematic levels
   zoomSnap: 1,
