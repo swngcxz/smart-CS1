@@ -101,7 +101,7 @@ export default function HomeScreen() {
   // Fetch activity logs on component mount
   useEffect(() => {
     fetchActivityLogs();
-  }, [account?.id]); // Only depend on account ID to prevent infinite loops
+  }, [account?.id, account?.email]);
 
   // Refresh activity logs when screen comes back into focus
   useFocusEffect(
@@ -110,7 +110,7 @@ export default function HomeScreen() {
       if (account?.id) {
         fetchActivityLogs();
       }
-    }, [account?.id]) // Only depend on account ID to prevent infinite loops
+    }, [account?.id, account?.email])
   );
 
   // Bin alert effect - MOVED TO TOP to avoid hooks after early return

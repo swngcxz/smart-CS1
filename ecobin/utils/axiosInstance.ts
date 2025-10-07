@@ -14,7 +14,7 @@ import { shouldShowErrorPopup, sanitizeErrorMessage } from './errorConfig';
 // Build BASE_URLS - force correct IP for mobile
 export const BASE_URLS = {
   web: 'http://localhost:8000',
-  mobile: 'http://192.168.254.114:8000', // Force correct IP
+  mobile: 'http://10.0.2.187:8000', // Force correct IP
   local: 'http://localhost:8000',
   android_emulator: 'http://10.0.2.2:8000',
 };

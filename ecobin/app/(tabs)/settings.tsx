@@ -11,19 +11,23 @@ import { useUserInfo } from "@/hooks/useUserInfo";
 import { Alert, Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
 export default function SettingsScreen() {
+  console.log('🔄 SettingsScreen - Component rendered');
+  
   const { isDarkMode, toggleDarkMode } = useTheme();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [faceIDEnabled, setFaceIDEnabled] = useState(false);
   const router = useRouter();
   const { account, loading: accountLoading, error: accountError } = useAccount();
   const { userInfo, fetchUserInfo } = useUserInfo();
+  
+  console.log('🔄 SettingsScreen - Hook values:', { account, userInfo, accountLoading });
 
   // Refresh userInfo when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       console.log('👤 Settings screen focused, refreshing user info...');
       fetchUserInfo();
-    }, []) // Empty dependency array to prevent infinite loops
+    }, [fetchUserInfo])
   );
 
   const { logout } = useAuth();
@@ -60,7 +64,10 @@ export default function SettingsScreen() {
         <Image 
           source={
             userInfo?.profileImagePath 
-              ? { uri: `http://192.168.254.114:8000/api/userinfo/profile-image/${userInfo.profileImagePath.split('/').pop()}` }
+              ? { uri: (() => {
+                  const filename = userInfo.profileImagePath.split('/').pop();
+                  return filename ? `http://192.168.254.114:8000/api/userinfo/profile-image/${filename}` : undefined;
+                })() }
               : { uri: "https://i.pravatar.cc/100?u=" + (account?.email || 'user') }
           } 
           style={styles.avatar} 

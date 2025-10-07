@@ -18,32 +18,27 @@ export function useUserInfo() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Debug: Log state changes (only in development) - REMOVED to prevent infinite loops
+  // Debug: Log state changes (only in development)
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('🔄 useUserInfo - State changed:', { userInfo, loading, error });
+    }
+  }, [userInfo, loading, error]);
 
   const fetchUserInfo = useCallback(async () => {
-    if (__DEV__) {
-      console.log('🔄 useUserInfo - fetchUserInfo called');
-    }
+    console.log('🔄 useUserInfo - fetchUserInfo called');
     setLoading(true);
     setError(null);
     try {
-      if (__DEV__) {
-        console.log('👤 Mobile App - Fetching user info...');
-      }
+      console.log('👤 Mobile App - Fetching user info...');
       const res = await axiosInstance.get('/api/userinfo');
-      if (__DEV__) {
-        console.log('👤 Mobile App - User info response:', res.data);
-      }
+      console.log('👤 Mobile App - User info response:', res.data);
       
       if (res.data.success && res.data.userInfo) {
-        if (__DEV__) {
-          console.log('👤 Mobile App - Setting user info:', res.data.userInfo);
-        }
+        console.log('👤 Mobile App - Setting user info:', res.data.userInfo);
         setUserInfo(res.data.userInfo);
       } else {
-        if (__DEV__) {
-          console.log('👤 Mobile App - No user info found, setting to null');
-        }
+        console.log('👤 Mobile App - No user info found, setting to null');
         setUserInfo(null);
       }
     } catch (err: any) {
@@ -55,11 +50,9 @@ export function useUserInfo() {
     }
   }, []);
 
-  const updateUserInfo = useCallback(async (formData: FormData) => {
+  const updateUserInfo = async (formData: FormData) => {
     try {
-      if (__DEV__) {
-        console.log('👤 Mobile App - Updating user info...');
-      }
+      console.log('👤 Mobile App - Updating user info...');
       const res = await axiosInstance.put('/api/userinfo', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -68,9 +61,7 @@ export function useUserInfo() {
       
       if (res.data.success && res.data.userInfo) {
         setUserInfo(res.data.userInfo);
-        if (__DEV__) {
-          console.log('👤 Mobile App - User info updated successfully');
-        }
+        console.log('👤 Mobile App - User info updated successfully');
         return { success: true, data: res.data.userInfo };
       } else {
         throw new Error('Update failed');
@@ -81,21 +72,17 @@ export function useUserInfo() {
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
-  }, []);
+  };
 
-  const deleteProfileImage = useCallback(async () => {
+  const deleteProfileImage = async () => {
     try {
-      if (__DEV__) {
-        console.log('👤 Mobile App - Deleting profile image...');
-      }
+      console.log('👤 Mobile App - Deleting profile image...');
       const res = await axiosInstance.delete('/api/userinfo/profile-image');
       
       if (res.data.success) {
         // Refresh user info to get updated data
         await fetchUserInfo();
-        if (__DEV__) {
-          console.log('👤 Mobile App - Profile image deleted successfully');
-        }
+        console.log('👤 Mobile App - Profile image deleted successfully');
         return { success: true };
       } else {
         throw new Error('Delete failed');
@@ -106,7 +93,7 @@ export function useUserInfo() {
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
-  }, [fetchUserInfo]);
+  };
 
   const getProfileImageUrl = useCallback(() => {
     if (!userInfo?.profileImagePath) return null;

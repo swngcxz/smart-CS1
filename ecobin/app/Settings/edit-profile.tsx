@@ -41,9 +41,6 @@ export default function EditProfileScreen() {
           const imageUrl = `${baseUrl}/api/userinfo/profile-image/${filename}`;
           setProfileImage(imageUrl);
         }
-      } else {
-        // Clear profile image if no path
-        setProfileImage(null);
       }
     }
   }, [userInfo?.id, userInfo?.address, userInfo?.profileImagePath]); // Only depend on specific fields

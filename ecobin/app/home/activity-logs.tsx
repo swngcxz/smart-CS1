@@ -129,14 +129,14 @@ export default function ActivityLogsScreen() {
   // Fetch logs from backend on mount
   useEffect(() => {
     fetchActivityLogs();
-  }, []); // Empty dependency array to prevent infinite loops
+  }, [fetchActivityLogs]);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       console.log('📱 Mobile App - Activity logs screen focused, refreshing data...');
       fetchActivityLogs();
-    }, []) // Empty dependency array to prevent infinite loops
+    }, [fetchActivityLogs])
   );
 
   // Map backend fields to UI-expected fields

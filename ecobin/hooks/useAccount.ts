@@ -16,7 +16,12 @@ export function useAccount() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Debug: Log state changes (only in development) - REMOVED to prevent infinite loops
+  // Debug: Log state changes (only in development)
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('🔄 useAccount - State changed:', { account, loading, error });
+    }
+  }, [account, loading, error]);
 
   useEffect(() => {
     const fetchAccount = async () => {
