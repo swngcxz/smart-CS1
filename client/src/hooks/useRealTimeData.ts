@@ -30,6 +30,7 @@ export interface WasteBin {
 export function useRealTimeData() {
   const [bin1Data, setBin1Data] = useState<BinData | null>(null);
   const [monitoringData, setMonitoringData] = useState<BinData | null>(null);
+  const [backupCoordinates, setBackupCoordinates] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gpsHistory, setGpsHistory] = useState<Array<{lat: number, lng: number, timestamp: number}>>([]);
@@ -41,10 +42,18 @@ export function useRealTimeData() {
         setLoading(true);
         console.log('🔄 Fetching initial data from Firebase...');
         
-        // Only fetch bin1 data as requested
-        const bin1Response = await api.get('/api/bin1');
+        // Fetch bin1 data and backup coordinates
+        const [bin1Response, backupResponse] = await Promise.all([
+          api.get('/api/bin1'),
+          api.get('/api/gps-backup/display/bin1').catch(err => {
+            console.warn('⚠️ Backup coordinates not available:', err.message);
+            return { data: null };
+          })
+        ]);
 
         console.log('📡 API Response:', bin1Response);
+        console.log('📡 Backup Response:', backupResponse);
+        
         if (bin1Response.data) {
           console.log('🔥 Real-time bin1 data received:', bin1Response.data);
           console.log('📊 Bin Level:', bin1Response.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.data.bin_level));
@@ -59,6 +68,11 @@ export function useRealTimeData() {
           }
         } else {
           console.log('⚠️ No bin1 data received from API');
+        }
+        
+        if (backupResponse.data) {
+          console.log('🔥 Backup coordinates received:', backupResponse.data);
+          setBackupCoordinates(backupResponse.data);
         }
         
         setError(null);
@@ -77,7 +91,13 @@ export function useRealTimeData() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const bin1Response = await api.get('/api/bin1');
+        const [bin1Response, backupResponse] = await Promise.all([
+          api.get('/api/bin1'),
+          api.get('/api/gps-backup/display/bin1').catch(err => {
+            console.warn('⚠️ Backup coordinates not available in polling:', err.message);
+            return { data: null };
+          })
+        ]);
 
         if (bin1Response.data) {
           console.log('🔄 Polling update - bin1 data:', bin1Response.data);
@@ -91,6 +111,11 @@ export function useRealTimeData() {
               timestamp: bin1Response.data.timestamp
             }].slice(-50)); // Keep last 50 points
           }
+        }
+        
+        if (backupResponse.data) {
+          console.log('🔄 Polling update - backup coordinates:', backupResponse.data);
+          setBackupCoordinates(backupResponse.data);
         }
         
         setError(null);
@@ -160,7 +185,9 @@ export function useRealTimeData() {
         distance_cm: bin1Data.distance_cm,
         coordinates_source: coordinatesSource,
         last_active: bin1Data.last_active,
-        gps_timestamp: bin1Data.gps_timestamp
+        gps_timestamp: bin1Data.gps_timestamp,
+        // Include backup coordinates timestamp for proper time calculation
+        backup_timestamp: backupCoordinates?.coordinates?.timestamp || backupCoordinates?.backup_timestamp
       });
     }
     
@@ -178,9 +205,14 @@ export function useRealTimeData() {
     refresh: () => {
       setLoading(true);
       // Trigger a refresh by refetching data
-      api.get('/api/bin1').then(res => setBin1Data(res.data)).catch(console.error);
-      api.get('/api/bin').then(res => setMonitoringData(res.data)).catch(console.error);
-      setLoading(false);
+      Promise.all([
+        api.get('/api/bin1').then(res => setBin1Data(res.data)).catch(console.error),
+        api.get('/api/bin').then(res => setMonitoringData(res.data)).catch(console.error),
+        api.get('/api/gps-backup/display/bin1').then(res => setBackupCoordinates(res.data)).catch(err => {
+          console.warn('⚠️ Backup coordinates not available:', err.message);
+          setBackupCoordinates(null);
+        })
+      ]).finally(() => setLoading(false));
     },
     // GPS utility functions
     getCurrentGPSLocation: () => {

@@ -4,13 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Route, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
-import { useGpsBackups, GpsBackupData, getTimeDifference } from "@/hooks/useGpsBackup";
+import { useAllBinsCoordinateStatus, getTimeDifference } from "@/hooks/useGpsBackup";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export function MapTab() {
   const { wasteBins, loading, error, dynamicBinLocations } = useRealTimeData();
-  const { data: gpsBackups, loading: gpsBackupsLoading } = useGpsBackups();
+  const { binsStatus, loading: gpsBackupsLoading } = useAllBinsCoordinateStatus();
   const [selectedRoute, setSelectedRoute] = useState<string>("");
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(true);
 
@@ -18,26 +18,33 @@ export function MapTab() {
   const updatedLocationData = dynamicBinLocations.length > 0 
     ? dynamicBinLocations.map((bin) => {
         // Check if this bin has GPS backup data
-        const gpsBackup = gpsBackups?.find((backup: GpsBackupData) => backup.binId === bin.id);
+        const binStatus = binsStatus?.find((status) => status.binId === bin.id);
         const isGpsMalfunctioning = (bin.position[0] === 0 && bin.position[1] === 0);
+        
+        // Use backup coordinates if live GPS is invalid
+        let displayLat = bin.position[0].toString();
+        let displayLng = bin.position[1].toString();
+        let isUsingBackup = false;
+        
+        if (isGpsMalfunctioning && binStatus?.backupGPS.valid) {
+          displayLat = binStatus.backupGPS.latitude.toString();
+          displayLng = binStatus.backupGPS.longitude.toString();
+          isUsingBackup = true;
+        }
         
         return {
           id: bin.id,
           name: bin.name,
-          lat: isGpsMalfunctioning && gpsBackup 
-            ? gpsBackup.lastKnownLatitude.toString() 
-            : bin.position[0].toString(),
-          lng: isGpsMalfunctioning && gpsBackup 
-            ? gpsBackup.lastKnownLongitude.toString() 
-            : bin.position[1].toString(),
+          lat: displayLat,
+          lng: displayLng,
           status: bin.status,
           level: bin.level,
           lastCollected: bin.lastCollection,
           binData: bin,
           // GPS backup information
-          isGpsOffline: isGpsMalfunctioning && !!gpsBackup,
-          gpsBackupData: gpsBackup,
-          offlineTime: gpsBackup ? getTimeDifference(gpsBackup.lastUpdateTime) : null
+          isGpsOffline: isUsingBackup,
+          gpsBackupData: binStatus,
+          offlineTime: isUsingBackup && binStatus?.backupGPS.timestamp ? getTimeDifference(binStatus.backupGPS.timestamp) : null
         };
       })
     : wasteBins.map((bin) => ({

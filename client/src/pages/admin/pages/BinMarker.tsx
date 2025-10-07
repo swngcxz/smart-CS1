@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getActiveTimeAgo } from "../../../utils/timeUtils";
 
 interface BinData {
   id: number;
@@ -127,7 +128,7 @@ export function BinMarker({ bin }: BinMarkerProps) {
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Last Collection:</span>
-                <span className="text-sm font-medium">{bin.lastCollection}</span>
+                <span className="text-sm font-medium">{getActiveTimeAgo(bin)}</span>
               </div>
 
               <div className="flex justify-between items-center">
@@ -174,7 +175,7 @@ export function BinMarker({ bin }: BinMarkerProps) {
                 <strong>Status:</strong> {bin.status}
               </p>
               <p>
-                <strong>Last Collection:</strong> {bin.lastCollection}
+                <strong>Last Update:</strong> {getActiveTimeAgo(bin)}
               </p>
               <p>
                 <strong>Coordinates:</strong> {bin.position[0].toFixed(4)}, {bin.position[1].toFixed(4)}

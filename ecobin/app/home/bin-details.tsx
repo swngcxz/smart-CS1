@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View, ActivityIndicator, Platform } from "react-native";
 import { ProgressBar } from "react-native-paper";
 import { useRealTimeData } from "../../contexts/RealTimeDataContext";
+import { getActiveTimeAgo } from "../../utils/timeUtils";
 
 // Platform-specific imports
 let MapView: any, Marker: any, PROVIDER_GOOGLE: any;
@@ -133,7 +134,7 @@ export default function BinDetailScreen() {
         color={getStatusColor(safeBinData.level)}
         style={{ height: 10, borderRadius: 5, marginBottom: 15 }}
       />
-      <Text style={styles.text}>Last Update: {new Date(safeBinData.lastCollection).toLocaleString()}</Text>
+      <Text style={styles.text}>Last Update: {getActiveTimeAgo(safeBinData)}</Text>
       <Text style={[styles.text, styles.status]}>Status: {safeBinData.status.toUpperCase()}</Text>
 
       <View style={styles.metricsContainer}>

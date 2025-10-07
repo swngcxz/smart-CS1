@@ -10,12 +10,14 @@ export interface BinData {
   latitude?: number;
   longitude?: number;
   gps_valid: boolean;
+  gps_timeout?: boolean; // Add missing property
   satellites: number;
   timestamp: number;
   bin_id?: string;
   gps_timestamp?: string;
   last_active?: string;
   coordinates_source?: string;
+  backup_timestamp?: string; // Add backup timestamp field
 }
 
 export interface WasteBin {
@@ -42,7 +44,7 @@ export interface UseRealTimeDataReturn {
   refetch: () => Promise<void>;
   isGPSValid: () => boolean;
   getCurrentGPSLocation: () => BinData | null;
-  getSafeCoordinates: () => { latitude: number; longitude: number; isOffline: boolean; timeSinceLastGPS: string };
+  getSafeCoordinates: () => { latitude: number; longitude: number; isOffline: boolean; timeSinceLastGPS: string; source?: string };
   getTimeSinceLastGPS: (timestamp: number) => string;
 }
 
@@ -95,33 +97,47 @@ export function RealTimeDataProvider({ children, refreshInterval = 2000 }: RealT
     }
   }, [bin1Data?.gps_valid, bin1Data?.latitude, bin1Data?.longitude, bin1Data?.timestamp]);
 
-  const getSafeCoordinates = useCallback(() => {
-    // Check if we have valid GPS data
-    if (bin1Data?.gps_valid && bin1Data?.latitude && bin1Data?.longitude) {
+  const getSafeCoordinates = useCallback((): { latitude: number; longitude: number; isOffline: boolean; timeSinceLastGPS: string; source?: string } => {
+    // Always return valid coordinates - never undefined
+    // This matches the server-side dynamic status logic
+    
+    // Check if we have fresh GPS data (not stale/timeout)
+    const isGPSFresh = bin1Data?.gps_valid && 
+                      !bin1Data?.gps_timeout && 
+                      bin1Data?.coordinates_source === 'gps_live' &&
+                      bin1Data?.latitude && 
+                      bin1Data?.longitude &&
+                      bin1Data.latitude !== 0 &&
+                      bin1Data.longitude !== 0;
+    
+    if (isGPSFresh && bin1Data.latitude !== undefined && bin1Data.longitude !== undefined) {
       return {
         latitude: bin1Data.latitude,
         longitude: bin1Data.longitude,
         isOffline: false,
-        timeSinceLastGPS: 'Live'
+        timeSinceLastGPS: 'Live',
+        source: 'gps_live'
       };
     }
     
-    // Use last known GPS if available
-    if (lastKnownGPS) {
+    // Use last known GPS if available (backup coordinates)
+    if (lastKnownGPS && lastKnownGPS.latitude && lastKnownGPS.longitude) {
       return {
         latitude: lastKnownGPS.latitude,
         longitude: lastKnownGPS.longitude,
         isOffline: true,
-        timeSinceLastGPS: getTimeSinceLastGPS(lastKnownGPS.timestamp)
+        timeSinceLastGPS: getTimeSinceLastGPS(lastKnownGPS.timestamp),
+        source: 'gps_backup'
       };
     }
     
-    // Fallback to default coordinates
+    // Fallback to default coordinates (Central Plaza) - ALWAYS return valid coordinates
     return {
-      latitude: 10.2098,
-      longitude: 123.758,
+      latitude: 10.24371,
+      longitude: 123.786917,
       isOffline: true,
-      timeSinceLastGPS: 'No GPS data'
+      timeSinceLastGPS: 'No GPS data',
+      source: 'default'
     };
   }, [bin1Data, lastKnownGPS, getTimeSinceLastGPS]);
 
@@ -133,11 +149,25 @@ export function RealTimeDataProvider({ children, refreshInterval = 2000 }: RealT
         console.log('🔄 Mobile App - Fetching initial data from Firebase...');
       }
       
-      // Only fetch bin1 data as requested (from API) - OPTIMIZED: Single fetch
-      const bin1Response = await apiService.getBin1Data();
+      // Fetch bin1 data and backup coordinates (same as web dashboard)
+      const [bin1Response, backupResponse] = await Promise.all([
+        apiService.getBin1Data(),
+        apiService.getBinCoordinatesForDisplay('bin1').catch(err => {
+          console.warn('⚠️ Mobile App - Backup coordinates not available:', err.message);
+          return null;
+        })
+      ]);
 
       if (bin1Response) {
-        const merged = bin1Response as BinData;
+        // Merge bin1 data with backup coordinates data (same as web dashboard)
+        const merged = {
+          ...bin1Response,
+          // Add timestamp fields from backup coordinates if available
+          last_active: backupResponse?.last_active || bin1Response.last_active,
+          gps_timestamp: backupResponse?.gps_timestamp || bin1Response.gps_timestamp,
+          backup_timestamp: backupResponse?.backup_timestamp,
+          coordinates_source: backupResponse?.coordinates_source || bin1Response.coordinates_source
+        } as BinData;
         
         // Only update state if data has actually changed to prevent unnecessary re-renders
         setBin1Data(prevData => {
@@ -149,8 +179,15 @@ export function RealTimeDataProvider({ children, refreshInterval = 2000 }: RealT
             
             // Only log when data actually changes
             console.log('📡 Mobile App - API Response:', bin1Response);
+            console.log('📡 Mobile App - Backup Response:', backupResponse);
             console.log('🔥 Mobile App - Real-time bin1 data (merged):', merged);
             console.log('📊 Mobile App - Bin Level:', merged.bin_level, 'Status:', getStatusFromLevel(merged.bin_level || 0));
+            console.log('🕒 Mobile App - Timestamp fields:', {
+              last_active: merged.last_active,
+              gps_timestamp: merged.gps_timestamp,
+              backup_timestamp: merged.backup_timestamp,
+              coordinates_source: merged.coordinates_source
+            });
             
             // Only update lastUpdate when data changes
             setLastUpdate(new Date().toISOString());
@@ -217,24 +254,65 @@ export function RealTimeDataProvider({ children, refreshInterval = 2000 }: RealT
     return bins;
   }, [bin1Data]);
 
-  // Create dynamic bin locations with GPS fallback logic
-  const getDynamicBinLocations = useCallback(() => {
+  // Create dynamic bin locations with GPS fallback logic (same as server)
+  const getDynamicBinLocations = useCallback(async () => {
     const locations = [];
     
     // Always add bin1 if we have any bin data (continuous monitoring)
     if (bin1Data) {
-      // Determine coordinates: use ESP32 cached coordinates if available, otherwise use fallback
       let coordinates: [number, number];
       let coordinatesSource: string;
+      let gpsValid = false;
+      let satellites = 0;
       
-      if (bin1Data.latitude && bin1Data.longitude) {
-        // ESP32 provides coordinates (either live GPS or cached)
+      // First, check if we have valid live GPS data from bin1Data
+      const isLiveGPSValid = bin1Data.gps_valid && 
+                            !bin1Data.gps_timeout && 
+                            bin1Data.coordinates_source === 'gps_live' &&
+                            bin1Data.latitude && 
+                            bin1Data.longitude &&
+                            bin1Data.latitude !== 0 &&
+                            bin1Data.longitude !== 0;
+      
+      if (isLiveGPSValid && bin1Data.latitude !== undefined && bin1Data.longitude !== undefined) {
+        // Use live GPS data directly
         coordinates = [bin1Data.latitude, bin1Data.longitude];
-        coordinatesSource = bin1Data.coordinates_source || 'gps_live';
+        coordinatesSource = 'gps_live';
+        gpsValid = true;
+        satellites = bin1Data.satellites || 0;
+        
+        console.log(`[MOBILE] Using live GPS coordinates: ${coordinates[0]}, ${coordinates[1]}`);
       } else {
-        // No coordinates from ESP32 - use default fallback position
-        coordinates = [10.24371, 123.786917]; // Default Central Plaza coordinates
-        coordinatesSource = 'no_data';
+        // Try to get backup coordinates from server
+        try {
+          const displayResponse = await apiService.getBinCoordinatesForDisplay('bin1');
+          const coordinatesData = displayResponse?.coordinates;
+          
+          if (coordinatesData && coordinatesData.latitude && coordinatesData.longitude &&
+              coordinatesData.latitude !== 0 && coordinatesData.longitude !== 0) {
+            coordinates = [coordinatesData.latitude, coordinatesData.longitude];
+            coordinatesSource = coordinatesData.source || 'gps_backup';
+            gpsValid = false; // Backup coordinates are not live
+            satellites = bin1Data.satellites || 0;
+            
+            console.log(`[MOBILE] Using ${coordinatesSource} coordinates: ${coordinates[0]}, ${coordinates[1]}`);
+          } else {
+            // Fallback to default coordinates (Central Plaza)
+            coordinates = [10.24371, 123.786917];
+            coordinatesSource = 'default';
+            gpsValid = false;
+            satellites = 0;
+            console.log('[MOBILE] Using default coordinates (Central Plaza)');
+          }
+        } catch (error) {
+          console.error('[MOBILE] Error fetching backup coordinates:', error);
+          // Fallback to default coordinates (Central Plaza)
+          coordinates = [10.24371, 123.786917];
+          coordinatesSource = 'default';
+          gpsValid = false;
+          satellites = 0;
+          console.log('[MOBILE] Using default coordinates due to API error');
+        }
       }
       
       locations.push({
@@ -245,14 +323,17 @@ export function RealTimeDataProvider({ children, refreshInterval = 2000 }: RealT
         status: getStatusFromLevel(bin1Data.bin_level || 0),
         lastCollection: bin1Data.last_active || getTimeAgo(bin1Data.timestamp),
         route: 'Route A - Central',
-        gps_valid: bin1Data.gps_valid,
-        satellites: bin1Data.satellites,
+        gps_valid: bin1Data.gps_valid, // Use original GPS validity flag
+        gps_timeout: bin1Data.gps_timeout, // Use original GPS timeout flag
+        satellites: satellites,
         timestamp: bin1Data.timestamp,
         weight_kg: bin1Data.weight_kg,
         distance_cm: bin1Data.distance_cm,
-        coordinates_source: coordinatesSource,
+        coordinates_source: bin1Data.coordinates_source, // Use original coordinates source
         last_active: bin1Data.last_active,
-        gps_timestamp: bin1Data.gps_timestamp
+        gps_timestamp: bin1Data.gps_timestamp,
+        latitude: bin1Data.latitude, // Include original coordinates for validation
+        longitude: bin1Data.longitude
       });
     }
     
@@ -289,8 +370,23 @@ export function RealTimeDataProvider({ children, refreshInterval = 2000 }: RealT
   }, [fetchData, refreshInterval, loading]);
 
   // Memoize expensive calculations
-  const binLocations = useMemo(() => getDynamicBinLocations(), [getDynamicBinLocations]);
+  const [binLocations, setBinLocations] = useState<any[]>([]);
   const wasteBins = useMemo(() => getWasteBins(), [getWasteBins]);
+  
+  // Update binLocations when bin1Data changes
+  useEffect(() => {
+    const updateBinLocations = async () => {
+      try {
+        const locations = await getDynamicBinLocations();
+        setBinLocations(locations);
+      } catch (error) {
+        console.error('Error updating bin locations:', error);
+        setBinLocations([]);
+      }
+    };
+    
+    updateBinLocations();
+  }, [getDynamicBinLocations]);
 
   const value = {
     binLocations,
@@ -322,7 +418,6 @@ export function useRealTimeData() {
   }
   return context;
 }
-
 // Helper functions
 function getStatusFromLevel(level: number): 'normal' | 'warning' | 'critical' {
   if (level >= 85) return 'critical';
@@ -351,3 +446,4 @@ function getNextCollectionTime(level: number): string {
   if (level >= 70) return 'Today 3:00 PM';
   return 'Tomorrow 9:00 AM';
 }
+

@@ -1,13 +1,12 @@
 
 import axios from 'axios';
-import {
-  API_BASE_URL,
-  API_FALLBACK_LOCALHOST,
-  API_FALLBACK_ANDROID_EMULATOR,
-  API_TIMEOUT,
-  API_DEBUG,
-} from '@env';
-import { shouldShowErrorPopup, sanitizeErrorMessage } from './errorConfig';
+
+// Environment variables (hardcoded for now to avoid dotenv issues)
+const API_BASE_URL = 'http://192.168.1.26:8000';
+const API_FALLBACK_LOCALHOST = 'http://localhost:8000';
+const API_FALLBACK_ANDROID_EMULATOR = 'http://10.0.2.2:8000';
+const API_TIMEOUT = '10000';
+const API_DEBUG = 'true';
 
 // Fallback URLs in case environment variables are not loaded
 const FALLBACK_URLS = {
@@ -20,7 +19,7 @@ const FALLBACK_URLS = {
 // You can switch these as needed for web, mobile, or local
 export const BASE_URLS = {
   web: API_FALLBACK_LOCALHOST || FALLBACK_URLS.web, // Web deployment - localhost for local development
-  mobile: 'http://192.168.1.13:8000', // Mobile (Expo/React Native) - use actual IP for device access
+  mobile: 'http://192.168.1.26:8000', // Mobile (Expo/React Native) - use actual IP for device access
   local: API_FALLBACK_LOCALHOST || FALLBACK_URLS.local, // Local development
   android_emulator: API_FALLBACK_ANDROID_EMULATOR || FALLBACK_URLS.android_emulator, // Android emulator host
 };
@@ -91,12 +90,8 @@ instance.interceptors.response.use(
       });
     }
     
-    // Check if we should show error popup (usually false for better UX)
-    if (shouldShowErrorPopup(error)) {
-      // Only show critical errors as popups
-      const sanitizedMessage = sanitizeErrorMessage(error);
-      console.warn('🚨 Critical Error:', sanitizedMessage);
-    }
+    // Log error for debugging
+    console.warn('🚨 API Error:', error.message);
     
     // Always reject the promise so components can handle errors
     return Promise.reject(error);

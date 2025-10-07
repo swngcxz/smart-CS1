@@ -1,6 +1,7 @@
 import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { MapPin, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { getActiveTimeAgo } from "../../../utils/timeUtils";
 
 interface BinMarkerProps {
   bin: {
@@ -98,7 +99,7 @@ export function BinMarker({ bin }: BinMarkerProps) {
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Last Collection:</span>
-              <span className="text-sm text-gray-700">{bin.lastCollection}</span>
+              <span className="text-sm text-gray-700">{getActiveTimeAgo(bin)}</span>
             </div>
 
             {bin.binData && (

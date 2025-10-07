@@ -1,11 +1,11 @@
 import axios from 'axios';
-import {
-  API_BASE_URL,
-  API_FALLBACK_LOCALHOST,
-  API_FALLBACK_ANDROID_EMULATOR,
-  API_TIMEOUT,
-  API_DEBUG,
-} from '@env';
+
+// Environment variables (hardcoded for now to avoid dotenv issues)
+const API_BASE_URL = 'http://192.168.1.26:8000';
+const API_FALLBACK_LOCALHOST = 'http://localhost:8000';
+const API_FALLBACK_ANDROID_EMULATOR = 'http://10.0.2.2:8000';
+const API_TIMEOUT = '10000';
+const API_DEBUG = 'true';
 
 // Fallback endpoints in case environment variables are not loaded
 const FALLBACK_ENDPOINTS = [
@@ -17,8 +17,9 @@ const FALLBACK_ENDPOINTS = [
 
 // Try multiple endpoints for mobile development
 const API_ENDPOINTS = [
-  'http://192.168.1.13:8000', // Computer's current IP address
+  'http://192.168.1.26:8000', // Computer's current IP address
   API_BASE_URL || FALLBACK_ENDPOINTS[0],                    // Primary endpoint from .env
+  'http://192.168.1.13:8000', // Previous IP address (fallback)
   'http://192.168.1.4:8000',  // Previous IP address (fallback)
   API_FALLBACK_LOCALHOST || FALLBACK_ENDPOINTS[2],          // Fallback for simulator
   API_FALLBACK_ANDROID_EMULATOR || FALLBACK_ENDPOINTS[3],   // Android emulator host
@@ -178,6 +179,45 @@ export const apiService = {
         console.error('Error fetching GPS history:', error);
       }
       return [];
+    }
+  },
+
+  // Get coordinates for display (live GPS or backup)
+  async getBinCoordinatesForDisplay(binId: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/gps-backup/display/${binId}`);
+      return response.data;
+    } catch (error) {
+      if (API_DEBUG === 'true') {
+        console.error('Error fetching display coordinates:', error);
+      }
+      throw new Error('Failed to fetch display coordinates');
+    }
+  },
+
+  // Get dynamic bin status
+  async getDynamicBinStatus(binId: string): Promise<any> {
+    try {
+      const response = await api.get(`/api/gps-backup/dynamic-status/${binId}`);
+      return response.data;
+    } catch (error) {
+      if (API_DEBUG === 'true') {
+        console.error('Error fetching dynamic bin status:', error);
+      }
+      throw new Error('Failed to fetch dynamic bin status');
+    }
+  },
+
+  // Get all bins with dynamic status
+  async getAllBinsDynamicStatus(): Promise<any> {
+    try {
+      const response = await api.get('/api/gps-backup/dynamic-status');
+      return response.data;
+    } catch (error) {
+      if (API_DEBUG === 'true') {
+        console.error('Error fetching all bins dynamic status:', error);
+      }
+      throw new Error('Failed to fetch all bins dynamic status');
     }
   }
 };

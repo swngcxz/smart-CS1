@@ -17,7 +17,6 @@ const activityRoutes = require('./routers/activityRoutes');
 const activityStatsRoutes = require('./routers/activityStatsRoutes');
 const analyticsRoutes = require('./routers/analyticsRoutes');
 const wasteRoutes = require('./routers/wasteRoutes');
-const gpsFallbackRoutes = require('./routers/gpsFallbackRoutes');
 const { admin, db } = require('./models/firebase');
 const { sendJanitorAssignmentNotification } = require('./controllers/activityController');
 
@@ -37,7 +36,7 @@ const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
 const automaticTaskService = require('./services/automaticTaskService');
 const binHealthMonitor = require('./services/binHealthMonitor');
-const gpsFallbackService = require('./services/gpsFallbackService');
+const gpsBackupService = require('./services/gpsBackupService');
 const smsNotificationService = require('./services/smsNotificationService');
 const gsmService = require('./services/gsmService');
 
@@ -247,7 +246,6 @@ app.get('/api/janitors/available', async (req, res) => {
   }
 });
 
-app.use("/api/gps-fallback", gpsFallbackRoutes);
 
 app.use('/api/notifications', notificationRoutes);
 app.use('/api', binHistoryRoutes);
@@ -319,15 +317,13 @@ function setupRealTimeMonitoring() {
       
       // Process data through bin history system (with quota protection)
       try {
-        // Apply GPS fallback logic before processing
-        const processedGPSData = await gpsFallbackService.processGPSData('bin1', {
-          latitude: data.latitude,
-          longitude: data.longitude,
-          satellites: data.satellites || 0,
-          last_active: data.last_active,
-          gps_timestamp: data.gps_timestamp,
-          timestamp: Date.now()
-        });
+        // Process GPS data directly from the raw data
+        const processedGPSData = {
+          latitude: data.latitude || 0,
+          longitude: data.longitude || 0,
+          gps_valid: data.gps_valid || false,
+          coordinates_source: data.coordinates_source || 'unknown'
+        };
 
         // Process bin history for significant levels to reduce Firebase calls
         if (data.bin_level >= 70 || data.bin_level <= 10) {
@@ -889,9 +885,9 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log('[SERVER] Starting bin health monitoring system...');
   binHealthMonitor.start();
   
-  // Initialize GPS fallback service
-  await gpsFallbackService.initialize();
-  console.log('✅ GPS fallback service initialized');
+  // Initialize GPS backup service
+  await gpsBackupService.initialize();
+  console.log('✅ GPS backup service initialized');
   
   // Initialize SMS notification service
   await smsNotificationService.initialize();

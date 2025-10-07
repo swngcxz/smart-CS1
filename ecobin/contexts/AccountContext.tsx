@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import axiosInstance from '../utils/axiosInstance';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface AccountData {
   id?: string;
@@ -26,6 +27,17 @@ interface AccountProviderProps {
   children: ReactNode;
 }
 
+// Helper function to get stored token
+const getStoredToken = async (): Promise<string | null> => {
+  try {
+    const token = await AsyncStorage.getItem('auth_token');
+    return token;
+  } catch (error) {
+    console.log('Error getting stored token:', error);
+    return null;
+  }
+};
+
 export function AccountProvider({ children }: AccountProviderProps) {
   const [account, setAccountState] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,8 +53,15 @@ export function AccountProvider({ children }: AccountProviderProps) {
       setError(null);
     } catch (err: any) {
       console.error('👤 Mobile App - Failed to fetch account:', err);
-      setError(err.response?.data?.error || 'Failed to fetch account');
-      setAccountState(null);
+      // Don't set error for 401 - user just isn't logged in
+      if (err.response?.status === 401) {
+        console.log('👤 Mobile App - User not authenticated, setting account to null');
+        setAccountState(null);
+        setError(null);
+      } else {
+        setError(err.response?.data?.error || 'Failed to fetch account');
+        setAccountState(null);
+      }
     } finally {
       setLoading(false);
       if (!isInitialized) {
@@ -70,10 +89,29 @@ export function AccountProvider({ children }: AccountProviderProps) {
     }
   };
 
-  // Only fetch once on mount
+  // Only fetch account data if we have a token (user is logged in)
   useEffect(() => {
-    console.log('👤 Mobile App - AccountContext: Initial fetch starting...');
-    fetchAccount();
+    // Check if we have a token in cookies or storage
+    const checkAuthAndFetch = async () => {
+      try {
+        // Try to get token from cookies or AsyncStorage
+        const token = await getStoredToken();
+        if (token) {
+          console.log('👤 Mobile App - Token found, fetching account...');
+          await fetchAccount();
+        } else {
+          console.log('👤 Mobile App - No token found, skipping account fetch');
+          setLoading(false);
+          setIsInitialized(true);
+        }
+      } catch (error) {
+        console.log('👤 Mobile App - Error checking auth, skipping account fetch');
+        setLoading(false);
+        setIsInitialized(true);
+      }
+    };
+    
+    checkAuthAndFetch();
   }, []); // Empty dependency array - only run once
 
   const value = {
