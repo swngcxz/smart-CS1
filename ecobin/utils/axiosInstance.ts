@@ -1,5 +1,6 @@
 
 import axios from 'axios';
+import { shouldShowErrorPopup, sanitizeErrorMessage } from './errorConfig';
 
 // Environment variables (hardcoded for now to avoid dotenv issues)
 const API_BASE_URL = 'http://192.168.1.26:8000';

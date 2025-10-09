@@ -102,7 +102,7 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
 
   const filteredStaff = useMemo(() => {
     // Filter out the current logged-in user and apply route filter
-    let filtered = staffList.filter((s) => {
+    const filtered = staffList.filter((s) => {
       // Exclude current user
       const isNotCurrentUser = !user || s.email !== user.email;
       // Filter by route

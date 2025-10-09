@@ -2,7 +2,7 @@ import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { MapPin, AlertTriangle, CheckCircle, Clock, Wifi, WifiOff } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getActiveTimeAgo } from "../../../utils/timeUtils";
+import { getActiveTimeAgo, getTimeAgo } from "../../../utils/timeUtils";
 
 interface DynamicBinMarkerProps {
   bin: {
@@ -269,7 +269,7 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
                 <div className="flex justify-between">
                   <span>Last Update:</span>
                   <span className="font-medium text-gray-700">
-                    {bin.timestamp ? getTimeAgo(bin.timestamp) : 'Unknown'}
+                    {bin.timestamp ? getTimeAgo(bin.timestamp).text : 'Unknown'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -291,7 +291,7 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
                     bin.coordinates_source === 'gps_cached' ? 'text-orange-600' : 
                     'text-red-600'
                   }`}>
-                    {bin.last_active || (bin.timestamp ? getTimeAgo(bin.timestamp) : 'Unknown')}
+                    {bin.last_active || (bin.timestamp ? getTimeAgo(bin.timestamp).text : 'Unknown')}
                   </span>
                 </div>
               </div>

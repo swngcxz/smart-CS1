@@ -26,6 +26,8 @@ export class MapErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Map Error Boundary caught an error:', error, errorInfo);
+    console.error('Error stack:', error.stack);
+    console.error('Component stack:', errorInfo.componentStack);
   }
 
   handleRetry = () => {
@@ -62,8 +64,19 @@ export class MapErrorBoundary extends Component<Props, State> {
               {this.state.error?.message?.includes('network') || 
                this.state.error?.message?.includes('fetch') 
                 ? "Unable to load map tiles. Please check your internet connection and try again."
+                : this.state.error?.message?.includes('Leaflet') || 
+                  this.state.error?.message?.includes('MapContainer')
+                ? "Map library loading issue. Please refresh the page or check your browser console."
                 : "There was an issue loading the map. This might be due to tile server limitations or network issues."}
             </p>
+            
+            {this.state.error?.message && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  <strong>Error:</strong> {this.state.error.message}
+                </p>
+              </div>
+            )}
             
             <div className="space-y-2">
               <Button 

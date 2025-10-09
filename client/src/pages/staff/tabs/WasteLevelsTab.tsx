@@ -2,11 +2,7 @@ import { useState, useEffect } from "react";
 import { WasteLevelCards } from "../pages/WasteLevelCards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
-import { useJanitors, useActivityLogging } from "@/hooks/useStaffApi";
-import { toast } from "@/hooks/use-toast";
 import { Smartphone, Wifi, WifiOff } from "lucide-react";
 import api from "@/lib/api";
 
@@ -58,11 +54,6 @@ function useGSMStatus() {
 
 export function WasteLevelsTab() {
   const [selectedLocation, setSelectedLocation] = useState("Central Plaza");
-  const [selectedBin, setSelectedBin] = useState<WasteBin | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedJanitorId, setSelectedJanitorId] = useState<string | null>(null);
-  const [taskNote, setTaskNote] = useState("");
-  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const { wasteBins, loading, error, bin1Data } = useRealTimeData();
 
@@ -73,33 +64,42 @@ export function WasteLevelsTab() {
     error,
     bin1Data,
     wasteBinsLength: wasteBins.length,
-    isModalOpen,
-    selectedBin: selectedBin?.id,
-  });
-  const { janitors, loading: janitorsLoading, error: janitorsError } = useJanitors();
-  const { logActivity, loading: activityLoading, error: activityError } = useActivityLogging();
-
-  // Debug logging to see what janitors data is being fetched
-  console.log("🔍 Janitors Debug:", {
-    janitors,
-    janitorsLength: janitors.length,
-    loading: janitorsLoading,
-    error: janitorsError,
+    bin1DataDetails: bin1Data ? {
+      bin_level: bin1Data.bin_level,
+      weight_percent: bin1Data.weight_percent,
+      height_percent: bin1Data.height_percent,
+      timestamp: bin1Data.timestamp,
+      gps_valid: bin1Data.gps_valid,
+      latitude: bin1Data.latitude,
+      longitude: bin1Data.longitude,
+      satellites: bin1Data.satellites
+    } : null
   });
 
+
+  // Get real-time bin1 data
+  const realTimeBin1 = wasteBins.find((wb) => wb.location === "Central Plaza" && wb.id === "bin1");
+  
+  // Debug logging for real-time bin detection
+  console.log('🔍 Real-time bin detection:', {
+    wasteBinsCount: wasteBins.length,
+    wasteBins: wasteBins.map(wb => ({ id: wb.id, location: wb.location, level: wb.level })),
+    realTimeBin1: realTimeBin1 ? { id: realTimeBin1.id, location: realTimeBin1.location, level: realTimeBin1.level } : null
+  });
+  
   // Create real-time data for each location
   const realTimeBins: WasteBin[] = [
-    // Central Plaza - ONLY bin1 real-time data (as requested)
-    ...wasteBins
-      .filter((wb) => wb.location === "Central Plaza" && wb.id === "bin1")
-      .map((realTimeBin) => ({
-        ...realTimeBin,
-        id: realTimeBin.id,
-        wasteType: "Mixed",
-        nextCollection: "Today 3:00 PM",
-      })),
-
-    // Add static backup bins for Central Plaza to show 4 total bins
+    // Central Plaza - Add real-time bin1 data + 3 static bins (4 total)
+    ...(realTimeBin1 ? [
+      {
+        ...realTimeBin1,
+        id: realTimeBin1.id,
+        wasteType: realTimeBin1.wasteType || "Mixed",
+        nextCollection: realTimeBin1.nextCollection || "Today 3:00 PM",
+      }
+    ] : []),
+    
+    // Always include the 3 static bins for Central Plaza
     {
       id: "2",
       location: "Central Plaza",
@@ -260,94 +260,6 @@ export function WasteLevelsTab() {
 
   const filteredBins = realTimeBins.filter((bin) => bin.location === selectedLocation);
 
-  const handleCardClick = (bin: WasteBin) => {
-    console.log("Card clicked:", bin);
-    setSelectedBin(bin);
-    setSelectedJanitorId(null); // Reset selection on open
-    setIsModalOpen(true);
-    console.log("Modal should open now");
-  };
-
-  const handleAssignTask = async () => {
-    if (!selectedJanitorId || !selectedBin) {
-      toast({
-        title: "Error",
-        description: "Please select a janitor and ensure bin data is available",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const selectedJanitor = janitors.find((j) => j.id === selectedJanitorId);
-      if (!selectedJanitor) {
-        toast({
-          title: "Error",
-          description: "Selected janitor not found",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      await logActivity({
-        user_id: "staff-user",
-        bin_id: selectedBin.id,
-        bin_location: selectedBin.location,
-        bin_status: selectedBin.status,
-        bin_level: selectedBin.level,
-        assigned_janitor_id: selectedJanitorId,
-        assigned_janitor_name: selectedJanitor.fullName,
-        task_note: taskNote,
-        activity_type: "task_assignment",
-      });
-
-      // ✅ Close modal first
-      setIsModalOpen(false);
-
-      // ✅ Then show toast
-      toast({
-        title: "Success",
-        description: `Task assigned to ${selectedJanitor.fullName}.`,
-        duration: 2000,
-      });
-
-      window.dispatchEvent(new CustomEvent("activityLogCreated"));
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to assign task",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const filteredJanitors = selectedBin
-    ? janitors.filter((j) => {
-        // Ensure we only show janitors with the correct role
-        const hasValidRole = j.role && j.role.toLowerCase() === "janitor";
-        // For now, accept any janitor regardless of location to test the data
-        const hasMatchingLocation = true; // Temporarily accept all janitors
-
-        // Debug logging to help verify role filtering
-        console.log(`🔍 Janitor Filter: ${j.fullName}`, {
-          role: j.role,
-          location: j.location,
-          selectedBinLocation: selectedBin.location,
-          hasValidRole,
-          hasMatchingLocation,
-          source: (j as any).source || "unknown",
-        });
-
-        return hasValidRole && hasMatchingLocation;
-      })
-    : [];
-
-  console.log("🔍 Filtered Janitors Result:", {
-    totalJanitors: janitors.length,
-    filteredCount: filteredJanitors.length,
-    selectedBinLocation: selectedBin?.location,
-    filteredJanitors: filteredJanitors.map((j) => ({ name: j.fullName, location: j.location })),
-  });
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
   return (
     <>
@@ -382,7 +294,7 @@ export function WasteLevelsTab() {
                 }`}
               ></div>
               <span className="text-xs font-medium">
-                {loading ? "Connecting..." : error ? "Connection Error" : bin1Data ? "Live Data" : "No Data"}
+                {loading ? "Connecting..." : error ? "Connection Error" : bin1Data ? `Live Data (${bin1Data.weight_percent || bin1Data.bin_level || 0}%)` : "No Data"}
               </span>
             </div>
 
@@ -399,7 +311,7 @@ export function WasteLevelsTab() {
           </div>
         </div>
 
-        <WasteLevelCards onCardClick={setSelectedLocation} />
+        <WasteLevelCards onCardClick={setSelectedLocation} allBins={realTimeBins} />
 
         <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
           <CardHeader>
@@ -412,12 +324,18 @@ export function WasteLevelsTab() {
               {filteredBins.map((bin) => (
                 <Card
                   key={bin.id}
-                  onClick={() => handleCardClick(bin)}
-                  className="cursor-pointer p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-md transition"
+                  className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">{bin.location}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{bin.location}</h3>
+                        {bin.id === "bin1" && bin1Data && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                            LIVE
+                          </span>
+                        )}
+                      </div>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
                           bin.status === "critical"
@@ -461,197 +379,6 @@ export function WasteLevelsTab() {
         </Card>
       </div>
 
-      {isModalOpen && selectedBin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm transition-opacity">
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-xl p-6 relative transform transition-transform duration-300 scale-100">
-            {/* Modal Header */}
-            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Bin Information - {selectedBin.location}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl font-bold transition-colors"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Bin Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300">
-              {/* Bin ID */}
-              <div>
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  {selectedBin.location.charAt(0).toUpperCase() + selectedBin.location.slice(1)} Bin:
-                </span>{" "}
-                {selectedBin.id}
-              </div>
-
-              {/* GPS Status */}
-              <div>
-                <span className="font-semibold text-gray-900 dark:text-white">GPS:</span>{" "}
-                <span
-                  className={`font-semibold ${
-                    bin1Data?.gps_valid ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
-                  }`}
-                >
-                  {bin1Data?.gps_valid ? "Online" : "Offline"}
-                </span>
-              </div>
-
-              {/* Fill Level */}
-              <div className="col-span-2">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-semibold text-gray-900 dark:text-white">Fill Level</span>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      selectedBin.status === "critical"
-                        ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                        : selectedBin.status === "warning"
-                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
-                        : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                    }`}
-                  >
-                    {selectedBin.status.toUpperCase()}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-                  <div
-                    className={`h-3 rounded-full transition-all duration-500 ${
-                      selectedBin.level >= 80
-                        ? "bg-red-500"
-                        : selectedBin.level >= 50
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
-                    }`}
-                    style={{ width: `${selectedBin.level}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* Last Collected */}
-              <div className="mb-1">
-                <span className="font-semibold text-gray-900 dark:text-white">Last Collected:</span>{" "}
-                {selectedBin.lastCollected}
-              </div>
-
-              {/* Weight & Height */}
-              <div className="col-span-2 grid grid-cols-1 md:grid-cols-2 gap-2 p-0 border-0 shadow-none bg-transparent -mt-1">
-                {/* Weight Section */}
-                <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                  <div className="flex justify-between mb-1">
-                    <span className="font-semibold text-gray-900">Weight</span>
-                    <span className="text-sm font-medium text-gray-700">{(bin1Data?.weight_kg ?? 0).toFixed()} kg</span>
-                  </div>
-                  <div className="w-full bg-gray-200 h-2 rounded-full">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-500 ${
-                        (bin1Data?.weight_percent ?? 0) >= 90
-                          ? "bg-red-500"
-                          : (bin1Data?.weight_percent ?? 0) >= 60
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                      }`}
-                      style={{ width: `${Math.max(0, Math.min(100, bin1Data?.weight_percent ?? 0))}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Height Section */}
-                <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                  <div className="flex justify-between mb-1">
-                    <span className="font-semibold text-gray-900">Height</span>
-                    <span className="text-sm font-medium text-gray-700">
-                      {Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 h-2 rounded-full">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-500 ${
-                        (bin1Data?.height_percent ?? 0) >= 90
-                          ? "bg-red-500"
-                          : (bin1Data?.height_percent ?? 0) >= 60
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                      }`}
-                      style={{ width: `${Math.max(0, Math.min(100, bin1Data?.height_percent ?? 0))}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Suggested Action */}
-              <div className="col-span-2 mt-3 text-sm text-gray-700 dark:text-gray-300 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                <span className="font-semibold text-gray-900 dark:text-white">Suggested Action:</span>{" "}
-                {selectedBin.status === "critical"
-                  ? "Immediate collection required."
-                  : selectedBin.status === "warning"
-                  ? "Monitor closely and prepare for collection."
-                  : "No action needed at the moment."}
-              </div>
-            </div>
-
-            {/* Assign & Task Notes */}
-            <div className="mt-4 space-y-4">
-              {/* Assign Janitor */}
-              <div>
-                <label className="block font-semibold text-gray-900 dark:text-white mb-2">
-                  Assign to Janitor ({filteredJanitors.length} available)
-                </label>
-                <Select onValueChange={(val) => setSelectedJanitorId(val)}>
-                  <SelectTrigger className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700">
-                    <SelectValue placeholder={janitorsLoading ? "Loading..." : "Select Janitor"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {janitorsLoading ? (
-                      <SelectItem disabled value="loading">
-                        Loading...
-                      </SelectItem>
-                    ) : filteredJanitors.length > 0 ? (
-                      filteredJanitors.map((janitor) => (
-                        <SelectItem key={janitor.id} value={janitor.id}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{janitor.fullName}</span>
-                            <span className="text-xs text-gray-500">
-                              {/* {janitor.location} • Role: {janitor.role || "Janitor"} */}
-                            </span>
-                          </div>
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem disabled value="none">
-                        No janitors available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Task Notes */}
-              <div>
-                <label className="block font-semibold text-gray-900 dark:text-white mb-2">Task Notes (Optional)</label>
-                <textarea
-                  className="w-full h-16 p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-white"
-                  placeholder="e.g., Clean the Bin."
-                  value={taskNote}
-                  onChange={(e) => setTaskNote(e.target.value)}
-                />
-              </div>
-
-              {/* Buttons */}
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleAssignTask}
-                  disabled={activityLoading || !selectedJanitorId}
-                  className="bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition"
-                >
-                  {activityLoading ? "Assigning..." : "Assign Task"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

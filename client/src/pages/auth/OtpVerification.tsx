@@ -38,7 +38,7 @@ export default function OtpVerification() {
       const otp = generateOtp();
       sessionStorage.setItem(OTP_STORAGE_KEY, otp);
       // DEMO: show in console only
-      // eslint-disable-next-line no-console
+       
       console.log("[DEMO] Generated OTP:", otp);
       toast({
         title: "Verification code sent",
@@ -164,7 +164,7 @@ export default function OtpVerification() {
     const newOtp = generateOtp();
     sessionStorage.setItem(OTP_STORAGE_KEY, newOtp);
     // DEMO: show in console only
-    // eslint-disable-next-line no-console
+     
     console.log("[DEMO] Resent OTP:", newOtp);
 
     setDigits(Array(OTP_LENGTH).fill(""));

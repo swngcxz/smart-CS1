@@ -40,14 +40,19 @@ const wasteData = [
 
 export function WasteLevelCards({
   onCardClick,
+  allBins,
 }: {
   onCardClick: (location: string) => void;
+  allBins?: any[]; // Pass all bins from parent component
 }) {
   const { wasteBins } = useRealTimeData();
+  
+  // Use allBins if provided, otherwise fall back to wasteBins from hook
+  const binsToUse = allBins || wasteBins;
 
-  // Calculate average levels for each location from all real-time data
+  // Calculate average levels for each location from all bins
   const calculateAverageLevel = (location: string) => {
-    const locationBins = wasteBins.filter(bin => bin.location === location);
+    const locationBins = binsToUse.filter(bin => bin.location === location);
     if (locationBins.length === 0) return 0;
     
     const totalLevel = locationBins.reduce((sum, bin) => sum + bin.level, 0);
@@ -56,7 +61,7 @@ export function WasteLevelCards({
 
   // Calculate average status for each location
   const calculateAverageStatus = (location: string) => {
-    const locationBins = wasteBins.filter(bin => bin.location === location);
+    const locationBins = binsToUse.filter(bin => bin.location === location);
     if (locationBins.length === 0) return "normal";
     
     const criticalCount = locationBins.filter(bin => bin.status === "critical").length;
@@ -69,7 +74,7 @@ export function WasteLevelCards({
 
   // Get most recent last collected time for each location
   const getMostRecentLastCollected = (location: string) => {
-    const locationBins = wasteBins.filter(bin => bin.location === location);
+    const locationBins = binsToUse.filter(bin => bin.location === location);
     if (locationBins.length === 0) return "Unknown";
     
     // For simplicity, return the first one's lastCollected
@@ -84,7 +89,7 @@ export function WasteLevelCards({
     const mostRecentLastCollected = getMostRecentLastCollected(bin.location);
     
     // Check if we have real-time data for this location
-    const hasRealTimeData = wasteBins.some(wb => wb.location === bin.location);
+    const hasRealTimeData = binsToUse.some(wb => wb.location === bin.location);
     
     return {
       ...bin,
@@ -110,7 +115,7 @@ export function WasteLevelCards({
                   <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
                     {bin.location}
                   </CardTitle>
-                  {wasteBins.some(wb => wb.location === bin.location) && (
+                  {binsToUse.some(wb => wb.location === bin.location) && (
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                       <span className="text-xs text-green-600 dark:text-green-400">Live</span>

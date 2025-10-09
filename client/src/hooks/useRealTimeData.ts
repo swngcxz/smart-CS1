@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
+import { getTimeAgo as getTimeAgoUtil } from '@/utils/timeUtils';
 
 export interface BinData {
   weight_kg: number;
@@ -134,17 +135,26 @@ export function useRealTimeData() {
     
     // Use actual bin1 data from Firebase
     if (bin1Data) {
+      console.log('🔄 Converting bin1Data to WasteBin format:', bin1Data);
+      
+      // Calculate level from weight_percent if bin_level is not available or very low
+      const calculatedLevel = (bin1Data.bin_level && bin1Data.bin_level > 0) ? bin1Data.bin_level : (bin1Data.weight_percent || 0);
+      
       bins.push({
         id: 'bin1',
-        location: bin1Data.name || 'Central Plaza', // Use actual name from Firebase
-        level: bin1Data.bin_level || 0,
-        status: getStatusFromLevel(bin1Data.bin_level || 0),
-        lastCollected: getTimeAgo(bin1Data.timestamp),
+        location: 'Central Plaza', // Standardize location name for filtering
+        level: calculatedLevel,
+        status: getStatusFromLevel(calculatedLevel),
+        lastCollected: getTimeAgoUtil(bin1Data.timestamp).text,
         capacity: '500L',
         wasteType: bin1Data.type || 'Mixed',
-        nextCollection: getNextCollectionTime(bin1Data.bin_level || 0),
+        nextCollection: getNextCollectionTime(calculatedLevel),
         binData: bin1Data
       });
+      
+      console.log('✅ Created WasteBin:', bins[0]);
+    } else {
+      console.log('⚠️ No bin1Data available for conversion');
     }
     
     return bins;
@@ -176,7 +186,7 @@ export function useRealTimeData() {
         position: coordinates,
         level: bin1Data.bin_level || 0,
         status: getStatusFromLevel(bin1Data.bin_level || 0),
-        lastCollection: getTimeAgo(bin1Data.timestamp),
+        lastCollection: getTimeAgoUtil(bin1Data.timestamp).text,
         route: 'Route A - Central',
         gps_valid: bin1Data.gps_valid,
         satellites: bin1Data.satellites,
@@ -240,20 +250,6 @@ function getStatusFromLevel(level: number): 'normal' | 'warning' | 'critical' {
   return 'normal'; // Handle 0 level as normal
 }
 
-function getTimeAgo(timestamp: number): string {
-  if (!timestamp) return 'Just now';
-  
-  const now = Date.now();
-  const diff = now - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  
-  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-  return 'Just now';
-}
 
 function getNextCollectionTime(level: number): string {
   if (level >= 85) return 'Immediate';
