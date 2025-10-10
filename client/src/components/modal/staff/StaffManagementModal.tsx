@@ -79,8 +79,7 @@ export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: 
     } catch (error: any) {
       toast({
         title: "Failed to update staff",
-        description:
-          error?.response?.data?.error || "An error occurred while updating staff information.",
+        description: error?.response?.data?.error || "An error occurred while updating staff information.",
         variant: "destructive",
       });
     } finally {

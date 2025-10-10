@@ -13,9 +13,9 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
   const [role, setRole] = useState("janitor");
   const [zone, setZone] = useState("");
   const [status, setStatus] = useState("active");
-  
+
   // Validation states
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Validation functions
@@ -65,27 +65,27 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
     }
     // Accept formats: +63XXXXXXXXXX, 09XXXXXXXXX, 9XXXXXXXXX
     const phPhoneRegex = /^(\+63|0)?9\d{9}$/;
-    if (!phPhoneRegex.test(contactNumber.replace(/\s+/g, ''))) {
+    if (!phPhoneRegex.test(contactNumber.replace(/\s+/g, ""))) {
       return "Please enter a valid Philippines mobile number (e.g., +639123456789 or 09123456789)";
     }
     return "";
   };
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
-    
+    const newErrors: { [key: string]: string } = {};
+
     const nameError = validateFullName(name);
     if (nameError) newErrors["name"] = nameError;
-    
+
     const emailError = validateEmail(email);
     if (emailError) newErrors["email"] = emailError;
-    
+
     const passwordError = validatePassword(password);
     if (passwordError) newErrors["password"] = passwordError;
-    
+
     const contactError = validateContactNumber(contactNumber);
     if (contactError) newErrors["contactNumber"] = contactError;
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -101,13 +101,13 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
         fullName: name.trim(),
         email: email.trim(),
         password,
-        contactNumber: contactNumber.replace(/\s+/g, ''),
+        contactNumber: contactNumber.replace(/\s+/g, ""),
         role,
         location: zone,
         status,
         lastActivity: "Just now",
       });
-      
+
       // Reset form only on success
       setName("");
       setEmail("");
@@ -146,44 +146,40 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Input 
-              placeholder="Full Name (First Last)" 
-              value={name} 
+            <Input
+              placeholder="Full Name (First Last)"
+              value={name}
               onChange={(e) => {
                 setName(e.target.value);
                 if (errors["name"]) {
-                  setErrors(prev => ({ ...prev, name: "" }));
+                  setErrors((prev) => ({ ...prev, name: "" }));
                 }
               }}
               className={errors["name"] ? "border-red-500" : ""}
             />
             {errors["name"] && (
               <Alert className="mt-1">
-                <AlertDescription className="text-red-600 text-sm">
-                  {errors["name"]}
-                </AlertDescription>
+                <AlertDescription className="text-red-600 text-sm">{errors["name"]}</AlertDescription>
               </Alert>
             )}
           </div>
 
           <div>
-            <Input 
-              placeholder="Email" 
-              type="email" 
-              value={email} 
+            <Input
+              placeholder="Email"
+              type="email"
+              value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (errors["email"]) {
-                  setErrors(prev => ({ ...prev, email: "" }));
+                  setErrors((prev) => ({ ...prev, email: "" }));
                 }
               }}
               className={errors["email"] ? "border-red-500" : ""}
             />
             {errors["email"] && (
               <Alert className="mt-1">
-                <AlertDescription className="text-red-600 text-sm">
-                  {errors["email"]}
-                </AlertDescription>
+                <AlertDescription className="text-red-600 text-sm">{errors["email"]}</AlertDescription>
               </Alert>
             )}
           </div>
@@ -196,16 +192,14 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
               onChange={(e) => {
                 setPassword(e.target.value);
                 if (errors["password"]) {
-                  setErrors(prev => ({ ...prev, password: "" }));
+                  setErrors((prev) => ({ ...prev, password: "" }));
                 }
               }}
               className={errors["password"] ? "border-red-500" : ""}
             />
             {errors["password"] && (
               <Alert className="mt-1">
-                <AlertDescription className="text-red-600 text-sm">
-                  {errors["password"]}
-                </AlertDescription>
+                <AlertDescription className="text-red-600 text-sm">{errors["password"]}</AlertDescription>
               </Alert>
             )}
           </div>
@@ -217,16 +211,14 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
               onChange={(e) => {
                 setContactNumber(e.target.value);
                 if (errors["contactNumber"]) {
-                  setErrors(prev => ({ ...prev, contactNumber: "" }));
+                  setErrors((prev) => ({ ...prev, contactNumber: "" }));
                 }
               }}
               className={errors["contactNumber"] ? "border-red-500" : ""}
             />
             {errors["contactNumber"] && (
               <Alert className="mt-1">
-                <AlertDescription className="text-red-600 text-sm">
-                  {errors["contactNumber"]}
-                </AlertDescription>
+                <AlertDescription className="text-red-600 text-sm">{errors["contactNumber"]}</AlertDescription>
               </Alert>
             )}
           </div>
@@ -254,10 +246,10 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
             </SelectContent>
           </Select>
 
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={isSubmitting || Object.keys(errors).length > 0}
-            className="w-full bg-green-500 hover:bg-green-600 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="w-full bg-green-800 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Adding..." : "Add Janitor"}
           </Button>

@@ -5,9 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Clock, MapPin, Trash2, AlertTriangle, CheckCircle, XCircle, Filter, Download, Loader2, ChevronDown } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Filter,
+  Download,
+  Loader2,
+  ChevronDown,
+} from "lucide-react";
 import api from "@/lib/api";
-
+import BinHistorySkeleton from "@/components/skeletons/BinHistorySkeleton";
 interface BinHistoryRecord {
   id: string;
   binId: string;
@@ -65,85 +77,88 @@ export function BinHistory() {
   }, []);
 
   // Reverse geocoding function to get location name from coordinates
-  const getLocationName = useCallback(async (lat: number, lng: number): Promise<string> => {
-    const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
-    
-    // Check cache first
-    if (locationCache.has(cacheKey)) {
-      return locationCache.get(cacheKey)!;
-    }
+  const getLocationName = useCallback(
+    async (lat: number, lng: number): Promise<string> => {
+      const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
 
-    // Check if already loading this location
-    if (loadingLocations.has(cacheKey)) {
-      return "Loading...";
-    }
-
-    try {
-      // Add to loading set
-      setLoadingLocations(prev => new Set(prev).add(cacheKey));
-
-      // Use OpenStreetMap Nominatim API (free, no API key required)
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch location');
+      // Check cache first
+      if (locationCache.has(cacheKey)) {
+        return locationCache.get(cacheKey)!;
       }
 
-      const data = await response.json();
-      
-      let locationName = "Unknown Location";
-      
-      if (data && data.address) {
-        // Extract barangay and city/municipality from address components
-        const address = data.address;
-        const barangay = address.village || address.suburb || address.hamlet || address.neighbourhood;
-        const city = address.city || address.town || address.municipality;
-        
-        if (barangay && city) {
-          locationName = `${barangay}, ${city}`;
-        } else if (city) {
-          locationName = city;
-        } else if (barangay) {
-          locationName = barangay;
-        } else if (data.display_name) {
-          // Fallback: try to extract from display_name
-          const parts = data.display_name.split(', ');
+      // Check if already loading this location
+      if (loadingLocations.has(cacheKey)) {
+        return "Loading...";
+      }
+
+      try {
+        // Add to loading set
+        setLoadingLocations((prev) => new Set(prev).add(cacheKey));
+
+        // Use OpenStreetMap Nominatim API (free, no API key required)
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch location");
+        }
+
+        const data = await response.json();
+
+        let locationName = "Unknown Location";
+
+        if (data && data.address) {
+          // Extract barangay and city/municipality from address components
+          const address = data.address;
+          const barangay = address.village || address.suburb || address.hamlet || address.neighbourhood;
+          const city = address.city || address.town || address.municipality;
+
+          if (barangay && city) {
+            locationName = `${barangay}, ${city}`;
+          } else if (city) {
+            locationName = city;
+          } else if (barangay) {
+            locationName = barangay;
+          } else if (data.display_name) {
+            // Fallback: try to extract from display_name
+            const parts = data.display_name.split(", ");
+            if (parts.length >= 2) {
+              locationName = `${parts[0]}, ${parts[1]}`;
+            } else {
+              locationName = parts[0] || "Unknown Location";
+            }
+          }
+        } else if (data && data.display_name) {
+          // Fallback to display_name parsing
+          const parts = data.display_name.split(", ");
           if (parts.length >= 2) {
             locationName = `${parts[0]}, ${parts[1]}`;
           } else {
             locationName = parts[0] || "Unknown Location";
           }
         }
-      } else if (data && data.display_name) {
-        // Fallback to display_name parsing
-        const parts = data.display_name.split(', ');
-        if (parts.length >= 2) {
-          locationName = `${parts[0]}, ${parts[1]}`;
-        } else {
-          locationName = parts[0] || "Unknown Location";
-        }
-      }
 
-      // Cache the result
-      setLocationCache(prev => new Map(prev).set(cacheKey, locationName));
-      
-      return locationName;
-    } catch (error) {
-      console.error('Error fetching location:', error);
-      const fallbackName = `Coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      setLocationCache(prev => new Map(prev).set(cacheKey, fallbackName));
-      return fallbackName;
-    } finally {
-      // Remove from loading set
-      setLoadingLocations(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(cacheKey);
-        return newSet;
-      });
-    }
-  }, [locationCache, loadingLocations]);
+        // Cache the result
+        setLocationCache((prev) => new Map(prev).set(cacheKey, locationName));
+
+        return locationName;
+      } catch (error) {
+        console.error("Error fetching location:", error);
+        const fallbackName = `Coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        setLocationCache((prev) => new Map(prev).set(cacheKey, fallbackName));
+        return fallbackName;
+      } finally {
+        // Remove from loading set
+        setLoadingLocations((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(cacheKey);
+          return newSet;
+        });
+      }
+    },
+    [locationCache, loadingLocations]
+  );
 
   // Apply filters
   useEffect(() => {
@@ -203,7 +218,7 @@ export function BinHistory() {
       setLoading(true);
       console.log("🔍 Fetching bin history from:", "http://localhost:8000/api/bin-history");
       const response = await api.get("/api/bin-history");
-      
+
       console.log("📊 API Response:", response);
       console.log("📊 Response data:", response.data);
       console.log("📊 Response status:", response.status);
@@ -241,23 +256,11 @@ export function BinHistory() {
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
       case "CRITICAL":
-        return (
-          <div className="flex items-center gap-1 text-red-600">
-            Critical
-          </div>
-        );
+        return <div className="flex items-center gap-1 text-red-600">Critical</div>;
       case "WARNING":
-        return (
-          <div className="flex items-center gap-1 text-yellow-600">
-            Warning
-          </div>
-        );
+        return <div className="flex items-center gap-1 text-yellow-600">Warning</div>;
       case "OK":
-        return (
-          <div className="flex items-center gap-1 text-green-600">
-            Normal
-          </div>
-        );
+        return <div className="flex items-center gap-1 text-green-600">Normal</div>;
       case "ERROR":
         return (
           <div className="flex items-center gap-1 text-red-600">
@@ -279,12 +282,12 @@ export function BinHistory() {
 
   // Utility function to parse various timestamp formats
   const parseTimestamp = (timestamp: string | object): Date | null => {
-    if (!timestamp || timestamp === 'Invalid Date' || timestamp === 'null' || timestamp === 'undefined') {
+    if (!timestamp || timestamp === "Invalid Date" || timestamp === "null" || timestamp === "undefined") {
       return null;
     }
 
     // Handle Firebase timestamp objects
-    if (typeof timestamp === 'object' && timestamp !== null) {
+    if (typeof timestamp === "object" && timestamp !== null) {
       const firebaseTimestamp = timestamp as any;
       if (firebaseTimestamp._seconds) {
         return new Date(firebaseTimestamp._seconds * 1000);
@@ -295,10 +298,10 @@ export function BinHistory() {
     }
 
     // Handle string timestamps
-    if (typeof timestamp === 'string') {
+    if (typeof timestamp === "string") {
       // Try different timestamp formats
       let date = new Date(timestamp);
-      
+
       // If the first attempt fails, try parsing as ISO string or Unix timestamp
       if (isNaN(date.getTime())) {
         // Try as Unix timestamp (seconds or milliseconds)
@@ -308,7 +311,7 @@ export function BinHistory() {
           date = new Date(numTimestamp > 1000000000000 ? numTimestamp : numTimestamp * 1000);
         } else {
           // Try parsing with different formats
-          date = new Date(timestamp.replace(' ', 'T')); // Handle space instead of T
+          date = new Date(timestamp.replace(" ", "T")); // Handle space instead of T
         }
       }
 
@@ -320,19 +323,19 @@ export function BinHistory() {
 
   const formatTimestamp = (timestamp: string | object) => {
     const date = parseTimestamp(timestamp);
-    
+
     if (!date) {
       return {
-        date: 'N/A',
-        time: 'N/A',
+        date: "N/A",
+        time: "N/A",
       };
     }
 
     return {
-      date: date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: '2-digit'
+      date: date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "2-digit",
       }),
       time: date.toLocaleTimeString(),
     };
@@ -342,16 +345,16 @@ export function BinHistory() {
     // Format coordinates in a more readable way
     const lat = gps.lat.toFixed(4);
     const lng = gps.lng.toFixed(4);
-    
+
     // Add cardinal directions for better understanding
-    const latDir = gps.lat >= 0 ? 'N' : 'S';
-    const lngDir = gps.lng >= 0 ? 'E' : 'W';
-    
+    const latDir = gps.lat >= 0 ? "N" : "S";
+    const lngDir = gps.lng >= 0 ? "E" : "W";
+
     return `${Math.abs(parseFloat(lat))}°${latDir}, ${Math.abs(parseFloat(lng))}°${lngDir}`;
   };
 
   // Location display component with async loading
-  const LocationDisplay = ({ gps, gpsValid }: { gps: { lat: number; lng: number }, gpsValid: boolean }) => {
+  const LocationDisplay = ({ gps, gpsValid }: { gps: { lat: number; lng: number }; gpsValid: boolean }) => {
     const [locationName, setLocationName] = useState<string>("");
     const [isLoading, setIsLoading] = useState(true);
     const cacheKey = `${gps.lat.toFixed(4)},${gps.lng.toFixed(4)}`;
@@ -404,26 +407,14 @@ export function BinHistory() {
   };
 
   const exportToCSV = () => {
-    const headers = [
-      "Bin ID",
-      "Timestamp",
-      "Bin Level (%)",
-      "Location",
-      "Status",
-      "Error Message",
-    ];
+    const headers = ["Bin ID", "Timestamp", "Bin Level (%)", "Location", "Status", "Error Message"];
     const csvData = filteredHistory.map((record) => {
       const cacheKey = `${record.gps.lat.toFixed(4)},${record.gps.lng.toFixed(4)}`;
-      const locationName = locationCache.get(cacheKey) || (record.gpsValid ? `Coordinates: ${record.gps.lat.toFixed(4)}, ${record.gps.lng.toFixed(4)}` : "Invalid GPS");
-      
-      return [
-        record.binId,
-        record.timestamp,
-        record.binLevel,
-        locationName,
-        record.status,
-        record.errorMessage || "",
-      ];
+      const locationName =
+        locationCache.get(cacheKey) ||
+        (record.gpsValid ? `Coordinates: ${record.gps.lat.toFixed(4)}, ${record.gps.lng.toFixed(4)}` : "Invalid GPS");
+
+      return [record.binId, record.timestamp, record.binLevel, locationName, record.status, record.errorMessage || ""];
     });
 
     const csvContent = [headers, ...csvData].map((row) => row.join(",")).join("\n");
@@ -453,7 +444,10 @@ export function BinHistory() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Bin History</h1>
           </div>
-          <Button disabled className="flex items-center gap-2 bg-gray-100 text-gray-400 border border-gray-200 text-sm px-3 py-1.5 h-8">
+          <Button
+            disabled
+            className="flex items-center gap-2 bg-gray-100 text-gray-400 border border-gray-200 text-sm px-3 py-1.5 h-8"
+          >
             <Download className="w-3 h-3" />
             Export
           </Button>
@@ -480,7 +474,7 @@ export function BinHistory() {
               className="w-full"
             />
           </div>
-          
+
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All Status" />
@@ -520,49 +514,7 @@ export function BinHistory() {
           </Select>
         </div>
 
-        {/* Table Skeleton Only */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Bin ID</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>Bin Level (%)</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-16"></div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-20"></div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-16"></div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-12"></div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-4"></div>
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-24"></div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse w-16"></div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+        <BinHistorySkeleton />
       </div>
     );
   }
@@ -574,7 +526,10 @@ export function BinHistory() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Bin History</h1>
         </div>
-        <Button onClick={exportToCSV} className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 text-sm px-3 py-1.5 h-8">
+        <Button
+          onClick={exportToCSV}
+          className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 text-sm px-3 py-1.5 h-8"
+        >
           <Download className="w-3 h-3" />
           Export
         </Button>
@@ -601,7 +556,7 @@ export function BinHistory() {
             className="w-full"
           />
         </div>
-        
+
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="All Status" />
@@ -648,7 +603,9 @@ export function BinHistory() {
         <div className="text-center py-12">
           <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 mb-4 text-lg">{error}</p>
-          <Button onClick={fetchBinHistory} className="bg-blue-600 hover:bg-blue-700 text-white">Retry</Button>
+          <Button onClick={fetchBinHistory} className="bg-blue-600 hover:bg-blue-700 text-white">
+            Retry
+          </Button>
         </div>
       ) : filteredHistory.length === 0 ? (
         <div className="text-center py-16">
@@ -659,66 +616,66 @@ export function BinHistory() {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Bin ID</TableHead>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>Bin Level (%)</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentData.map((record) => {
-                      const { date, time } = formatTimestamp(record.timestamp);
-                      return (
-                        <TableRow key={record.id}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bin ID</TableHead>
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Bin Level (%)</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentData.map((record) => {
+                    const { date, time } = formatTimestamp(record.timestamp);
+                    return (
+                      <TableRow key={record.id}>
                         <TableCell className="font-medium">
                           {record.binId.charAt(0).toUpperCase() + record.binId.slice(1)}
                         </TableCell>
 
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div>
-                                {date !== 'N/A' ? (
-                                  <div className="text-sm">{date}</div>
-                                ) : (
-                                  <div className="text-sm text-red-500 flex items-center gap-1">
-                                    <AlertTriangle className="w-3 h-3" />
-                                    Invalid timestamp
-                                  </div>
-                                )}
-                              </div>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              {date !== "N/A" ? (
+                                <div className="text-sm">{date}</div>
+                              ) : (
+                                <div className="text-sm text-red-500 flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  Invalid timestamp
+                                </div>
+                              )}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full ${
-                                    record.binLevel >= 85
-                                      ? "bg-red-500"
-                                      : record.binLevel >= 70
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
-                                  }`}
-                                  style={{ width: `${Math.min(record.binLevel, 100)}%` }}
-                                />
-                              </div>
-                              <span className="text-sm font-medium">{record.binLevel.toFixed(1)}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  record.binLevel >= 85
+                                    ? "bg-red-500"
+                                    : record.binLevel >= 70
+                                    ? "bg-yellow-500"
+                                    : "bg-green-500"
+                                }`}
+                                style={{ width: `${Math.min(record.binLevel, 100)}%` }}
+                              />
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <LocationDisplay gps={record.gps} gpsValid={record.gpsValid} />
-                          </TableCell>
-                          <TableCell>{getStatusBadge(record.status)}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                            <span className="text-sm font-medium">{record.binLevel.toFixed(1)}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <LocationDisplay gps={record.gps} gpsValid={record.gpsValid} />
+                        </TableCell>
+                        <TableCell>{getStatusBadge(record.status)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (

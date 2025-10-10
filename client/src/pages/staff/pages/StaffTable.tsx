@@ -9,7 +9,8 @@ import { AddStaffModal } from "@/components/modal/staff/AddStaffModal";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-
+import { Plus } from "lucide-react";
+import StaffTableSkeleton from "@/components/skeletons/StaffTableSkeleton";
 type StaffRecord = {
   id: string;
   fullName: string;
@@ -80,7 +81,11 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
       await loadStaff();
       onStaffUpdate?.(); // Trigger parent refresh
     } catch (err: any) {
-      toast({ title: "Failed to add staff", description: err?.response?.data?.error || "Error", variant: "destructive" });
+      toast({
+        title: "Failed to add staff",
+        description: err?.response?.data?.error || "Error",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -94,7 +99,11 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
       await loadStaff();
       onStaffUpdate?.(); // Trigger parent refresh
     } catch (err: any) {
-      toast({ title: "Failed to delete staff", description: err?.response?.data?.error || "Error", variant: "destructive" });
+      toast({
+        title: "Failed to delete staff",
+        description: err?.response?.data?.error || "Error",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -109,21 +118,21 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
       const matchesRoute = selectedRoute === "all" || (s.location || "") === selectedRoute;
       return isNotCurrentUser && matchesRoute;
     });
-    
+
     return filtered;
   }, [selectedRoute, staffList, user]);
 
   return (
     <>
       <div className="flex justify-between items-center mb-4">
-        <div className="max-w-xs">
-          <p className="text-gray-600 dark:text-gray-400">Filter Routes</p>
+        <div className="flex items-center gap-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400">Route:</p>
           <Select value={selectedRoute} onValueChange={setSelectedRoute}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by Route" />
+            <SelectTrigger className="h-7 w-28 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
+              <SelectValue placeholder="All" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Routes</SelectItem>
+            <SelectContent className="text-xs">
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="Route A">Route A</SelectItem>
               <SelectItem value="Route B">Route B</SelectItem>
               <SelectItem value="Route C">Route C</SelectItem>
@@ -132,71 +141,70 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
           </Select>
         </div>
 
-        <button onClick={() => setAddModalOpen(true)} className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition">
-          + Add Janitor
+        <button
+          onClick={() => setAddModalOpen(true)}
+          className="flex items-center gap-2 bg-green-700 text-white px-3 py-1.5 text-sm rounded-md hover:bg-green-800 transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          Add Janitor
         </button>
       </div>
 
       {/* Staff Table */}
-    <Card>
-  <CardContent className="pt-4">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Email</TableHead>
-          <TableHead>Contact Number</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Route</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Action</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {loading && (
-          <TableRow>
-            <TableCell colSpan={7} className="text-center text-sm text-gray-500">Loading...</TableCell>
-          </TableRow>
-        )}
-        {error && (
-          <TableRow>
-            <TableCell colSpan={7} className="text-center text-sm text-red-600">{error}</TableCell>
-          </TableRow>
-        )}
-        {!loading && !error && filteredStaff.map((staff) => (
-          <TableRow
-            key={staff.id}
-            onClick={() => handleRowClick(staff)}
-            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-          >
-            <TableCell className="font-medium">{staff.fullName}</TableCell>
-            <TableCell>{staff.email}</TableCell>
-            <TableCell>{staff.contactNumber || "N/A"}</TableCell>
-<TableCell>
-  {staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}
-</TableCell>
+      <Card>
+        <CardContent className="pt-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Contact Number</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Route</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading && <StaffTableSkeleton />}
+              {error && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-sm text-red-600">
+                    {error}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading &&
+                !error &&
+                filteredStaff.map((staff) => (
+                  <TableRow
+                    key={staff.id}
+                    onClick={() => handleRowClick(staff)}
+                    className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  >
+                    <TableCell className="font-medium">{staff.fullName}</TableCell>
+                    <TableCell>{staff.email}</TableCell>
+                    <TableCell>{staff.contactNumber || "N/A"}</TableCell>
+                    <TableCell>{staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}</TableCell>
 
-            <TableCell>{staff.location || ""}</TableCell>
-          <TableCell>
-  <Badge
-    className={
-      `${
-        (staff.status || "active") === "active"
-          ? "text-green-600 font-semibold"
-          : (staff.status || "") === "offline"
-          ? "text-red-600 font-semibold"
-          : (staff.status || "") === "break"
-          ? "text-yellow-600 font-semibold"
-          : "text-gray-600 font-semibold"
-      } bg-transparent hover:bg-transparent shadow-none px-0`
-    }
-  >
-    {(staff.status || "active").charAt(0).toUpperCase() + (staff.status || "active").slice(1)}
-  </Badge>
-</TableCell>
+                    <TableCell>{staff.location || ""}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={`${
+                          (staff.status || "active") === "active"
+                            ? "text-green-600 font-semibold"
+                            : (staff.status || "") === "offline"
+                            ? "text-red-600 font-semibold"
+                            : (staff.status || "") === "break"
+                            ? "text-yellow-600 font-semibold"
+                            : "text-gray-600 font-semibold"
+                        } bg-transparent hover:bg-transparent shadow-none px-0`}
+                      >
+                        {(staff.status || "active").charAt(0).toUpperCase() + (staff.status || "active").slice(1)}
+                      </Badge>
+                    </TableCell>
 
-
-            {/* <TableCell>
+                    {/* <TableCell>
               <Badge 
                 variant="outline" 
                 className={staff.source === 'staff' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}
@@ -204,26 +212,28 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
                 {staff.source || 'Unknown'}
               </Badge>
             </TableCell> */}
-            <TableCell>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDeleteStaff(staff.id); }}
-                className="text-red-600 hover:underline text-sm"
-              >
-                Delete
-              </button>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  </CardContent>
-</Card>
+                    <TableCell>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteStaff(staff.id);
+                        }}
+                        className="text-red-600 hover:underline text-sm"
+                      >
+                        Delete
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-
-      <StaffManagementModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        staff={selectedStaff} 
+      <StaffManagementModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        staff={selectedStaff}
         onStaffUpdate={loadStaff}
       />
       <AddStaffModal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} onAdd={handleAddStaff} />

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Archive, Star, MessageSquare, Calendar, Loader2 } from "lucide-react";
-
+import FeedbackListSkeleton from "@/components/skeletons/FeedbackListSkeleton";
 interface FeedbackItem {
   id: string;
   content: string;
@@ -132,18 +132,7 @@ const FeedbackList = ({
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Feedback List</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <FeedbackListSkeleton />;
   }
 
   return (
@@ -160,7 +149,11 @@ const FeedbackList = ({
                   variant={filter === "all" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => onFilterChange("all")}
-                  className={`text-xs px-3 py-1 h-auto ${filter === "all" ? "bg-gray-100 text-gray-900 hover:bg-gray-200" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
+                  className={`text-xs px-3 py-1 h-auto ${
+                    filter === "all"
+                      ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
                 >
                   All ({stats.total})
                 </Button>
@@ -168,7 +161,11 @@ const FeedbackList = ({
                   variant={filter === "new" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => onFilterChange("new")}
-                  className={`text-xs px-3 py-1 h-auto ${filter === "new" ? "bg-gray-100 text-gray-900 hover:bg-gray-200" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
+                  className={`text-xs px-3 py-1 h-auto ${
+                    filter === "new"
+                      ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
                 >
                   New ({stats.new})
                 </Button>
@@ -180,9 +177,11 @@ const FeedbackList = ({
                     <span className="font-semibold text-yellow-600">{stats.avgRating.toFixed(1)}</span>
                     <div className="flex">
                       {Array.from({ length: 5 }, (_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`w-3 h-3 ${i < Math.floor(stats.avgRating!) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                        <Star
+                          key={i}
+                          className={`w-3 h-3 ${
+                            i < Math.floor(stats.avgRating!) ? "text-yellow-400 fill-current" : "text-gray-300"
+                          }`}
                         />
                       ))}
                     </div>
@@ -196,7 +195,10 @@ const FeedbackList = ({
       <CardContent>
         <div className="max-h-[600px] overflow-y-auto space-y-4">
           {combinedData.map((feedback) => (
-            <div key={feedback.id} className="border border-gray-100 rounded-lg p-4 hover:bg-gray-50 transition-colors shadow-md hover:shadow-lg">
+            <div
+              key={feedback.id}
+              className="border border-gray-100 rounded-lg p-4 hover:bg-gray-50 transition-colors shadow-md hover:shadow-lg"
+            >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
