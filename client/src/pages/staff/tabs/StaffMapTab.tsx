@@ -139,29 +139,29 @@ export function MapTab() {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Map View</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Map View</h2>
           <div className="flex items-center gap-4 text-sm">
             {/* Real-time Status Display */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span className="text-gray-700 dark:text-gray-300">Critical({criticalBins})</span>
+                <span className="text-gray-700 text-xs dark:text-gray-300">Critical({criticalBins})</span>
               </div>
               <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <span className="text-gray-700 dark:text-gray-300">Warning({warningBins})</span>
+                <span className="text-gray-700 text-xs dark:text-gray-300">Warning({warningBins})</span>
               </div>
               <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span className="text-gray-700 dark:text-gray-300">Normal({normalBins})</span>
+                <span className="text-gray-700 text-xs dark:text-gray-300">Normal({normalBins})</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="w-full">
+        <div className="w-full pb-10">
           <StaffMapSection
             onBinClick={handleBinClick}
             showRightPanel={isBinDetailsOpen}

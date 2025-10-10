@@ -28,6 +28,7 @@ interface FeedbackListProps {
   stats: {
     total: number;
     new: number;
+    avgRating?: number;
   };
   loading?: boolean;
   showArchived?: boolean;
@@ -146,28 +147,48 @@ const FeedbackList = ({
   }
 
   return (
-    <Card>
+    <Card className="border-transparent shadow-md">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg text-semibold">
             {showArchived ? "Archived Feedback" : "Active Feedback"}
           </CardTitle>
           {!showArchived && (
-            <div className="flex gap-2">
-              <Button
-                variant={filter === "all" ? "default" : "outline"}
-                size="sm"
-                onClick={() => onFilterChange("all")}
-              >
-                All ({stats.total})
-              </Button>
-              <Button
-                variant={filter === "new" ? "default" : "outline"}
-                size="sm"
-                onClick={() => onFilterChange("new")}
-              >
-                New ({stats.new})
-              </Button>
+            <div className="flex items-center gap-4">
+              <div className="flex gap-1">
+                <Button
+                  variant={filter === "all" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => onFilterChange("all")}
+                  className={`text-xs px-3 py-1 h-auto ${filter === "all" ? "bg-gray-100 text-gray-900 hover:bg-gray-200" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
+                >
+                  All ({stats.total})
+                </Button>
+                <Button
+                  variant={filter === "new" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => onFilterChange("new")}
+                  className={`text-xs px-3 py-1 h-auto ${filter === "new" ? "bg-gray-100 text-gray-900 hover:bg-gray-200" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"}`}
+                >
+                  New ({stats.new})
+                </Button>
+              </div>
+              {stats.avgRating && stats.avgRating > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <span className="font-medium">Avg Rating:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold text-yellow-600">{stats.avgRating.toFixed(1)}</span>
+                    <div className="flex">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`w-3 h-3 ${i < Math.floor(stats.avgRating!) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -175,7 +196,7 @@ const FeedbackList = ({
       <CardContent>
         <div className="max-h-[600px] overflow-y-auto space-y-4">
           {combinedData.map((feedback) => (
-            <div key={feedback.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+            <div key={feedback.id} className="border border-gray-100 rounded-lg p-4 hover:bg-gray-50 transition-colors shadow-md hover:shadow-lg">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
@@ -202,36 +223,36 @@ const FeedbackList = ({
                   <p className="text-gray-700">{feedback.content}</p>
                 </div>
 
-                <div className="flex gap-2 ml-4">
+                <div className="flex gap-1 ml-4">
                   {showArchived ? (
                     <>
                       {onUnarchive && (
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={() => onUnarchive(feedback.id)}
-                          className="flex items-center gap-1 text-green-600 hover:text-green-700"
+                          className="flex items-center gap-1 text-green-600 hover:text-green-700 hover:bg-green-50 p-2 h-auto"
                         >
                           <Archive className="w-4 h-4" />
-                          Unarchive
+                          <span className="text-xs">Unarchive</span>
                         </Button>
                       )}
                     </>
                   ) : (
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       onClick={() => onArchive(feedback.id)}
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 text-gray-600 hover:text-gray-900 hover:bg-gray-50 p-2 h-auto"
                     >
                       <Archive className="w-4 h-4" />
                     </Button>
                   )}
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => onDelete(feedback.id)}
-                    className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                    className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 p-2 h-auto"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

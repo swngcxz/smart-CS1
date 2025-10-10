@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import FeedbackList from "@/pages/staff/pages/FeedbackList";
-import FeedbackStats from "@/pages/staff/pages/FeedbackStats";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -201,13 +200,19 @@ const Feedback = () => {
     const archivedStats = {
       total: resolvedFeedbacks.length,
       new: 0,
+      avgRating: 0,
     };
 
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setShowArchived(false)} className="rounded-full">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setShowArchived(false)} 
+              className="rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-50 p-2"
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-2xl font-bold text-gray-900">Archived Feedback</h1>
@@ -247,7 +252,11 @@ const Feedback = () => {
           <h1 className="text-2xl font-bold text-gray-900">Feedback</h1>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setShowArchived(true)} variant="outline">
+          <Button 
+            onClick={() => setShowArchived(true)} 
+            variant="ghost"
+            className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-1 h-auto text-sm"
+          >
             View Archived ({stats.archived})
           </Button>
         </div>
@@ -348,7 +357,7 @@ const Feedback = () => {
               <Button 
                 type="submit" 
                 disabled={submitting || !isValidLength || rating === 0}
-                className="w-full"
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 h-auto"
               >
                 {submitting ? (
                   <>
@@ -364,7 +373,6 @@ const Feedback = () => {
         </Card>
       )}
 
-      <FeedbackStats stats={stats} loading={loading} />
 
       <FeedbackList
         feedbacks={filteredFeedbacks}

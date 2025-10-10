@@ -329,12 +329,14 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
       {/* Map Section */}
       <Card
         ref={mapContainerRef}
-        className="h-[510px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-8"
+        className="h-[510px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-20"
       >
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
-            <div className="flex items-center gap-2">
-              Naga City, Cebu
+            <div className="flex items-center gap-1">
+              <h3 className="text-lg font-semibold">Naga City, Cebu</h3>
+              
+            
               {bin1Data && bin1Data.gps_valid && (
                 <div className="flex items-center gap-1 ml-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -361,10 +363,10 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
                     <div className="p-4 space-y-3">
                       {/* Central Plaza Route */}
                       <Button
-                        className={`w-full justify-start text-left h-auto p-3 border-2 transition-all duration-200 hover:bg-transparent ${
+                        className={`w-full justify-start text-left h-auto p-3 border-1 transition-all duration-200 hover:bg-transparent ${
                           selectedRoute === "central-plaza"
                             ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-                            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
+                            : "bg-white text-black border-gray-300 hover:bg-gray-50"
                         }`}
                         onClick={() => handleRouteSelect("central-plaza")}
                       >
@@ -383,7 +385,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
 
                       {/* Park Avenue Route */}
                       <Button
-                        className={`w-full justify-start text-left h-auto p-3 border-2 transition-all duration-200 hover:bg-transparent ${
+                        className={`w-full justify-start text-left h-auto p-3 border-1 transition-all duration-200 hover:bg-transparent ${
                           selectedRoute === "park-avenue"
                             ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
                             : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
@@ -405,7 +407,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
 
                       {/* Mall District Route */}
                       <Button
-                        className={`w-full justify-start text-left h-auto p-3 border-2 transition-all duration-200 hover:bg-transparent ${
+                        className={`w-full justify-start text-left h-auto p-3 border-1 transition-all duration-200 hover:bg-transparent ${
                           selectedRoute === "mall-district"
                             ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
                             : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
@@ -427,7 +429,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
 
                       {/* Residential Route */}
                       <Button
-                        className={`w-full justify-start text-left h-auto p-3 border-2 transition-all duration-200 hover:bg-transparent ${
+                        className={`w-full justify-start text-left h-auto p-3 border-1 transition-all duration-200 hover:bg-transparent ${
                           selectedRoute === "residential"
                             ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
                             : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
@@ -460,7 +462,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
                   }`}
                   title="Toggle GPS tracking path"
                 >
-                  🗺️ {showGPSTracking ? "Hide" : "Show"} Path
+                🗺️ {showGPSTracking ? "Hide" : "Show"} Path
                 </button>
               )}
             </div>
