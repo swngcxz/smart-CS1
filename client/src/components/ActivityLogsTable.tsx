@@ -31,6 +31,7 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
   const [janitors, setJanitors] = useState<any[]>([]);
   const [janitorsLoading, setJanitorsLoading] = useState(false);
   const [taskNotes, setTaskNotes] = useState("");
+  const [clearAllModalOpen, setClearAllModalOpen] = useState(false);
 
   const fetchJanitors = async () => {
     setJanitorsLoading(true);
@@ -62,6 +63,25 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
     setSelectedActivity(null);
     setSelectedJanitor("");
     setTaskNotes(""); // Clear task notes when modal closes
+  };
+
+  const handleClearAll = async () => {
+    try {
+      await api.delete("/api/activity-logs/clear-all");
+      toast({
+        title: "Success",
+        description: "All activity logs have been cleared.",
+      });
+      onRefresh();
+      setClearAllModalOpen(false);
+    } catch (error) {
+      console.error("Error clearing activity logs:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear activity logs. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAssignSubmit = async () => {
@@ -162,14 +182,49 @@ const getPriorityBadge = (priority: string) => {
 
   if (loading) {
     return (
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-gray-800 border-transparent dark:border-gray-700">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-3 text-gray-600 dark:text-gray-400">Loading activities...</span>
+        <CardContent className="space-y-6">
+          {/* Skeleton Filters */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 animate-pulse"></div>
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-16 animate-pulse"></div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+              <div className="w-full sm:w-40 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+              <div className="w-full sm:w-40 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+              <div className="w-full sm:w-40 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+            </div>
+          </div>
+
+          {/* Skeleton Table */}
+          <div className="space-y-3">
+            {/* Table Header Skeleton */}
+            <div className="grid grid-cols-6 gap-4 py-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </div>
+            
+            {/* Table Rows Skeleton */}
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} className="grid grid-cols-6 gap-4 py-4">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -178,7 +233,7 @@ const getPriorityBadge = (priority: string) => {
 
   if (error) {
     return (
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-gray-800 border-transparent dark:border-gray-700">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
         </CardHeader>
@@ -198,10 +253,10 @@ const getPriorityBadge = (priority: string) => {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+      <Card className="bg-white dark:bg-gray-800 border-transparent dark:border-gray-700">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
+            <CardTitle className="text-md font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 {filteredLogs.length} of {logs.length} Logs
@@ -228,9 +283,19 @@ const getPriorityBadge = (priority: string) => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Activity Filters Label */}
-          <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-            Activity Filters
+          {/* Activity Filters Label and Clear All Button */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+              Activity Filters
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setClearAllModalOpen(true)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-3 py-1 h-auto"
+            >
+              Clear All
+            </Button>
           </div>
           
           {/* Filters */}
@@ -241,11 +306,11 @@ const getPriorityBadge = (priority: string) => {
                 placeholder="Search activities..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 border-gray-300 focus:border-blue-500"
+                className="pl-10 border-gray-300 focus:border-blue-500 rounded-xl"
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-40 border-gray-300">
+              <SelectTrigger className="w-full sm:w-40 border-gray-300 rounded-xl">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -259,7 +324,7 @@ const getPriorityBadge = (priority: string) => {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-40 border-gray-300">
+              <SelectTrigger className="w-full sm:w-40 border-gray-300 rounded-xl">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
@@ -270,7 +335,7 @@ const getPriorityBadge = (priority: string) => {
               </SelectContent>
             </Select>
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="w-full sm:w-40 border-gray-300">
+              <SelectTrigger className="w-full sm:w-40 border-gray-300 rounded-xl">
                 <SelectValue placeholder="All Priority" />
               </SelectTrigger>
               <SelectContent>
@@ -436,9 +501,40 @@ const getPriorityBadge = (priority: string) => {
             <Button
               onClick={handleAssignSubmit}
               disabled={!selectedJanitor}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-green-800 hover:bg-green-700"
             >
               Assign Task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear All Confirmation Modal */}
+      <Dialog open={clearAllModalOpen} onOpenChange={setClearAllModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+           
+              Clear All Activity Logs
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-600 dark:text-gray-400">
+              Are you sure you want to clear all activity logs? This action cannot be undone.
+            </p>
+          </div>
+          <DialogFooter className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setClearAllModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleClearAll}
+            >
+              Clear All
             </Button>
           </DialogFooter>
         </DialogContent>

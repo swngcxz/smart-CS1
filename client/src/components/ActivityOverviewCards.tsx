@@ -50,32 +50,27 @@ export function ActivityOverviewCards({ cards, loading = false, error }: Activit
         </div>
       )}
       
-      {/* Cards grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Inline cards - spread out */}
+      <div className="flex justify-between gap-4">
         {cards.map((card, index) => (
-          <Card 
+          <div 
             key={index} 
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600"
+            className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-all duration-200 rounded-full px-4 py-2 flex-1"
           >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-                    {card.label}
-                  </p>
-                  <p className={`text-3xl font-bold ${getCardColor(card.label)} mb-1`}>
-                    {loading ? "..." : card.value}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {card.description}
-                  </p>
-                </div>
-                <div className="w-12 h-12 flex items-center justify-center">
-                  {getIcon(card.label)}
-                </div>
+            <div className="flex items-center gap-2">
+              {getIcon(card.label)}
+              <div className="flex flex-col">
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  {card.label}
+                </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="text-right">
+              <p className={`text-lg font-semibold ${getCardColor(card.label)}`}>
+                {loading ? "..." : card.value}
+              </p>
+            </div>
+          </div>
         ))}
       </div>
     </div>
