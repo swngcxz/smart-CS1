@@ -28,21 +28,29 @@ interface DynamicBinMarkerProps {
 
 // Use the new timeUtils for consistent formatting
 
-const createDynamicIcon = (status: string, level: number, isLive: boolean, gpsValid: boolean, coordinatesSource?: string) => {
+const createDynamicIcon = (
+  status: string,
+  level: number,
+  isLive: boolean,
+  gpsValid: boolean,
+  coordinatesSource?: string
+) => {
   const iconSize = 40;
   const iconAnchor = [iconSize / 2, iconSize] as [number, number];
-  
+
   // Determine main color based on status
   let color = "#10B981"; // green for normal
   if (status === "critical") color = "#EF4444"; // red
   else if (status === "warning") color = "#F59E0B"; // yellow
 
   // Apply grey/decayed appearance for GPS fallback coordinates
-  const isUsingFallback = coordinatesSource === 'gps_fallback' || (!gpsValid && coordinatesSource !== 'gps_live');
+  const isUsingFallback = coordinatesSource === "gps_fallback" || (!gpsValid && coordinatesSource !== "gps_live");
   if (isUsingFallback) color = "#6B7280"; // grey for fallback
 
   // Create pulsing animation CSS (only for live GPS, not fallback)
-  const pulseAnimation = (isLive && !isUsingFallback) ? `
+  const pulseAnimation =
+    isLive && !isUsingFallback
+      ? `
     @keyframes pulse-ring {
       0% { transform: scale(0.8); opacity: 1; }
       100% { transform: scale(2.4); opacity: 0; }
@@ -54,13 +62,16 @@ const createDynamicIcon = (status: string, level: number, isLive: boolean, gpsVa
     }
     .pulse-ring { animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
     .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
-  ` : '';
+  `
+      : "";
 
   return L.divIcon({
     html: `
       <style>${pulseAnimation}</style>
       <div style="position: relative; display: flex; align-items: center; justify-content: center;">
-        ${(isLive && !isUsingFallback) ? `
+        ${
+          isLive && !isUsingFallback
+            ? `
           <div class="pulse-ring" style="
             position: absolute;
             width: ${iconSize}px;
@@ -69,9 +80,11 @@ const createDynamicIcon = (status: string, level: number, isLive: boolean, gpsVa
             border-radius: 50%;
             opacity: 0.6;
           "></div>
-        ` : ''}
+        `
+            : ""
+        }
 
-        <div class="${(isLive && !isUsingFallback) ? 'pulse-dot' : ''}" style="
+        <div class="${isLive && !isUsingFallback ? "pulse-dot" : ""}" style="
           background: ${color};
           width: ${iconSize}px;
           height: ${iconSize}px;
@@ -114,13 +127,7 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
     }
   }, [bin.binData, bin.timestamp]);
 
-  const icon = createDynamicIcon(
-    bin.status, 
-    bin.level, 
-    isLive, 
-    bin.gps_valid || false,
-    bin.coordinates_source
-  );
+  const icon = createDynamicIcon(bin.status, bin.level, isLive, bin.gps_valid || false, bin.coordinates_source);
 
   const getStatusIcon = () => {
     switch (bin.status) {
@@ -149,63 +156,61 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
   };
 
   return (
-    <Marker 
-      position={bin.position} 
-      icon={icon}
-      eventHandlers={{ click: handleMarkerClick }}
-    >
+    <Marker position={bin.position} icon={icon} eventHandlers={{ click: handleMarkerClick }}>
       <Popup className="custom-popup" maxWidth={300}>
         <div className="p-3 min-w-[250px]">
-          <div className="flex items-center gap-2 mb-3">
-         <h3 className="font-semibold text-gray-900">
-            {bin.name}
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900">{bin.name}</h3>
 
-
-            {isLive && bin.coordinates_source !== 'gps_fallback' && (
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-green-600 font-medium">LIVE</span>
-              </div>
-            )}
-            {bin.coordinates_source === 'gps_fallback' && (
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                <span className="text-xs text-gray-600 font-medium">GPS OFFLINE</span>
-              </div>
-            )}
+              {isLive && bin.coordinates_source !== "gps_fallback" && (
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-600 font-medium">LIVE</span>
+                </div>
+              )}
+              {bin.coordinates_source === "gps_fallback" && (
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+                  <span className="text-xs text-gray-600 font-medium">GPS OFFLINE</span>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => onBinClick && onBinClick(bin.id)}
+              className="text-green-600 hover:text-green-700 text-xs font-regular p-0 m-0 bg-transparent"
+            >
+              Edit
+            </button>
           </div>
-          
+
           <div className="space-y-3">
-          
-            
             {/* Fill Level */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Fill Level:</span>
               <div className="flex items-center gap-2">
                 <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full transition-all duration-500"
-                    style={{ 
+                    style={{
                       width: `${bin.level}%`,
-                      backgroundColor: bin.status === 'critical' ? '#EF4444' :
-                                       bin.status === 'warning' ? '#F59E0B' :
-                                       '#059162ff'
+                      backgroundColor:
+                        bin.status === "critical" ? "#EF4444" : bin.status === "warning" ? "#F59E0B" : "#059162ff",
                     }}
                   ></div>
                 </div>
-                <span 
+                <span
                   className="text-sm font-medium"
-                  style={{ color: bin.status === 'critical' ? '#EF4444' :
-                                  bin.status === 'warning' ? '#F59E0B' :
-                                  '#059162ff' }}
+                  style={{
+                    color: bin.status === "critical" ? "#EF4444" : bin.status === "warning" ? "#F59E0B" : "#059162ff",
+                  }}
                 >
                   {bin.level}%
                 </span>
               </div>
             </div>
-            
-            
+
             {/* Last Collection */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Last Collection:</span>
@@ -222,9 +227,7 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
                   ) : (
                     <WifiOff className="w-4 h-4 text-red-500" />
                   )}
-                  <span className={`text-sm font-medium ${
-                    bin.gps_valid ? "text-green-600" : "text-red-600"
-                  }`}>
+                  <span className={`text-sm font-medium ${bin.gps_valid ? "text-green-600" : "text-red-600"}`}>
                     {bin.gps_valid ? `Valid (${bin.satellites || 0} satellites)` : "Invalid"}
                   </span>
                 </div>
@@ -248,14 +251,12 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
                   </div>
                   <div className="flex justify-between">
                     <span>Updated:</span>
-                    <span className="font-medium">
-                      {lastUpdate ? lastUpdate.toLocaleTimeString() : 'Unknown'}
-                    </span>
+                    <span className="font-medium">{lastUpdate ? lastUpdate.toLocaleTimeString() : "Unknown"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Monitoring:</span>
                     <span className="font-medium text-green-600 text-xs">
-                      {bin.coordinates_source === 'gps_fallback' ? 'Active (GPS Offline)' : 'Active'}
+                      {bin.coordinates_source === "gps_fallback" ? "Active (GPS Offline)" : "Active"}
                     </span>
                   </div>
                 </div>
@@ -269,29 +270,39 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
                 <div className="flex justify-between">
                   <span>Last Update:</span>
                   <span className="font-medium text-gray-700">
-                    {bin.timestamp ? getTimeAgo(bin.timestamp).text : 'Unknown'}
+                    {bin.timestamp ? getTimeAgo(bin.timestamp).text : "Unknown"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>GPS Status:</span>
-                  <span className={`font-medium ${
-                    bin.coordinates_source === 'gps_live' ? 'text-green-600' : 
-                    bin.coordinates_source === 'gps_cached' ? 'text-orange-600' : 
-                    'text-red-600'
-                  }`}>
-                    {bin.coordinates_source === 'gps_live' ? 'Live GPS' : 
-                     bin.coordinates_source === 'gps_cached' ? 'Cached GPS' : 
-                     'No GPS'}
+                  <span
+                    className={`font-medium ${
+                      bin.coordinates_source === "gps_live"
+                        ? "text-green-600"
+                        : bin.coordinates_source === "gps_cached"
+                        ? "text-orange-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {bin.coordinates_source === "gps_live"
+                      ? "Live GPS"
+                      : bin.coordinates_source === "gps_cached"
+                      ? "Cached GPS"
+                      : "No GPS"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Bin Active:</span>
-                  <span className={`font-medium ${
-                    bin.coordinates_source === 'gps_live' ? 'text-green-600' : 
-                    bin.coordinates_source === 'gps_cached' ? 'text-orange-600' : 
-                    'text-red-600'
-                  }`}>
-                    {bin.last_active || (bin.timestamp ? getTimeAgo(bin.timestamp).text : 'Unknown')}
+                  <span
+                    className={`font-medium ${
+                      bin.coordinates_source === "gps_live"
+                        ? "text-green-600"
+                        : bin.coordinates_source === "gps_cached"
+                        ? "text-orange-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {bin.last_active || (bin.timestamp ? getTimeAgo(bin.timestamp).text : "Unknown")}
                   </span>
                 </div>
               </div>

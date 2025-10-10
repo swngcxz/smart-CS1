@@ -25,6 +25,7 @@ export function MapTab() {
   const [selectedBinId, setSelectedBinId] = useState<string>("");
   const [selectedRoute, setSelectedRoute] = useState<string>("");
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(true);
+  const [isBinDetailsOpen, setIsBinDetailsOpen] = useState<boolean>(false);
 
   // Use ONLY real-time bin locations from database - no hardcoded coordinates
   const updatedLocationData =
@@ -118,6 +119,7 @@ export function MapTab() {
     if (selectedBin) {
       console.log("✅ Selected bin data:", selectedBin);
       loadBinForEdit(selectedBin);
+      setIsBinDetailsOpen(true);
     } else {
       console.warn("⚠️ Bin not found in updatedLocationData:", binId);
     }
@@ -134,161 +136,59 @@ export function MapTab() {
     setIsLocationDropdownOpen(!isLocationDropdownOpen);
   };
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Map View</h2>
-        <div className="flex items-center gap-4 text-sm">
-          {/* Real-time Status Display */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <span className="text-gray-700 dark:text-gray-300">Critical({criticalBins})</span>
-            </div>
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <span className="text-gray-700 dark:text-gray-300">Warning({warningBins})</span>
-            </div>
-            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="text-gray-700 dark:text-gray-300">Normal({normalBins})</span>
+    <>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Map View</h2>
+          <div className="flex items-center gap-4 text-sm">
+            {/* Real-time Status Display */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <span className="text-gray-700 dark:text-gray-300">Critical({criticalBins})</span>
+              </div>
+              <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <span className="text-gray-700 dark:text-gray-300">Warning({warningBins})</span>
+              </div>
+              <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span className="text-gray-700 dark:text-gray-300">Normal({normalBins})</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="w-full">
           <StaffMapSection onBinClick={handleBinClick} />
         </div>
+      </div>
 
-        <div className="space-y-4">
-          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <Button
-                variant="ghost"
-                className="w-full justify-between p-0 h-auto hover:bg-transparent"
-                onClick={toggleLocationDropdown}
-              >
-                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">Location List</CardTitle>
-                {isLocationDropdownOpen ? (
-                  <ChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                )}
-              </Button>
-            </CardHeader>
+      {/* Slide-out Bin Details Panel */}
+      {isBinDetailsOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div className="flex-1 bg-black bg-opacity-50" onClick={() => setIsBinDetailsOpen(false)}></div>
 
-            <CardContent
-              className={`transition-all duration-300 ease-in-out ${
-                isLocationDropdownOpen ? "max-h-96 opacity-100 p-4" : "max-h-0 opacity-0 overflow-hidden p-0"
-              }`}
-            >
-              <div className="space-y-3">
-                {/* Central Plaza Route */}
+          {/* Slide-out Panel */}
+          <div className="w-96 bg-white dark:bg-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bin Details</h3>
                 <Button
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
-        ${
-          selectedRoute === "central-plaza"
-            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-        }`}
-                  onClick={() => handleRouteSelect("central-plaza")}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsBinDetailsOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  <div className="flex items-center gap-3 w-full">
-                    <MapPin className="w-5 h-5 flex-shrink-0" />
-                    <div className="flex-1 font-semibold text-sm">Central Plaza</div>
-                    <Badge
-                      className={`text-xs ${
-                        selectedRoute === "central-plaza" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
-                      }`}
-                    >
-                      Active
-                    </Badge>
-                  </div>
-                </Button>
-
-                {/* Park Avenue Route */}
-                <Button
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
-        ${
-          selectedRoute === "park-avenue"
-            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-        }`}
-                  onClick={() => handleRouteSelect("park-avenue")}
-                >
-                  <div className="flex items-center gap-3 w-full">
-                    <MapPin className="w-5 h-5 flex-shrink-0" />
-                    <div className="flex-1 font-semibold text-sm">Park Avenue</div>
-                    <Badge
-                      className={`text-xs ${
-                        selectedRoute === "park-avenue" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
-                      }`}
-                    >
-                      Active
-                    </Badge>
-                  </div>
-                </Button>
-
-                {/* Mall District Route */}
-                <Button
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
-        ${
-          selectedRoute === "mall-district"
-            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-        }`}
-                  onClick={() => handleRouteSelect("mall-district")}
-                >
-                  <div className="flex items-center gap-3 w-full">
-                    <MapPin className="w-5 h-5 flex-shrink-0" />
-                    <div className="flex-1 font-semibold text-sm">Mall District</div>
-                    <Badge
-                      className={`text-xs ${
-                        selectedRoute === "mall-district" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
-                      }`}
-                    >
-                      Active
-                    </Badge>
-                  </div>
-                </Button>
-
-                {/* Residential Route */}
-                <Button
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
-        ${
-          selectedRoute === "residential"
-            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-        }`}
-                  onClick={() => handleRouteSelect("residential")}
-                >
-                  <div className="flex items-center gap-3 w-full">
-                    <MapPin className="w-5 h-5 flex-shrink-0" />
-                    <div className="flex-1 font-semibold text-sm">Residential Area</div>
-                    <Badge
-                      className={`text-xs ${
-                        selectedRoute === "residential" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
-                      }`}
-                    >
-                      Active
-                    </Badge>
-                  </div>
+                  ×
                 </Button>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Bin Update Form */}
-          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">Bin Details</CardTitle>
-            </CardHeader>
-            <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="binName" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       Bin Name
@@ -340,7 +240,7 @@ export function MapTab() {
                   </Select>
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-4">
                   <Button
                     type="submit"
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white"
@@ -360,6 +260,7 @@ export function MapTab() {
                         binType: "",
                         mainLocation: "",
                       });
+                      setIsBinDetailsOpen(false);
                     }}
                     className="flex-1"
                     disabled={isUpdating}
@@ -375,10 +276,10 @@ export function MapTab() {
                   </div>
                 )}
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }

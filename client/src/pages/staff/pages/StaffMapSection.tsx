@@ -14,10 +14,12 @@ import "@/styles/map-transitions.css";
 import { Viewer } from "mapillary-js";
 import "mapillary-js/dist/mapillary.css";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
-import { MapPin, Wifi, WifiOff } from "lucide-react";
+import { MapPin, Wifi, WifiOff, ChevronDown, ChevronUp } from "lucide-react";
 import { getActiveTimeAgo } from "@/utils/timeUtils";
 import { getDistanceFromMap } from "@/utils/distanceUtils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 // Add custom styles for user location marker
 const userLocationStyles = `
@@ -86,9 +88,22 @@ interface StaffMapSectionProps {
 export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
   const { wasteBins, loading, error, bin1Data, monitoringData, gpsHistory, dynamicBinLocations } = useRealTimeData();
   const [showGPSTracking, setShowGPSTracking] = useState(false);
+  const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
+  const [selectedRoute, setSelectedRoute] = useState<string>("");
 
   const handleBinClick = (binId: string) => {
     if (onBinClick) onBinClick(binId);
+  };
+
+  // Handle route selection
+  const handleRouteSelect = (route: string) => {
+    setSelectedRoute(route);
+    toast.success(`${route.charAt(0).toUpperCase() + route.slice(1).replace("-", " ")} route selected`);
+  };
+
+  // Toggle location dropdown
+  const toggleLocationDropdown = () => {
+    setIsLocationDropdownOpen(!isLocationDropdownOpen);
   };
   const [userLocation, setUserLocation] = useState<LatLngTuple | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -326,6 +341,114 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
               )}
             </div>
             <div className="flex items-center gap-4 text-xs">
+              {/* Location Dropdown */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  className="flex items-center gap-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={toggleLocationDropdown}
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>Locations</span>
+                  {isLocationDropdownOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </Button>
+
+                {/* Dropdown Content */}
+                {isLocationDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+                    <div className="p-4 space-y-3">
+                      {/* Central Plaza Route */}
+                      <Button
+                        className={`w-full justify-start text-left h-auto p-3 border-2 transition-all duration-200 hover:bg-transparent ${
+                          selectedRoute === "central-plaza"
+                            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+                            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleRouteSelect("central-plaza")}
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <div className="flex-1 font-semibold text-sm">Central Plaza</div>
+                          <Badge
+                            className={`text-xs ${
+                              selectedRoute === "central-plaza" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
+                            }`}
+                          >
+                            Active
+                          </Badge>
+                        </div>
+                      </Button>
+
+                      {/* Park Avenue Route */}
+                      <Button
+                        className={`w-full justify-start text-left h-auto p-3 border-2 transition-all duration-200 hover:bg-transparent ${
+                          selectedRoute === "park-avenue"
+                            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+                            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleRouteSelect("park-avenue")}
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <div className="flex-1 font-semibold text-sm">Park Avenue</div>
+                          <Badge
+                            className={`text-xs ${
+                              selectedRoute === "park-avenue" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
+                            }`}
+                          >
+                            Active
+                          </Badge>
+                        </div>
+                      </Button>
+
+                      {/* Mall District Route */}
+                      <Button
+                        className={`w-full justify-start text-left h-auto p-3 border-2 transition-all duration-200 hover:bg-transparent ${
+                          selectedRoute === "mall-district"
+                            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+                            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleRouteSelect("mall-district")}
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <div className="flex-1 font-semibold text-sm">Mall District</div>
+                          <Badge
+                            className={`text-xs ${
+                              selectedRoute === "mall-district" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
+                            }`}
+                          >
+                            Active
+                          </Badge>
+                        </div>
+                      </Button>
+
+                      {/* Residential Route */}
+                      <Button
+                        className={`w-full justify-start text-left h-auto p-3 border-2 transition-all duration-200 hover:bg-transparent ${
+                          selectedRoute === "residential"
+                            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
+                            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
+                        }`}
+                        onClick={() => handleRouteSelect("residential")}
+                      >
+                        <div className="flex items-center gap-3 w-full">
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <div className="flex-1 font-semibold text-sm">Residential Area</div>
+                          <Badge
+                            className={`text-xs ${
+                              selectedRoute === "residential" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
+                            }`}
+                          >
+                            Active
+                          </Badge>
+                        </div>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* GPS Tracking Toggle */}
               {gpsHistory.length > 1 && (
                 <button
