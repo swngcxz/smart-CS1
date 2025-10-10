@@ -38,11 +38,11 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
     const fetchData = async () => {
       try {
         setJanitorsLoading(true);
-        
+
         // Fetch current user
         const userResponse = await api.get("/auth/me");
         setCurrentUser({ id: userResponse.data.id, role: userResponse.data.role });
-        
+
         // Fetch janitors
         const janitorsResponse = await api.get("/api/staff/janitors");
         setJanitors(janitorsResponse.data || []);
@@ -83,8 +83,8 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
 
     setIsLoading(true);
     try {
-      const selectedJanitorData = janitors.find(j => j.id === selectedJanitor);
-      
+      const selectedJanitorData = janitors.find((j) => j.id === selectedJanitor);
+
       const taskData = {
         user_id: currentUser?.id,
         bin_id: bin.id,
@@ -96,29 +96,27 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
         task_note: taskNotes || "Clean the bin",
         activity_type: "task_assignment",
         description: `Task assigned for ${bin.location} bin ${bin.id} - ${bin.wasteType} waste`,
-        source: "web_dashboard"
+        source: "web_dashboard",
       };
 
       console.log("🚀 Sending task data:", taskData);
       const response = await api.post("/api/activitylogs", taskData);
       console.log("✅ Task assignment response:", response.data);
-      
+
       toast({
         title: "Success",
         description: "Task assigned successfully",
       });
-      
+
       onClose();
     } catch (error: any) {
       console.error("❌ Failed to assign task:", error);
       console.error("❌ Error response:", error.response?.data);
       console.error("❌ Error status:", error.response?.status);
-      
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.message || 
-                          error.message || 
-                          "Failed to assign task";
-      
+
+      const errorMessage =
+        error.response?.data?.error || error.response?.data?.message || error.message || "Failed to assign task";
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -131,7 +129,7 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
 
   const getSuggestedAction = () => {
     if (!bin) return "No action needed at the moment.";
-    
+
     if (bin.status === "critical") {
       return "Urgent: Bin needs immediate attention";
     } else if (bin.status === "warning") {
@@ -158,11 +156,11 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
   if (!bin) return null;
 
   const gpsStatus = getGpsStatus();
-  const availableJanitors = janitors.filter(j => j.status === "active");
+  const availableJanitors = janitors.filter((j) => j.status === "active");
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bin Information - {bin.location}</DialogTitle>
         </DialogHeader>
@@ -171,16 +169,16 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
           {/* Bin ID and GPS Status */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-medium">{bin.location} Bin: {bin.id}</span>
+              <span className="font-medium">
+                {bin.location} Bin: {bin.id}
+              </span>
               {bin.id === "bin1" && (
                 <Badge variant="secondary" className="text-xs">
                   LIVE
                 </Badge>
               )}
             </div>
-            <span className={`text-sm ${gpsStatus.color}`}>
-              GPS: {gpsStatus.status}
-            </span>
+            <span className={`text-sm ${gpsStatus.color}`}>GPS: {gpsStatus.status}</span>
           </div>
 
           {/* Fill Level */}
@@ -206,9 +204,9 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
           </div>
 
           {/* Last Collected */}
-          <div>
-            <Label className="text-sm font-medium">Last Collected:</Label>
-            <p className="text-sm text-gray-600">{getLastCollected()}</p>
+          <div className="flex items-center justify-between text-sm">
+            <Label className="font-medium">Last Collected:</Label>
+            <p className="text-gray-600">{getLastCollected()}</p>
           </div>
 
           {/* Current Metrics */}
@@ -220,9 +218,9 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{binData?.weight_percent || 0} kg</span>
                   </div>
-                  <Progress 
-                    value={Math.min((binData?.weight_percent || 0), 100)} 
-                    className="h-2 bg-gray-200 dark:bg-gray-700 [&>div]:bg-blue-500"
+                  <Progress
+                    value={Math.min(binData?.weight_percent || 0, 100)}
+                    className="h-2 bg-gray-200 dark:bg-gray-700 [&>div]:bg-green-500"
                   />
                 </div>
               </div>
@@ -234,9 +232,9 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{binData?.height_percent || bin.level}%</span>
                   </div>
-                  <Progress 
-                    value={binData?.height_percent || bin.level} 
-                    className="h-2 bg-gray-200 dark:bg-gray-700 [&>div]:bg-blue-500"
+                  <Progress
+                    value={binData?.height_percent || bin.level}
+                    className="h-2 bg-gray-200 dark:bg-gray-700 [&>div]:bg-green-500"
                   />
                 </div>
               </div>
@@ -252,7 +250,7 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
           {/* Task Assignment Section */}
           <div className="space-y-4 pt-4 border-t">
             <h3 className="font-medium">Assign to Janitor ({availableJanitors.length} available)</h3>
-            
+
             <div className="space-y-2">
               <Label htmlFor="janitor-select">Select Janitor</Label>
               <Select value={selectedJanitor} onValueChange={setSelectedJanitor}>
@@ -261,9 +259,13 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
                 </SelectTrigger>
                 <SelectContent>
                   {janitorsLoading ? (
-                    <SelectItem value="loading" disabled>Loading janitors...</SelectItem>
+                    <SelectItem value="loading" disabled>
+                      Loading janitors...
+                    </SelectItem>
                   ) : availableJanitors.length === 0 ? (
-                    <SelectItem value="no-janitors" disabled>No available janitors</SelectItem>
+                    <SelectItem value="no-janitors" disabled>
+                      No available janitors
+                    </SelectItem>
                   ) : (
                     availableJanitors.map((janitor) => (
                       <SelectItem key={janitor.id} value={janitor.id}>
@@ -286,9 +288,15 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
               />
             </div>
 
-            <Button 
+            <Button
               onClick={handleAssignTask}
-              disabled={!selectedJanitor || selectedJanitor === "loading" || selectedJanitor === "no-janitors" || isLoading || janitorsLoading}
+              disabled={
+                !selectedJanitor ||
+                selectedJanitor === "loading" ||
+                selectedJanitor === "no-janitors" ||
+                isLoading ||
+                janitorsLoading
+              }
               className="w-full"
             >
               {isLoading ? "Assigning..." : "Assign Task"}
