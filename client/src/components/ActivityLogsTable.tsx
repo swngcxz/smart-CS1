@@ -180,56 +180,6 @@ const getPriorityBadge = (priority: string) => {
     return matchesSearch && matchesType && matchesStatus && matchesPriority;
   });
 
-  if (loading) {
-    return (
-      <Card className="bg-white dark:bg-gray-800 border-transparent dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Skeleton Filters */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 animate-pulse"></div>
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-16 animate-pulse"></div>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-              <div className="w-full sm:w-40 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-              <div className="w-full sm:w-40 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-              <div className="w-full sm:w-40 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
-            </div>
-          </div>
-
-          {/* Skeleton Table */}
-          <div className="space-y-3">
-            {/* Table Header Skeleton */}
-            <div className="grid grid-cols-6 gap-4 py-3 border-b border-gray-200 dark:border-gray-700">
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-            </div>
-            
-            {/* Table Rows Skeleton */}
-            {Array.from({ length: 5 }).map((_, index) => (
-              <div key={index} className="grid grid-cols-6 gap-4 py-4">
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (error) {
     return (
@@ -349,13 +299,39 @@ const getPriorityBadge = (priority: string) => {
           </div>
 
           {/* Table */}
-          {filteredLogs.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400 mb-2">No activities to display</p>
-              <p className="text-sm text-gray-400">Check if data exists in database.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+          {loading ? (
+  <div className="overflow-x-auto">
+    <Table className="min-w-full">
+      <TableHeader>
+        <TableRow className="border-gray-200 dark:border-gray-700">
+          <TableHead className="text-gray-900 dark:text-white font-semibold w-32">Date & Time</TableHead>
+          <TableHead className="text-gray-900 dark:text-white font-semibold w-64">Description</TableHead>
+          <TableHead className="text-gray-900 dark:text-white font-semibold w-32">Assigned To</TableHead>
+          <TableHead className="text-gray-900 dark:text-white font-semibold w-24">Location</TableHead>
+          <TableHead className="text-gray-900 dark:text-white font-semibold w-20">Status</TableHead>
+          <TableHead className="text-gray-900 dark:text-white font-semibold w-20">Priority</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <TableRow key={index}>
+            {Array.from({ length: 5 }).map((_, colIndex) => (
+              <TableCell key={colIndex}>
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </div>
+) : filteredLogs.length === 0 ? (
+  <div className="text-center py-12">
+    <p className="text-gray-500 dark:text-gray-400 mb-2">No activities to display</p>
+    <p className="text-sm text-gray-400">Check if data exists in database.</p>
+  </div>
+) : (
+  <div className="overflow-x-auto">
               <Table className="min-w-full">
                 <TableHeader>
                   <TableRow className="border-gray-200 dark:border-gray-700">
@@ -368,59 +344,86 @@ const getPriorityBadge = (priority: string) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLogs.map((log) => (
-                    <TableRow key={log.id} className="border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <TableCell className="text-sm text-gray-900 dark:text-white w-32">
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <div className="font-medium text-xs">
-                              {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleTimeString()}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-900 dark:text-white w-64">
-                        <div className="break-words whitespace-pre-wrap leading-relaxed text-xs">
-                          {log.task_note || log.message || "No description"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="w-32">
-                        {log.assigned_janitor_name && log.status !== 'pending' ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-900 dark:text-white">{log.assigned_janitor_name}</span>
-                          </div>
-                        ) : log.status === 'pending' ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleAssignClick(log)}
-                            className="text-xs border-gray-300 hover:bg-gray-50"
-                          >
-                            +Assign task
-                          </Button>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">Unassigned</span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-900 dark:text-white w-24">
-                        <div className="text-xs">
-                          {log.bin_location || log.location || "Unknown"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="w-20">{getStatusBadge(log.status || "")}</TableCell>
-                      <TableCell className="w-20">{getPriorityBadge(log.priority || "")}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
+  {loading ? (
+    // 🔹 Skeleton rows (only appear in table body)
+    Array.from({ length: 6 }).map((_, index) => (
+      <TableRow key={index}>
+        {Array.from({ length: 6 }).map((_, colIndex) => (
+          <TableCell key={colIndex}>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </TableCell>
+        ))}
+      </TableRow>
+    ))
+  ) : filteredLogs.length === 0 ? (
+    <TableRow>
+      <TableCell
+        colSpan={6}
+        className="text-center text-gray-500 dark:text-gray-400 py-6"
+      >
+        No activity logs found.
+      </TableCell>
+    </TableRow>
+  ) : (
+    filteredLogs.map((log) => (
+      <TableRow
+        key={log.id}
+        className="border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+      >
+      
+        <TableCell className="text-sm text-gray-900 dark:text-white w-32">
+          <div className="flex items-center gap-2">
+            <div>
+              <div className="font-medium text-xs">
+                {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })}
+              </div>
+              <div className="text-xs text-gray-500">
+                {new Date(log.timestamp || log.created_at || log.updated_at || Date.now()).toLocaleTimeString()}
+              </div>
+            </div>
+          </div>
+        </TableCell>
+        <TableCell className="text-sm text-gray-900 dark:text-white w-64">
+          <div className="break-words whitespace-pre-wrap leading-relaxed text-xs">
+            {log.task_note || log.message || "No description"}
+          </div>
+        </TableCell>
+        <TableCell className="w-32">
+          {log.assigned_janitor_name && log.status !== 'pending' ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-900 dark:text-white">{log.assigned_janitor_name}</span>
+            </div>
+          ) : log.status === 'pending' ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAssignClick(log)}
+              className="text-xs border-gray-300 hover:bg-gray-50"
+            >
+              +Assign task
+            </Button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Unassigned</span>
+            </div>
+          )}
+        </TableCell>
+        <TableCell className="text-sm text-gray-900 dark:text-white w-24">
+          <div className="text-xs">
+            {log.bin_location || log.location || "Unknown"}
+          </div>
+        </TableCell>
+        <TableCell className="w-20">{getStatusBadge(log.status || "")}</TableCell>
+        <TableCell className="w-20">{getPriorityBadge(log.priority || "")}</TableCell>
+      </TableRow>
+    ))
+  )}
+</TableBody>
+
               </Table>
             </div>
           )}
