@@ -162,124 +162,121 @@ export function MapTab() {
         </div>
 
         <div className="w-full">
-          <StaffMapSection onBinClick={handleBinClick} />
+          <StaffMapSection
+            onBinClick={handleBinClick}
+            showRightPanel={isBinDetailsOpen}
+            rightPanel={
+              <div className="w-96 h-full bg-transparent/10 dark:bg-gray-900/70 backdrop-blur-md border-l border-gray-200/30 dark:border-gray-700/30 shadow-xl rounded-l-lg">
+                <div className="p-6 h-full flex flex-col">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bin Details</h3>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsBinDetailsOpen(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ×
+                    </Button>
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="space-y-4 flex-1 flex flex-col">
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="binName" className="text-sm font-medium text-white-700 dark:text-gray-300">
+                          Bin Name
+                        </Label>
+                        <Input
+                          id="binName"
+                          type="text"
+                          value={binForm.binName}
+                          onChange={(e) => handleInputChange("binName", e.target.value)}
+                          placeholder="Enter bin name"
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="binType" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Bin Type
+                        </Label>
+                        <Select value={binForm.binType} onValueChange={(value) => handleInputChange("binType", value)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select bin type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">General Waste</SelectItem>
+                            <SelectItem value="recyclable">Recyclable</SelectItem>
+                            <SelectItem value="organic">Organic</SelectItem>
+                            <SelectItem value="hazardous">Hazardous</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="mainLocation" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Main Location
+                      </Label>
+                      <Select
+                        value={binForm.mainLocation}
+                        onValueChange={(value) => handleInputChange("mainLocation", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select main location" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="central-plaza">Central Plaza</SelectItem>
+                          <SelectItem value="park-avenue">Park Avenue</SelectItem>
+                          <SelectItem value="mall-district">Mall District</SelectItem>
+                          <SelectItem value="residential">Residential Area</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex gap-2 pt-4 mt-auto">
+                      <Button
+                        type="submit"
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        disabled={isUpdating || !selectedBinId}
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {isUpdating ? "Updating..." : "Save Changes"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setIsEditing(false);
+                          setSelectedBinId("");
+                          setBinForm({
+                            binName: "",
+                            binType: "",
+                            mainLocation: "",
+                          });
+                          setIsBinDetailsOpen(false);
+                        }}
+                        className="flex-1"
+                        disabled={isUpdating}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+
+                    {/* Error Display */}
+                    {updateError && (
+                      <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                        {updateError}
+                      </div>
+                    )}
+                  </form>
+                </div>
+              </div>
+            }
+          />
         </div>
       </div>
 
-      {/* Slide-out Bin Details Panel */}
-      {isBinDetailsOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          {/* Backdrop */}
-          <div className="flex-1 bg-black bg-opacity-50" onClick={() => setIsBinDetailsOpen(false)}></div>
-
-          {/* Slide-out Panel */}
-          <div className="w-96 bg-white dark:bg-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bin Details</h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsBinDetailsOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ×
-                </Button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="binName" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Bin Name
-                    </Label>
-                    <Input
-                      id="binName"
-                      type="text"
-                      value={binForm.binName}
-                      onChange={(e) => handleInputChange("binName", e.target.value)}
-                      placeholder="Enter bin name"
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="binType" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Bin Type
-                    </Label>
-                    <Select value={binForm.binType} onValueChange={(value) => handleInputChange("binType", value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select bin type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="general">General Waste</SelectItem>
-                        <SelectItem value="recyclable">Recyclable</SelectItem>
-                        <SelectItem value="organic">Organic</SelectItem>
-                        <SelectItem value="hazardous">Hazardous</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="mainLocation" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Main Location
-                  </Label>
-                  <Select
-                    value={binForm.mainLocation}
-                    onValueChange={(value) => handleInputChange("mainLocation", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select main location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="central-plaza">Central Plaza</SelectItem>
-                      <SelectItem value="park-avenue">Park Avenue</SelectItem>
-                      <SelectItem value="mall-district">Mall District</SelectItem>
-                      <SelectItem value="residential">Residential Area</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    disabled={isUpdating || !selectedBinId}
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {isUpdating ? "Updating..." : "Save Changes"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setIsEditing(false);
-                      setSelectedBinId("");
-                      setBinForm({
-                        binName: "",
-                        binType: "",
-                        mainLocation: "",
-                      });
-                      setIsBinDetailsOpen(false);
-                    }}
-                    className="flex-1"
-                    disabled={isUpdating}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-
-                {/* Error Display */}
-                {updateError && (
-                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
-                    {updateError}
-                  </div>
-                )}
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Panel now rendered inside map container above */}
     </>
   );
 }

@@ -156,7 +156,7 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
   };
 
   return (
-    <Marker position={bin.position} icon={icon} eventHandlers={{ click: handleMarkerClick }}>
+    <Marker position={bin.position} icon={icon}>
       <Popup className="custom-popup" maxWidth={300}>
         <div className="p-3 min-w-[250px]">
           <div className="flex items-center justify-between mb-3">

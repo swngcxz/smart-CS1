@@ -83,9 +83,11 @@ function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
 
 interface StaffMapSectionProps {
   onBinClick?: (binId: string) => void;
+  showRightPanel?: boolean;
+  rightPanel?: React.ReactNode;
 }
 
-export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
+export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: StaffMapSectionProps) {
   const { wasteBins, loading, error, bin1Data, monitoringData, gpsHistory, dynamicBinLocations } = useRealTimeData();
   const [showGPSTracking, setShowGPSTracking] = useState(false);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
@@ -610,6 +612,13 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
           <button id="close-street" className="absolute top-2 right-2 text-black px-3 py-1 rounded z-[999]">
             x
           </button>
+
+          {/* Right Panel - Positioned within the map */}
+          {showRightPanel && rightPanel && (
+            <div className="absolute top-0 right-0 h-full z-[1000] animate-in slide-in-from-right duration-300 ease-out">
+              {rightPanel}
+            </div>
+          )}
         </CardContent>
       </Card>
     </>
