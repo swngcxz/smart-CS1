@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Clock, MapPin, Truck, Plus, Wrench, Trash2 } from "lucide-react";
-import { format, isSameDay, parse } from "date-fns";
+import { format, isSameDay, parse, isBefore, startOfDay } from "date-fns";
 import { AddScheduleDialog, Schedule, Collector } from "../pages/AddScheduleDialog";
 import { useTruckSchedulesList, useCreateTruckSchedule, useUpdateTruckScheduleStatus } from "@/hooks/useTruckSchedules";
 import { useCreateSchedule, useSchedulesList } from "@/hooks/useSchedules";
@@ -28,9 +28,20 @@ export function ScheduleCollectionTabs() {
   const [scheduleData, setScheduleData] = useState<Schedule[]>([]);
 
   // Read: load schedules from backend
-  const { data: truckSchedules } = useTruckSchedulesList();
-  const { data: regularSchedules } = useSchedulesList();
+  const { data: truckSchedules, loading: truckLoading, error: truckError } = useTruckSchedulesList();
+  const { data: regularSchedules, loading: regularLoading, error: regularError } = useSchedulesList();
   const { data: staffData } = useStaffList();
+  
+  // Debug logging
+  console.log("🔍 ScheduleCollectionTabs data:", {
+    truckSchedules: truckSchedules?.length || 0,
+    regularSchedules: regularSchedules?.length || 0,
+    staffData: staffData?.length || 0,
+    truckLoading,
+    regularLoading,
+    truckError,
+    regularError
+  });
   
   function formatTimeRange(timeRange: string) {
     if (!timeRange || typeof timeRange !== 'string') {
@@ -160,6 +171,25 @@ export function ScheduleCollectionTabs() {
     return serviceType === "collection" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800";
   };
 
+  // Helper function to determine if a schedule is overdue
+  const isScheduleOverdue = (schedule: Schedule) => {
+    const today = startOfDay(new Date());
+    const scheduleDate = startOfDay(new Date(schedule.date));
+    
+    // A schedule is overdue if:
+    // 1. The schedule date is before today AND
+    // 2. The status is still "scheduled" (not completed or cancelled)
+    return isBefore(scheduleDate, today) && schedule.status === "scheduled";
+  };
+
+  // Helper function to get the effective status (including overdue)
+  const getEffectiveStatus = (schedule: Schedule) => {
+    if (isScheduleOverdue(schedule)) {
+      return "overdue";
+    }
+    return schedule.status;
+  };
+
   const getSchedulesForDate = (date: Date) => {
     return scheduleData.filter((schedule) => isSameDay(new Date(schedule.date), date));
   };
@@ -195,29 +225,35 @@ export function ScheduleCollectionTabs() {
 
         {hasSchedules && (
           <div className="w-full space-y-1">
-            {daySchedules.slice(0, 2).map((schedule, index) => (
-              <div
-                key={index}
-                className={`text-xs p-1 rounded text-center truncate flex items-center justify-center gap-1 border ${
-                  schedule.serviceType === "collection"
-                    ? schedule.status === "scheduled"
-                      ? "bg-green-500 text-white border-green-600"
+            {daySchedules.slice(0, 2).map((schedule, index) => {
+              const effectiveStatus = getEffectiveStatus(schedule);
+              const isOverdue = isScheduleOverdue(schedule);
+              
+              return (
+                <div
+                  key={index}
+                  className={`text-xs p-1 rounded text-center truncate flex items-center justify-center gap-1 border ${
+                    schedule.serviceType === "collection"
+                      ? schedule.status === "scheduled"
+                        ? "bg-green-500 text-white border-green-600"
+                        : schedule.status === "completed"
+                        ? "bg-green-600 text-white border-green-700"
+                        : "bg-red-500 text-white border-red-600"
+                      : schedule.status === "scheduled"
+                      ? "bg-blue-500 text-white border-blue-600"
                       : schedule.status === "completed"
-                      ? "bg-green-600 text-white border-green-700"
+                      ? "bg-blue-600 text-white border-blue-700"
                       : "bg-red-500 text-white border-red-600"
-                    : schedule.status === "scheduled"
-                    ? "bg-blue-500 text-white border-blue-600"
-                    : schedule.status === "completed"
-                    ? "bg-blue-600 text-white border-blue-700"
-                    : "bg-red-500 text-white border-red-600"
-                }`}
-                title={`${schedule.serviceType === "collection" ? "Trash Collection" : "Maintenance"} - ${
-                  schedule.location
-                } at ${schedule.time}`}
-              >
-                <span className="truncate">{schedule.location}</span>
-              </div>
-            ))}
+                  }`}
+                  title={`${schedule.serviceType === "collection" ? "Trash Collection" : "Maintenance"} - ${
+                    schedule.location
+                  } at ${schedule.time}${isOverdue ? " (OVERDUE)" : ""}`}
+                >
+                  <span className="truncate">{schedule.location}</span>
+                  {isOverdue && <span className="text-xs font-bold">!</span>}
+                </div>
+              );
+            })}
             {daySchedules.length > 2 && (
               <div className="text-xs text-gray-500 text-center">+{daySchedules.length - 2} more</div>
             )}
@@ -480,17 +516,21 @@ export function ScheduleCollectionTabs() {
                 <p className="text-sm mt-2">Click "Add Schedule" to create a new schedule.</p>
               </div>
             ) : (
-              selectedDateSchedules.map((schedule) => (
-              <div key={schedule.id} className="p-4 bg-gray-50 rounded-lg border">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{schedule.location}</span>
-                    <div className="flex gap-2">
-                      <Badge className={getStatusColor(schedule.status)} variant="secondary">
-                        {schedule.status}
-                      </Badge>
-                    </div>
-                  </div>
+              selectedDateSchedules.map((schedule) => {
+                const effectiveStatus = getEffectiveStatus(schedule);
+                const isOverdue = isScheduleOverdue(schedule);
+                
+                return (
+                  <div key={schedule.id} className="p-4 bg-gray-50 rounded-lg border">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">{schedule.location}</span>
+                        <div className="flex gap-2">
+                          <Badge className={getStatusColor(effectiveStatus)} variant="secondary">
+                            {isOverdue ? "OVERDUE" : effectiveStatus}
+                          </Badge>
+                        </div>
+                      </div>
 
                   <div className="flex items-center justify-between text-sm text-gray-600">
                     <div className="flex items-center space-x-2">
@@ -579,7 +619,8 @@ export function ScheduleCollectionTabs() {
                   )}
                 </div>
               </div>
-              ))
+                );
+              })
             )}
           </div>
         </DialogContent>

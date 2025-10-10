@@ -1,7 +1,17 @@
 import { useApiGet, useApiPost } from "./useApi";
 
 export function useSchedulesList() {
-  return useApiGet("/api/schedules");
+  const result = useApiGet("/api/schedules");
+  
+  // Debug logging
+  console.log("🔍 useSchedulesList result:", {
+    data: result.data,
+    loading: result.loading,
+    error: result.error,
+    dataLength: result.data?.length || 0
+  });
+  
+  return result;
 }
 
 export function useScheduleDetail(scheduleId: string | null) {

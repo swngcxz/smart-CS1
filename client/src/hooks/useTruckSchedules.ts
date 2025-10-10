@@ -1,7 +1,17 @@
 import { useApiGet, useApiPost, useApiPut } from "./useApi";
 
 export function useTruckSchedulesList() {
-  return useApiGet("/api/truck-schedules");
+  const result = useApiGet("/api/truck-schedules");
+  
+  // Debug logging
+  console.log("🔍 useTruckSchedulesList result:", {
+    data: result.data,
+    loading: result.loading,
+    error: result.error,
+    dataLength: result.data?.length || 0
+  });
+  
+  return result;
 }
 
 export function useTruckScheduleDetail(truckScheduleId: string | null) {

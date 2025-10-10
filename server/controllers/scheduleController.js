@@ -50,9 +50,9 @@ async function createNewSchedule(req, res) {
       location: req.body.location,
       status: req.body.status,
       date: req.body.date,
-      ...(req.body.priority ? { priority: req.body.priority } : {}),
-      ...(req.body.contactPerson ? { contactPerson: req.body.contactPerson } : {}),
-      ...(req.body.notes ? { notes: req.body.notes } : {}),
+      priority: req.body.priority || "Normal",
+      contactPerson: req.body.contactPerson || "Not specified",
+      notes: req.body.notes || "No additional notes",
       createdAt: new Date().toISOString()
     };
     

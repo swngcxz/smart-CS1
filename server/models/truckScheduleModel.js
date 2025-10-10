@@ -14,7 +14,10 @@ async function getTruckSchedules(filter = {}) {
 }
 
 async function updateTruckScheduleStatus(id, status) {
-  await db.collection("truckSchedules").doc(id).update({ status });
+  await db.collection("truckSchedules").doc(id).update({ 
+    status,
+    updatedAt: new Date().toISOString()
+  });
 }
 
 async function findTruckScheduleByStaffAndDate(staffId, date) {

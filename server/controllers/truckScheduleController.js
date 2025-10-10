@@ -54,10 +54,10 @@ async function createNewTruckSchedule(req, res) {
       location,
       status,
       date,
-      ...(priority ? { priority } : {}),
-      ...(contactPerson ? { contactPerson } : {}),
-      ...(notes ? { notes } : {}),
-      ...(truckPlate ? { truckPlate } : {}),
+      priority: priority || "Normal",
+      contactPerson: contactPerson || "Not specified",
+      notes: notes || "No additional notes",
+      truckPlate: truckPlate || "Not assigned",
       createdAt: new Date().toISOString()
     };
     

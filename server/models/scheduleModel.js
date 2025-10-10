@@ -17,7 +17,10 @@ async function getSchedules(filter = {}) {
 
 // UPDATE
 async function updateScheduleStatus(id, status) {
-  await db.collection("schedules").doc(id).update({ status });
+  await db.collection("schedules").doc(id).update({ 
+    status,
+    updatedAt: new Date().toISOString()
+  });
 }
 
 async function findScheduleByStaffAndDate(staffId, date) {
