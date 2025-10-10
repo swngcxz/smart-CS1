@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
 import { Smartphone, Wifi, WifiOff } from "lucide-react";
+import { BinInfoModal } from "@/components/modals/BinInfoModal";
 import api from "@/lib/api";
 
 // GSM Status Hook
@@ -54,6 +55,8 @@ function useGSMStatus() {
 
 export function WasteLevelsTab() {
   const [selectedLocation, setSelectedLocation] = useState("Central Plaza");
+  const [selectedBin, setSelectedBin] = useState<WasteBin | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { wasteBins, loading, error, bin1Data } = useRealTimeData();
 
@@ -261,6 +264,16 @@ export function WasteLevelsTab() {
   const filteredBins = realTimeBins.filter((bin) => bin.location === selectedLocation);
 
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
+  const handleBinClick = (bin: WasteBin) => {
+    setSelectedBin(bin);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedBin(null);
+  };
   return (
     <>
       <div className="space-y-6">
@@ -324,7 +337,8 @@ export function WasteLevelsTab() {
               {filteredBins.map((bin) => (
                 <Card
                   key={bin.id}
-                  className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                  className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 hover:shadow-md transition-all duration-200 group"
+                  onClick={() => handleBinClick(bin)}
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -371,6 +385,13 @@ export function WasteLevelsTab() {
                         <span className="font-medium">Next Collection:</span> {bin.nextCollection}
                       </div>
                     </div>
+                    
+                    {/* Click indicator */}
+                    <div className="flex justify-end pt-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        Click to assign task →
+                      </span>
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -379,6 +400,13 @@ export function WasteLevelsTab() {
         </Card>
       </div>
 
+      {/* Bin Info Modal */}
+      <BinInfoModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        bin={selectedBin}
+        binData={selectedBin?.id === "bin1" ? bin1Data : null}
+      />
     </>
   );
 }
