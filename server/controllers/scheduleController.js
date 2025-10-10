@@ -12,6 +12,17 @@ async function createNewSchedule(req, res) {
   const error = validateSchedule(req.body);
   if (error) return res.status(400).json({ error });
 
+  // Validate that the date is not in the past
+  const scheduleDate = new Date(req.body.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+  
+  if (scheduleDate < today) {
+    return res.status(400).json({ 
+      error: "Cannot create schedule for past dates. Please select today or a future date." 
+    });
+  }
+
   const lunchStart = req.body.lunch_break_start || "12:00";
   const lunchEnd = req.body.lunch_break_end || "13:00";
 

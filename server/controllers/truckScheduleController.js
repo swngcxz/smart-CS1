@@ -28,6 +28,17 @@ async function createNewTruckSchedule(req, res) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
+  // Validate that the date is not in the past
+  const scheduleDate = new Date(date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+  
+  if (scheduleDate < today) {
+    return res.status(400).json({ 
+      error: "Cannot create schedule for past dates. Please select today or a future date." 
+    });
+  }
+
   try {
     // verify staff exists
     const staff = await StaffModel.getStaffById(staffId);

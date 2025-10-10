@@ -98,6 +98,17 @@ export function AddScheduleDialog({
   useEffect(() => {
     setValidationError("");
     
+    // Check for past date first
+    if (date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+      
+      if (date < today) {
+        setValidationError("Cannot create schedule for past dates. Please select today or a future date.");
+        return;
+      }
+    }
+    
     // Perform real-time validation when all required fields are filled
     if (location && date && startTime && endTime && !loadingSchedules) {
       const hasDuplicate = checkForDuplicateSchedule();
@@ -165,6 +176,22 @@ export function AddScheduleDialog({
     setContactPerson("");
     setPriority("Normal");
     setValidationError("");
+  };
+
+  const checkForPastDate = (): boolean => {
+    if (!date) {
+      return false;
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+    
+    if (date < today) {
+      setValidationError("Cannot create schedule for past dates. Please select today or a future date.");
+      return true;
+    }
+    
+    return false;
   };
 
   const checkForDuplicateSchedule = (): boolean => {
@@ -247,6 +274,16 @@ export function AddScheduleDialog({
     e.preventDefault();
 
     if (!location || !startTime || !endTime || !date || !collectorId || collectorId === "loading" || collectorId === "no-workers") {
+      return;
+    }
+
+    // Check for past date first
+    if (checkForPastDate()) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Date",
+        description: validationError,
+      });
       return;
     }
 
@@ -450,6 +487,11 @@ export function AddScheduleDialog({
                     onSelect={setDate}
                     initialFocus
                     className="pointer-events-auto"
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                   />
                 </PopoverContent>
               </Popover>
@@ -548,7 +590,7 @@ export function AddScheduleDialog({
             <Button 
               type="submit" 
               className="bg-green-700 text-white px-4 py-2 rounded hover:bg-green-800 transition"
-              disabled={!location || !startTime || !endTime || !date || !collectorId || collectorId === "loading" || collectorId === "no-workers" || loadingWorkers || loadingSchedules || !!validationError}
+              disabled={!location || !startTime || !endTime || !date || !collectorId || collectorId === "loading" || collectorId === "no-workers" || loadingWorkers || loadingSchedules || !!validationError || checkForPastDate()}
             >
               {loadingWorkers || loadingSchedules ? "Loading..." : "Add Schedule"}
             </Button>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Clock, MapPin, Trash2, AlertTriangle, CheckCircle, XCircle, Filter, Download, Loader2 } from "lucide-react";
+import { Calendar, Clock, MapPin, Trash2, AlertTriangle, CheckCircle, XCircle, Filter, Download, Loader2, ChevronDown } from "lucide-react";
 import api from "@/lib/api";
 
 interface BinHistoryRecord {
@@ -447,10 +447,36 @@ export function BinHistory() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading bin history...</p>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Bin History</h1>
+          </div>
+          <Button disabled className="flex items-center gap-2 bg-gray-100 text-gray-400 border border-gray-200 text-sm px-3 py-1.5 h-8">
+            <Download className="w-3 h-3" />
+            Export
+          </Button>
+        </div>
+
+        {/* Status Summary */}
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-700 font-medium">Total: 0</span>
+          <span className="text-green-600 font-medium">Normal: 0</span>
+          <span className="text-yellow-600 font-medium">Warning: 0</span>
+          <div className="flex items-center gap-1">
+            <span className="text-red-600 font-medium">Critical: 0</span>
+            <ChevronDown className="w-3 h-3 text-gray-500" />
+          </div>
+        </div>
+
+
+        {/* Loading State */}
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading bin history...</p>
+          </div>
         </div>
       </div>
     );
@@ -461,171 +487,93 @@ export function BinHistory() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bin History</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Bin History</h1>
         </div>
-        <Button onClick={exportToCSV} className="flex items-center gap-2">
-          <Download className="w-4 h-4" />
-          Export CSV
+        <Button onClick={exportToCSV} className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 text-sm px-3 py-1.5 h-8">
+          <Download className="w-3 h-3" />
+          Export
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Records</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalRecords}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Critical</p>
-                <p className="text-2xl font-bold text-red-600">{stats.criticalCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Warning</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.warningCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Normal</p>
-                <p className="text-2xl font-bold text-green-600">{stats.normalCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Errors</p>
-                <p className="text-2xl font-bold text-red-600">{stats.errorCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Malfunction</p>
-                <p className="text-2xl font-bold text-orange-600">{stats.malfunctionCount}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Status Summary */}
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-gray-700 font-medium">Total: {stats.totalRecords}</span>
+        <span className="text-green-600 font-medium">Normal: {stats.normalCount}</span>
+        <span className="text-yellow-600 font-medium">Warning: {stats.warningCount}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-red-600 font-medium">Critical: {stats.criticalCount}</span>
+          <ChevronDown className="w-3 h-3 text-gray-500" />
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Search</label>
-              <Input
-                placeholder="Search records..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+      {/* Filter/Search Bar */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Search records..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="critical">Critical</SelectItem>
+            <SelectItem value="warning">Warning</SelectItem>
+            <SelectItem value="ok">Normal</SelectItem>
+            <SelectItem value="error">Error</SelectItem>
+            <SelectItem value="malfunction">Malfunction</SelectItem>
+          </SelectContent>
+        </Select>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
-                  <SelectItem value="ok">Normal</SelectItem>
-                  <SelectItem value="error">Error</SelectItem>
-                  <SelectItem value="malfunction">Malfunction</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <Select value={binIdFilter} onValueChange={setBinIdFilter}>
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="All Bins" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Bins</SelectItem>
+            {uniqueBinIds.map((binId) => (
+              <SelectItem key={binId} value={binId}>
+                {binId}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Bin ID</label>
-              <Select value={binIdFilter} onValueChange={setBinIdFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Bins" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Bins</SelectItem>
-                  {uniqueBinIds.map((binId) => (
-                    <SelectItem key={binId} value={binId}>
-                      {binId}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Date Range</label>
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Time" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Time</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="week">Last 7 Days</SelectItem>
-                  <SelectItem value="month">Last 30 Days</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <Select value={dateFilter} onValueChange={setDateFilter}>
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="All Time" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="week">Last 7 Days</SelectItem>
+            <SelectItem value="month">Last 30 Days</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Data Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Bin History Records ({filteredHistory.length} records)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {error ? (
-            <div className="text-center py-8">
-              <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <p className="text-red-600 mb-4">{error}</p>
-              <Button onClick={fetchBinHistory}>Retry</Button>
-            </div>
-          ) : filteredHistory.length === 0 ? (
-            <div className="text-center py-8">
-              <Trash2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No bin history records found</p>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
+      {error ? (
+        <div className="text-center py-12">
+          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-4 text-lg">{error}</p>
+          <Button onClick={fetchBinHistory} className="bg-blue-600 hover:bg-blue-700 text-white">Retry</Button>
+        </div>
+      ) : filteredHistory.length === 0 ? (
+        <div className="text-center py-16">
+          <Trash2 className="w-20 h-20 text-gray-300 mx-auto mb-6" />
+          <p className="text-gray-500 text-lg">No bin history records found</p>
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -642,8 +590,8 @@ export function BinHistory() {
                       return (
                         <TableRow key={record.id}>
                         <TableCell className="font-medium">
-  {record.binId.charAt(0).toUpperCase() + record.binId.slice(1)}
-</TableCell>
+                          {record.binId.charAt(0).toUpperCase() + record.binId.slice(1)}
+                        </TableCell>
 
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -687,40 +635,39 @@ export function BinHistory() {
                 </Table>
               </div>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <div className="text-sm text-gray-600">
-                    Showing {startIndex + 1} to {Math.min(endIndex, filteredHistory.length)} of {filteredHistory.length}{" "}
-                    records
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <span className="text-sm text-gray-600">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-4 border-t">
+                <div className="text-sm text-gray-600">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredHistory.length)} of {filteredHistory.length}{" "}
+                  records
                 </div>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
