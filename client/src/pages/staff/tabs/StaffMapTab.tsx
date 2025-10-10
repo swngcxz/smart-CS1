@@ -32,8 +32,8 @@ export function MapTab() {
       ? dynamicBinLocations.map((bin) => ({
           id: bin.id,
           name: bin.name,
-          lat: bin.position?.[0]?.toString() || '0',
-          lng: bin.position?.[1]?.toString() || '0',
+          lat: bin.position?.[0]?.toString() || "0",
+          lng: bin.position?.[1]?.toString() || "0",
           status: bin.status,
           level: bin.level,
           lastCollected: bin.lastCollection,
@@ -97,7 +97,7 @@ export function MapTab() {
   };
 
   // Load bin data for editing (called when clicking on map bin)
-  const loadBinForEdit = (bin: any) => {
+  const loadBinForEdit = (bin: { id?: string; name?: string; type?: string; mainLocation?: string }) => {
     // Map the real-time database structure to form fields
     // Use actual data from Firebase
     setBinForm({
@@ -111,15 +111,15 @@ export function MapTab() {
 
   // Function to be called from map component when bin is clicked
   const handleBinClick = (binId: string) => {
-    console.log('🔍 Bin clicked:', binId);
-    console.log('📊 Available bins:', updatedLocationData);
-    
+    console.log("🔍 Bin clicked:", binId);
+    console.log("📊 Available bins:", updatedLocationData);
+
     const selectedBin = updatedLocationData.find((bin) => bin.id === binId);
     if (selectedBin) {
-      console.log('✅ Selected bin data:', selectedBin);
+      console.log("✅ Selected bin data:", selectedBin);
       loadBinForEdit(selectedBin);
     } else {
-      console.warn('⚠️ Bin not found in updatedLocationData:', binId);
+      console.warn("⚠️ Bin not found in updatedLocationData:", binId);
     }
   };
 
@@ -135,8 +135,27 @@ export function MapTab() {
   };
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Map View</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Map View</h2>
+        <div className="flex items-center gap-4 text-sm">
+          {/* Real-time Status Display */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <span className="text-gray-700 dark:text-gray-300">Critical({criticalBins})</span>
+            </div>
+            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <span className="text-gray-700 dark:text-gray-300">Warning({warningBins})</span>
+            </div>
+            <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span className="text-gray-700 dark:text-gray-300">Normal({normalBins})</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -145,38 +164,6 @@ export function MapTab() {
         </div>
 
         <div className="space-y-4">
-          {/* Real-time Status Summary */}
-          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                Real-time Status
-                {error && <span className="text-sm text-red-500">(Error)</span>}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Normal</span>
-                  </div>
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">{normalBins}</div>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Warning</span>
-                  </div>
-                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{warningBins}</div>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Critical</span>
-                  </div>
-                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">{criticalBins}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
               <Button
@@ -294,7 +281,6 @@ export function MapTab() {
             </CardContent>
           </Card>
 
-
           {/* Bin Update Form */}
           <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <CardHeader>
@@ -302,7 +288,6 @@ export function MapTab() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="binName" className="text-sm font-medium text-gray-700 dark:text-gray-300">

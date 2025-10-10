@@ -140,10 +140,6 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
       ? (dynamicBinLocations[0]?.position as LatLngTuple)
       : defaultCenter; // Only use default as last resort
 
-  const criticalBins = updatedBinLocations.filter((bin) => bin.status === "critical").length;
-  const warningBins = updatedBinLocations.filter((bin) => bin.status === "warning").length;
-  const normalBins = updatedBinLocations.filter((bin) => bin.status === "normal").length;
-
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
 
@@ -330,24 +326,6 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
               )}
             </div>
             <div className="flex items-center gap-4 text-xs">
-              {/* GPS Status */}
-              <div className="flex items-center gap-1">
-                <div
-                  className={`w-3 h-3 rounded-full ${
-                    bin1Data?.gps_valid || monitoringData?.gps_valid ? "bg-blue-500" : "bg-red-500"
-                  }`}
-                ></div>
-                <span className="flex items-center gap-1">
-                  GPS: {bin1Data?.gps_valid || monitoringData?.gps_valid ? "Valid" : "Invalid"}
-                  {bin1Data?.gps_valid || monitoringData?.gps_valid ? (
-                    <span className="text-blue-600">
-                      ({bin1Data?.latitude?.toFixed(4) || monitoringData?.latitude?.toFixed(4)}, {" "}
-                      {bin1Data?.longitude?.toFixed(4) || monitoringData?.longitude?.toFixed(4)})
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-
               {/* GPS Tracking Toggle */}
               {gpsHistory.length > 1 && (
                 <button
@@ -374,10 +352,12 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
               className="h-full w-full z-0"
               // keep existing map options but override some zoom behavior for smoother/finer zooming
               {...MAP_OPTIONS}
-              maxBounds={[
-                [MAP_CONFIG.bounds.south, MAP_CONFIG.bounds.west],
-                [MAP_CONFIG.bounds.north, MAP_CONFIG.bounds.east]
-              ] as [[number, number], [number, number]]}
+              maxBounds={
+                [
+                  [MAP_CONFIG.bounds.south, MAP_CONFIG.bounds.west],
+                  [MAP_CONFIG.bounds.north, MAP_CONFIG.bounds.east],
+                ] as [[number, number], [number, number]]
+              }
               zoomSnap={0.25}
               zoomDelta={0.5}
               wheelPxPerZoomLevel={60}
@@ -421,13 +401,14 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
                 <DynamicBinMarker key={bin.id} bin={bin} onBinClick={handleBinClick} />
               ))}
 
-
               {/* GPS Tracking Line */}
               <GPSTrackingLine
                 gpsHistory={gpsHistory.map((point) => ({
                   ...point,
                   timestamp:
-                    typeof point.timestamp === "number" ? new Date(point.timestamp).toISOString() : (point.timestamp || new Date().toISOString()),
+                    typeof point.timestamp === "number"
+                      ? new Date(point.timestamp).toISOString()
+                      : point.timestamp || new Date().toISOString(),
                 }))}
                 visible={showGPSTracking}
               />
@@ -486,7 +467,6 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
             </div>
           )}
 
-
           {/* Pegman Icon */}
           {/* <div
             id="pegman"
@@ -509,7 +489,6 @@ export function StaffMapSection({ onBinClick }: StaffMapSectionProps) {
           </button>
         </CardContent>
       </Card>
-
     </>
   );
 }
