@@ -31,19 +31,26 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
   const [taskNotes, setTaskNotes] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [janitorsLoading, setJanitorsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
 
-  // Fetch available janitors
+  // Fetch current user and available janitors
   useEffect(() => {
-    const fetchJanitors = async () => {
+    const fetchData = async () => {
       try {
         setJanitorsLoading(true);
-        const response = await api.get("/api/staff/janitors");
-        setJanitors(response.data || []);
+        
+        // Fetch current user
+        const userResponse = await api.get("/auth/me");
+        setCurrentUser({ id: userResponse.data.id, role: userResponse.data.role });
+        
+        // Fetch janitors
+        const janitorsResponse = await api.get("/api/staff/janitors");
+        setJanitors(janitorsResponse.data || []);
       } catch (error: any) {
-        console.error("Failed to fetch janitors:", error);
+        console.error("Failed to fetch data:", error);
         toast({
           title: "Error",
-          description: "Failed to load janitors",
+          description: "Failed to load data",
           variant: "destructive",
         });
       } finally {
@@ -52,7 +59,7 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
     };
 
     if (isOpen) {
-      fetchJanitors();
+      fetchData();
     }
   }, [isOpen]);
 
@@ -79,6 +86,7 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
       const selectedJanitorData = janitors.find(j => j.id === selectedJanitor);
       
       const taskData = {
+        user_id: currentUser?.id,
         bin_id: bin.id,
         bin_location: bin.location,
         bin_status: bin.status,
@@ -91,7 +99,9 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
         source: "web_dashboard"
       };
 
-      await api.post("/api/activities", taskData);
+      console.log("🚀 Sending task data:", taskData);
+      const response = await api.post("/api/activitylogs", taskData);
+      console.log("✅ Task assignment response:", response.data);
       
       toast({
         title: "Success",
@@ -100,10 +110,18 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
       
       onClose();
     } catch (error: any) {
-      console.error("Failed to assign task:", error);
+      console.error("❌ Failed to assign task:", error);
+      console.error("❌ Error response:", error.response?.data);
+      console.error("❌ Error status:", error.response?.status);
+      
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          "Failed to assign task";
+      
       toast({
         title: "Error",
-        description: "Failed to assign task",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
