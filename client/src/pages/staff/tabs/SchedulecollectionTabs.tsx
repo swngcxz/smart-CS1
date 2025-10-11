@@ -196,6 +196,11 @@ export function ScheduleCollectionTabs() {
   const handleDateClick = (date: Date | undefined) => {
     if (!date) return;
 
+    if (selectedDate && isSameDay(date, selectedDate) && isSchedulePopupOpen) {
+      setIsSchedulePopupOpen(false);
+      return;
+    }
+
     const daySchedules = getSchedulesForDate(date);
     setSelectedDateSchedules(daySchedules);
     setIsSchedulePopupOpen(true);
@@ -220,7 +225,13 @@ export function ScheduleCollectionTabs() {
     }
 
     return (
-      <div className="w-full h-full p-1 flex flex-col items-center justify-start min-h-[80px] cursor-pointer">
+      <div
+        className="w-full h-full p-1 flex flex-col items-center justify-start min-h-[80px] cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDateClick(day);
+        }}
+      >
         <span
           className={`text-sm font-medium mb-1 ${
             hasOverdueSchedules
