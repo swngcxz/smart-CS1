@@ -17,6 +17,7 @@ interface SchedulePopupModalProps {
   getStatusColor: (status: string) => string;
   getCapacityColor: (capacity: string) => string;
   formatTimeRange: (timeRange: string) => string;
+  viewOnly?: boolean; // New prop for admin view-only mode
 }
 
 // Helper function to get profile picture or initials
@@ -45,6 +46,7 @@ export function SchedulePopupModal({
   getStatusColor,
   getCapacityColor,
   formatTimeRange,
+  viewOnly = false, // Default to false for staff
 }: SchedulePopupModalProps) {
   const [activeTab, setActiveTab] = useState<"collection" | "maintenance">("collection");
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
@@ -161,18 +163,22 @@ export function SchedulePopupModal({
                       >
                         {isOverdue ? "Overdue" : effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1)}
                       </Badge>
-                      <button
-                        onClick={() => handleEditSchedule(schedule)}
-                        className="p-1 hover:bg-gray-100 rounded-md transition-colors"
-                      >
-                        <Edit className="h-4 w-4 text-gray-500 hover:text-gray-700" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSchedule(schedule)}
-                        className="p-1 hover:bg-red-100 rounded-md transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-600" />
-                      </button>
+                      {!viewOnly && (
+                        <>
+                          <button
+                            onClick={() => handleEditSchedule(schedule)}
+                            className="p-1 hover:bg-gray-100 rounded-md transition-colors"
+                          >
+                            <Edit className="h-4 w-4 text-gray-500 hover:text-gray-700" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSchedule(schedule)}
+                            className="p-1 hover:bg-red-100 rounded-md transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4 text-gray-500 hover:text-red-600" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -300,22 +306,26 @@ export function SchedulePopupModal({
         </div>
       </DialogContent>
 
-      {/* Edit Schedule Modal */}
-      <EditScheduleModal
-        isOpen={!!editingSchedule}
-        onClose={() => setEditingSchedule(null)}
-        schedule={editingSchedule}
-        onUpdateSchedule={handleUpdateSchedule}
-      />
+      {/* Edit Schedule Modal - Only show for staff */}
+      {!viewOnly && (
+        <EditScheduleModal
+          isOpen={!!editingSchedule}
+          onClose={() => setEditingSchedule(null)}
+          schedule={editingSchedule}
+          onUpdateSchedule={handleUpdateSchedule}
+        />
+      )}
 
-      {/* Delete Confirmation Modal */}
-      <DeleteScheduleModal
-        isOpen={!!deletingSchedule}
-        onClose={cancelDelete}
-        schedule={deletingSchedule}
-        onConfirm={confirmDelete}
-        formatTimeRange={formatTimeRange}
-      />
+      {/* Delete Confirmation Modal - Only show for staff */}
+      {!viewOnly && (
+        <DeleteScheduleModal
+          isOpen={!!deletingSchedule}
+          onClose={cancelDelete}
+          schedule={deletingSchedule}
+          onConfirm={confirmDelete}
+          formatTimeRange={formatTimeRange}
+        />
+      )}
     </Dialog>
   );
 }
