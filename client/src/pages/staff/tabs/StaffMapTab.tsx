@@ -140,7 +140,7 @@ export function MapTab() {
       <div className="space-y-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Map View</h2>
-          <div className="flex items-center gap-3 text-xs"> {/* smaller font */}
+<div className="flex items-center gap-3 text-xs"> {/* smaller font */}
   {/* Real-time Status Display */}
   <div className="flex items-center gap-2">
     <div className="flex items-center gap-1">
@@ -172,92 +172,93 @@ export function MapTab() {
             showRightPanel={isBinDetailsOpen}
             isPanelOpen={isBinDetailsOpen}
             rightPanel={
-              <div className="w-[420px] h-full bg-black/20 border-l border-white/20 shadow-2xl rounded-l-xl backdrop-blur-lg transform transition-transform duration-300 ease-out">
-                <div className="p-6 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-white">Bin Details</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsBinDetailsOpen(false)}
-                      className="text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors duration-200"
-                    >
-                      ×
-                    </Button>
-                  </div>
+<div className="w-[420px] h-full bg-black/20 border-l border-white/20 shadow-2xl rounded-l-xl backdrop-blur-lg transform transition-transform duration-300 ease-out">
+  <div className="p-6 h-full flex flex-col">
+    <div className="flex items-center justify-between mb-6">
+      <h3 className="text-lg font-semibold text-white">Bin Details</h3>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsBinDetailsOpen(false)}
+        className="text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors duration-200"
+      >
+        ×
+      </Button>
+    </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-4 flex-1 flex flex-col">
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="binName" className="text-sm font-medium text-white">
-                          Bin Name
-                        </Label>
-                        <Input
-                          id="binName"
-                          type="text"
-                          value={binForm.binName}
-                          onChange={(e) => handleInputChange("binName", e.target.value)}
-                          placeholder="Enter bin name"
-                          className="w-full bg-white/10 border-white/30 text-white placeholder:text-white/70 focus:border-blue-400 transition-colors duration-200"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="binType" className="text-sm font-medium text-white">
-                          Bin Type
-                        </Label>
-                        <Select value={binForm.binType} onValueChange={(value) => handleInputChange("binType", value)}>
-                          <SelectTrigger className="bg-white/10 border-white/30 text-white focus:border-blue-400 transition-colors duration-200">
-                            <SelectValue placeholder="Select bin type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="general">General Waste</SelectItem>
-                            <SelectItem value="recyclable">Recyclable</SelectItem>
-                            <SelectItem value="organic">Organic</SelectItem>
-                            <SelectItem value="hazardous">Hazardous</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+    <form onSubmit={handleSubmit} className="space-y-4 flex-1 flex flex-col">
+      <div className="grid grid-cols-1 gap-4">
+        {/* Bin Name */}
+        <div className="space-y-2">
+          <Label htmlFor="binName" className="text-sm font-medium text-white">
+            Bin Name
+          </Label>
+          <Input
+            id="binName"
+            type="text"
+            value={binForm.binName}
+            onChange={(e) => handleInputChange("binName", e.target.value)}
+            placeholder="Enter bin name"
+            className="w-full bg-white/10 border-white/30 text-white placeholder:text-white/70 focus:border-blue-400 transition-colors duration-200"
+          />
+        </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="mainLocation" className="text-sm font-medium text-white">
-                        Main Location
-                      </Label>
-                      <Select
-                        value={binForm.mainLocation}
-                        onValueChange={(value) => handleInputChange("mainLocation", value)}
-                      >
-                        <SelectTrigger className="bg-white/10 border-white/30 text-white focus:border-blue-400 transition-colors duration-200">
-                          <SelectValue placeholder="Select main location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="central-plaza">Central Plaza</SelectItem>
-                          <SelectItem value="park-avenue">Park Avenue</SelectItem>
-                          <SelectItem value="mall-district">Mall District</SelectItem>
-                          <SelectItem value="residential">Residential Area</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+        {/* <div className="space-y-2">
+          <Label htmlFor="assignedJanitor" className="text-sm font-medium text-white">
+            Assigned Janitor
+          </Label>
+          <Input
+            id="assignedJanitor"
+            type="text"
+            value={binForm.assignedJanitor || "Unassigned"}
+            readOnly
+            className="w-full bg-white/10 border-white/30 text-white placeholder:text-white/70 cursor-not-allowed"
+          />
+        </div> */}
 
-                    <div className="pt-4 mt-auto">
-                      <Button
-                        type="submit"
-                        className="w-full bg-green-700 hover:bg-green-800 text-white transition-all duration-200 shadow-lg hover:shadow-xl border border-green-600/50"
-                        disabled={isUpdating || !selectedBinId}
-                      >
-                        {isUpdating ? "Updating..." : "Save Changes"}
-                      </Button>
-                    </div>
+        {/* Main Location */}
+        <div className="space-y-2">
+          <Label htmlFor="mainLocation" className="text-sm font-medium text-white">
+          Location
+          </Label>
+          <Select
+            value={binForm.mainLocation}
+            onValueChange={(value) => handleInputChange("mainLocation", value)}
+          >
+            <SelectTrigger className="bg-white/10 border-white/30 text-white focus:border-blue-400 transition-colors duration-200">
+              <SelectValue placeholder="Select main location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="central-plaza">Central Plaza</SelectItem>
+              <SelectItem value="park-avenue">Park Avenue</SelectItem>
+              <SelectItem value="mall-district">Mall District</SelectItem>
+              <SelectItem value="residential">Residential Area</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-                    {/* Error Display */}
-                    {updateError && (
-                      <div className="text-sm text-red-200 bg-red-500/20 border border-red-400/50 p-3 rounded-lg">
-                        {updateError}
-                      </div>
-                    )}
-                  </form>
-                </div>
-              </div>
+      {/* Submit Button */}
+      <div className="pt-4 mt-auto">
+        <Button
+          type="submit"
+          className="w-full bg-green-700 hover:bg-green-800 text-white transition-all duration-200 shadow-lg hover:shadow-xl border border-green-600/50"
+          disabled={isUpdating || !selectedBinId}
+        >
+          {isUpdating ? "Updating..." : "Save Changes"}
+        </Button>
+      </div>
+
+      {/* Error Display */}
+      {updateError && (
+        <div className="text-sm text-red-200 bg-red-500/20 border border-red-400/50 p-3 rounded-lg">
+          {updateError}
+        </div>
+      )}
+    </form>
+  </div>
+</div>
+
             }
           />
         </div>
