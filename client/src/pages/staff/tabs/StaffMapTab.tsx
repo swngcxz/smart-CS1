@@ -112,16 +112,16 @@ export function MapTab() {
 
   // Function to be called from map component when bin is clicked
   const handleBinClick = (binId: string) => {
-    console.log("🔍 Bin clicked:", binId);
-    console.log("📊 Available bins:", updatedLocationData);
+    console.log("Bin clicked:", binId);
+    console.log("Available bins:", updatedLocationData);
 
     const selectedBin = updatedLocationData.find((bin) => bin.id === binId);
     if (selectedBin) {
-      console.log("✅ Selected bin data:", selectedBin);
+      console.log("Selected bin data:", selectedBin);
       loadBinForEdit(selectedBin);
       setIsBinDetailsOpen(true);
     } else {
-      console.warn("⚠️ Bin not found in updatedLocationData:", binId);
+      console.warn("Bin not found in updatedLocationData:", binId);
     }
   };
 
