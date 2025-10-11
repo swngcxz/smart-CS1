@@ -1,42 +1,27 @@
-import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Mail, Phone, MapPin, Clock, Shield, Users } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
-import api from "@/lib/api";
+import { Users, Mail, Phone, MapPin, Clock, Shield, FileText } from "lucide-react";
 
-interface Staff {
-  id: number;
-  name: string;
-  role: string;
-  zone: string;
-  status: string;
-  lastActivity: string;
-  email?: string;
-  contactNumber?: string;
-  phone?: string;
-}
-
-interface StaffManagementModalProps {
+interface StaffDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  staff: Staff | null;
-  onStaffUpdate?: () => void;
+  staff: {
+    id: string;
+    fullName: string;
+    email: string;
+    contactNumber?: string;
+    role: string;
+    location?: string;
+    status?: string;
+    lastActivity?: string;
+    joinedDate?: string;
+    bio?: string;
+  } | null;
 }
 
-export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: StaffManagementModalProps) {
-  const [selectedZone, setSelectedZone] = useState(staff?.zone || "");
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Update local state when staff prop changes
-  useEffect(() => {
-    if (staff) {
-      setSelectedZone(staff.zone || "");
-    }
-  }, [staff]);
+export function StaffDetailsModal({ isOpen, onClose, staff }: StaffDetailsModalProps) {
+  if (!staff) return null;
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -68,40 +53,21 @@ export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: 
     }
   };
 
-  const handleSaveRoute = async () => {
-    if (!staff || selectedZone === staff.zone) return;
-
-    setIsSaving(true);
-    try {
-      const updateData = {
-        location: selectedZone,
-      };
-
-      await api.put(`/api/staff/${staff.id}`, updateData);
-      toast({
-        title: "Route assigned",
-        description: `${staff.name} has been assigned to ${selectedZone}.`,
-      });
-
-      onStaffUpdate?.(); // Trigger parent refresh
-    } catch (error: any) {
-      toast({
-        title: "Failed to assign route",
-        description: error?.response?.data?.error || "An error occurred while assigning route.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
+  const formatJoinedDate = (joinedDate: string) => {
+    if (!joinedDate) return "May 12, 2023";
+    const date = new Date(joinedDate);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
-
-  if (!staff) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-center">Staff Management</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-center">Staff Details</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -109,7 +75,7 @@ export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: 
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
               <div className="w-24 h-24 bg-gray-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {staff.name
+                {staff.fullName
                   .split(" ")
                   .map((name) => name[0])
                   .join("")
@@ -117,7 +83,11 @@ export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: 
               </div>
               <div
                 className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${
-                  staff.status === "active" ? "bg-green-500" : staff.status === "break" ? "bg-yellow-500" : "bg-red-500"
+                  (staff.status || "active") === "active"
+                    ? "bg-green-500"
+                    : (staff.status || "") === "break"
+                    ? "bg-yellow-500"
+                    : "bg-red-500"
                 }`}
               >
                 <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -125,8 +95,9 @@ export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: 
             </div>
 
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{staff.name}</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{staff.fullName}</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">{staff.email}</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">ID: {staff.id}</p>
             </div>
           </div>
 
@@ -142,13 +113,28 @@ export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: 
             </Badge>
             <Badge
               className={`${getStatusColor(
-                staff.status
+                staff.status || "active"
               )} px-3 py-1 text-xs font-medium hover:bg-transparent hover:text-current`}
             >
               <Clock className="w-3 h-3 mr-1" />
-              {staff.status.charAt(0).toUpperCase() + staff.status.slice(1)}
+              {(staff.status || "active").charAt(0).toUpperCase() + (staff.status || "active").slice(1)}
             </Badge>
           </div>
+
+          {/* Bio Section */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-start space-x-3">
+                <FileText className="w-4 h-4 text-gray-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Bio</p>
+                  <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
+                    {staff.bio || "No bio available"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Staff Information */}
           <Card>
@@ -175,41 +161,25 @@ export function StaffManagementModal({ isOpen, onClose, staff, onStaffUpdate }: 
                 <div className="flex items-center space-x-3">
                   <MapPin className="w-4 h-4 text-gray-400" />
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Current Route/Zone</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{staff.zone || "Not assigned"}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Route/Zone</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {staff.location || "Not assigned"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Joined On</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      {formatJoinedDate(staff.joinedDate || "")}
+                    </p>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          {/* Route Assignment - Only for Janitors */}
-          {staff.role.toLowerCase() === "janitor" && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Assign Route</h4>
-                <Button
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-xs px-3 py-1 h-7"
-                  onClick={handleSaveRoute}
-                  disabled={selectedZone === staff.zone || isSaving}
-                >
-                  {isSaving ? "..." : "Save"}
-                </Button>
-              </div>
-              <Select value={selectedZone} onValueChange={setSelectedZone}>
-                <SelectTrigger className="h-9 text-sm border-gray-300 rounded-lg">
-                  <SelectValue placeholder="Choose route" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Route A">Route A</SelectItem>
-                  <SelectItem value="Route B">Route B</SelectItem>
-                  <SelectItem value="Route C">Route C</SelectItem>
-                  <SelectItem value="Route D">Route D</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>

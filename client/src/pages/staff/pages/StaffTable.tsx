@@ -6,10 +6,12 @@ import { Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StaffManagementModal } from "@/components/modal/staff/StaffManagementModal";
 import { AddStaffModal } from "@/components/modal/staff/AddStaffModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import StaffTableSkeleton from "@/components/skeletons/StaffTableSkeleton";
 type StaffRecord = {
   id: string;
@@ -36,6 +38,8 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
   const [staffList, setStaffList] = useState<StaffRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState<StaffRecord | null>(null);
 
   const loadStaff = async () => {
     setLoading(true);
@@ -91,13 +95,22 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
     }
   };
 
-  const handleDeleteStaff = async (staffId: string) => {
+  const handleDeleteClick = (staff: StaffRecord) => {
+    setStaffToDelete(staff);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteStaff = async () => {
+    if (!staffToDelete) return;
+
     try {
       setLoading(true);
-      await api.delete(`/api/staff/${staffId}`);
+      await api.delete(`/api/staff/${staffToDelete.id}`);
       toast({ title: "Staff deleted", description: `Record removed.` });
       await loadStaff();
       onStaffUpdate?.(); // Trigger parent refresh
+      setDeleteConfirmOpen(false);
+      setStaffToDelete(null);
     } catch (err: any) {
       toast({
         title: "Failed to delete staff",
@@ -177,20 +190,33 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
               {!loading &&
                 !error &&
                 filteredStaff.map((staff) => (
-                  <TableRow
-                    key={staff.id}
-                    onClick={() => handleRowClick(staff)}
-                    className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-                  >
-                    <TableCell className="font-medium">{staff.fullName}</TableCell>
-                    <TableCell>{staff.email}</TableCell>
-                    <TableCell>{staff.contactNumber || "N/A"}</TableCell>
-                    <TableCell>{staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}</TableCell>
-
-                    <TableCell>{staff.location || ""}</TableCell>
+                  <TableRow key={staff.id} onClick={() => handleRowClick(staff)} className="cursor-pointer">
+                    <TableCell className="font-medium text-sm">{staff.fullName}</TableCell>
+                    <TableCell className="text-sm">{staff.email}</TableCell>
+                    <TableCell className="text-sm">{staff.contactNumber || "N/A"}</TableCell>
                     <TableCell>
                       <Badge
-                        className={`${
+                        variant="outline"
+                        className={
+                          staff.role === "staff"
+                            ? "bg-blue-100 text-blue-800 text-xs"
+                            : staff.role === "janitor"
+                            ? "bg-green-100 text-green-800 text-xs"
+                            : staff.role === "driver"
+                            ? "bg-purple-100 text-purple-800 text-xs"
+                            : staff.role === "maintenance"
+                            ? "bg-orange-100 text-orange-800 text-xs"
+                            : "bg-gray-100 text-gray-800 text-xs"
+                        }
+                      >
+                        {staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}
+                      </Badge>
+                    </TableCell>
+
+                    <TableCell className="text-sm">{staff.location || ""}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={`text-xs ${
                           (staff.status || "active") === "active"
                             ? "text-green-600 font-semibold"
                             : (staff.status || "") === "offline"
@@ -216,11 +242,11 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteStaff(staff.id);
+                          handleDeleteClick(staff);
                         }}
-                        className="text-red-600 hover:underline text-sm"
+                        className="text-red-600 hover:text-red-700 p-1"
                       >
-                        Delete
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </TableCell>
                   </TableRow>
@@ -237,6 +263,28 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
         onStaffUpdate={loadStaff}
       />
       <AddStaffModal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} onAdd={handleAddStaff} />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center">Remove User?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Are you sure you want to remove <span className="font-medium">{staffToDelete?.fullName}</span>?
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" size="sm" onClick={() => setDeleteConfirmOpen(false)} className="px-4">
+                Cancel
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleDeleteStaff} disabled={loading} className="px-4">
+                {loading ? "Removing..." : "Remove"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

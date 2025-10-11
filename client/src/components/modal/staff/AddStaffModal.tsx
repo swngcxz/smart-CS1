@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Eye, EyeOff } from "lucide-react";
 
 export function AddStaffModal({ isOpen, onClose, onAdd }) {
   const [name, setName] = useState("");
@@ -17,6 +18,7 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
   // Validation states
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Validation functions
   const validateFullName = (name) => {
@@ -140,119 +142,148 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl w-full">
         <DialogHeader>
-          <DialogTitle>Add New Janitor</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-left mb-2">Add New Staff</DialogTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400 text-left mb-6">
+            Add a new staff member to your team with their role and route assignment
+          </p>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Input
-              placeholder="Full Name (First Last)"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (errors["name"]) {
-                  setErrors((prev) => ({ ...prev, name: "" }));
-                }
-              }}
-              className={errors["name"] ? "border-red-500" : ""}
-            />
-            {errors["name"] && (
-              <Alert className="mt-1">
-                <AlertDescription className="text-red-600 text-sm">{errors["name"]}</AlertDescription>
-              </Alert>
-            )}
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left Column */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
+                <Input
+                  placeholder="Enter first and last name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors["name"]) {
+                      setErrors((prev) => ({ ...prev, name: "" }));
+                    }
+                  }}
+                  className={`h-10 ${
+                    errors["name"] ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-green-500"
+                  }`}
+                />
+                {errors["name"] && <p className="text-red-500 text-xs mt-1">{errors["name"]}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
+                <Input
+                  placeholder="Enter email address"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errors["email"]) {
+                      setErrors((prev) => ({ ...prev, email: "" }));
+                    }
+                  }}
+                  className={`h-10 ${
+                    errors["email"] ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-green-500"
+                  }`}
+                />
+                {errors["email"] && <p className="text-red-500 text-xs mt-1">{errors["email"]}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                <div className="relative">
+                  <Input
+                    placeholder="Enter password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errors["password"]) {
+                        setErrors((prev) => ({ ...prev, password: "" }));
+                      }
+                    }}
+                    className={`h-10 pr-10 ${
+                      errors["password"]
+                        ? "border-red-500 focus:border-red-500"
+                        : "border-gray-300 focus:border-green-500"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors["password"] && <p className="text-red-500 text-xs mt-1">{errors["password"]}</p>}
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Contact Number</label>
+                <Input
+                  placeholder="Enter contact number"
+                  value={contactNumber}
+                  onChange={(e) => {
+                    setContactNumber(e.target.value);
+                    if (errors["contactNumber"]) {
+                      setErrors((prev) => ({ ...prev, contactNumber: "" }));
+                    }
+                  }}
+                  className={`h-10 ${
+                    errors["contactNumber"]
+                      ? "border-red-500 focus:border-red-500"
+                      : "border-gray-300 focus:border-green-500"
+                  }`}
+                />
+                {errors["contactNumber"] && <p className="text-red-500 text-xs mt-1">{errors["contactNumber"]}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger className="h-10 border-gray-300 focus:border-green-500">
+                    <SelectValue placeholder="Select Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="janitor">Janitor</SelectItem>
+                    <SelectItem value="driver">Driver</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Route</label>
+                <Select value={zone} onValueChange={setZone}>
+                  <SelectTrigger className="h-10 border-gray-300 focus:border-green-500">
+                    <SelectValue placeholder="Select Route" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Route A">Route A</SelectItem>
+                    <SelectItem value="Route B">Route B</SelectItem>
+                    <SelectItem value="Route C">Route C</SelectItem>
+                    <SelectItem value="All Routes">All Routes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <Input
-              placeholder="Email"
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errors["email"]) {
-                  setErrors((prev) => ({ ...prev, email: "" }));
-                }
-              }}
-              className={errors["email"] ? "border-red-500" : ""}
-            />
-            {errors["email"] && (
-              <Alert className="mt-1">
-                <AlertDescription className="text-red-600 text-sm">{errors["email"]}</AlertDescription>
-              </Alert>
-            )}
+          {/* Submit Button - Right Aligned */}
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="bg-green-800 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50"
+            >
+              {isSubmitting ? "Adding..." : "Add Staff"}
+            </Button>
           </div>
-
-          <div>
-            <Input
-              placeholder="Password (8+ chars, uppercase, lowercase, number)"
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errors["password"]) {
-                  setErrors((prev) => ({ ...prev, password: "" }));
-                }
-              }}
-              className={errors["password"] ? "border-red-500" : ""}
-            />
-            {errors["password"] && (
-              <Alert className="mt-1">
-                <AlertDescription className="text-red-600 text-sm">{errors["password"]}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          <div>
-            <Input
-              placeholder="Contact Number (+639123456789 or 09123456789)"
-              value={contactNumber}
-              onChange={(e) => {
-                setContactNumber(e.target.value);
-                if (errors["contactNumber"]) {
-                  setErrors((prev) => ({ ...prev, contactNumber: "" }));
-                }
-              }}
-              className={errors["contactNumber"] ? "border-red-500" : ""}
-            />
-            {errors["contactNumber"] && (
-              <Alert className="mt-1">
-                <AlertDescription className="text-red-600 text-sm">{errors["contactNumber"]}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          <Select value={role} onValueChange={setRole}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select Role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="janitor">Janitor</SelectItem>
-              <SelectItem value="driver">Driver</SelectItem>
-              <SelectItem value="maintenance">Maintenance</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={zone} onValueChange={setZone}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select Route" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Route A">Route A</SelectItem>
-              <SelectItem value="Route B">Route B</SelectItem>
-              <SelectItem value="Route C">Route C</SelectItem>
-              <SelectItem value="All Routes">All Routes</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || Object.keys(errors).length > 0}
-            className="w-full bg-green-800 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? "Adding..." : "Add Janitor"}
-          </Button>
         </div>
       </DialogContent>
     </Dialog>

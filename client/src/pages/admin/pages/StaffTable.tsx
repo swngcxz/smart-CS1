@@ -6,6 +6,7 @@ import { Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StaffManagementModal } from "@/components/modal/staff/StaffManagementModal";
 import { AddStaffModal } from "@/components/modal/staff/AddStaffModal";
+import { StaffDetailsModal } from "@/components/modal/admin/StaffDetailsModal";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
@@ -28,6 +29,7 @@ interface StaffTableProps {
 export function StaffTable({ onStaffUpdate }: StaffTableProps) {
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState("all");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [staffList, setStaffList] = useState<StaffRecord[]>([]);
@@ -71,7 +73,7 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
       contactNumber: staff.contactNumber,
     };
     setSelectedStaff(modalStaff);
-    setIsModalOpen(true);
+    setIsDetailsModalOpen(true);
   };
 
   const handleAddStaff = async (payload: any) => {
@@ -111,14 +113,14 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
   return (
     <>
       <div className="flex justify-between items-center mb-4">
-        <div className="max-w-xs">
-          <p className="text-gray-600 dark:text-gray-400">Filter Routes</p>
+        <div className="flex items-center gap-1">
+          <p className="text-xs text-gray-500 dark:text-gray-400">Route:</p>
           <Select value={selectedRoute} onValueChange={setSelectedRoute}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by Route" />
+            <SelectTrigger className="h-7 w-28 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
+              <SelectValue placeholder="All" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Routes</SelectItem>
+            <SelectContent className="text-xs">
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="Route A">Route A</SelectItem>
               <SelectItem value="Route B">Route B</SelectItem>
               <SelectItem value="Route C">Route C</SelectItem>
@@ -222,6 +224,22 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
         </CardContent>
       </Card>
 
+      <StaffDetailsModal 
+        isOpen={isDetailsModalOpen} 
+        onClose={() => setIsDetailsModalOpen(false)} 
+        staff={selectedStaff ? {
+          id: selectedStaff.id,
+          fullName: selectedStaff.name,
+          email: selectedStaff.email,
+          contactNumber: selectedStaff.contactNumber,
+          role: selectedStaff.role,
+          location: selectedStaff.zone,
+          status: selectedStaff.status,
+          lastActivity: selectedStaff.lastActivity,
+          joinedDate: selectedStaff.joinedDate || "",
+          bio: selectedStaff.bio || ""
+        } : null}
+      />
       {/* <StaffManagementModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
