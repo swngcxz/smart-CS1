@@ -329,12 +329,12 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
       {/* Map Section */}
       <Card
         ref={mapContainerRef}
-        className="h-[500px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-20"
+        className="h-[530px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-4"
       >
-        <CardHeader>
+        <CardHeader className="pb-2 pt-3">
           <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
             <div className="flex items-center gap-1">
-              <h3 className="text-lg font-semibold">Naga City, Cebu</h3>
+              <h3 className="text-base font-semibold">Naga City, Cebu</h3>
             </div>
             <div className="flex items-center gap-2 text-xs">
               {/* Location Dropdown */}
