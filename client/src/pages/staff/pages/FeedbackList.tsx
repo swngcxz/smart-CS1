@@ -131,17 +131,28 @@ const FeedbackList = ({
     });
   };
 
+  const formatFeedbackContent = (text: string) => {
+    if (!text) return text;
+    // Remove any existing quotes and trim whitespace
+    const cleanText = text.trim().replace(/^["']|["']$/g, '');
+    // Capitalize first letter and make rest lowercase
+    const capitalized = cleanText.charAt(0).toUpperCase() + cleanText.slice(1).toLowerCase();
+    // Add quotes around the content
+    return `"${capitalized}"`;
+  };
+
   if (loading) {
     return <FeedbackListSkeleton />;
   }
 
   return (
     <Card className="border-transparent shadow-md">
-      <CardHeader>
+      <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2 text-lg text-semibold">
+        <CardTitle className="flex items-center gap-2 text-lg text-semibold">
             {showArchived ? "Archived Feedback" : "Active Feedback"}
           </CardTitle>
+          
           {!showArchived && (
             <div className="flex items-center gap-4">
               <div className="flex gap-1">
@@ -192,26 +203,25 @@ const FeedbackList = ({
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-2">
         <div className="max-h-[600px] overflow-y-auto space-y-4">
           {combinedData.map((feedback) => (
             <div
               key={feedback.id}
-              className="border border-gray-100 rounded-lg p-4 hover:bg-gray-50 transition-colors shadow-md hover:shadow-lg"
+              className="border border-gray-100 rounded-lg p-6 hover:bg-gray-50 transition-colors"
             >
-              <div className="flex justify-between items-start mb-3">
+              <div className="flex justify-between items-start mb-1">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-0">
                     <h3 className="font-semibold text-gray-900">
-                      {feedback.content.length > 50 ? `${feedback.content.substring(0, 50)}...` : feedback.content}
+                      {feedback.name || 'Anonymous'}
                     </h3>
                     <Badge className={getCategoryColor(feedback.category, feedback.subcategory)}>
                       {getCategoryDisplayName(feedback.category, feedback.subcategory)}
                     </Badge>
                   </div>
 
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
-                    <span>{feedback.name}</span>
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-0">
                     <span>{feedback.email}</span>
                     <div className="flex items-center gap-1">{formatDate(feedback.createdAt)}</div>
                     {feedback.rating && feedback.rating > 0 && (
@@ -222,7 +232,7 @@ const FeedbackList = ({
                     )}
                   </div>
 
-                  <p className="text-gray-700">{feedback.content}</p>
+                  <p className="text-gray-700">{formatFeedbackContent(feedback.content)}</p>
                 </div>
 
                 <div className="flex gap-1 ml-4">

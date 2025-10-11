@@ -209,13 +209,13 @@ const Feedback = () => {
           <div className="flex items-center gap-2">
             <Button 
               variant="ghost" 
-              size="icon" 
+              size="sm" 
               onClick={() => setShowArchived(false)} 
-              className="rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-50 p-2"
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 h-auto"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
+              Back
             </Button>
-            <h1 className="text-2xl font-bold text-gray-900">Archived Feedback</h1>
           </div>
         </div>
 
