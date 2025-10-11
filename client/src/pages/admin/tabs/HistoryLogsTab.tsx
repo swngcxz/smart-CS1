@@ -16,6 +16,8 @@ import {
 import { History, Logs, Search, Filter, Calendar, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { HistoryLogsSkeleton } from "@/components/skeletons/HistoryLogsSkeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 interface LoginHistoryLog {
   id: string;
   userEmail: string;
@@ -58,11 +60,15 @@ export const HistoryLogsTab = () => {
       const loginLogs = response.data.logs || response.data;
       console.log("🔍 Raw API response:", response.data);
       console.log("🔍 All login logs received:", loginLogs);
-      console.log("🔍 Admin logs in response:", loginLogs.filter(log => 
-        log.role?.toLowerCase().trim() === 'admin' || 
-        log.role?.toLowerCase().trim() === 'administrator' ||
-        log.userEmail?.toLowerCase().includes('admin')
-      ));
+      console.log(
+        "🔍 Admin logs in response:",
+        loginLogs.filter(
+          (log) =>
+            log.role?.toLowerCase().trim() === "admin" ||
+            log.role?.toLowerCase().trim() === "administrator" ||
+            log.userEmail?.toLowerCase().includes("admin")
+        )
+      );
       setLogs(loginLogs);
       console.log(`✅ Loaded ${loginLogs.length} login history records`);
       console.log("📋 Sample record:", loginLogs[0]);
@@ -178,15 +184,15 @@ export const HistoryLogsTab = () => {
   // Filter and search logic
   const filteredLogs = logs.filter((log) => {
     // Exclude admin logs from display (comprehensive admin exclusion)
-    const role = log.role?.toLowerCase().trim() || '';
-    const userEmail = log.userEmail?.toLowerCase().trim() || '';
-    
+    const role = log.role?.toLowerCase().trim() || "";
+    const userEmail = log.userEmail?.toLowerCase().trim() || "";
+
     if (role === "admin" || role === "administrator" || userEmail.includes("admin")) {
       console.log("🚫 Frontend filtering out admin log:", {
         userEmail: log.userEmail,
         role: log.role,
         trimmedRole: role,
-        trimmedEmail: userEmail
+        trimmedEmail: userEmail,
       });
       return false;
     }
@@ -241,7 +247,7 @@ export const HistoryLogsTab = () => {
 
   // Calculate analytics from filtered data (excluding admin logs)
   const nonAdminLogs = logs.filter((log) => {
-    const role = log.role?.toLowerCase() || '';
+    const role = log.role?.toLowerCase() || "";
     return role !== "admin" && role !== "administrator" && !log.userEmail?.toLowerCase().includes("admin");
   });
   const activeSessions = nonAdminLogs.filter((log) => (log.status || "offline") === "active").length;
@@ -255,60 +261,52 @@ export const HistoryLogsTab = () => {
       .reduce((sum, log) => sum + (log.sessionDuration || 0), 0) /
     Math.max(nonAdminLogs.filter((log) => log.sessionDuration !== null).length, 1);
 
+  // Show skeleton loading state for table only
+  const showTableSkeleton = loading;
+
   return (
     <div className="space-y-6 p-4 sm:p-2">
-      {/* Section Title */}
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">History Logs</h2>
-      <div className="flex justify-end"></div>
-      {/* Stats Grid */}
-      {/* History Logs Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Active History Logs */}
-        <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">Active History Logs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{activeSessions}</div>
-          </CardContent>
-        </Card>
+      {/* Section Title with Inline Stats */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">History Logs</h2>
 
-        {/* Total History Logs */}
-        <Card className="transition-all hover:shadow-md dark:bg-gray-900 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">Total History Logs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{nonAdminLogs.length}</div>
-          </CardContent>
-        </Card>
+        {/* Inline Stats */}
+        <div className="flex flex-wrap items-center gap-6 text-sm">
+          {/* Active History Logs */}
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-gray-600 dark:text-gray-300">Active History Logs:</span>
+            <span className="font-semibold text-green-600 dark:text-green-400">{activeSessions}</span>
+          </div>
 
-        {/* Avg Session Duration */}
-        <Card className="transition-all hover:shadow-md sm:col-span-2 lg:col-span-1 dark:bg-gray-900 dark:border-gray-700">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">Avg Session Duration</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+          {/* Separator */}
+          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+
+          {/* Total History Logs */}
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-gray-600 dark:text-gray-300">Total History Logs:</span>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">{nonAdminLogs.length}</span>
+          </div>
+
+          {/* Separator */}
+          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+
+          {/* Avg Session Duration */}
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+            <span className="text-gray-600 dark:text-gray-300">Avg Session Duration:</span>
+            <span className="font-semibold text-gray-900 dark:text-white">
               {formatDuration(Math.round(averageSessionDuration))}
-            </div>
-          </CardContent>
-        </Card>
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Filters and Search - Responsive Layout */}
       <div className="bg-transparent border-0 shadow-none p-0">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">Login History</CardTitle>
-        </CardHeader>
         <div className="space-y-4">
-          {/* Loading and Error States */}
-          {loading && (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading login history...</p>
-            </div>
-          )}
+          {/* Error State */}
 
           {error && (
             <div className="text-center py-8">
@@ -323,22 +321,22 @@ export const HistoryLogsTab = () => {
             </div>
           )}
 
-          {!loading && !error && (
+          {!error && (
             <>
               {/* Filter Controls */}
-              <div className="flex flex-col sm:flex-row gap-4  dark:bg-gray-900 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row gap-3  dark:bg-gray-900 dark:border-gray-700">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
                   <Input
                     placeholder="Search by Email, Role, or IP Address..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-9 h-8 text-sm"
                   />
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 ">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 ">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-40">
+                    <SelectTrigger className="w-full sm:w-36 h-8 text-sm">
                       <SelectValue placeholder="Filter by Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -349,7 +347,7 @@ export const HistoryLogsTab = () => {
                     </SelectContent>
                   </Select>
                   <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger className="w-full sm:w-40">
+                    <SelectTrigger className="w-full sm:w-36 h-8 text-sm">
                       <SelectValue placeholder="Filter by Role" />
                     </SelectTrigger>
                     <SelectContent>
@@ -364,54 +362,74 @@ export const HistoryLogsTab = () => {
                 <Button
                   variant="destructive"
                   onClick={() => setShowConfirmModal(true)}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 h-8 px-3 text-sm"
                 >
-                  <Trash2 className="w-2 h-2" />
+                  <Trash2 className="w-3 h-3" />
                 </Button>
               </div>
 
               {/* Mobile Card View for Small Screens */}
               <div className="block sm:hidden space-y-4  dark:bg-gray-900 dark:border-gray-700">
-                {paginatedLogs.map((log) => (
-                  <Card key={log.id} className="border-l-4 border-l-blue-500">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-semibold text-lg">{log.userEmail}</h3>
-                        {getStatusBadge(log.status)}
-                      </div>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Role:</span>
-                          {getRoleBadge(log.role)}
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Login Time:</span>
-                          <span className="font-medium">{new Date(log.loginTime).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Logout Time:</span>
-                          <span className="font-medium">
-                            {log.logoutTime ? new Date(log.logoutTime).toLocaleString() : "Active"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Duration:</span>
-                          <span className="font-medium">{formatDuration(log.sessionDuration)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">IP Address:</span>
-                          <span className="font-medium">{log.ipAddress || "Unknown"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Device:</span>
-                          <span className="font-medium" title={log.userAgent || "Unknown"}>
-                            {formatUserAgent(log.userAgent || "Unknown")}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                {showTableSkeleton
+                  ? // Mobile skeleton cards
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <Card key={index} className="border-l-4 border-l-gray-300">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <Skeleton className="h-6 w-48" />
+                            <Skeleton className="h-6 w-16" />
+                          </div>
+                          <div className="space-y-2">
+                            {Array.from({ length: 6 }).map((_, itemIndex) => (
+                              <div key={itemIndex} className="flex justify-between">
+                                <Skeleton className="h-4 w-20" />
+                                <Skeleton className="h-4 w-24" />
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  : paginatedLogs.map((log) => (
+                      <Card key={log.id} className="border-l-4 border-l-blue-500">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className="font-semibold text-lg">{log.userEmail}</h3>
+                            {getStatusBadge(log.status)}
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Role:</span>
+                              {getRoleBadge(log.role)}
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Login Time:</span>
+                              <span className="font-medium">{new Date(log.loginTime).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Logout Time:</span>
+                              <span className="font-medium">
+                                {log.logoutTime ? new Date(log.logoutTime).toLocaleString() : "Active"}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Duration:</span>
+                              <span className="font-medium">{formatDuration(log.sessionDuration)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">IP Address:</span>
+                              <span className="font-medium">{log.ipAddress || "Unknown"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Device:</span>
+                              <span className="font-medium" title={log.userAgent || "Unknown"}>
+                                {formatUserAgent(log.userAgent || "Unknown")}
+                              </span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
               </div>
 
               {/* Desktop Table View */}
@@ -472,32 +490,65 @@ export const HistoryLogsTab = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedLogs.map((log) => (
-                      <TableRow key={log.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">{log.userEmail}</TableCell>
-                        <TableCell>
-                          <Badge
-                            className={getRoleBadge(log.role).props.className.replace(/bg-\S+/g, "bg-transparent")}
-                          >
-                            {getRoleBadge(log.role).props.children.charAt(0).toUpperCase() +
-                              getRoleBadge(log.role).props.children.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">{formatDateTime(log.loginTime)}</TableCell>
-                        <TableCell className="text-sm">{formatDateTime(log.logoutTime)}</TableCell>
+                    {showTableSkeleton
+                      ? // Desktop skeleton rows
+                        Array.from({ length: 5 }).map((_, index) => (
+                          <TableRow key={index} className="hover:bg-gray-50">
+                            <TableCell>
+                              <Skeleton className="h-4 w-32" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-6 w-16" />
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <Skeleton className="h-3 w-24" />
+                                <Skeleton className="h-3 w-16" />
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <Skeleton className="h-3 w-24" />
+                                <Skeleton className="h-3 w-16" />
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-4 w-20 font-mono text-xs" />
+                            </TableCell>
+                            <TableCell>
+                              <Skeleton className="h-6 w-16" />
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      : paginatedLogs.map((log) => (
+                          <TableRow key={log.id} className="hover:bg-gray-50">
+                            <TableCell className="font-medium">{log.userEmail}</TableCell>
+                            <TableCell>
+                              <Badge
+                                className={getRoleBadge(log.role).props.className.replace(/bg-\S+/g, "bg-transparent")}
+                              >
+                                {getRoleBadge(log.role).props.children.charAt(0).toUpperCase() +
+                                  getRoleBadge(log.role).props.children.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{formatDateTime(log.loginTime)}</TableCell>
+                            <TableCell className="text-sm">{formatDateTime(log.logoutTime)}</TableCell>
 
-                        {/* <TableCell className="font-medium">{formatDuration(log.sessionDuration)}</TableCell> */}
-                        <TableCell className="font-mono text-xs">{log.ipAddress || "Unknown"}</TableCell>
-                        <TableCell>
-                          <Badge
-                            className={getStatusBadge(log.status).props.className.replace(/bg-\S+/g, "bg-transparent")}
-                          >
-                            {getStatusBadge(log.status).props.children.charAt(0).toUpperCase() +
-                              getStatusBadge(log.status).props.children.slice(1)}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                            {/* <TableCell className="font-medium">{formatDuration(log.sessionDuration)}</TableCell> */}
+                            <TableCell className="font-mono text-xs">{log.ipAddress || "Unknown"}</TableCell>
+                            <TableCell>
+                              <Badge
+                                className={getStatusBadge(log.status).props.className.replace(
+                                  /bg-\S+/g,
+                                  "bg-transparent"
+                                )}
+                              >
+                                {getStatusBadge(log.status).props.children.charAt(0).toUpperCase() +
+                                  getStatusBadge(log.status).props.children.slice(1)}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
                   </TableBody>
                 </Table>
               </div>

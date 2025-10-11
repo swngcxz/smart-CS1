@@ -5,8 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Clock, MapPin, Trash2, AlertTriangle, CheckCircle, XCircle, Filter, Download, ChevronDown } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Filter,
+  Download,
+  ChevronDown,
+} from "lucide-react";
 import api from "@/lib/api";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AdminBinHistorySkeleton } from "@/components/skeletons/AdminBinHistorySkeleton";
 
 interface BinHistoryRecord {
   id: string;
@@ -144,35 +157,15 @@ export function BinHistory() {
   const getStatusBadge = (status: string) => {
     switch (status.toUpperCase()) {
       case "CRITICAL":
-        return (
-          <div className="flex items-center gap-1 text-red-600">
-            Critical
-          </div>
-        );
+        return <div className="flex items-center gap-1 text-red-600">Critical</div>;
       case "WARNING":
-        return (
-          <div className="flex items-center gap-1 text-yellow-600">
-            Warning
-          </div>
-        );
+        return <div className="flex items-center gap-1 text-yellow-600">Warning</div>;
       case "OK":
-        return (
-          <div className="flex items-center gap-1 text-green-600">
-            Normal
-          </div>
-        );
+        return <div className="flex items-center gap-1 text-green-600">Normal</div>;
       case "ERROR":
-        return (
-          <div className="flex items-center gap-1 text-red-600">
-            Error
-          </div>
-        );
+        return <div className="flex items-center gap-1 text-red-600">Error</div>;
       case "MALFUNCTION":
-        return (
-          <div className="flex items-center gap-1 text-orange-600">
-            Malfunction
-          </div>
-        );
+        return <div className="flex items-center gap-1 text-orange-600">Malfunction</div>;
       default:
         return <div className="flex items-center gap-1 text-gray-600">{status}</div>;
     }
@@ -180,13 +173,13 @@ export function BinHistory() {
 
   // Utility function to parse various timestamp formats
   const parseTimestamp = (timestamp: string): Date | null => {
-    if (!timestamp || timestamp === 'Invalid Date' || timestamp === 'null' || timestamp === 'undefined') {
+    if (!timestamp || timestamp === "Invalid Date" || timestamp === "null" || timestamp === "undefined") {
       return null;
     }
 
     // Try different timestamp formats
     let date = new Date(timestamp);
-    
+
     // If the first attempt fails, try parsing as ISO string or Unix timestamp
     if (isNaN(date.getTime())) {
       // Try as Unix timestamp (seconds or milliseconds)
@@ -196,7 +189,7 @@ export function BinHistory() {
         date = new Date(numTimestamp > 1000000000000 ? numTimestamp : numTimestamp * 1000);
       } else {
         // Try parsing with different formats
-        date = new Date(timestamp.replace(' ', 'T')); // Handle space instead of T
+        date = new Date(timestamp.replace(" ", "T")); // Handle space instead of T
       }
     }
 
@@ -206,34 +199,37 @@ export function BinHistory() {
   // Enhanced timestamp formatting for admin view
   const formatTimestamp = (timestamp: string) => {
     const date = parseTimestamp(timestamp);
-    
+
     if (!date) {
       return {
-        date: 'N/A',
-        time: 'N/A',
-        relative: 'Unknown'
+        date: "N/A",
+        time: "N/A",
+        relative: "Unknown",
       };
     }
 
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     return {
-      date: date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: '2-digit'
+      date: date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "2-digit",
       }),
       time: date.toLocaleTimeString(),
-      relative: diffInHours < 24 ? 
-        (diffInHours < 1 ? `${Math.floor(diffInHours * 60)}m ago` : `${Math.floor(diffInHours)}h ago`) :
-        date.toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        })
+      relative:
+        diffInHours < 24
+          ? diffInHours < 1
+            ? `${Math.floor(diffInHours * 60)}m ago`
+            : `${Math.floor(diffInHours)}h ago`
+          : date.toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            }),
     };
   };
 
@@ -242,14 +238,7 @@ export function BinHistory() {
   };
 
   const exportToCSV = () => {
-    const headers = [
-      "Bin ID",
-      "Timestamp",
-      "Bin Level (%)",
-      "Location",
-      "Status",
-      "Error Message",
-    ];
+    const headers = ["Bin ID", "Timestamp", "Bin Level (%)", "Location", "Status", "Error Message"];
     const csvData = filteredHistory.map((record) => [
       record.binId,
       record.timestamp,
@@ -278,41 +267,8 @@ export function BinHistory() {
   // Get unique bin IDs for filter
   const uniqueBinIds = Array.from(new Set(binHistory.map((record) => record.binId)));
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Bin History</h1>
-          </div>
-          <Button disabled className="flex items-center gap-2 bg-gray-100 text-gray-400 border border-gray-200 text-sm px-3 py-1.5 h-8">
-            <Download className="w-3 h-3" />
-            Export
-          </Button>
-        </div>
-
-        {/* Status Summary */}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-700 dark:text-gray-300 font-medium">Total: 0</span>
-          <span className="text-green-600 font-medium">Normal: 0</span>
-          <span className="text-yellow-600 font-medium">Warning: 0</span>
-          <div className="flex items-center gap-1">
-            <span className="text-red-600 font-medium">Critical: 0</span>
-            <ChevronDown className="w-3 h-3 text-gray-500" />
-          </div>
-        </div>
-
-        {/* Loading State */}
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading bin history...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Show skeleton loading state for table only
+  const showTableSkeleton = loading;
 
   return (
     <div className="space-y-6">
@@ -321,7 +277,10 @@ export function BinHistory() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Bin History</h1>
         </div>
-        <Button onClick={exportToCSV} className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 text-sm px-3 py-1.5 h-8">
+        <Button
+          onClick={exportToCSV}
+          className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300 text-sm px-3 py-1.5 h-8"
+        >
           <Download className="w-3 h-3" />
           Export
         </Button>
@@ -348,7 +307,7 @@ export function BinHistory() {
             className="w-full"
           />
         </div>
-        
+
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="All Status" />
@@ -395,8 +354,56 @@ export function BinHistory() {
         <div className="text-center py-12">
           <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <p className="text-red-600 mb-4 text-lg">{error}</p>
-          <Button onClick={fetchBinHistory} className="bg-blue-600 hover:bg-blue-700 text-white">Retry</Button>
+          <Button onClick={fetchBinHistory} className="bg-blue-600 hover:bg-blue-700 text-white">
+            Retry
+          </Button>
         </div>
+      ) : showTableSkeleton ? (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bin ID</TableHead>
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Bin Level (%)</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {/* Skeleton rows */}
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-3 w-32" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-2 w-16 rounded-full" />
+                          <Skeleton className="h-4 w-8" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-16" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       ) : filteredHistory.length === 0 ? (
         <div className="text-center py-16">
           <Trash2 className="w-20 h-20 text-gray-300 mx-auto mb-6" />
@@ -406,72 +413,70 @@ export function BinHistory() {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Bin ID</TableHead>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>Bin Level (%)</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentData.map((record) => {
-                      const { date, time, relative } = formatTimestamp(record.timestamp);
-                      return (
-                        <TableRow key={record.id}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bin ID</TableHead>
+                    <TableHead>Timestamp</TableHead>
+                    <TableHead>Bin Level (%)</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentData.map((record) => {
+                    const { date, time, relative } = formatTimestamp(record.timestamp);
+                    return (
+                      <TableRow key={record.id}>
                         <TableCell className="font-medium">
                           {record.binId.charAt(0).toUpperCase() + record.binId.slice(1)}
                         </TableCell>
 
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div>
-                                <div className="text-sm font-medium">{relative}</div>
-                                {date !== 'N/A' && time !== 'N/A' ? (
-                                  <div className="text-xs text-gray-500 flex items-center gap-1">
-                                    {date} {time}
-                                  </div>
-                                ) : (
-                                  <div className="text-xs text-red-500 flex items-center gap-1">
-                                    Invalid timestamp
-                                  </div>
-                                )}
-                              </div>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <div className="text-sm font-medium">{relative}</div>
+                              {date !== "N/A" && time !== "N/A" ? (
+                                <div className="text-xs text-gray-500 flex items-center gap-1">
+                                  {date} {time}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-red-500 flex items-center gap-1">Invalid timestamp</div>
+                              )}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full ${
-                                    record.binLevel >= 85
-                                      ? "bg-red-500"
-                                      : record.binLevel >= 70
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
-                                  }`}
-                                  style={{ width: `${Math.min(record.binLevel, 100)}%` }}
-                                />
-                              </div>
-                              <span className="text-sm font-medium">{record.binLevel.toFixed(1)}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  record.binLevel >= 85
+                                    ? "bg-red-500"
+                                    : record.binLevel >= 70
+                                    ? "bg-yellow-500"
+                                    : "bg-green-500"
+                                }`}
+                                style={{ width: `${Math.min(record.binLevel, 100)}%` }}
+                              />
                             </div>
-                          </TableCell>
-                         <TableCell>
+                            <span className="text-sm font-medium">{record.binLevel.toFixed(1)}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-1">
                             <span className="text-xs font-mono">
                               {record.gpsValid ? record.location : "Invalid Location"}
                             </span>
                           </div>
                         </TableCell>
-                          <TableCell>{getStatusBadge(record.status)}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                        <TableCell>{getStatusBadge(record.status)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
