@@ -18,9 +18,10 @@ interface ActivityLogsTableProps {
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
+  userRole?: string;
 }
 
-export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityLogsTableProps) {
+export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }: ActivityLogsTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -233,17 +234,19 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Activity Filters Label and Clear All Button */}
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Activity Filters</div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setClearAllModalOpen(true)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-3 py-1 h-auto"
-            >
-              Clear All
-            </Button>
-          </div>
+          {userRole !== "admin" && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Activity Filters</div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setClearAllModalOpen(true)}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-3 py-1 h-auto"
+              >
+                Clear All
+              </Button>
+            </div>
+          )}
 
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
@@ -351,10 +354,7 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                     </TableRow>
                   ) : (
                     filteredLogs.map((log) => (
-                      <TableRow
-                        key={log.id}
-                        className="border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      >
+                      <TableRow key={log.id} className="border-gray-100 dark:border-gray-800">
                         <TableCell className="text-sm text-gray-900 dark:text-white w-32">
                           <div className="flex items-center gap-2">
                             <div>
@@ -403,8 +403,10 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh }: ActivityL
                         <TableCell className="text-sm text-gray-900 dark:text-white w-24">
                           <div className="text-xs">{log.bin_location || log.location || "Unknown"}</div>
                         </TableCell>
-                        <TableCell className="w-20">{getStatusBadge(log.status || "")}</TableCell>
-                        <TableCell className="w-20">{getPriorityBadge(log.priority || "")}</TableCell>
+                        <TableCell className="w-20 hover:bg-transparent">{getStatusBadge(log.status || "")}</TableCell>
+                        <TableCell className="w-20 hover:bg-transparent">
+                          {getPriorityBadge(log.priority || "")}
+                        </TableCell>
                       </TableRow>
                     ))
                   )}

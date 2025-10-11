@@ -84,11 +84,16 @@ export function StaffTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Staff Information</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Staff Information</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            View and manage all staff members, janitors, drivers, and maintenance workers
+          </p>
+        </div>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>}
-
+      {/* 
       <div className="flex justify-between gap-4">
         {staffStats.map((stat, index) => {
           const IconComponent = stat.icon;
@@ -109,7 +114,7 @@ export function StaffTab() {
             </div>
           );
         })}
-      </div>
+      </div> */}
 
       <StaffTable onStaffUpdate={loadStaffCounts} />
     </div>
