@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Environment variables (hardcoded for now to avoid dotenv issues)
-const API_BASE_URL = 'http://192.168.1.26:8000';
+const API_BASE_URL = 'http://10.0.2.187:8000';
 const API_FALLBACK_LOCALHOST = 'http://localhost:8000';
 const API_FALLBACK_ANDROID_EMULATOR = 'http://10.0.2.2:8000';
 const API_TIMEOUT = '10000';
@@ -10,25 +10,21 @@ const API_DEBUG = 'true';
 // Direct endpoint configuration - no old fallbacks
 
 // Build endpoints array - force correct IP first
-const buildAPIEndpoints = () => {
-  const endpoints = [];
+const buildAPIEndpoints = (): string[] => {
+  const endpoints: string[] = [];
+  const primaryEndpoint = 'http://192.168.254.114:8000';
   
   // Force the correct working IP as first priority
-  endpoints.push('http://192.168.254.114:8000');
+  endpoints.push(primaryEndpoint);
   
-  // Add primary endpoint from .env if different
-  if (API_BASE_URL && API_BASE_URL !== 'http://192.168.254.114:8000') {
-    endpoints.push(API_BASE_URL);
-  }
+  // Add other endpoints only if they're different from the primary
+  const otherEndpoints = [API_BASE_URL, API_FALLBACK_LOCALHOST, API_FALLBACK_ANDROID_EMULATOR];
   
-  // Add fallback endpoints from .env
-  if (API_FALLBACK_LOCALHOST && API_FALLBACK_LOCALHOST !== 'http://192.168.254.114:8000') {
-    endpoints.push(API_FALLBACK_LOCALHOST);
-  }
-  
-  if (API_FALLBACK_ANDROID_EMULATOR && API_FALLBACK_ANDROID_EMULATOR !== 'http://192.168.254.114:8000') {
-    endpoints.push(API_FALLBACK_ANDROID_EMULATOR);
-  }
+  otherEndpoints.forEach(endpoint => {
+    if (endpoint && endpoint !== primaryEndpoint && !endpoints.includes(endpoint)) {
+      endpoints.push(endpoint);
+    }
+  });
   
   return endpoints;
 };

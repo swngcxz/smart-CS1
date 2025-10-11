@@ -84,10 +84,11 @@ function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
 interface StaffMapSectionProps {
   onBinClick?: (binId: string) => void;
   showRightPanel?: boolean;
+  isPanelOpen?: boolean;
   rightPanel?: React.ReactNode;
 }
 
-export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: StaffMapSectionProps) {
+export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, rightPanel }: StaffMapSectionProps) {
   const { wasteBins, loading, error, bin1Data, monitoringData, gpsHistory, dynamicBinLocations } = useRealTimeData();
   const [showGPSTracking, setShowGPSTracking] = useState(false);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
@@ -117,11 +118,11 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
   // Debug logging for real-time data
   useEffect(() => {
     if (bin1Data) {
-      console.log("🗺️ Staff Map - Real-time bin1 data received:", bin1Data);
-      console.log("📍 GPS Valid:", bin1Data.gps_valid, "Coordinates:", bin1Data.latitude, bin1Data.longitude);
+      console.log("Staff Map - Real-time bin1 data received:", bin1Data);
+      console.log("GPS Valid:", bin1Data.gps_valid, "Coordinates:", bin1Data.latitude, bin1Data.longitude);
     }
     if (dynamicBinLocations.length > 0) {
-      console.log("🗺️ Staff Map - Dynamic bin locations:", dynamicBinLocations);
+      console.log("Staff Map - Dynamic bin locations:", dynamicBinLocations);
     }
   }, [bin1Data, dynamicBinLocations]);
 
@@ -329,30 +330,21 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
       {/* Map Section */}
       <Card
         ref={mapContainerRef}
-        className="h-[510px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-20"
+        className="h-[530px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-4"
       >
-        <CardHeader>
+        <CardHeader className="pb-2 pt-3">
           <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
             <div className="flex items-center gap-1">
-              <h3 className="text-lg font-semibold">Naga City, Cebu</h3>
-              
-            
-              {bin1Data && bin1Data.gps_valid && (
-                <div className="flex items-center gap-1 ml-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs text-green-600 dark:text-green-400">Live</span>
-                </div>
-              )}
+              <h3 className="text-base font-semibold">Naga City, Cebu</h3>
             </div>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-2 text-xs">
               {/* Location Dropdown */}
               <div className="relative">
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                  className="flex items-center gap-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
                   onClick={toggleLocationDropdown}
                 >
-                  <MapPin className="w-4 h-4" />
                   <span>Locations</span>
                   {isLocationDropdownOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </Button>
@@ -371,7 +363,6 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
                         onClick={() => handleRouteSelect("central-plaza")}
                       >
                         <div className="flex items-center gap-3 w-full">
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
                           <div className="flex-1 font-semibold text-sm">Central Plaza</div>
                           <Badge
                             className={`text-xs ${
@@ -393,7 +384,6 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
                         onClick={() => handleRouteSelect("park-avenue")}
                       >
                         <div className="flex items-center gap-3 w-full">
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
                           <div className="flex-1 font-semibold text-sm">Park Avenue</div>
                           <Badge
                             className={`text-xs ${
@@ -415,7 +405,6 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
                         onClick={() => handleRouteSelect("mall-district")}
                       >
                         <div className="flex items-center gap-3 w-full">
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
                           <div className="flex-1 font-semibold text-sm">Mall District</div>
                           <Badge
                             className={`text-xs ${
@@ -437,7 +426,6 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
                         onClick={() => handleRouteSelect("residential")}
                       >
                         <div className="flex items-center gap-3 w-full">
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
                           <div className="flex-1 font-semibold text-sm">Residential Area</div>
                           <Badge
                             className={`text-xs ${
@@ -462,7 +450,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
                   }`}
                   title="Toggle GPS tracking path"
                 >
-                🗺️ {showGPSTracking ? "Hide" : "Show"} Path
+                {showGPSTracking ? "Hide" : "Show"} Path
                 </button>
               )}
             </div>
@@ -525,7 +513,12 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
               <MapTypeIndicator transitionZoomLevel={18} />
 
               {updatedBinLocations.map((bin) => (
-                <DynamicBinMarker key={bin.id} bin={bin} onBinClick={handleBinClick} />
+                <DynamicBinMarker 
+                  key={bin.id} 
+                  bin={bin} 
+                  onBinClick={handleBinClick} 
+                  showPopup={!showRightPanel} 
+                />
               ))}
 
               {/* GPS Tracking Line */}
@@ -617,7 +610,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
 
           {/* Right Panel - Positioned within the map */}
           {showRightPanel && rightPanel && (
-            <div className="absolute top-0 right-0 h-full z-[1000] animate-in slide-in-from-right duration-300 ease-out">
+            <div className="absolute top-0 right-0 h-full z-[1000] transform transition-transform duration-300 ease-out translate-x-0">
               {rightPanel}
             </div>
           )}
