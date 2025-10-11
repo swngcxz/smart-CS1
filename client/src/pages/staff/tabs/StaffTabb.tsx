@@ -92,28 +92,7 @@ export function StaffTab() {
       </div>
 
       {/* {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>} */}
-      <div className="flex justify-between gap-4">
-        {staffStats.map((stat, index) => {
-          const IconComponent = stat.icon;
-          return (
-            <div
-              key={index}
-              className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 
-                     border border-transparent hover:border-gray-200 transition-all duration-200 
-                     rounded-full px-4 py-2 flex-1"
-            >
-              <div className="flex items-center gap-2">
-                <IconComponent className={`h-5 w-5 ${stat.color}`} />
-                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">{stat.label}</p>
-              </div>
-              <p className={`text-lg font-semibold ${loading ? "text-gray-400 animate-pulse" : stat.color}`}>
-                {loading ? "..." : stat.value}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-      <StaffTable onStaffUpdate={loadStaffCounts} />
+      <StaffTable onStaffUpdate={loadStaffCounts} totalStaff={staffCounts.totalStaff} />
     </div>
   );
 }
