@@ -99,9 +99,9 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
         source: "web_dashboard",
       };
 
-      console.log("🚀 Sending task data:", taskData);
+      console.log("Sending task data:", taskData);
       const response = await api.post("/api/activitylogs", taskData);
-      console.log("✅ Task assignment response:", response.data);
+      console.log("Task assignment response:", response.data);
 
       toast({
         title: "Success",
@@ -110,9 +110,9 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
 
       onClose();
     } catch (error: any) {
-      console.error("❌ Failed to assign task:", error);
-      console.error("❌ Error response:", error.response?.data);
-      console.error("❌ Error status:", error.response?.status);
+      console.error("Failed to assign task:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
 
       const errorMessage =
         error.response?.data?.error || error.response?.data?.message || error.message || "Failed to assign task";
@@ -174,7 +174,7 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
               </span>
               {bin.id === "bin1" && (
                 <Badge variant="secondary" className="text-xs">
-                  LIVE
+                  Live
                 </Badge>
               )}
             </div>

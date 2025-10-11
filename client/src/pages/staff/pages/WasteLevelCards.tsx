@@ -10,7 +10,7 @@ const wasteData = [
     level: 85, // Will be overridden by real-time data
     status: "critical",
     lastCollected: "2 hours ago",
-    icon: CheckCircle,
+    icon: AlertTriangle,
   },
   {
     id: 2,
@@ -59,17 +59,20 @@ export function WasteLevelCards({
     return Math.round(totalLevel / locationBins.length);
   };
 
-  // Calculate average status for each location
+  // Calculate status based on waste level ranges
+  const calculateStatusFromLevel = (level: number) => {
+    if (level >= 85) return "critical";
+    if (level >= 70) return "warning";
+    return "normal";
+  };
+
+  // Calculate average status for each location based on level
   const calculateAverageStatus = (location: string) => {
     const locationBins = binsToUse.filter(bin => bin.location === location);
     if (locationBins.length === 0) return "normal";
     
-    const criticalCount = locationBins.filter(bin => bin.status === "critical").length;
-    const warningCount = locationBins.filter(bin => bin.status === "warning").length;
-    
-    if (criticalCount > 0) return "critical";
-    if (warningCount > 0) return "warning";
-    return "normal";
+    const averageLevel = calculateAverageLevel(location);
+    return calculateStatusFromLevel(averageLevel);
   };
 
   // Get most recent last collected time for each location
@@ -82,6 +85,19 @@ export function WasteLevelCards({
     return locationBins[0].lastCollected;
   };
 
+  // Get appropriate icon based on status
+  const getIconForStatus = (status: string) => {
+    switch (status) {
+      case "critical":
+        return AlertTriangle;
+      case "warning":
+        return Clock;
+      case "normal":
+      default:
+        return CheckCircle;
+    }
+  };
+
   // Update static data with calculated averages from real-time data
   const updatedWasteData = wasteData.map((bin) => {
     const averageLevel = calculateAverageLevel(bin.location);
@@ -91,10 +107,21 @@ export function WasteLevelCards({
     // Check if we have real-time data for this location
     const hasRealTimeData = binsToUse.some(wb => wb.location === bin.location);
     
+    // Debug logging for Central Plaza
+    if (bin.location === "Central Plaza") {
+      console.log("Central Plaza bins:", binsToUse.filter(wb => wb.location === bin.location));
+      console.log("Has real-time data:", hasRealTimeData);
+    }
+    
+    // Calculate status based on actual level
+    const finalLevel = hasRealTimeData ? averageLevel : bin.level;
+    const finalStatus = calculateStatusFromLevel(finalLevel);
+    
     return {
       ...bin,
-      level: hasRealTimeData ? averageLevel : bin.level,
-      status: hasRealTimeData ? averageStatus : bin.status,
+      level: finalLevel,
+      status: finalStatus,
+      icon: getIconForStatus(finalStatus),
       lastCollected: hasRealTimeData ? mostRecentLastCollected : bin.lastCollected,
     };
   });
@@ -115,10 +142,18 @@ export function WasteLevelCards({
                   <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
                     {bin.location}
                   </CardTitle>
-                  {binsToUse.some(wb => wb.location === bin.location) && (
+                  {binsToUse.some(wb => wb.location === bin.location && (wb.timestamp || wb.lastUpdated || wb.level !== undefined || wb.weight_percent !== undefined)) && (
                     <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-green-600 dark:text-green-400">Live</span>
+                      <div className={`w-2 h-2 rounded-full animate-pulse ${
+                        bin.status === "critical" ? "bg-red-500" :
+                        bin.status === "warning" ? "bg-yellow-500" :
+                        "bg-green-500"
+                      }`}></div>
+                      <span className={`text-xs ${
+                        bin.status === "critical" ? "text-red-600 dark:text-red-400" :
+                        bin.status === "warning" ? "text-yellow-600 dark:text-yellow-400" :
+                        "text-green-600 dark:text-green-400"
+                      }`}>Live</span>
                     </div>
                   )}
                 </div>

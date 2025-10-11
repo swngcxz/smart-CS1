@@ -307,7 +307,7 @@ export function WasteLevelsTab() {
                 }`}
               ></div>
               <span className="text-xs font-medium">
-                {loading ? "Connecting..." : error ? "Connection Error" : bin1Data ? `Live Data (${bin1Data.weight_percent || bin1Data.bin_level || 0}%)` : "No Data"}
+                {loading ? "Connecting..." : error ? "Connection Error" : bin1Data ? "Live Data" : "No Data"}
               </span>
             </div>
 
@@ -345,9 +345,12 @@ export function WasteLevelsTab() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{bin.location}</h3>
                         {bin.id === "bin1" && bin1Data && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                            LIVE
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                              Live
                           </span>
+                          </div>
                         )}
                       </div>
                       <span
@@ -384,13 +387,6 @@ export function WasteLevelsTab() {
                       <div>
                         <span className="font-medium">Next Collection:</span> {bin.nextCollection}
                       </div>
-                    </div>
-                    
-                    {/* Click indicator */}
-                    <div className="flex justify-end pt-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        Click to assign task →
-                      </span>
                     </div>
                   </div>
                 </Card>
