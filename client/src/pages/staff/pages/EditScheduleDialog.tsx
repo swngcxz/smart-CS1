@@ -13,13 +13,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Schedule, Collector } from "./scheduleTypes";
 import { useScheduleFormState } from "./scheduleFormUtils";
 
-interface AddScheduleDialogProps {
+interface EditScheduleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddSchedule: (schedule: Omit<Schedule, "id">) => void;
+  onUpdateSchedule: (schedule: Schedule) => void;
+  editingSchedule: Schedule | null;
 }
 
-export function AddScheduleDialog({ open, onOpenChange, onAddSchedule }: AddScheduleDialogProps) {
+export function EditScheduleDialog({ open, onOpenChange, onUpdateSchedule, editingSchedule }: EditScheduleDialogProps) {
   const [formData, setFormData] = useState({
     serviceType: "collection" as "collection" | "maintenance",
     location: "",
@@ -43,59 +44,46 @@ export function AddScheduleDialog({ open, onOpenChange, onAddSchedule }: AddSche
   const [loadingSchedules, setLoadingSchedules] = useState(false);
   const [validationError, setValidationError] = useState("");
 
-  const { fetchWorkers, fetchExistingSchedules, checkForPastDate, checkForDuplicateSchedule, submitSchedule } =
-    useScheduleFormState();
+  const { fetchWorkers, submitSchedule } = useScheduleFormState();
 
   const availableCollectors: Collector[] = formData.serviceType === "collection" ? drivers : maintenanceWorkers;
   const selectedCollector = availableCollectors.find((c) => c.id === formData.collectorId);
 
-  // Fetch workers and existing schedules when dialog opens
+  // Fetch workers when dialog opens
   useEffect(() => {
     if (open) {
       fetchWorkers(setDrivers, setMaintenanceWorkers, setLoadingWorkers);
-      fetchExistingSchedules(setExistingSchedules, setExistingTruckSchedules, setLoadingSchedules);
     }
   }, [open]);
 
-  // Reset collector when service type changes
+  // Populate form when editing a schedule
   useEffect(() => {
-    if (open) {
-      setFormData((prev) => ({ ...prev, collectorId: "" }));
-    }
-  }, [formData.serviceType, open]);
+    if (editingSchedule && open) {
+      setFormData({
+        serviceType: editingSchedule.serviceType,
+        location: editingSchedule.location,
+        type: editingSchedule.type,
 
-  // Real-time validation
-  useEffect(() => {
-    setValidationError("");
+        // Handle time format - could be stored as "HH:mm" or "HH:mm - HH:mm"
+        startTime: editingSchedule.time.includes(" - ") ? editingSchedule.time.split(" - ")[0] : editingSchedule.time,
+        endTime: editingSchedule.time.includes(" - ")
+          ? editingSchedule.time.split(" - ")[1]
+          : editingSchedule.end_collected || "",
 
-    if (formData.date) {
-      if (checkForPastDate(formData.date, setValidationError)) {
-        return;
-      }
-    }
+        // Set date
+        date: editingSchedule.date ? new Date(editingSchedule.date) : undefined,
 
-    if (formData.location && formData.date && formData.startTime && formData.endTime && !loadingSchedules) {
-      const hasDuplicate = checkForDuplicateSchedule(
-        formData,
-        existingSchedules,
-        existingTruckSchedules,
-        setValidationError
-      );
-      if (hasDuplicate && (existingSchedules.length > 0 || existingTruckSchedules.length > 0)) {
-        // Error is already set in checkForDuplicateSchedule function
-      }
+        capacity: editingSchedule.capacity || "",
+        notes: editingSchedule.notes || "",
+        contactPerson: editingSchedule.contactPerson || "",
+        priority: editingSchedule.priority || "Normal",
+
+        // Set collector ID if available
+        collectorId: editingSchedule.collector?.id || "",
+      });
+      setValidationError("");
     }
-  }, [
-    formData.location,
-    formData.date,
-    formData.startTime,
-    formData.endTime,
-    formData.collectorId,
-    formData.serviceType,
-    existingSchedules,
-    existingTruckSchedules,
-    loadingSchedules,
-  ]);
+  }, [editingSchedule, open]);
 
   const resetForm = () => {
     setFormData({
@@ -130,8 +118,8 @@ export function AddScheduleDialog({ open, onOpenChange, onAddSchedule }: AddSche
       return;
     }
 
-    const success = await submitSchedule(formData, selectedCollector, false, null, (schedule) => {
-      onAddSchedule(schedule);
+    const success = await submitSchedule(formData, selectedCollector, true, editingSchedule, (schedule) => {
+      onUpdateSchedule(schedule);
       resetForm();
       onOpenChange(false);
     });
@@ -150,7 +138,7 @@ export function AddScheduleDialog({ open, onOpenChange, onAddSchedule }: AddSche
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add New Schedule</DialogTitle>
+          <DialogTitle>Edit Schedule</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -223,11 +211,6 @@ export function AddScheduleDialog({ open, onOpenChange, onAddSchedule }: AddSche
                     onSelect={(date) => updateFormData({ date })}
                     initialFocus
                     className="pointer-events-auto"
-                    disabled={(date) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return date < today;
-                    }}
                   />
                 </PopoverContent>
               </Popover>
@@ -347,7 +330,7 @@ export function AddScheduleDialog({ open, onOpenChange, onAddSchedule }: AddSche
                 !!validationError
               }
             >
-              {loadingWorkers || loadingSchedules ? "Loading..." : "Add Schedule"}
+              {loadingWorkers ? "Loading..." : "Update Schedule"}
             </Button>
           </DialogFooter>
         </form>

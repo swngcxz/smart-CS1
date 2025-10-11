@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
 import { Smartphone, Wifi, WifiOff } from "lucide-react";
-import { BinInfoModal } from "@/components/modals/BinInfoModal";
+import { BinInfoModal } from "@/components/popups/BinInfoModal";
 import api from "@/lib/api";
 
 // GSM Status Hook
@@ -67,41 +67,46 @@ export function WasteLevelsTab() {
     error,
     bin1Data,
     wasteBinsLength: wasteBins.length,
-    bin1DataDetails: bin1Data ? {
-      bin_level: bin1Data.bin_level,
-      weight_percent: bin1Data.weight_percent,
-      height_percent: bin1Data.height_percent,
-      timestamp: bin1Data.timestamp,
-      gps_valid: bin1Data.gps_valid,
-      latitude: bin1Data.latitude,
-      longitude: bin1Data.longitude,
-      satellites: bin1Data.satellites
-    } : null
+    bin1DataDetails: bin1Data
+      ? {
+          bin_level: bin1Data.bin_level,
+          weight_percent: bin1Data.weight_percent,
+          height_percent: bin1Data.height_percent,
+          timestamp: bin1Data.timestamp,
+          gps_valid: bin1Data.gps_valid,
+          latitude: bin1Data.latitude,
+          longitude: bin1Data.longitude,
+          satellites: bin1Data.satellites,
+        }
+      : null,
   });
-
 
   // Get real-time bin1 data
   const realTimeBin1 = wasteBins.find((wb) => wb.location === "Central Plaza" && wb.id === "bin1");
-  
+
   // Debug logging for real-time bin detection
-  console.log('🔍 Real-time bin detection:', {
+  console.log("🔍 Real-time bin detection:", {
     wasteBinsCount: wasteBins.length,
-    wasteBins: wasteBins.map(wb => ({ id: wb.id, location: wb.location, level: wb.level })),
-    realTimeBin1: realTimeBin1 ? { id: realTimeBin1.id, location: realTimeBin1.location, level: realTimeBin1.level } : null
+    wasteBins: wasteBins.map((wb) => ({ id: wb.id, location: wb.location, level: wb.level })),
+    realTimeBin1: realTimeBin1
+      ? { id: realTimeBin1.id, location: realTimeBin1.location, level: realTimeBin1.level }
+      : null,
   });
-  
+
   // Create real-time data for each location
   const realTimeBins: WasteBin[] = [
     // Central Plaza - Add real-time bin1 data + 3 static bins (4 total)
-    ...(realTimeBin1 ? [
-      {
-        ...realTimeBin1,
-        id: realTimeBin1.id,
-        wasteType: realTimeBin1.wasteType || "Mixed",
-        nextCollection: realTimeBin1.nextCollection || "Today 3:00 PM",
-      }
-    ] : []),
-    
+    ...(realTimeBin1
+      ? [
+          {
+            ...realTimeBin1,
+            id: realTimeBin1.id,
+            wasteType: realTimeBin1.wasteType || "Mixed",
+            nextCollection: realTimeBin1.nextCollection || "Today 3:00 PM",
+          },
+        ]
+      : []),
+
     // Always include the 3 static bins for Central Plaza
     {
       id: "2",
@@ -282,7 +287,6 @@ export function WasteLevelsTab() {
 
           {/* Status Indicators */}
           <div className="flex items-center gap-4 text-sm">
-
             {/* Live Data Status */}
             <div
               className={`flex items-center gap-2 px-3 py-1 rounded-full ${
@@ -347,9 +351,7 @@ export function WasteLevelsTab() {
                         {bin.id === "bin1" && bin1Data && (
                           <div className="flex items-center gap-1">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                              Live
-                          </span>
+                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">Live</span>
                           </div>
                         )}
                       </div>
