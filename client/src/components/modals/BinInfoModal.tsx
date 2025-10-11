@@ -160,90 +160,82 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md w-full max-h-[100vh] overflow-hidden">
-        <DialogHeader className="pb-0 px-2">
+      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-hidden pb-3 px-3">
+        <DialogHeader className="pb-3 px-3">
           <DialogTitle className="text-lg">Bin Information - {bin.location}</DialogTitle>
         </DialogHeader>
 
-         <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-100px)] px-2">
-           {/* Bin ID and GPS Status */}
-           <div className="flex items-center justify-between">
-             <div className="flex items-center gap-2">
-               <span className="text-base font-medium">
-                 {bin.location} Bin: {bin.id}
-               </span>
-               {bin.id === "bin1" && (
-                 <div className="flex items-center gap-1">
-                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                   <span className="text-xs text-green-600 dark:text-green-400 font-regular">
-                     Live
-                   </span>
-                 </div>
-               )}
-             </div>
-             <span className={`text-[10px] font-regular ${gpsStatus.color}`}>GPS: {gpsStatus.status}</span>
-           </div>
+        <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-120px)] px-4 pb-4">
+          {/* Bin ID and GPS Status */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base font-medium">
+                {bin.location} Bin: {bin.id}
+              </span>
+              {bin.id === "bin1" && (
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-600 dark:text-green-400 font-regular">Live</span>
+                </div>
+              )}
+            </div>
+            <span className={`text-[10px] font-regular ${gpsStatus.color}`}>GPS: {gpsStatus.status}</span>
+          </div>
 
-           {/* Fill Level */}
-           <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md space-y-2">
-             <div className="flex items-center justify-between">
-               <Label className="text-sm font-medium">Fill Level</Label>
-               <Badge
-                 className={`text-[10px] px-1.5 py-0.5 ${
-                   bin.status === "critical"
-                     ? "bg-red-100 text-red-800"
-                     : bin.status === "warning"
-                     ? "bg-yellow-100 text-yellow-800"
-                     : "bg-green-100 text-green-800"
-                 }`}
-               >
-                 {bin.status.charAt(0).toUpperCase() + bin.status.slice(1)}
-               </Badge>
-             </div>
-             <div className="flex items-center gap-2">
-               <Progress value={bin.level} className="flex-1 h-2" />
-               <span className="text-sm font-medium">{bin.level}%</span>
-             </div>
-           </div>
+          {/* Fill Level */}
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Fill Level</Label>
+              <Badge
+                className={`text-[10px] px-1.5 py-0.5 ${
+                  bin.status === "critical"
+                    ? "bg-red-100 text-red-800"
+                    : bin.status === "warning"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-green-100 text-green-800"
+                }`}
+              >
+                {bin.status.charAt(0).toUpperCase() + bin.status.slice(1)}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <Progress value={bin.level} className="flex-1 h-2" />
+              <span className="text-sm font-medium">{bin.level}%</span>
+            </div>
+          </div>
 
-           {/* Last Collected */}
-           {/* <div className="flex items-center justify-between text-sm">
+          {/* Last Collected */}
+          {/* <div className="flex items-center justify-between text-sm">
              <Label className="font-medium">Last Collected:</Label>
              <span className="text-gray-600">{getLastCollected()}</span>
            </div> */}
 
           {/* Current Metrics */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md space-y-1">
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Weight</Label>
                 <span className="text-sm font-medium">{binData?.weight_percent || 0} kg</span>
               </div>
-              <Progress
-                value={Math.min(binData?.weight_percent || 0, 100)}
-                className="h-1.5"
-              />
+              <Progress value={Math.min(binData?.weight_percent || 0, 100)} className="h-1.5" />
             </div>
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md space-y-1">
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-md space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Height</Label>
                 <span className="text-sm font-medium">{binData?.height_percent || bin.level}%</span>
               </div>
-              <Progress
-                value={binData?.height_percent || bin.level}
-                className="h-1.5"
-              />
+              <Progress value={binData?.height_percent || bin.level} className="h-1.5" />
             </div>
           </div>
 
           {/* Suggested Action */}
-          <div>
+          <div className="space-y-2">
             <Label className="text-sm font-medium">Suggested Action:</Label>
             <p className="text-sm text-gray-600">{getSuggestedAction()}</p>
           </div>
 
           {/* Task Assignment Section */}
-          <div className="space-y-1 pt-1">
+          <div className="space-y-3 pt-2">
             <h3 className="font-medium text-sm">Assign to Janitor ({availableJanitors.length} available)</h3>
 
             <div>
@@ -271,8 +263,10 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
               </Select>
             </div>
 
-            <div className="space-y-0">
-              <Label htmlFor="task-notes" className="text-sm">Task Notes (Optional)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="task-notes" className="text-sm">
+                Task Notes (Optional)
+              </Label>
               <Textarea
                 id="task-notes"
                 placeholder="e.g., Clean the bin."
@@ -292,7 +286,7 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
                 isLoading ||
                 janitorsLoading
               }
-              className="w-full mt-2"
+              className="w-full mt-4"
             >
               {isLoading ? "Assigning..." : "Assign Task"}
             </Button>
