@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -35,13 +36,21 @@ export function AnalyticsTab() {
   const analyticsTimeFilter = timeFilter === "week" ? "This Week" : 
                              timeFilter === "month" ? "This Month" : "This Year";
   
-  // Use the analytics hook
+  // Use the analytics hook (keeping for fallback)
   const { 
     analyticsData, 
     isLoading: isLoadingAnalytics, 
     error: analyticsError,
     criticalBins: criticalBinsData 
   } = useAnalytics(analyticsTimeFilter);
+
+  // Use the new dashboard metrics hook for real data
+  const { 
+    metrics: dashboardMetrics, 
+    loading: isLoadingDashboard, 
+    error: dashboardError,
+    refetch: refetchDashboard 
+  } = useDashboardMetrics(timeFilter);
 
   // Helper function to safely cast status
   const getSafeStatus = (status: string): "normal" | "warning" | "critical" => {
@@ -51,14 +60,12 @@ export function AnalyticsTab() {
     return "normal";
   };
 
-  // Use analytics data directly (no fallback needed as APIs return real data)
-  const displayData = analyticsData || {
-    weeklyCollections: 0,
-    monthlyCollections: 0,
-    yearlyCollections: 0,
-    averageFillLevel: 0,
-    criticalBins: 0,
-    routeEfficiency: 0,
+  // Use dashboard metrics as primary data source, fallback to analytics data
+  const displayData = {
+    collections: dashboardMetrics.weeklyCollections || analyticsData?.weeklyCollections || 0,
+    averageFillLevel: dashboardMetrics.averageFillLevel || analyticsData?.averageFillLevel || 0,
+    criticalBins: dashboardMetrics.criticalBins || analyticsData?.criticalBins || 0,
+    routeEfficiency: dashboardMetrics.routeEfficiency || analyticsData?.routeEfficiency || 0,
   };
 
   // Create bin data from real-time monitoring and critical bins
@@ -113,10 +120,8 @@ export function AnalyticsTab() {
     (bin) => routeFilter === "all" || bin.route.includes(routeFilter)
   );
 
-  // Use analytics data from the hook instead of calculating from mock data
-  const totalCollections = timeFilter === "week" ? displayData.weeklyCollections :
-                          timeFilter === "month" ? displayData.monthlyCollections :
-                          displayData.yearlyCollections;
+  // Use dynamic collections data based on time filter
+  const totalCollections = displayData.collections;
 
   const averageFillLevel = displayData.averageFillLevel;
   const criticalBins = displayData.criticalBins;
@@ -254,11 +259,13 @@ export function AnalyticsTab() {
   };
 
   // Show error notification if there's an error, but don't block the UI
-  const showErrorNotification = analyticsError && (
+  const showErrorNotification = (analyticsError || dashboardError) && (
     <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
       <div className="flex items-center space-x-2 text-red-600">
         <AlertCircle className="h-4 w-4" />
-        <span className="text-sm">Using fallback data - Analytics API unavailable</span>
+        <span className="text-sm">
+          {dashboardError ? 'Dashboard metrics unavailable - using fallback data' : 'Using fallback data - Analytics API unavailable'}
+        </span>
       </div>
     </div>
   );
@@ -273,7 +280,7 @@ export function AnalyticsTab() {
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
         Waste Analytics & Reports
       </h2>
-        {isLoadingAnalytics && (
+        {(isLoadingAnalytics || isLoadingDashboard) && (
           <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
         )}
       </div>

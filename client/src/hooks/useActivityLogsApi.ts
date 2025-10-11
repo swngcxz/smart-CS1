@@ -19,7 +19,7 @@ export interface ActivityLog {
   [key: string]: any;
 }
 
-export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_id?: string, autoRefreshInterval: number = 30000) {
+export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_id?: string, status?: string, autoRefreshInterval: number = 30000) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +35,7 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
       if (offset) params.append('offset', offset.toString());
       if (type) params.append('type', type);
       if (user_id) params.append('user_id', user_id);
+      if (status) params.append('status', status);
 
       const url = `/api/activitylogs?${params.toString()}`;
       console.log('🔍 useAllActivityLogs - Fetching from:', url);
@@ -55,7 +56,7 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
     } finally {
       setLoading(false);
     }
-  }, [limit, offset, type, user_id]);
+  }, [limit, offset, type, user_id, status]);
 
   useEffect(() => {
     fetchLogs();

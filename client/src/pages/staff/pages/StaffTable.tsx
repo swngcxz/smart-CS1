@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import StaffTableSkeleton from "@/components/skeletons/StaffTableSkeleton";
 type StaffRecord = {
   id: string;
@@ -34,7 +35,10 @@ export function StaffTable({ onStaffUpdate, totalStaff }: StaffTableProps) {
   const { user } = useAuth();
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState("all");
   const [selectedRoute, setSelectedRoute] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [staffList, setStaffList] = useState<StaffRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -124,35 +128,74 @@ export function StaffTable({ onStaffUpdate, totalStaff }: StaffTableProps) {
   };
 
   const filteredStaff = useMemo(() => {
-    // Filter out the current logged-in user and apply route filter
+    // Filter out the current logged-in user and apply all filters
     const filtered = staffList.filter((s) => {
       // Exclude current user
       const isNotCurrentUser = !user || s.email !== user.email;
+      // Filter by role
+      const matchesRole = selectedRole === "all" || s.role === selectedRole;
       // Filter by route
       const matchesRoute = selectedRoute === "all" || (s.location || "") === selectedRoute;
-      return isNotCurrentUser && matchesRoute;
+      // Filter by search term (name, email, contact number)
+      const matchesSearch = searchTerm === "" || 
+        s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.contactNumber || "").toLowerCase().includes(searchTerm.toLowerCase());
+      // Filter by status
+      const matchesStatus = statusFilter === "all" || (s.status || "active") === statusFilter;
+      
+      return isNotCurrentUser && matchesRole && matchesRoute && matchesSearch && matchesStatus;
     });
 
     return filtered;
-  }, [selectedRoute, staffList, user]);
+  }, [selectedRole, selectedRoute, searchTerm, statusFilter, staffList, user]);
 
   return (
     <>
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-1">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Route:</p>
-          <Select value={selectedRoute} onValueChange={setSelectedRoute}>
-            <SelectTrigger className="h-7 w-28 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent className="text-xs">
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="Route A">Route A</SelectItem>
-              <SelectItem value="Route B">Route B</SelectItem>
-              <SelectItem value="Route C">Route C</SelectItem>
-              <SelectItem value="Route D">Route D</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-3">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
+            <Input
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-7 h-7 w-72 text-xs"
+            />
+          </div>
+          
+          {/* Filters */}
+          <div className="flex items-center gap-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Role:</p>
+            <Select value={selectedRole} onValueChange={setSelectedRole}>
+              <SelectTrigger className="h-7 w-32 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent className="text-xs">
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="janitor">Janitor</SelectItem>
+                <SelectItem value="driver">Driver</SelectItem>
+                <SelectItem value="maintenance">Maintenance</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Route:</p>
+            <Select value={selectedRoute} onValueChange={setSelectedRoute}>
+              <SelectTrigger className="h-7 w-36 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent className="text-xs">
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="Route A">Route A</SelectItem>
+                <SelectItem value="Route B">Route B</SelectItem>
+                <SelectItem value="Route C">Route C</SelectItem>
+                <SelectItem value="Route D">Route D</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
