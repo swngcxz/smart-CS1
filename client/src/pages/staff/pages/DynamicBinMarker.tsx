@@ -24,6 +24,7 @@ interface DynamicBinMarkerProps {
     gps_timestamp?: string;
   };
   onBinClick?: (binId: string) => void;
+  showPopup?: boolean;
 }
 
 // Use the new timeUtils for consistent formatting
@@ -111,7 +112,7 @@ const createDynamicIcon = (
   });
 };
 
-export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
+export function DynamicBinMarker({ bin, onBinClick, showPopup = true }: DynamicBinMarkerProps) {
   const [isLive, setIsLive] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
@@ -157,7 +158,8 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
 
   return (
     <Marker position={bin.position} icon={icon}>
-      <Popup className="custom-popup" maxWidth={300}>
+      {showPopup && (
+        <Popup className="custom-popup" maxWidth={300}>
         <div className="p-3 min-w-[250px]">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -309,7 +311,8 @@ export function DynamicBinMarker({ bin, onBinClick }: DynamicBinMarkerProps) {
             </div>
           </div>
         </div>
-      </Popup>
+        </Popup>
+      )}
     </Marker>
   );
 }

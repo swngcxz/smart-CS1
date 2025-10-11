@@ -140,41 +140,47 @@ export function MapTab() {
       <div className="space-y-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Map View</h2>
-          <div className="flex items-center gap-4 text-sm">
-            {/* Real-time Status Display */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span className="text-gray-700 text-xs dark:text-gray-300">Critical({criticalBins})</span>
-              </div>
-              <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <span className="text-gray-700 text-xs dark:text-gray-300">Warning({warningBins})</span>
-              </div>
-              <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span className="text-gray-700 text-xs dark:text-gray-300">Normal({normalBins})</span>
-              </div>
-            </div>
-          </div>
+          <div className="flex items-center gap-3 text-xs"> {/* smaller font */}
+  {/* Real-time Status Display */}
+  <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1">
+      <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> {/* smaller dot */}
+      <span className="text-gray-700 dark:text-gray-300">Critical ({criticalBins})</span>
+    </div>
+
+    <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+
+    <div className="flex items-center gap-1">
+      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+      <span className="text-gray-700 dark:text-gray-300">Warning ({warningBins})</span>
+    </div>
+
+    <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+
+    <div className="flex items-center gap-1">
+      <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+      <span className="text-gray-700 dark:text-gray-300">Normal ({normalBins})</span>
+    </div>
+  </div>
+</div>
+
         </div>
 
         <div className="w-full pb-10">
           <StaffMapSection
             onBinClick={handleBinClick}
             showRightPanel={isBinDetailsOpen}
+            isPanelOpen={isBinDetailsOpen}
             rightPanel={
-              <div className="w-96 h-full bg-transparent/10 dark:bg-gray-900/70 backdrop-blur-md border-l border-gray-200/30 dark:border-gray-700/30 shadow-xl rounded-l-lg">
+              <div className="w-[420px] h-full bg-black/20 border-l border-white/20 shadow-2xl rounded-l-xl backdrop-blur-lg transform transition-transform duration-300 ease-out">
                 <div className="p-6 h-full flex flex-col">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bin Details</h3>
+                    <h3 className="text-lg font-semibold text-white">Bin Details</h3>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setIsBinDetailsOpen(false)}
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-gray-300 hover:text-white hover:bg-gray-700/50 transition-colors duration-200"
                     >
                       ×
                     </Button>
@@ -183,7 +189,7 @@ export function MapTab() {
                   <form onSubmit={handleSubmit} className="space-y-4 flex-1 flex flex-col">
                     <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="binName" className="text-sm font-medium text-white-700 dark:text-gray-300">
+                        <Label htmlFor="binName" className="text-sm font-medium text-white">
                           Bin Name
                         </Label>
                         <Input
@@ -192,15 +198,15 @@ export function MapTab() {
                           value={binForm.binName}
                           onChange={(e) => handleInputChange("binName", e.target.value)}
                           placeholder="Enter bin name"
-                          className="w-full"
+                          className="w-full bg-white/10 border-white/30 text-white placeholder:text-white/70 focus:border-blue-400 transition-colors duration-200"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="binType" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <Label htmlFor="binType" className="text-sm font-medium text-white">
                           Bin Type
                         </Label>
                         <Select value={binForm.binType} onValueChange={(value) => handleInputChange("binType", value)}>
-                          <SelectTrigger>
+                          <SelectTrigger className="bg-white/10 border-white/30 text-white focus:border-blue-400 transition-colors duration-200">
                             <SelectValue placeholder="Select bin type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -214,14 +220,14 @@ export function MapTab() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="mainLocation" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <Label htmlFor="mainLocation" className="text-sm font-medium text-white">
                         Main Location
                       </Label>
                       <Select
                         value={binForm.mainLocation}
                         onValueChange={(value) => handleInputChange("mainLocation", value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-white/10 border-white/30 text-white focus:border-blue-400 transition-colors duration-200">
                           <SelectValue placeholder="Select main location" />
                         </SelectTrigger>
                         <SelectContent>
@@ -233,38 +239,19 @@ export function MapTab() {
                       </Select>
                     </div>
 
-                    <div className="flex gap-2 pt-4 mt-auto">
+                    <div className="pt-4 mt-auto">
                       <Button
                         type="submit"
-                        className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                        className="w-full bg-green-700 hover:bg-green-800 text-white transition-all duration-200 shadow-lg hover:shadow-xl border border-green-600/50"
                         disabled={isUpdating || !selectedBinId}
                       >
-                        <Save className="w-4 h-4 mr-2" />
                         {isUpdating ? "Updating..." : "Save Changes"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setIsEditing(false);
-                          setSelectedBinId("");
-                          setBinForm({
-                            binName: "",
-                            binType: "",
-                            mainLocation: "",
-                          });
-                          setIsBinDetailsOpen(false);
-                        }}
-                        className="flex-1"
-                        disabled={isUpdating}
-                      >
-                        Cancel
                       </Button>
                     </div>
 
                     {/* Error Display */}
                     {updateError && (
-                      <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                      <div className="text-sm text-red-200 bg-red-500/20 border border-red-400/50 p-3 rounded-lg">
                         {updateError}
                       </div>
                     )}

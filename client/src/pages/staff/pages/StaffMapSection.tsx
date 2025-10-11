@@ -84,10 +84,11 @@ function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
 interface StaffMapSectionProps {
   onBinClick?: (binId: string) => void;
   showRightPanel?: boolean;
+  isPanelOpen?: boolean;
   rightPanel?: React.ReactNode;
 }
 
-export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: StaffMapSectionProps) {
+export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, rightPanel }: StaffMapSectionProps) {
   const { wasteBins, loading, error, bin1Data, monitoringData, gpsHistory, dynamicBinLocations } = useRealTimeData();
   const [showGPSTracking, setShowGPSTracking] = useState(false);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
@@ -512,7 +513,12 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
               <MapTypeIndicator transitionZoomLevel={18} />
 
               {updatedBinLocations.map((bin) => (
-                <DynamicBinMarker key={bin.id} bin={bin} onBinClick={handleBinClick} />
+                <DynamicBinMarker 
+                  key={bin.id} 
+                  bin={bin} 
+                  onBinClick={handleBinClick} 
+                  showPopup={!showRightPanel} 
+                />
               ))}
 
               {/* GPS Tracking Line */}
@@ -604,7 +610,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, rightPanel }: Staf
 
           {/* Right Panel - Positioned within the map */}
           {showRightPanel && rightPanel && (
-            <div className="absolute top-0 right-0 h-full z-[1000] animate-in slide-in-from-right duration-300 ease-out">
+            <div className="absolute top-0 right-0 h-full z-[1000] transform transition-transform duration-300 ease-out translate-x-0">
               {rightPanel}
             </div>
           )}
