@@ -21,7 +21,7 @@ export function RoleBasedActivityLogs({ onRefresh }: RoleBasedActivityLogsProps)
   const logs = isAdmin ? adminLogs : staffLogs;
 
   // Debug logging
-  console.log("🔍 RoleBasedActivityLogs Debug:", {
+  console.log("RoleBasedActivityLogs Debug:", {
     userRole: user?.role,
     isAdmin,
     adminLogsCount: adminLogs.logs?.length || 0,

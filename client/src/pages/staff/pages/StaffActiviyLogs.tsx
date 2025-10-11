@@ -33,7 +33,9 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 type SortField = "timestamp" | "activity_type" | "status" | "priority";
 type SortDirection = "asc" | "desc";
-import StaffActivityLogsSkeleton from "@/components/skeletons/StaffActivityLogsSkeleton";
+
+import { StaffActivityLogsSkeleton } from "@/components/skeletons/StaffActivityLogsSkeleton";
+
 export function StaffActivityLogs() {
   // Get userId from auth context
   const { user: authUser } = useAuth();

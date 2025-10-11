@@ -202,42 +202,18 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }:
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-0">
       <Card className="bg-white dark:bg-gray-800 border-transparent dark:border-gray-700">
-        <CardHeader>
+        <CardHeader className="pb-4 pt-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-md font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
+            <CardTitle className="text-l font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 {filteredLogs.length} of {logs.length} Logs
               </div>
               <TooltipProvider>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={onRefresh}
-                      variant="ghost"
-                      size="sm"
-                      className="hover:bg-gray-100 dark:hover:bg-gray-700"
-                      disabled={loading}
-                    >
-                      <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Refresh activity overview and logs</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Activity Filters Label and Clear All Button */}
-          {userRole !== "admin" && (
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Activity Filters</div>
-              <Button
+                  <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setClearAllModalOpen(true)}
@@ -245,6 +221,16 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }:
               >
                 Clear All
               </Button>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {/* Activity Filters Label and Clear All Button */}
+          {userRole !== "admin" && (
+            <div className="flex items-center justify-between">
+              {/* <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">Activity Filters</div> */}
             </div>
           )}
 
