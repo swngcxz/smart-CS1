@@ -16,21 +16,33 @@ export const SettingsTab = () => {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-white dark:bg-gray-900 shadow-sm dark:shadow-none border border-gray-200 dark:border-gray-700 rounded-md">
-            <TabsTrigger value="profile" className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-              <User className="w-4 h-4" />
+          <TabsList className="w-full flex h-auto p-0 bg-transparent border-b border-gray-200 dark:border-gray-700 rounded-none">
+            <TabsTrigger
+              value="profile"
+              className="flex-1 px-6 py-3 text-sm font-medium text-center transition-colors duration-200 relative border-b-2 border-transparent data-[state=active]:text-green-600 data-[state=active]:border-green-600 data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 dark:data-[state=active]:text-green-400 dark:data-[state=active]:border-green-400 dark:data-[state=inactive]:text-gray-400 dark:data-[state=inactive]:hover:text-gray-300"
+            >
+              <User className="w-4 h-4 mr-2" />
               Profile
             </TabsTrigger>
-            <TabsTrigger value="account" className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-              <Settings className="w-4 h-4" />
+            <TabsTrigger
+              value="account"
+              className="flex-1 px-6 py-3 text-sm font-medium text-center transition-colors duration-200 relative border-b-2 border-transparent data-[state=active]:text-green-600 data-[state=active]:border-green-600 data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 dark:data-[state=active]:text-green-400 dark:data-[state=active]:border-green-400 dark:data-[state=inactive]:text-gray-400 dark:data-[state=inactive]:hover:text-gray-300"
+            >
+              <Settings className="w-4 h-4 mr-2" />
               Account
             </TabsTrigger>
-            <TabsTrigger value="preferences" className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-              <Bell className="w-4 h-4" />
+            <TabsTrigger
+              value="preferences"
+              className="flex-1 px-6 py-3 text-sm font-medium text-center transition-colors duration-200 relative border-b-2 border-transparent data-[state=active]:text-green-600 data-[state=active]:border-green-600 data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 dark:data-[state=active]:text-green-400 dark:data-[state=active]:border-green-400 dark:data-[state=inactive]:text-gray-400 dark:data-[state=inactive]:hover:text-gray-300"
+            >
+              <Bell className="w-4 h-4 mr-2" />
               Preferences
             </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-              <Shield className="w-4 h-4" />
+            <TabsTrigger
+              value="security"
+              className="flex-1 px-6 py-3 text-sm font-medium text-center transition-colors duration-200 relative border-b-2 border-transparent data-[state=active]:text-green-600 data-[state=active]:border-green-600 data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700 dark:data-[state=active]:text-green-400 dark:data-[state=active]:border-green-400 dark:data-[state=inactive]:text-gray-400 dark:data-[state=inactive]:hover:text-gray-300"
+            >
+              <Shield className="w-4 h-4 mr-2" />
               Security
             </TabsTrigger>
           </TabsList>

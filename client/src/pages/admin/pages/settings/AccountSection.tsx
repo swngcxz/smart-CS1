@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Save, Pencil, X, Loader2 } from "lucide-react";
+import { Trash2, Save, Pencil, X, Loader2, Settings, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import api from "@/lib/api";
@@ -39,37 +38,37 @@ export const AccountSection = () => {
   const handleSave = async (field: string, value: string) => {
     try {
       setLoading(true);
-      
+
       // Prepare the update data - map frontend field names to backend field names
       const fieldMapping: { [key: string]: string } = {
-        username: 'fullName', // username maps to fullName in backend
-        timezone: 'timezone'
+        username: "fullName", // username maps to fullName in backend
+        timezone: "timezone",
       };
-      
+
       const backendField = fieldMapping[field] || field;
       const updateData = { [backendField]: value };
-      
+
       // Call the backend API to update the user profile
-      const response = await api.patch('/auth/me', updateData);
-      
+      const response = await api.patch("/auth/me", updateData);
+
       if (response.data.message) {
         // Update local state
         setAccountInfo((prev) => ({ ...prev, [field]: value }));
         setIsEditing(null);
-        
+
         // Refresh user data from backend to get the latest information
         await refreshUser();
-        
+
         toast({
           title: "Updated successfully",
           description: `${field} has been updated.`,
         });
       }
     } catch (error: any) {
-      console.error('Error updating account info:', error);
+      console.error("Error updating account info:", error);
       toast({
         title: "Update failed",
-        description: error.response?.data?.error || 'Failed to update account info. Please try again.',
+        description: error.response?.data?.error || "Failed to update account info. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -80,9 +79,9 @@ export const AccountSection = () => {
   useEffect(() => {
     if (!user) return;
     setAccountInfo({
-      username: user.fullName || user.email?.split('@')[0] || '',
-      accountType: user.role || 'user',
-      memberSince: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '',
+      username: user.fullName || user.email?.split("@")[0] || "",
+      accountType: user.role || "user",
+      memberSince: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
     });
   }, [user]);
@@ -104,57 +103,60 @@ export const AccountSection = () => {
 
   const EditableField = ({ field, value, label }: { field: string; value: string; label: string }) => {
     const [tempValue, setTempValue] = useState(value);
-    
+
     // Update tempValue when the actual value changes
     useEffect(() => {
       setTempValue(value);
     }, [value]);
-    
+
     return (
-      <div className="space-y-2">
-        <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</Label>
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-wide">{label}</Label>
         {isEditing === field ? (
-          <div className="flex items-center gap-2">
-            <Input 
-              value={tempValue} 
-              onChange={(e) => setTempValue(e.target.value)} 
-              className="flex-1"
-              disabled={loading}
-            />
-            <Button 
-              size="sm" 
-              onClick={() => handleSave(field, tempValue)} 
-              className="bg-green-600 hover:bg-green-700"
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => setIsEditing(null)}
-              disabled={loading}
-            >
-              <X className="w-4 h-4" />
-            </Button>
+          <div className="space-y-3">
+            <div className="relative">
+              <Input
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                className="w-full h-10 px-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-green-500 dark:focus:border-green-400 focus:ring-2 focus:ring-green-100 dark:focus:ring-green-900/20 transition-all duration-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                disabled={loading}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                onClick={() => handleSave(field, tempValue)}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:shadow-lg hover:shadow-green-200 dark:hover:shadow-green-900/30"
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                <span className="ml-2">Save</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsEditing(null)}
+                disabled={loading}
+                className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-6 py-2 rounded-lg font-medium transition-all duration-200"
+              >
+                <X className="w-4 h-4" />
+                <span className="ml-2">Cancel</span>
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 group">
-            <span className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
-              {value || <span className="text-slate-400 italic">Not set</span>}
-            </span>
+          <div className="group relative">
+            <div className="w-full p-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center transition-all duration-200 hover:shadow-sm hover:shadow-slate-200 dark:hover:shadow-slate-800">
+              <span className="w-full">{value || <span className="text-slate-400 italic">Not set</span>}</span>
+            </div>
             <Button
               size="sm"
               variant="ghost"
               onClick={() => handleEdit(field)}
-              className="opacity-60 hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 shadow-md border border-slate-200 dark:border-slate-600 rounded-lg p-2"
               disabled={loading}
             >
-              <Pencil className="w-4 h-4" />
+              <Pencil className="w-4 h-4 text-slate-600 dark:text-slate-300" />
             </Button>
           </div>
         )}
@@ -164,39 +166,49 @@ export const AccountSection = () => {
 
   return (
     <div className="space-y-6">
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Account Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <div className="space-y-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+            <Settings className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Account Information</h2>
+        </div>
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <EditableField field="username" value={accountInfo.username} label="Username" />
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Account Type</Label>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
-                {accountInfo.accountType}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-wide">
+                Account Type
+              </Label>
+              <div className="w-full p-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center">
+                {accountInfo.accountType.charAt(0).toUpperCase() + accountInfo.accountType.slice(1)}
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Member Since</Label>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-wide">
+                Member Since
+              </Label>
+              <div className="w-full p-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center">
                 {accountInfo.memberSince}
               </div>
             </div>
             <EditableField field="timezone" value={accountInfo.timezone} label="Timezone" />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Security Options</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+      <div className="space-y-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+            <Shield className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Security Options</h2>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200">
             <div>
               <h4 className="font-semibold text-slate-900 dark:text-slate-100">Deactivate Account</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                 Temporarily deactivate your account. You can reactivate at any time by logging back in.
               </p>
             </div>
@@ -204,7 +216,7 @@ export const AccountSection = () => {
               <AlertDialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600"
+                  className="text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
                 >
                   Deactivate
                 </Button>
@@ -226,16 +238,16 @@ export const AccountSection = () => {
             </AlertDialog>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200">
             <div>
               <h4 className="font-semibold text-slate-900 dark:text-slate-100">Delete Account</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                 Permanently delete your account and all associated data. This action cannot be undone.
               </p>
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="flex items-center gap-2">
+                <Button variant="destructive" className="flex items-center gap-2 hover:bg-red-700">
                   <Trash2 className="w-4 h-4" />
                   Delete
                 </Button>
@@ -254,8 +266,8 @@ export const AccountSection = () => {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
