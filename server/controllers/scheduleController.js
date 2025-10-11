@@ -8,7 +8,7 @@ const {
 const { validateSchedule } = require("../utils/validateSchedule");
 
 async function createNewSchedule(req, res) {
-  console.log('📝 Creating new schedule with data:', req.body);
+  console.log('Creating new schedule with data:', req.body);
   const error = validateSchedule(req.body);
   if (error) return res.status(400).json({ error });
 
@@ -67,7 +67,7 @@ async function createNewSchedule(req, res) {
       createdAt: new Date().toISOString()
     };
     
-    console.log('💾 Saving schedule data to Firebase:', data);
+    console.log('Saving schedule data to Firebase:', data);
 
     const docRef = await createSchedule(data);
     return res.status(201).json({ message: "Schedule created", id: docRef.id });

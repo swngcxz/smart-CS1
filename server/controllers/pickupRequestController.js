@@ -175,9 +175,9 @@ const pickupRequestController = {
         }, janitorId);
 
         if (smsResult.success) {
-          console.log(`[PICKUP REQUEST] ✅ SMS sent successfully to ${smsResult.janitor.name}`);
+          console.log(`[PICKUP REQUEST] SMS sent successfully to ${smsResult.janitor.name}`);
         } else {
-          console.error(`[PICKUP REQUEST] ❌ SMS failed: ${smsResult.error}`);
+          console.error(`[PICKUP REQUEST] SMS failed: ${smsResult.error}`);
         }
 
         // Update the response to include SMS status

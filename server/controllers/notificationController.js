@@ -90,7 +90,7 @@ exports.sendCriticalBinNotification = async (binId, binLevel, location) => {
     // Record the notification upload
     rateLimitService.recordNotificationUpload(adminUserId);
     
-    console.log(`🚨 Critical bin notification sent: Bin ${binId} at ${binLevel}%`);
+    console.log(`Critical bin notification sent: Bin ${binId} at ${binLevel}%`);
     return true;
   } catch (error) {
     console.error('Failed to send critical bin notification:', error);
@@ -125,7 +125,7 @@ exports.sendWarningBinNotification = async (binId, binLevel, location) => {
     // Record the notification upload
     rateLimitService.recordNotificationUpload(adminUserId);
     
-    console.log(`⚠️ Warning bin notification sent: Bin ${binId} at ${binLevel}%`);
+    console.log(`Warning bin notification sent: Bin ${binId} at ${binLevel}%`);
     return true;
   } catch (error) {
     console.error('Failed to send warning bin notification:', error);
@@ -162,7 +162,7 @@ exports.sendAdminLoginNotification = async (userData) => {
     // Record the notification upload
     rateLimitService.recordNotificationUpload(adminUserId);
     
-    console.log(`📧 Admin login notification sent: ${userData.email} (${userData.role || 'user'}) logged in`);
+    console.log(`Admin login notification sent: ${userData.email} (${userData.role || 'user'}) logged in`);
     return true;
   } catch (error) {
     console.error('Failed to send admin login notification:', error);
@@ -207,7 +207,7 @@ exports.sendNotification = async (req, res) => {
     // Record the notification upload
     rateLimitService.recordNotificationUpload(userId);
     
-    console.log(`📧 Notification sent to ${userId}: ${title}`);
+    console.log(`Notification sent to ${userId}: ${title}`);
     res.status(200).json({ 
       success: true,
       rateLimit: rateLimitService.checkNotificationUploadLimit(userId)
@@ -340,7 +340,7 @@ exports.sendAutomaticTaskNotification = async (taskData) => {
     }
 
     const priorityEmoji = priority === 'urgent' ? '🔴' : priority === 'high' ? '🟠' : '🟡';
-    const title = `🚨 Automatic Task Created`;
+    const title = `Automatic Task Created`;
     const message = `Bin ${binId} at ${binLocation} is ${binLevel}% full and needs immediate attention! Priority: ${priorityEmoji} ${priority}`;
 
     const notificationPayload = {
@@ -377,7 +377,7 @@ exports.sendAutomaticTaskNotification = async (taskData) => {
 
     await Promise.all(notificationPromises);
     
-    console.log(`[AUTOMATIC TASK NOTIFICATION] ✅ Sent notifications to ${janitorUsers.length} janitors`);
+    console.log(`[AUTOMATIC TASK NOTIFICATION] Sent notifications to ${janitorUsers.length} janitors`);
     return { 
       success: true, 
       message: `Sent automatic task notifications to ${janitorUsers.length} janitors`,

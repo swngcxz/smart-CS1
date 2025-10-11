@@ -4,13 +4,13 @@ const { admin } = require("../models/firebase");
 // get collection counts from activity logs (weekly, daily, monthly, yearly)
 const getCollectionCounts = async (req, res, next) => {
   try {
-    console.log('🔄 [Analytics] Fetching collection counts from activity logs...');
+    console.log('[Analytics] Fetching collection counts from activity logs...');
     
     // Get collection data from activity logs where status is 'done'
     const activityLogsSnapshot = await db.collection("activity_logs")
       .where("status", "==", "done")
       .get();
-    console.log(`📊 [Analytics] Found ${activityLogsSnapshot.size} completed activity log entries`);
+    console.log(`[Analytics] Found ${activityLogsSnapshot.size} completed activity log entries`);
 
     const now = new Date();
     let todayCount = 0, weekCount = 0, monthCount = 0, yearCount = 0;
@@ -32,10 +32,10 @@ const getCollectionCounts = async (req, res, next) => {
       yearly: yearCount
     };
 
-    console.log('📈 [Analytics] Collection counts result:', result);
+    console.log('[Analytics] Collection counts result:', result);
     res.status(200).json(result);
   } catch (err) {
-    console.error('❌ [Analytics] Error fetching collection counts:', err);
+    console.error('[Analytics] Error fetching collection counts:', err);
     next(err);
   }
 };
@@ -43,7 +43,7 @@ const getCollectionCounts = async (req, res, next) => {
 // calculate average fill level from activity logs (common bin levels collected)
 const getAverageFillLevel = async (req, res, next) => {
   try {
-    console.log('🔄 [Analytics] Fetching average fill level from activity logs...');
+    console.log('[Analytics] Fetching average fill level from activity logs...');
     
     // Get fill level data from activity logs where status is 'done'
     const activityLogsSnapshot = await db.collection("activity_logs")
@@ -62,10 +62,10 @@ const getAverageFillLevel = async (req, res, next) => {
     });
 
     const avg = count > 0 ? Math.round(totalFill / count) : 0;
-    console.log(`📈 [Analytics] Average fill level result: ${avg}% (from ${count} completed collections)`);
+    console.log(`[Analytics] Average fill level result: ${avg}% (from ${count} completed collections)`);
     res.status(200).json({ averageFillLevel: avg });
   } catch (err) {
-    console.error('❌ [Analytics] Error fetching average fill level:', err);
+    console.error('[Analytics] Error fetching average fill level:', err);
     next(err);
   }
 };
@@ -73,7 +73,7 @@ const getAverageFillLevel = async (req, res, next) => {
 // identify critical bins from bin history
 const getCriticalBins = async (req, res, next) => {
   try {
-    console.log('🔄 [Analytics] Fetching critical bins from bin_history...');
+    console.log('[Analytics] Fetching critical bins from bin_history...');
     
     // Get critical bins from bin history where bin_level >= 95 or status is 'critical'
     const binHistorySnapshot = await db.collection("bin_history")
@@ -113,10 +113,10 @@ const getCriticalBins = async (req, res, next) => {
       }
     });
     
-    console.log(`📈 [Analytics] Critical bins result: ${critical.length} bins`);
+    console.log(`[Analytics] Critical bins result: ${critical.length} bins`);
     res.status(200).json(critical);
   } catch (err) {
-    console.error('❌ [Analytics] Error fetching critical bins:', err);
+    console.error('[Analytics] Error fetching critical bins:', err);
     next(err);
   }
 };
@@ -181,7 +181,7 @@ const getRouteEfficiency = async (req, res, next) => {
     const totalEfficiency = routes.reduce((sum, route) => sum + result[route].efficiency, 0);
     const overallEfficiency = Math.round(totalEfficiency / routes.length);
     
-    console.log('📈 [Analytics] Route efficiency result:', overallEfficiency + '%');
+    console.log('[Analytics] Route efficiency result:', overallEfficiency + '%');
     res.status(200).json({ 
       routeEfficiency: result,
       overallEfficiency: overallEfficiency

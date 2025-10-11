@@ -72,7 +72,7 @@ async function createNewTruckSchedule(req, res) {
       createdAt: new Date().toISOString()
     };
     
-    console.log('💾 Saving truck schedule data to Firebase:', data);
+    console.log('Saving truck schedule data to Firebase:', data);
 
     const docRef = await createTruckSchedule(data);
     return res.status(201).json({ message: "Truck schedule created", id: docRef.id });

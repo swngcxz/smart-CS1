@@ -160,7 +160,7 @@ const assignTaskAtomically = async (req, res, next) => {
       // Handle clearing assignment (null assignment)
       if (assigned_janitor_id === null) {
         if (!originalData.assigned_janitor_id) {
-          console.log("ℹ️ TRANSACTION REDUNDANT: Task already unassigned");
+          console.log("TRANSACTION REDUNDANT: Task already unassigned");
           return {
             success: true,
             redundant: true,
@@ -173,7 +173,7 @@ const assignTaskAtomically = async (req, res, next) => {
         if (originalData.assigned_janitor_id && 
             originalData.assigned_janitor_id !== assigned_janitor_id) {
           
-          console.log("🚫 TRANSACTION CONFLICT:", {
+          console.log("TRANSACTION CONFLICT:", {
             activityId,
             currentAssignee: originalData.assigned_janitor_name,
             currentAssigneeId: originalData.assigned_janitor_id,
@@ -188,7 +188,7 @@ const assignTaskAtomically = async (req, res, next) => {
         if (originalData.assigned_janitor_id === assigned_janitor_id && 
             originalData.status === 'in_progress') {
           
-          console.log("ℹ️ TRANSACTION REDUNDANT:", {
+          console.log("TRANSACTION REDUNDANT:", {
             activityId,
             janitor: originalData.assigned_janitor_name,
             janitorId: originalData.assigned_janitor_id
@@ -214,7 +214,7 @@ const assignTaskAtomically = async (req, res, next) => {
       
       transaction.update(activityRef, updateData);
       
-      console.log("✅ TRANSACTION SUCCESS:", {
+      console.log("TRANSACTION SUCCESS:", {
         activityId,
         assignedTo: assigned_janitor_name,
         assignedToId: assigned_janitor_id,
@@ -251,7 +251,7 @@ const assignTaskAtomically = async (req, res, next) => {
         assigned_janitor_name,
         assigned_janitor_id
       );
-      console.log(`[TASK ASSIGNMENT] ✅ Updated ${updatedCount} task notifications`);
+      console.log(`[TASK ASSIGNMENT] Updated ${updatedCount} task notifications`);
     } catch (updateError) {
       console.error('[TASK ASSIGNMENT] Error updating task notifications:', updateError);
       // Don't fail the main operation if notification update fails
@@ -300,7 +300,7 @@ const assignTaskAtomically = async (req, res, next) => {
     });
     
   } catch (error) {
-    console.error("❌ TRANSACTION ERROR:", error);
+    console.error("TRANSACTION ERROR:", error);
     
     if (error.message.includes("CONFLICT:")) {
       return res.status(409).json({
@@ -702,7 +702,7 @@ const updateActivityLog = async (req, res, next) => {
     const now = new Date().toISOString();
     
     // ASSIGNMENT VALIDATION: Prevent conflicts when assigning janitors
-    console.log("🔍 VALIDATION DEBUG:", {
+    console.log("VALIDATION DEBUG:", {
       activityId,
       hasAssignedJanitorId: req.body.assigned_janitor_id !== undefined,
       assignedJanitorId: req.body.assigned_janitor_id,
@@ -713,13 +713,13 @@ const updateActivityLog = async (req, res, next) => {
     });
     
     if (req.body.assigned_janitor_id !== undefined && req.body.assigned_janitor_id !== null && req.body.assigned_janitor_id !== "") {
-      console.log("🔍 VALIDATION CHECK: assigned_janitor_id is defined and not empty");
+      console.log("VALIDATION CHECK: assigned_janitor_id is defined and not empty");
       
       // Check if task is already assigned to a different janitor
       if (originalData.assigned_janitor_id && 
           originalData.assigned_janitor_id !== req.body.assigned_janitor_id) {
         
-        console.log("🚫 ASSIGNMENT CONFLICT DETECTED:", {
+        console.log("ASSIGNMENT CONFLICT DETECTED:", {
           activityId,
           currentAssignee: originalData.assigned_janitor_name,
           currentAssigneeId: originalData.assigned_janitor_id,
@@ -742,7 +742,7 @@ const updateActivityLog = async (req, res, next) => {
       if (originalData.assigned_janitor_id === req.body.assigned_janitor_id && 
           originalData.status === 'in_progress') {
         
-        console.log("ℹ️ REDUNDANT ASSIGNMENT DETECTED:", {
+        console.log("REDUNDANT ASSIGNMENT DETECTED:", {
           activityId,
           janitor: originalData.assigned_janitor_name,
           janitorId: originalData.assigned_janitor_id,
@@ -759,12 +759,12 @@ const updateActivityLog = async (req, res, next) => {
         });
       }
       
-      console.log("✅ VALIDATION PASSED: No conflicts detected");
+      console.log("VALIDATION PASSED: No conflicts detected");
     } else {
-      console.log("🔍 VALIDATION SKIPPED: assigned_janitor_id not provided or empty");
+      console.log("VALIDATION SKIPPED: assigned_janitor_id not provided or empty");
     }
     
-    console.log("🔍 Update Activity Debug:", {
+    console.log("Update Activity Debug:", {
       activityId,
       originalData: {
         assigned_janitor_id: originalData.assigned_janitor_id,
@@ -825,9 +825,9 @@ const updateActivityLog = async (req, res, next) => {
       updateData.assigned_janitor_name = originalData.assigned_janitor_name;
     }
 
-    console.log("🔧 Final Update Data:", updateData);
+    console.log("Final Update Data:", updateData);
     await db.collection("activitylogs").doc(activityId).update(updateData);
-    console.log("✅ Update completed successfully");
+    console.log("Update completed successfully");
 
     // Send notifications based on status change
     // Note: Task acceptance notifications are handled by assignTaskAtomically function
@@ -844,7 +844,7 @@ const updateActivityLog = async (req, res, next) => {
           assigned_janitor_name,
           assigned_janitor_id
         );
-        console.log(`[ACTIVITY UPDATE] ✅ Updated ${updatedCount} task notifications`);
+        console.log(`[ACTIVITY UPDATE] Updated ${updatedCount} task notifications`);
       } catch (updateError) {
         console.error('[ACTIVITY UPDATE] Error updating task notifications:', updateError);
         // Don't fail the main operation if notification update fails
@@ -869,7 +869,7 @@ const updateActivityLog = async (req, res, next) => {
           isTaskAssignment: true,
           assignmentType: 'manual' // Manual assignment via activity update
         });
-        console.log(`[ACTIVITY UPDATE] ✅ SMS notification sent to ${assigned_janitor_name}`);
+        console.log(`[ACTIVITY UPDATE] SMS notification sent to ${assigned_janitor_name}`);
       } catch (smsError) {
         console.error('[ACTIVITY UPDATE] SMS notification error:', smsError);
         // Don't fail the main operation if SMS fails
@@ -1042,7 +1042,7 @@ const sendActivityCompletedNotification = async (notificationData) => {
       return;
     }
 
-    const title = '✅ Activity Completed';
+    const title = 'Activity Completed';
     const message = `Activity for bin ${binId} at ${binLocation} has been completed by ${completedBy}. Type: ${activityType}`;
 
     const notificationPayload = {
@@ -1117,7 +1117,7 @@ const sendBinCollectionNotification = async (notificationData) => {
       return;
     }
 
-    const title = '🗑️ Bin Collection Completed';
+    const title = 'Bin Collection Completed';
     const message = `Bin ${binId} at ${binLocation} has been collected by ${collectedBy}. Weight: ${collectedWeight || 'N/A'}kg, Condition: ${binCondition}`;
 
     const notificationPayload = {
@@ -1193,7 +1193,7 @@ const sendTaskAcceptanceNotification = async (notificationData) => {
       return false;
     }
 
-    const title = '✅ Task Accepted';
+    const title = 'Task Accepted';
     const message = `${janitorName || 'A janitor'} has accepted the task for bin ${binId} at ${binLocation}. Status: In Progress`;
 
     const notificationPayload = {
@@ -1285,7 +1285,7 @@ const markNotificationsAsReadForTask = async (janitorId, binId, activityId) => {
     
     await batch.commit();
     
-    console.log(`[MARK NOTIFICATIONS AS READ] ✅ Marked ${notificationsSnapshot.docs.length} notifications as read for janitor ${janitorId}`);
+    console.log(`[MARK NOTIFICATIONS AS READ] Marked ${notificationsSnapshot.docs.length} notifications as read for janitor ${janitorId}`);
     
   } catch (error) {
     console.error('[MARK NOTIFICATIONS AS READ] Error marking notifications as read:', error);
@@ -1319,7 +1319,7 @@ const sendTaskAvailableNotification = async (notificationData) => {
     const binLevelText = binLevel ? ` (${binLevel}% full)` : '';
     const locationText = binLocation ? ` at ${binLocation}` : '';
     
-    const title = '🚮 Bin Needs Collection';
+    const title = 'Bin Needs Collection';
     const message = `Bin ${binId}${locationText}${binLevelText} needs collection. Please accept this task.\n📝 ${taskNote}\n\nPriority: ${priorityEmoji} ${priority}\n\n⚠️ Click to accept this task!`;
 
     const notificationPayload = {
@@ -1357,8 +1357,8 @@ const sendTaskAvailableNotification = async (notificationData) => {
 
     await Promise.all(notificationPromises);
     
-    console.log(`[TASK AVAILABLE NOTIFICATION] ✅ Sent task available notifications to ${janitorUsers.length} janitors`);
-    console.log(`🔔 TASK AVAILABLE NOTIFICATIONS:`);
+    console.log(`[TASK AVAILABLE NOTIFICATION] Sent task available notifications to ${janitorUsers.length} janitors`);
+    console.log(`TASK AVAILABLE NOTIFICATIONS:`);
     console.log(`   Activity ID: ${activityId}`);
     console.log(`   Bin: ${binId} at ${binLocation}`);
     console.log(`   Level: ${binLevel}% (Priority: ${priority})`);
@@ -1406,7 +1406,7 @@ const sendJanitorAssignmentNotification = async (notificationData) => {
     const taskTypeText = activityType ? ` (${activityType})` : '';
     const noteText = taskNote ? `\n📝 Note: ${taskNote}` : '';
 
-    const title = isTaskAssignment ? '🧹 New Task Assigned' : '📋 New Activity Assigned';
+    const title = isTaskAssignment ? 'New Task Assigned' : '📋 New Activity Assigned';
     const message = `You have been assigned a new ${activityType || 'task'} for bin ${binId}${locationText}${binLevelText}${taskTypeText}.${noteText}\n\nPriority: ${priorityEmoji} ${priority || 'normal'}`;
 
     const notificationPayload = {
@@ -1458,7 +1458,7 @@ const sendJanitorAssignmentNotification = async (notificationData) => {
         // Check database health before attempting to fetch
         const dbHealth = await checkDatabaseHealth();
         if (!dbHealth.isHealthy) {
-          console.warn(`[JANITOR NOTIFICATION] ⚠️ Database not healthy: ${dbHealth.error}, using fallback values`);
+          console.warn(`[JANITOR NOTIFICATION] Database not healthy: ${dbHealth.error}, using fallback values`);
         } else {
           try {
             console.log(`[JANITOR NOTIFICATION] Fetching real-time data for bin: ${binId}`);
@@ -1492,7 +1492,7 @@ const sendJanitorAssignmentNotification = async (notificationData) => {
                 };
               }
               
-              console.log(`[JANITOR NOTIFICATION] ✅ Fetched bin data for ${binId}:`, {
+              console.log(`[JANITOR NOTIFICATION] Fetched bin data for ${binId}:`, {
                 weight: binWeight,
                 height: binHeight,
                 level: currentBinLevel,
@@ -1500,10 +1500,10 @@ const sendJanitorAssignmentNotification = async (notificationData) => {
                 source: dataSource
               });
             } else {
-              console.warn(`[JANITOR NOTIFICATION] ⚠️ Bin data not found for ${binId}, using fallback values`);
+              console.warn(`[JANITOR NOTIFICATION] Bin data not found for ${binId}, using fallback values`);
             }
           } catch (fetchError) {
-            console.error(`[JANITOR NOTIFICATION] ❌ Error fetching bin data for ${binId}:`, fetchError);
+            console.error(`[JANITOR NOTIFICATION] Error fetching bin data for ${binId}:`, fetchError);
             console.log(`[JANITOR NOTIFICATION] Using fallback values for SMS`);
           }
         }
@@ -1536,9 +1536,9 @@ const sendJanitorAssignmentNotification = async (notificationData) => {
         const smsResult = await smsNotificationService.sendManualTaskSMS(sanitizedData, janitorId);
 
         if (smsResult.success) {
-          console.log(`[JANITOR NOTIFICATION] ✅ SMS sent successfully to ${smsResult.janitor.name}`);
+          console.log(`[JANITOR NOTIFICATION] SMS sent successfully to ${smsResult.janitor.name}`);
         } else {
-          console.error(`[JANITOR NOTIFICATION] ❌ SMS failed: ${smsResult.error}`);
+          console.error(`[JANITOR NOTIFICATION] SMS failed: ${smsResult.error}`);
         }
       } catch (smsError) {
         console.error('[JANITOR NOTIFICATION] SMS notification error:', smsError);
@@ -1634,7 +1634,7 @@ const assignTaskManually = async (req, res, next) => {
         assignmentType: 'manual' // Add indicator for manual assignment
       });
 
-      console.log(`[MANUAL ASSIGNMENT] ✅ Task ${activityId} assigned to janitor ${janitorId} with SMS notification`);
+      console.log(`[MANUAL ASSIGNMENT] Task ${activityId} assigned to janitor ${janitorId} with SMS notification`);
     } catch (smsError) {
       console.error('[MANUAL ASSIGNMENT] SMS notification error:', smsError);
       // Don't fail the assignment if SMS fails

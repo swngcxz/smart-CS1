@@ -207,23 +207,23 @@ class BinNotificationController {
 
     const notificationTemplates = {
       bin_full: {
-        title: `🚮 Bin ${binId} Needs Collection`,
+        title: `Bin ${binId} Needs Collection`,
         message: `Bin ${binId} is ${binLevel}% full. Please collect the waste at GPS(${gps.lat}, ${gps.lng}).`
       },
       bin_error: {
-        title: `⚠️ Bin ${binId} Error Detected`,
+        title: `Bin ${binId} Error Detected`,
         message: `Bin ${binId} has an error: ${errorMessage || 'Unknown error'}. Please check at GPS(${gps.lat}, ${gps.lng}).`
       },
       bin_malfunction: {
-        title: `🔧 Bin ${binId} Malfunction`,
+        title: `Bin ${binId} Malfunction`,
         message: `Bin ${binId} has a malfunction: ${errorMessage || 'Unknown malfunction'}. Please inspect at GPS(${gps.lat}, ${gps.lng}).`
       },
       gps_error: {
-        title: `📍 Bin ${binId} GPS Issue`,
+        title: `Bin ${binId} GPS Issue`,
         message: `Bin ${binId} has GPS signal problems. Please check the GPS module at the bin location.`
       },
       connection_error: {
-        title: `📡 Bin ${binId} Connection Issue`,
+        title: `Bin ${binId} Connection Issue`,
         message: `Bin ${binId} has connection problems: ${errorMessage}. Please check the communication module.`
       }
     };
@@ -278,7 +278,7 @@ class BinNotificationController {
       const notificationData = {
         binId,
         type: 'manual',
-        title: `📢 Manual Alert - Bin ${binId}`,
+        title: `Manual Alert - Bin ${binId}`,
         message: message,
         status: 'MANUAL',
         binLevel: null,
