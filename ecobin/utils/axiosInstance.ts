@@ -3,7 +3,7 @@ import axios from 'axios';
 import { shouldShowErrorPopup, sanitizeErrorMessage } from './errorConfig';
 
 // Environment variables (hardcoded for now to avoid dotenv issues)
-const API_BASE_URL = 'http://192.168.1.26:8000';
+const API_BASE_URL = 'http://10.0.2.187:8000';
 const API_FALLBACK_LOCALHOST = 'http://localhost:8000';
 const API_FALLBACK_ANDROID_EMULATOR = 'http://10.0.2.2:8000';
 const API_TIMEOUT = '10000';
