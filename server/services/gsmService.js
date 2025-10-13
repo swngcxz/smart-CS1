@@ -64,11 +64,11 @@ class GSMService {
         console.log('[GSM SERVICE] ⚠️ GSM module not available - SMS will use fallback mode');
       });
       
-      console.log('[GSM SERVICE] ✅ GSM service initialized (async)');
+      console.log('[GSM SERVICE] GSM service initialized (async)');
     } catch (error) {
-      console.error('[GSM SERVICE] ❌ Failed to initialize GSM service:', error);
+      console.error('[GSM SERVICE] Failed to initialize GSM service:', error);
       // Don't throw error to prevent server crash
-      console.log('[GSM SERVICE] ⚠️ Continuing without GSM module');
+      console.log('[GSM SERVICE] Continuing without GSM module');
     }
   }
 
@@ -85,7 +85,7 @@ class GSMService {
           this.isConnected = false;
           reject(error);
         } else {
-          console.log(`[GSM SERVICE] ✅ Successfully connected to ${this.port}`);
+          console.log(`[GSM SERVICE] Successfully connected to ${this.port}`);
           this.isConnected = true;
           resolve();
         }
@@ -106,12 +106,12 @@ class GSMService {
     this.modem.initializeModem((result) => {
       if (!result || result.status !== 'success') {
         console.error('[GSM SERVICE] Error initializing modem:', result);
-        console.log('[GSM SERVICE] ⚠️ Check SIM card insertion and network signal');
+        console.log('[GSM SERVICE] Check SIM card insertion and network signal');
         this.isInitialized = false;
         return;
       }
       
-      console.log('[GSM SERVICE] ✅ Modem initialized successfully');
+      console.log('[GSM SERVICE] Modem initialized successfully');
       this.isInitialized = true;
       
       // Test SIM card status
@@ -128,10 +128,10 @@ class GSMService {
     console.log('[GSM SERVICE] Checking SIM card status...');
     this.modem.executeCommand('AT+CPIN?', (result) => {
       if (result && result.status === 'success') {
-        console.log('[GSM SERVICE] ✅ SIM card is ready');
+        console.log('[GSM SERVICE] SIM card is ready');
       } else {
-        console.error('[GSM SERVICE] ❌ SIM card issue - check insertion and PIN');
-        console.log('[GSM SERVICE] 💡 Make sure SIM card is properly inserted and has credit');
+        console.error('[GSM SERVICE] SIM card issue - check insertion and PIN');
+        console.log('[GSM SERVICE] Make sure SIM card is properly inserted and has credit');
       }
     });
   }
@@ -158,7 +158,7 @@ class GSMService {
         console.log('[GSM SERVICE] SMS send result:', result);
         
         if (result && result.status === 'success') {
-          console.log('[GSM SERVICE] ✅ SMS sent successfully via GSM module');
+          console.log('[GSM SERVICE] SMS sent successfully via GSM module');
           resolve({
             success: true,
             status: 'success',
@@ -169,7 +169,7 @@ class GSMService {
           });
         } else {
           const error = new Error(result.message || 'SMS sending failed');
-          console.error('[GSM SERVICE] ❌ SMS failed:', error.message);
+          console.error('[GSM SERVICE] SMS failed:', error.message);
           reject(error);
         }
       });

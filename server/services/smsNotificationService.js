@@ -238,27 +238,27 @@ class SMSNotificationService {
     // Different message based on assignment type
     const isManualAssignment = assignmentType === 'manual';
     const assignmentHeader = isManualAssignment ? 
-      `🎯 MANUAL TASK ASSIGNMENT 🎯` : 
-      `🚨 TASK ASSIGNMENT 🚨`;
+      `MANUAL TASK ASSIGNMENT` : 
+      `TASK ASSIGNMENT`;
     
     const assignmentNote = isManualAssignment ? 
-      `\n💡 Staff selected you manually for this task\n` : 
+      `\n Staff selected you manually for this task\n` : 
       ``;
 
     let message = `${assignmentHeader}\n\n`;
-    message += `📦 Bin: ${binName}\n`;
-    message += `📍 Location: ${binLocation}\n`;
-    message += `📊 Fill Level: ${binLevel}% (${status})\n`;
-    message += `⚖️ Weight: ${weight} kg\n`;
-    message += `📏 Height: ${height}%\n`;
+    message += `Bin: ${binName}\n`;
+    message += `Location: ${binLocation}\n`;
+    message += `Fill Level: ${binLevel}% (${status})\n`;
+    message += `Weight: ${weight} kg\n`;
+    message += `Height: ${height}%\n`;
     message += `${coordinatesStr}\n\n`;
     
     if (taskNotes && taskNotes.trim()) {
-      message += `📝 Task Notes: ${taskNotes.trim()}\n\n`;
+      message += `Task Notes: ${taskNotes.trim()}\n\n`;
     }
     
-    message += `👤 Assigned by: ${assignedBy || 'Staff'}\n`;
-    message += `⏰ Time: ${timestamp}${assignmentNote}\n\n`;
+    message += `Assigned by: ${assignedBy || 'Staff'}\n`;
+    message += `Time: ${timestamp}${assignmentNote}\n\n`;
     message += `Please proceed to empty the bin immediately.`;
 
     return message;
@@ -277,7 +277,7 @@ class SMSNotificationService {
       // Perform health check first
       const healthCheck = await this.performHealthCheck();
       if (!healthCheck.isHealthy) {
-        console.warn(`[${this.serviceName}] ⚠️ SMS service not healthy, using fallback mode`);
+        console.warn(`[${this.serviceName}] SMS service not healthy, using fallback mode`);
       }
 
       // Get janitor details
@@ -310,9 +310,9 @@ class SMSNotificationService {
       );
 
       if (smsResult.success) {
-        console.log(`[${this.serviceName}] ✅ Manual task SMS sent successfully to ${janitor.fullName} (${janitor.contactNumber})`);
+        console.log(`[${this.serviceName}] Manual task SMS sent successfully to ${janitor.fullName} (${janitor.contactNumber})`);
       } else {
-        console.error(`[${this.serviceName}] ❌ Manual task SMS failed after ${smsResult.attempts} attempts: ${smsResult.error}`);
+        console.error(`[${this.serviceName}] Manual task SMS failed after ${smsResult.attempts} attempts: ${smsResult.error}`);
       }
 
       return {
@@ -328,7 +328,7 @@ class SMSNotificationService {
       };
 
     } catch (error) {
-      console.error(`[${this.serviceName}] ❌ Failed to send manual task SMS:`, error);
+      console.error(`[${this.serviceName}] Failed to send manual task SMS:`, error);
       this.healthStatus.totalSmsFailed++;
       this.healthStatus.consecutiveFailures++;
       this.healthStatus.lastError = error.message;
@@ -354,7 +354,7 @@ class SMSNotificationService {
       // Check if GSM service is available
       const gsmStatus = gsmService.getStatus();
       if (!gsmStatus.isConnected || !gsmStatus.isInitialized) {
-        console.log(`[${this.serviceName}] ⚠️ GSM module not ready, using fallback mode`);
+        console.log(`[${this.serviceName}] GSM module not ready, using fallback mode`);
         return await this.sendFallbackSMS(phoneNumber, message);
       }
       
@@ -365,10 +365,10 @@ class SMSNotificationService {
       const result = await gsmService.sendSMSWithFallback(formattedNumber, message);
       
       if (result.success) {
-        console.log(`[${this.serviceName}] ✅ Real SMS sent successfully via GSM module`);
+        console.log(`[${this.serviceName}] Real SMS sent successfully via GSM module`);
       } else {
-        console.error(`[${this.serviceName}] ❌ Real SMS failed: ${result.error}`);
-        console.log(`[${this.serviceName}] 🔄 Trying fallback mode...`);
+        console.error(`[${this.serviceName}] Real SMS failed: ${result.error}`);
+        console.log(`[${this.serviceName}] Trying fallback mode...`);
         return await this.sendFallbackSMS(phoneNumber, message);
       }
       
@@ -376,7 +376,7 @@ class SMSNotificationService {
 
     } catch (error) {
       console.error(`[${this.serviceName}] Real SMS error:`, error);
-      console.log(`[${this.serviceName}] 🔄 Trying fallback mode...`);
+      console.log(`[${this.serviceName}] Trying fallback mode...`);
       return await this.sendFallbackSMS(phoneNumber, message);
     }
   }
@@ -390,11 +390,11 @@ class SMSNotificationService {
   async sendFallbackSMS(phoneNumber, message) {
     try {
       console.log('='.repeat(80));
-      console.log('📱 SMS NOTIFICATION (FALLBACK MODE)');
+      console.log(' SMS NOTIFICATION (FALLBACK MODE)');
       console.log('='.repeat(80));
-      console.log(`📞 To: ${phoneNumber}`);
-      console.log(`📝 Message: ${message}`);
-      console.log(`⏰ Time: ${new Date().toLocaleString()}`);
+      console.log(` To: ${phoneNumber}`);
+      console.log(` Message: ${message}`);
+      console.log(` Time: ${new Date().toLocaleString()}`);
       console.log('='.repeat(80));
 
       return {
@@ -439,7 +439,7 @@ class SMSNotificationService {
 
       const smsResult = await this.sendRealSMS(janitor.contactNumber, smsMessage);
 
-      console.log(`[${this.serviceName}] ✅ Automatic alert SMS sent successfully to ${janitor.fullName}`);
+      console.log(`[${this.serviceName}] Automatic alert SMS sent successfully to ${janitor.fullName}`);
 
       return {
         success: true,
@@ -453,7 +453,7 @@ class SMSNotificationService {
       };
 
     } catch (error) {
-      console.error(`[${this.serviceName}] ❌ Failed to send automatic alert SMS:`, error);
+      console.error(`[${this.serviceName}] Failed to send automatic alert SMS:`, error);
       return {
         success: false,
         error: error.message,
@@ -480,13 +480,13 @@ class SMSNotificationService {
     const coordinatesStr = this.formatCoordinates(coordinates);
     const timestamp = new Date().toLocaleString();
 
-    let message = `🚨 AUTOMATIC BIN ALERT 🚨\n\n`;
-    message += `📦 Bin: ${binName}\n`;
-    message += `📍 Location: ${binLocation}\n`;
-    message += `📊 Fill Level: ${binLevel}% (${status})\n`;
-    message += `⚠️ Alert Type: ${alertType.toUpperCase()}\n`;
+    let message = `AUTOMATIC BIN ALERT \n\n`;
+    message += ` Bin: ${binName}\n`;
+    message += ` Location: ${binLocation}\n`;
+    message += ` Fill Level: ${binLevel}% (${status})\n`;
+    message += ` Alert Type: ${alertType.toUpperCase()}\n`;
     message += `${coordinatesStr}\n\n`;
-    message += `⏰ Time: ${timestamp}\n\n`;
+    message += ` Time: ${timestamp}\n\n`;
     message += `Please check and empty the bin as soon as possible.`;
 
     return message;

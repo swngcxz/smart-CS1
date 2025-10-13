@@ -4,9 +4,9 @@ require("dotenv").config();
 
 // Debugging: check if .env variables are loaded correctly
 if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-  console.error("❌ Google OAuth credentials are missing. Check your .env file!");
+  console.error("Google OAuth credentials are missing. Check your .env file!");
 } else {
-  console.log("✅ Google Client ID loaded:", process.env.GOOGLE_CLIENT_ID);
+  console.log("Google Client ID loaded:", process.env.GOOGLE_CLIENT_ID);
 }
 
 passport.use(
@@ -18,7 +18,7 @@ passport.use(
     },
     (accessToken, refreshToken, profile, done) => {
       // This callback runs after successful authentication
-      console.log("👉 Google profile received:", profile.displayName);
+      console.log("Google profile received:", profile.displayName);
       return done(null, profile);
     }
   )
