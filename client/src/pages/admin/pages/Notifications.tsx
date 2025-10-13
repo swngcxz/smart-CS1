@@ -437,34 +437,6 @@ const Notifications = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
-
-                        {/* Badge with readable type */}
-                        <Badge className={getTypeBadge(notification.type)}>
-                          {notification.type === "bin_maintenance_urgent"
-                            ? "Urgent"
-                            : notification.type === "bin_maintenance"
-                            ? "Maintenance"
-                            : notification.type === "bin_collection_completed"
-                            ? "Completed"
-                            : notification.type === "activity_completed"
-                            ? "Activity"
-                            : notification.type === "task_accepted"
-                            ? "Accepted"
-                            : notification.type === "login"
-                            ? "Login"
-                            : notification.type === "success"
-                            ? "Success"
-                            : notification.type === "warning"
-                            ? "Warning"
-                            : notification.type === "error"
-                            ? "Error"
-                            : notification.type || "Info"}
-                        </Badge>
-
-                        {/* Optional "New" badge for unread */}
-                        {!notification.read && (
-                          <Badge className="bg-green-800 text-white dark:bg-green-900 dark:text-green-200">New</Badge>
-                        )}
                       </div>
 
                       <p className="text-gray-700 dark:text-gray-300 mb-3">

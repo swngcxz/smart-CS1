@@ -297,7 +297,7 @@ class NotificationModel {
           updatedNotification = {
             ...updatedNotification,
             status: 'ACCEPTED',
-            title: '🟠 Task Accepted by Someone',
+            title: 'Task Accepted by Someone',
             message: `${assignedJanitorName || 'A janitor'} has accepted the task for bin ${binId}. Status: In Progress`,
             acceptedBy: assignedJanitorName,
             acceptedById: assignedJanitorId,
@@ -309,7 +309,7 @@ class NotificationModel {
           updatedNotification = {
             ...updatedNotification,
             status: 'COMPLETED',
-            title: '✅ Task Completed',
+            title: 'Task Completed',
             message: `The task for bin ${binId} has been completed by ${assignedJanitorName || 'a janitor'}.`,
             completedBy: assignedJanitorName,
             completedById: assignedJanitorId,
@@ -324,7 +324,7 @@ class NotificationModel {
 
       if (updatedCount > 0) {
         await withRetry(() => batch.commit());
-        console.log(`[NOTIFICATION MODEL] ✅ Updated ${updatedCount} notifications for bin ${binId}`);
+        console.log(`[NOTIFICATION MODEL] Updated ${updatedCount} notifications for bin ${binId}`);
       }
 
       return updatedCount;

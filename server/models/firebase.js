@@ -26,9 +26,9 @@ if (!admin.apps.length) {
       databaseURL: `https://${process.env.PROJECT_ID}-default-rtdb.firebaseio.com/`
     });
 
-    console.log('✅ Firebase initialized with .env variables');
+    console.log('Firebase initialized with .env variables');
   } catch (error) {
-    console.error('❌ Error initializing Firebase with .env:', error.message);
+    console.error('Error initializing Firebase with .env:', error.message);
   }
 }
 
@@ -38,9 +38,9 @@ if (admin.apps.length > 0) {
   db = admin.firestore();
   bucket = admin.storage().bucket();
   rtdb = admin.database();
-  console.log('✅ Firebase services ready');
+  console.log('Firebase services ready');
 } else {
-  console.error('❌ Firebase services not available - app not initialized');
+  console.error('Firebase services not available - app not initialized');
 }
 
 module.exports = {

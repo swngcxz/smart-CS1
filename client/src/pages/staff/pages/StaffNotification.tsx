@@ -388,24 +388,6 @@ const Notification = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
-                        <Badge className={getTypeBadge(notification.type || "info")}>
-                          {notification.type === "bin_maintenance_urgent"
-                            ? "Urgent"
-                            : notification.type === "bin_maintenance"
-                            ? "Maintenance"
-                            : notification.type === "bin_collection_completed"
-                            ? "Completed"
-                            : notification.type === "activity_completed"
-                            ? "Activity"
-                            : notification.type === "task_accepted"
-                            ? "Accepted"
-                            : notification.type || "info"}
-                        </Badge>
-                        {!notification.read && (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                            New
-                          </Badge>
-                        )}
                       </div>
 
                       <p className="text-gray-700 dark:text-gray-300 mb-3">{notification.message}</p>
