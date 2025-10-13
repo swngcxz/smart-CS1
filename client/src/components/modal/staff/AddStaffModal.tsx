@@ -145,9 +145,6 @@ export function AddStaffModal({ isOpen, onClose, onAdd }) {
       <DialogContent className="max-w-2xl w-full">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-left mb-2">Add New Staff</DialogTitle>
-          <p className="text-sm text-gray-600 dark:text-gray-400 text-left mb-6">
-            Add a new staff member to your team with their role and route assignment
-          </p>
         </DialogHeader>
         <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

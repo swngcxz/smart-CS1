@@ -88,8 +88,8 @@ export function SchedulePopupModal({
   };
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] max-h-[85vh]">
-        <DialogHeader className="pb-4">
+      <DialogContent className="sm:max-w-[550px] max-h-[93vh]">
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-xl">
             Schedules for {selectedDate && format(selectedDate, "MMMM dd, yyyy")}
           </DialogTitle>
@@ -97,14 +97,13 @@ export function SchedulePopupModal({
             {schedules.length} Schedule{schedules.length > 1 ? "s" : ""} for this date
           </DialogDescription>
         </DialogHeader>
-
         {/* Modern Tab Navigation - Only show if there are both types */}
         {showTabs && (
-          <div className="border-b border-gray-200 mb-1">
+          <div className="border-b border-gray-200">
             <nav className="flex space-x-8">
               <button
                 onClick={() => setActiveTab("collection")}
-                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors duration-200 ${
+                className={`py-2 px-1 text-sm font-medium border-b-2 transition-colors duration-200 ${
                   activeTab === "collection"
                     ? "border-green-500 text-green-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -117,7 +116,7 @@ export function SchedulePopupModal({
               </button>
               <button
                 onClick={() => setActiveTab("maintenance")}
-                className={`py-3 px-1 text-sm font-medium border-b-2 transition-colors duration-200 ${
+                className={`py-2 px-1 text-sm font-medium border-b-2 transition-colors duration-200 ${
                   activeTab === "maintenance"
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -147,7 +146,7 @@ export function SchedulePopupModal({
               const isOverdue = isScheduleOverdue(schedule);
 
               return (
-                <div key={schedule.id} className="bg-white border border-none rounded-xl p-2">
+                <div key={schedule.id} className="bg-white border border-none rounded-xl">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
