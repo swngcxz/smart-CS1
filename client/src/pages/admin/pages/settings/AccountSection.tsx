@@ -168,9 +168,6 @@ export const AccountSection = () => {
     <div className="space-y-6">
       <div className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-            <Settings className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-          </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Account Information</h2>
         </div>
         <div className="space-y-6">
@@ -199,9 +196,6 @@ export const AccountSection = () => {
 
       <div className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-            <Shield className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-          </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Security Options</h2>
         </div>
         <div className="space-y-4">
@@ -230,7 +224,7 @@ export const AccountSection = () => {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeactivateAccount} className="bg-yellow-500 hover:bg-yellow-600">
+                  <AlertDialogAction onClick={handleDeactivateAccount} className="bg-green-600 hover:bg-green-700">
                     Yes, deactivate
                   </AlertDialogAction>
                 </AlertDialogFooter>

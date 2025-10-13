@@ -314,7 +314,6 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }:
           ) : filteredLogs.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400 mb-2">No activities to display</p>
-              <p className="text-sm text-gray-400">Check if data exists in database.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">

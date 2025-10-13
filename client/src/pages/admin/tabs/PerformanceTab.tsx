@@ -202,9 +202,6 @@ export function PerformanceTab() {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center">
-            <Crown className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-          </div>
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white">Top Performer</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">Best performing employee this period</p>
@@ -219,7 +216,7 @@ export function PerformanceTab() {
               {loading ? (
                 <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
               ) : performanceData?.topPerformer ? (
-                <div className="w-12 h-12 bg-gradient-to-r from-gray-400 to-gray-600 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-gray-400 to-gray-400 rounded-full flex items-center justify-center">
                   <span className="text-white font-medium text-sm">
                     {performanceData.topPerformer.fullName
                       ?.split(" ")
@@ -231,7 +228,7 @@ export function PerformanceTab() {
                 </div>
               ) : (
                 <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                  <Crown className="w-6 h-6 text-gray-400" />
+                  {/* <Crown className="w-6 h-6 text-gray-400" /> */}
                 </div>
               )}
             </div>
@@ -261,8 +258,7 @@ export function PerformanceTab() {
               <div className="flex-shrink-0">
                 <div className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 border border-gray-200 dark:border-gray-600">
                   <div className="flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">Acitivities Completed</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">Acitivities Completed:</p>
                     <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
                       {performanceData?.topPerformer?.activityCount || 0}
                     </span>
@@ -279,12 +275,8 @@ export function PerformanceTab() {
         <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                <Trophy className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Performance Rankings</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Employee performance overview</p>
               </div>
             </div>
 
@@ -292,7 +284,6 @@ export function PerformanceTab() {
               {/* Metrics */}
               <div className="flex items-center gap-6 text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                   <span className="text-gray-600 dark:text-gray-400">
                     Total:{" "}
                     {loading ? (
@@ -305,19 +296,6 @@ export function PerformanceTab() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <span className="text-gray-600 dark:text-gray-400">
-                    Average:{" "}
-                    {loading ? (
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-6 inline-block animate-pulse"></div>
-                    ) : (
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {Math.round(performanceData?.averageActivities || 0)}
-                      </span>
-                    )}
-                  </span>
-                </div>
               </div>
 
               {/* Date Filters */}
@@ -376,27 +354,9 @@ export function PerformanceTab() {
                     return (
                       <TableRow key={janitor.id} className="opacity-50">
                         <TableCell className="text-center font-semibold px-3 py-3">
-                          {rank <= 3 ? (
-                            <div className="flex items-center justify-center">
-                              {rank === 1 ? (
-                                <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                                  <Crown className="w-4 h-4 text-white" />
-                                </div>
-                              ) : rank === 2 ? (
-                                <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
-                                  <Medal className="w-4 h-4 text-white" />
-                                </div>
-                              ) : (
-                                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                                  <Award className="w-4 h-4 text-white" />
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center">
-                              <span className="text-sm font-bold text-slate-600 dark:text-slate-300">#{rank}</span>
-                            </div>
-                          )}
+                          <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">#{rank}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-left px-3 py-3">
                           <div className="flex flex-col">
@@ -435,27 +395,9 @@ export function PerformanceTab() {
                   return (
                     <TableRow key={janitor.id}>
                       <TableCell className="text-center font-semibold px-3 py-3">
-                        {rank <= 3 ? (
-                          <div className="flex items-center justify-center">
-                            {rank === 1 ? (
-                              <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                                <Crown className="w-4 h-4 text-white" />
-                              </div>
-                            ) : rank === 2 ? (
-                              <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
-                                <Medal className="w-4 h-4 text-white" />
-                              </div>
-                            ) : (
-                              <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                                <Award className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">#{rank}</span>
-                          </div>
-                        )}
+                        <div className="w-8 h-8 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-slate-600 dark:text-slate-300">#{rank}</span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-left px-3 py-3">
                         <div className="flex flex-col">

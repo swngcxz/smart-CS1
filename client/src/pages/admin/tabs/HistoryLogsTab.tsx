@@ -51,17 +51,17 @@ export const HistoryLogsTab = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log("🔄 Fetching login history...");
+      console.log("Fetching login history...");
 
       const response = await api.get(`/auth/login-history?t=${Date.now()}`);
-      console.log("📊 Login history response:", response.data);
-      console.log("📊 Response status:", response.status);
+      console.log("Login history response:", response.data);
+      console.log("Response status:", response.status);
 
       const loginLogs = response.data.logs || response.data;
-      console.log("🔍 Raw API response:", response.data);
-      console.log("🔍 All login logs received:", loginLogs);
+      console.log("Raw API response:", response.data);
+      console.log("All login logs received:", loginLogs);
       console.log(
-        "🔍 Admin logs in response:",
+        "Admin logs in response:",
         loginLogs.filter(
           (log) =>
             log.role?.toLowerCase().trim() === "admin" ||
@@ -70,12 +70,12 @@ export const HistoryLogsTab = () => {
         )
       );
       setLogs(loginLogs);
-      console.log(`✅ Loaded ${loginLogs.length} login history records`);
-      console.log("📋 Sample record:", loginLogs[0]);
+      console.log(`Loaded ${loginLogs.length} login history records`);
+      console.log("Sample record:", loginLogs[0]);
     } catch (err: any) {
-      console.error("💥 Error fetching login history:", err);
-      console.error("💥 Error response:", err.response);
-      console.error("💥 Error message:", err.message);
+      console.error("Error fetching login history:", err);
+      console.error("Error response:", err.response);
+      console.error("Error message:", err.message);
       setError(
         err?.response?.data?.error || err?.response?.data?.message || err?.message || "Failed to load login history"
       );
@@ -188,7 +188,7 @@ export const HistoryLogsTab = () => {
     const userEmail = log.userEmail?.toLowerCase().trim() || "";
 
     if (role === "admin" || role === "administrator" || userEmail.includes("admin")) {
-      console.log("🚫 Frontend filtering out admin log:", {
+      console.log("Frontend filtering out admin log:", {
         userEmail: log.userEmail,
         role: log.role,
         trimmedRole: role,
@@ -270,37 +270,13 @@ export const HistoryLogsTab = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">History Logs</h2>
 
-        {/* Inline Stats */}
-        <div className="flex flex-wrap items-center gap-6 text-sm">
-          {/* Active History Logs */}
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-gray-600 dark:text-gray-300">Active History Logs:</span>
-            <span className="font-semibold text-green-600 dark:text-green-400">{activeSessions}</span>
-          </div>
-
-          {/* Separator */}
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
 
           {/* Total History Logs */}
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span className="text-gray-600 dark:text-gray-300">Total History Logs:</span>
-            <span className="font-semibold text-blue-600 dark:text-blue-400">{nonAdminLogs.length}</span>
-          </div>
 
-          {/* Separator */}
-          <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
-
-          {/* Avg Session Duration */}
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-            <span className="text-gray-600 dark:text-gray-300">Avg Session Duration:</span>
-            <span className="font-semibold text-gray-900 dark:text-white">
-              {formatDuration(Math.round(averageSessionDuration))}
-            </span>
+            <span className="text-gray-600 text-xs dark:text-gray-300">Total Logs:</span>
+            <span className="font-regular text-xs text-gray-600 dark:text-gray-400">{nonAdminLogs.length}</span>
           </div>
-        </div>
       </div>
 
       {/* Filters and Search - Responsive Layout */}
@@ -531,8 +507,8 @@ export const HistoryLogsTab = () => {
                                   getRoleBadge(log.role).props.children.slice(1)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-sm">{formatDateTime(log.loginTime)}</TableCell>
-                            <TableCell className="text-sm">{formatDateTime(log.logoutTime)}</TableCell>
+                            <TableCell className="text-xs">{formatDateTime(log.loginTime)}</TableCell>
+                            <TableCell className="text-xs">{formatDateTime(log.logoutTime)}</TableCell>
 
                             {/* <TableCell className="font-medium">{formatDuration(log.sessionDuration)}</TableCell> */}
                             <TableCell className="font-mono text-xs">{log.ipAddress || "Unknown"}</TableCell>
@@ -556,7 +532,7 @@ export const HistoryLogsTab = () => {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs text-gray-600">
                     Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedLogs.length)} of{" "}
                     {sortedLogs.length} results
                   </div>

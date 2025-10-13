@@ -32,20 +32,20 @@ export function NotificationToast({ notification, onClose }: NotificationToastPr
 
   if (!notification) return null;
 
-  const getIcon = () => {
-    switch (notification.type) {
-      case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'error':
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
-      case 'warning':
-        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
-      case 'info':
-        return <Info className="h-5 w-5 text-blue-500" />;
-      default:
-        return <Info className="h-5 w-5 text-blue-500" />;
-    }
-  };
+  // const getIcon = () => {
+  //   switch (notification.type) {
+  //     case 'success':
+  //       return <CheckCircle className="h-5 w-5 text-green-500" />;
+  //     case 'error':
+  //       return <AlertCircle className="h-5 w-5 text-red-500" />;
+  //     case 'warning':
+  //       return <AlertCircle className="h-5 w-5 text-yellow-500" />;
+  //     case 'info':
+  //       return <Info className="h-5 w-5 text-blue-500" />;
+  //     default:
+  //       return <Info className="h-5 w-5 text-blue-500" />;
+  //   }
+  // };
 
   const getBackgroundColor = () => {
     switch (notification.type) {
@@ -73,9 +73,9 @@ export function NotificationToast({ notification, onClose }: NotificationToastPr
       >
         <div className="p-4">
           <div className="flex items-start">
-            <div className="flex-shrink-0">
+            {/* <div className="flex-shrink-0">
               {getIcon()}
-            </div>
+            </div> */}
             <div className="ml-3 flex-1">
               <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                 {notification.title}

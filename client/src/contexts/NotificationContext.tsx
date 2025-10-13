@@ -30,7 +30,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const showTaskClaimed = (taskId: string, janitorName: string) => {
     showInfo(
       'Task Claimed',
-      `${janitorName} has claimed task ${taskId.substring(0, 8)}...`,
+      `${janitorName} has accept task ${taskId.substring(0, 8)}...`,
       4000
     );
   };

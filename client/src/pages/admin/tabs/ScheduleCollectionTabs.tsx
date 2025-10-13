@@ -23,7 +23,7 @@ export function ScheduleCollectionTabs() {
   const { data: staffData } = useStaffList();
 
   // Debug logging
-  console.log("🔍 Admin ScheduleCollectionTabs data:", {
+  console.log("Admin ScheduleCollectionTabs data:", {
     truckSchedules: truckSchedules?.length || 0,
     regularSchedules: regularSchedules?.length || 0,
     staffData: staffData?.length || 0,
@@ -85,7 +85,7 @@ export function ScheduleCollectionTabs() {
       allSchedules.push(...regularMapped);
     }
 
-    console.log("📅 Admin Loaded schedules:", {
+    console.log("Admin Loaded schedules:", {
       truckSchedules: truckSchedules?.length || 0,
       regularSchedules: regularSchedules?.length || 0,
       totalSchedules: allSchedules.length,
@@ -211,7 +211,7 @@ export function ScheduleCollectionTabs() {
     // Debug logging for specific dates
     if (hasSchedules) {
       console.log(
-        `📅 Admin ${day.toDateString()} has ${daySchedules.length} schedules:`,
+        `Admin ${day.toDateString()} has ${daySchedules.length} schedules:`,
         daySchedules.map((s) => ({
           serviceType: s.serviceType,
           location: s.location,
@@ -252,7 +252,7 @@ export function ScheduleCollectionTabs() {
                   className={`text-xs px-2 py-1.5 rounded-lg text-center truncate flex items-center justify-center gap-1 shadow-sm transition-all duration-200 hover:scale-105 ${
                     schedule.serviceType === "collection" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
                   }`}
-                  title={`${schedule.serviceType === "collection" ? "🗑️ Trash Collection" : "🔧 Maintenance"} - ${
+                  title={`${schedule.serviceType === "collection" ? "Trash Collection" : "Maintenance"} - ${
                     schedule.location
                   } at ${schedule.time}${isOverdue ? " (OVERDUE)" : ""}`}
                 >
@@ -272,15 +272,12 @@ export function ScheduleCollectionTabs() {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       <Card className="w-full border-transparent">
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-4 pt-0">
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-2xl">Schedules</CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                View all scheduled tasks for trash collection and maintenance services
-              </p>
             </div>
           </div>
         </CardHeader>

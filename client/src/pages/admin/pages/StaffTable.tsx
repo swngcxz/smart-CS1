@@ -145,26 +145,26 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
   return (
     <>
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 flex-1">
           {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-4" />
             <Input
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-7 h-7 w-72 text-xs"
+              className="pl-8 h-8 w-full text-sm"
             />
           </div>
 
           {/* Filters */}
-          <div className="flex items-center gap-1">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Role:</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Role:</p>
             <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="h-7 w-32 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
+              <SelectTrigger className="h-8 w-44 text-sm border-gray-300 dark:border-gray-700 rounded-md px-3">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
-              <SelectContent className="text-xs">
+              <SelectContent className="text-sm">
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="janitor">Janitor</SelectItem>
                 <SelectItem value="driver">Driver</SelectItem>
@@ -173,13 +173,13 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
             </Select>
           </div>
 
-          <div className="flex items-center gap-1">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Route:</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Route:</p>
             <Select value={selectedRoute} onValueChange={setSelectedRoute}>
-              <SelectTrigger className="h-7 w-36 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
+              <SelectTrigger className="h-8 w-48 text-sm border-gray-300 dark:border-gray-700 rounded-md px-3">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
-              <SelectContent className="text-xs">
+              <SelectContent className="text-sm">
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="Route A">Route A</SelectItem>
                 <SelectItem value="Route B">Route B</SelectItem>
@@ -189,13 +189,13 @@ export function StaffTable({ onStaffUpdate }: StaffTableProps) {
             </Select>
           </div>
 
-          <div className="flex items-center gap-1">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Status:</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Status:</p>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-7 w-32 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
+              <SelectTrigger className="h-8 w-44 text-sm border-gray-300 dark:border-gray-700 rounded-md px-3">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
-              <SelectContent className="text-xs">
+              <SelectContent className="text-sm">
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="offline">Offline</SelectItem>

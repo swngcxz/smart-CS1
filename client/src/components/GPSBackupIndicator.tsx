@@ -25,7 +25,6 @@ export function GPSBackupIndicator({ className = '' }: GPSBackupIndicatorProps) 
     return (
       <div className={`bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 ${className}`}>
         <div className="flex items-center space-x-2">
-          <span className="text-red-500 text-sm">⚠️</span>
           <span className="text-sm text-red-600 dark:text-red-400">GPS Backup Error</span>
         </div>
       </div>
@@ -55,7 +54,6 @@ export function GPSBackupIndicator({ className = '' }: GPSBackupIndicatorProps) 
     <div className={`bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Database className="h-4 w-4 text-green-600" />
           <span className="text-sm font-medium text-green-700 dark:text-green-300">
             GPS Backup System
           </span>

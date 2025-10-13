@@ -20,7 +20,7 @@ function DirectTileSwitcher({
     const handleZoomEnd = () => {
       const zoom = map.getZoom();
       setCurrentZoom(zoom);
-      console.log(`🗺️ Current zoom level: ${zoom}`);
+      console.log(`Current zoom level: ${zoom}`);
     };
 
     // Set initial zoom

@@ -33,13 +33,13 @@ function ZoomBasedTileSwitcher({
         // Switch to street map for close-up views
         if (currentLayer !== 'street') {
           setCurrentLayer('street');
-          console.log(`🗺️ Switching to street map at zoom level ${currentZoom}`);
+          console.log(`Switching to street map at zoom level ${currentZoom}`);
         }
       } else {
         // Switch to satellite for overview
         if (currentLayer !== 'satellite') {
           setCurrentLayer('satellite');
-          console.log(`🛰️ Switching to satellite view at zoom level ${currentZoom}`);
+          console.log(`Switching to satellite view at zoom level ${currentZoom}`);
         }
       }
     };

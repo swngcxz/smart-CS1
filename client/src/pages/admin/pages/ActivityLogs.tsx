@@ -300,11 +300,11 @@ export function ActivityLogs({ onRefresh }: ActivityLogsProps) {
           ) : filteredAndSortedLogs.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-500 dark:text-gray-400 mb-4">
-                No activity logs found. Create some tasks to get started.
+                No activity logs found. 
               </div>
-              <p className="text-sm text-gray-400">
+              {/* <p className="text-sm text-gray-400">
                 You can create new tasks through the bin management system or manual task assignment.
-              </p>
+              </p> */}
             </div>
           ) : (
             <>

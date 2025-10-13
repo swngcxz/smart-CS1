@@ -28,7 +28,7 @@ export function ScheduleCollectionTabs() {
   const { data: staffData } = useStaffList();
 
   // Debug logging
-  console.log("🔍 ScheduleCollectionTabs data:", {
+  console.log("ScheduleCollectionTabs data:", {
     truckSchedules: truckSchedules?.length || 0,
     regularSchedules: regularSchedules?.length || 0,
     staffData: staffData?.length || 0,
@@ -115,7 +115,7 @@ export function ScheduleCollectionTabs() {
       allSchedules.push(...regularMapped);
     }
 
-    console.log("📅 Loaded schedules:", {
+    console.log("Loaded schedules:", {
       truckSchedules: truckSchedules?.length || 0,
       regularSchedules: regularSchedules?.length || 0,
       totalSchedules: allSchedules.length,
@@ -215,7 +215,7 @@ export function ScheduleCollectionTabs() {
     // Debug logging for specific dates
     if (hasSchedules) {
       console.log(
-        `📅 ${day.toDateString()} has ${daySchedules.length} schedules:`,
+        `${day.toDateString()} has ${daySchedules.length} schedules:`,
         daySchedules.map((s) => ({
           serviceType: s.serviceType,
           location: s.location,
@@ -256,7 +256,7 @@ export function ScheduleCollectionTabs() {
                   className={`text-xs px-2 py-1.5 rounded-lg text-center truncate flex items-center justify-center gap-1 shadow-sm transition-all duration-200 hover:scale-105 ${
                     schedule.serviceType === "collection" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
                   }`}
-                  title={`${schedule.serviceType === "collection" ? "🗑️ Trash Collection" : "🔧 Maintenance"} - ${
+                  title={`${schedule.serviceType === "collection" ? "Trash Collection" : "Maintenance"} - ${
                     schedule.location
                   } at ${schedule.time}${isOverdue ? " (OVERDUE)" : ""}`}
                 >
@@ -391,7 +391,7 @@ export function ScheduleCollectionTabs() {
         priority: newSchedule.priority,
         truckPlate: newSchedule.truckPlate,
       };
-      console.log("🚛 Sending truck schedule payload:", payload);
+      console.log("Sending truck schedule payload:", payload);
       setCreateBody(payload);
       setTriggerCreate(true);
     } else {
@@ -407,7 +407,7 @@ export function ScheduleCollectionTabs() {
         notes: newSchedule.notes,
         priority: newSchedule.priority,
       };
-      console.log("🔧 Sending maintenance schedule payload:", payload);
+      console.log("Sending maintenance schedule payload:", payload);
       setCreateMaintBody(payload);
       setTriggerCreateMaint(true);
     }
@@ -452,15 +452,12 @@ export function ScheduleCollectionTabs() {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       <Card className="w-full border-transparent">
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-4 pt-0">
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-2xl">Schedules</CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                Manage and view all scheduled tasks for trash collection and maintenance services
-              </p>
               {/* <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-green-500 rounded"></div>

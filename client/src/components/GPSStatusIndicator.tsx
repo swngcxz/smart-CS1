@@ -104,17 +104,14 @@ export function GPSStatusIndicator({
             <div className="flex items-center space-x-1">
               {isGPSLive ? (
                 <>
-                  <Wifi className="h-3 w-3 text-green-600" />
                   <span className="text-green-600 font-medium">Connected</span>
                 </>
               ) : isUsingBackup ? (
                 <>
-                  <Wifi className="h-3 w-3 text-orange-600" />
                   <span className="text-orange-600 font-medium">Backup Mode</span>
                 </>
               ) : (
                 <>
-                  <WifiOff className="h-3 w-3 text-gray-500" />
                   <span className="text-gray-500 font-medium">Disconnected</span>
                 </>
               )}

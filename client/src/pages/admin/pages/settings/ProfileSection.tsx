@@ -385,9 +385,6 @@ export const ProfileSection = () => {
     <div className="space-y-6">
       <div className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-            <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-          </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Profile Information</h2>
         </div>
         <div className="space-y-6">
@@ -397,7 +394,7 @@ export const ProfileSection = () => {
               <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full blur opacity-20 group-hover:opacity-30 transition-opacity duration-200"></div>
               <Avatar className="w-24 h-24 border-2 border-white dark:border-slate-800 shadow-md">
                 <AvatarImage src={imageUrl} className="object-cover" />
-                <AvatarFallback className="text-2xl font-bold bg-gradient-to-r from-gray-500 to-gray-600 text-white">
+                <AvatarFallback className="text-2xl font-bold bg-gradient-to-r from-gray-500 to-gray-500 text-white">
                   {(profile.name || "U").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -405,7 +402,7 @@ export const ProfileSection = () => {
                 type="button"
                 onClick={triggerFileSelect}
                 size="sm"
-                className="absolute -bottom-1 -right-1 rounded-full w-8 h-8 p-0 bg-gray-600 hover:bg-gray-700 shadow-md border border-white dark:border-slate-800 transition-all duration-200"
+                className="absolute -bottom-1 -right-1 rounded-full w-8 h-8 p-0 bg-gray-500 hover:bg-gray-700 shadow-md border border-white dark:border-slate-800 transition-all duration-200"
                 disabled={saving === "profileImage"}
               >
                 {saving === "profileImage" ? (
@@ -429,27 +426,27 @@ export const ProfileSection = () => {
           </div>
 
           {/* Editable Fields */}
-          <div className="space-y-8">
+          <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <EditableField field="name" value={profile.name} label="Full Name" />
               <EditableField field="email" value={profile.email} label="Email Address" type="email" />
               <EditableField field="phone" value={profile.phone} label="Phone Number" />
               <EditableField field="location" value={profile.location} label="Location" />
             </div>
-            <div className="space-y-6">
+            <div className="space-y-3">
               <EditableField field="website" value={profile.website} label="Website" type="url" />
               <EditableField field="bio" value={profile.bio} label="About Me" />
             </div>
           </div>
 
           {/* Connected Accounts */}
-          <div className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-700">
+          <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Connected Accounts</h3>
             <div className="space-y-3">
               {accountsData.map((acc) => (
                 <div
                   key={acc.name}
-                  className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200"
+                  className="flex items-center justify-between p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">

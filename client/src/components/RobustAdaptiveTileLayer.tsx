@@ -56,14 +56,14 @@ function RobustAdaptiveTileSwitcher({
       if (currentZoom >= transitionZoomLevel) {
         // Switch to street map for close-up views
         if (currentLayer !== 'street') {
-          console.log(`🗺️ Switching to street map at zoom level ${currentZoom}`);
+          console.log(`Switching to street map at zoom level ${currentZoom}`);
           setCurrentLayer('street');
           setCurrentProvider(0); // Reset to first street provider
         }
       } else {
         // Switch to satellite for overview
         if (currentLayer !== 'satellite') {
-          console.log(`🛰️ Switching to satellite view at zoom level ${currentZoom}`);
+          console.log(`Switching to satellite view at zoom level ${currentZoom}`);
           setCurrentLayer('satellite');
           setCurrentProvider(0); // Reset to first satellite provider
         }

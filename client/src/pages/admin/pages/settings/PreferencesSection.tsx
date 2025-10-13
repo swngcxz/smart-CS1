@@ -69,9 +69,6 @@ export const PreferencesSection = () => {
       {/* Notifications */}
       <div className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-            <Bell className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-          </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Notifications</h2>
         </div>
         <div className="space-y-4">
@@ -102,9 +99,6 @@ export const PreferencesSection = () => {
       {/* Accessibility */}
       <div className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-            <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-          </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Accessibility</h2>
         </div>
         <div className="space-y-4">
@@ -167,9 +161,6 @@ export const PreferencesSection = () => {
       {/* General Preferences */}
       <div className="space-y-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-            <Globe className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-          </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">General Preferences</h2>
         </div>
         <div className="space-y-6">

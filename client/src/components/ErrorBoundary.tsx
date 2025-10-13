@@ -46,7 +46,6 @@ export class ErrorBoundary extends Component<Props, State> {
         <Card className="bg-white dark:bg-gray-800 border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
-              <AlertTriangle className="w-5 h-5" />
               Something went wrong
             </CardTitle>
           </CardHeader>
