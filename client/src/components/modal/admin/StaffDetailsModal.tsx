@@ -121,21 +121,6 @@ export function StaffDetailsModal({ isOpen, onClose, staff }: StaffDetailsModalP
             </Badge>
           </div>
 
-          {/* Bio Section */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-start space-x-3">
-                <FileText className="w-4 h-4 text-gray-400 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Bio</p>
-                  <p className="text-sm text-gray-900 dark:text-white leading-relaxed">
-                    {staff.bio || "No bio available"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Staff Information */}
           <Card>
             <CardContent className="p-4 space-y-4">
