@@ -79,228 +79,49 @@ export function MapTab() {
   };
 
   return (
+    <>
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Map View</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Map View</h2>
+          <div className="flex items-center gap-3 text-xs"> {/* smaller font */}
+            {/* Real-time Status Display */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> {/* smaller dot */}
+                <span className="text-gray-700 dark:text-gray-300">Critical ({criticalBins})</span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <MapSection />
-          {/* Additional space below the map */}
-          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Map Information</h3>
-          </div>
+              <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+
+              <div className="flex items-center gap-1">
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+                <span className="text-gray-700 dark:text-gray-300">Warning ({warningBins})</span>
         </div>
 
-        <div className="space-y-4">
-          {/* Real-time Status Summary */}
-          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                Real-time Status
-                {error && <span className="text-sm text-red-500">(Error)</span>}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Normal</span>
-                  </div>
-                  <div className="text-2xl font-bold text-green-600 dark:text-green-400">{normalBins}</div>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Warning</span>
-                  </div>
-                  <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{warningBins}</div>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Critical</span>
-                  </div>
-                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">{criticalBins}</div>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">GPS Offline</span>
-                  </div>
-                  <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{offlineBins}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
 
-          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-between p-0 h-auto hover:bg-transparent"
-                onClick={toggleLocationDropdown}
-              >
-                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  Location List
-                </CardTitle>
-                {isLocationDropdownOpen ? (
-                  <ChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                )}
-              </Button>
-            </CardHeader>
-            <CardContent className={`transition-all duration-300 ease-in-out ${
-              isLocationDropdownOpen 
-                ? 'max-h-96 opacity-100 p-4' 
-                : 'max-h-0 opacity-0 overflow-hidden p-0'
-            }`}>
-              <div className="space-y-3">
-                {/* Central Plaza Route */}
-                <Button 
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
-                    ${
-                      selectedRoute === "central-plaza"
-                        ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-                        : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-                    }`}
-                  onClick={() => handleRouteSelect("central-plaza")}
-                >
-                  <div className="flex items-center gap-3 w-full">
-                    <MapPin className="w-5 h-5 flex-shrink-0" />
-                    <div className="flex-1 font-semibold text-sm">Central Plaza</div>
-                    <Badge
-                      className={`text-xs ${
-                        selectedRoute === "central-plaza"
-                          ? "bg-green-700 text-white"
-                          : "bg-gray-300 text-black"
-                      }`}
-                    >
-                      Active
-                    </Badge>
-                  </div>
-                </Button>
-                
-                {/* Park Avenue Route */}
-                <Button 
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
-                    ${
-                      selectedRoute === "park-avenue"
-                        ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-                        : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-                    }`}
-                  onClick={() => handleRouteSelect("park-avenue")}
-                >
-                  <div className="flex items-center gap-3 w-full">
-                    <MapPin className="w-5 h-5 flex-shrink-0" />
-                    <div className="flex-1 font-semibold text-sm">Park Avenue</div>
-                    <Badge
-                      className={`text-xs ${
-                        selectedRoute === "park-avenue"
-                          ? "bg-green-700 text-white"
-                          : "bg-gray-300 text-black"
-                      }`}
-                    >
-                      Active
-                    </Badge>
-                  </div>
-                </Button>
-                
-                {/* Mall District Route */}
-                <Button 
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
-                    ${
-                      selectedRoute === "mall-district"
-                        ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-                        : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-                    }`}
-                  onClick={() => handleRouteSelect("mall-district")}
-                >
-                  <div className="flex items-center gap-3 w-full">
-                    <MapPin className="w-5 h-5 flex-shrink-0" />
-                    <div className="flex-1 font-semibold text-sm">Mall District</div>
-                    <Badge
-                      className={`text-xs ${
-                        selectedRoute === "mall-district"
-                          ? "bg-green-700 text-white"
-                          : "bg-gray-300 text-black"
-                      }`}
-                    >
-                      Active
-                    </Badge>
-                  </div>
-                </Button>
-                
-                {/* Residential Route */}
-                <Button 
-                  className={`w-full justify-start text-left h-auto p-4 border-2 transition-all duration-200 hover:bg-transparent
-                    ${
-                      selectedRoute === "residential"
-                        ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-                        : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-                    }`}
-                  onClick={() => handleRouteSelect("residential")}
-                >
-                  <div className="flex items-center gap-3 w-full">
-                    <MapPin className="w-5 h-5 flex-shrink-0" />
-                    <div className="flex-1 font-semibold text-sm">Residential Area</div>
-                    <Badge
-                      className={`text-xs ${
-                        selectedRoute === "residential"
-                          ? "bg-green-700 text-white"
-                          : "bg-gray-300 text-black"
-                      }`}
-                    >
-                      Active
-                    </Badge>
-                  </div>
-                </Button>
+              <div className="flex items-center gap-1">
+                <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                <span className="text-gray-700 dark:text-gray-300">Normal ({normalBins})</span>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* GPS Offline Bins */}
           {offlineBins > 0 && (
-            <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                  <Clock className="w-4 h-4 text-orange-600" />
-                  GPS Offline Bins
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {updatedLocationData
-                    .filter(location => location.isGpsOffline)
-                    .map((location) => (
-                      <div key={location.id} className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                        <div className="flex items-center gap-3">
-                          <MapPin className="w-4 h-4 text-orange-600" />
-                          <div>
-                            <div className="font-semibold text-sm text-gray-900 dark:text-white">
-                              {location.name}
+                <>
+                  <div className="w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div>
+                    <span className="text-gray-700 dark:text-gray-300">GPS Offline ({offlineBins})</span>
                             </div>
-                            <div className="text-xs text-orange-600 dark:text-orange-400">
-                              Offline {location.offlineTime}
-                            </div>
-                          </div>
-                        </div>
-                        <Badge className="bg-orange-600 text-white text-xs">
-                          GPS Offline
-                        </Badge>
-                      </div>
-                    ))}
-                </div>
-                <div className="mt-3 p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                  <p className="text-xs text-orange-800 dark:text-orange-200">
-                    <strong>Note:</strong> These bins are using last known coordinates. 
-                    Weight and level sensors are still functioning normally.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+                </>
           )}
         </div>
       </div>
     </div>
+
+        <div className="w-full pb-10">
+          <MapSection />
+        </div>
+      </div>
+    </>
   );
 }

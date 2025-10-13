@@ -86,9 +86,6 @@ export function BinMarker({ bin }: BinMarkerProps) {
             {/* Header with Edit button on the right */}
             <div className="flex justify-between items-center mb-2">
               <h3 className="font-semibold text-gray-900">{bin.name}</h3>
-              <button className="text-blue-600 text-sm font-medium" onClick={() => setOpen(true)}>
-                Edit
-              </button>
             </div>
 
             <div className="space-y-2">
