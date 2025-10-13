@@ -4,7 +4,7 @@ export function useSchedulesList() {
   const result = useApiGet("/api/schedules");
   
   // Debug logging
-  console.log("🔍 useSchedulesList result:", {
+  console.log("useSchedulesList result:", {
     data: result.data,
     loading: result.loading,
     error: result.error,

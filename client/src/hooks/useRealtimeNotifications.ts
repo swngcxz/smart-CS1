@@ -50,13 +50,13 @@ export function useRealtimeNotifications() {
 
     // Show notifications for new automatic tasks
     newAutomaticTasks.forEach(task => {
-      console.log('🔔 New automatic task detected:', task);
+      console.log('New automatic task detected:', task);
       showTaskCreated(task.bin_id || 'Unknown Bin', task.bin_level || 0);
     });
 
     // Show notifications for claimed tasks
     claimedTasks.forEach(task => {
-      console.log('🔔 Task claimed:', task);
+      console.log('Task claimed:', task);
       showTaskClaimed(task.id, task.assigned_janitor_name || 'Unknown Janitor');
     });
 

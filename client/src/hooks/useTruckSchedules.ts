@@ -4,7 +4,7 @@ export function useTruckSchedulesList() {
   const result = useApiGet("/api/truck-schedules");
   
   // Debug logging
-  console.log("🔍 useTruckSchedulesList result:", {
+  console.log("useTruckSchedulesList result:", {
     data: result.data,
     loading: result.loading,
     error: result.error,

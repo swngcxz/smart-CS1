@@ -125,28 +125,28 @@ export function useActivityStats(autoRefreshInterval: number = 30000) {
       label: "Alerts",
       value: stats.alerts,
       color: "text-red-600 dark:text-red-400",
-      icon: "⚠️",
+      icon: "",
       description: "Pending status alerts"
     },
     {
       label: "In-Progress",
       value: stats.inProgress,
       color: "text-orange-600 dark:text-orange-400",
-      icon: "🔄",
+      icon: "",
       description: "Tasks in progress"
     },
     {
       label: "Collections",
       value: stats.collections,
       color: "text-green-600 dark:text-green-400",
-      icon: "📊",
+      icon: "",
       description: "Completed collections"
     },
     {
       label: "Maintenance",
       value: stats.maintenance,
       color: "text-blue-600 dark:text-blue-400",
-      icon: "🔧",
+      icon: "",
       description: "Maintenance tasks"
     }
   ];

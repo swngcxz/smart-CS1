@@ -53,7 +53,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
       
       if (response.data && response.data.success && response.data.records) {
         setBinHistoryData(response.data);
-        console.log('📊 Bin History Data:', {
+        console.log('Bin History Data:', {
           totalRecords: response.data.records.length,
           stats: response.data.stats,
           criticalCount: response.data.stats?.criticalCount || 0
@@ -63,7 +63,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
         setBinHistoryError(response.data?.message || 'No bin history data received');
       }
     } catch (err: any) {
-      console.error('❌ Error fetching bin history:', err);
+      console.error('Error fetching bin history:', err);
       setBinHistoryError(err?.response?.data?.message || err.message || 'Failed to fetch bin history');
       setBinHistoryData(null);
     } finally {
@@ -86,7 +86,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
   // Calculate collections from activity logs with "done" status based on time period
   const calculateCollections = useCallback((): WeeklyCollectionData => {
     if (!allActivityLogs || allActivityLogs.length === 0) {
-      console.log('📊 No activity logs available');
+      console.log('No activity logs available');
       return { count: 0, logs: [] };
     }
 
@@ -122,7 +122,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
       return logDate >= startDate;
     });
 
-    console.log(`📊 ${timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} Collections Calculation:`, {
+    console.log(`${timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)} Collections Calculation:`, {
       timeFilter,
       totalLogs: allActivityLogs.length,
       doneLogs: allActivityLogs.filter(log => log.status === "done").length,
@@ -141,7 +141,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
   // Calculate average fill level from activity logs with "done" status based on time period
   const calculateAverageFillLevel = useCallback((): AverageFillLevelData => {
     if (!allActivityLogs || allActivityLogs.length === 0) {
-      console.log('📊 No activity logs available for fill level calculation');
+      console.log('No activity logs available for fill level calculation');
       return { average: 0, totalLogs: 0 };
     }
 
@@ -178,7 +178,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
       return logDate >= startDate;
     });
 
-    console.log(`📊 Average Fill Level Calculation Debug (${timeFilter}):`, {
+    console.log(`Average Fill Level Calculation Debug (${timeFilter}):`, {
       timeFilter,
       totalLogs: allActivityLogs.length,
       doneLogs: allActivityLogs.filter(log => log.status === "done").length,
@@ -201,7 +201,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
     const totalLevel = doneLogsWithLevel.reduce((sum, log) => sum + log.bin_level!, 0);
     const average = Math.round(totalLevel / doneLogsWithLevel.length);
 
-    console.log(`📊 Average Fill Level Calculation (${timeFilter}):`, {
+    console.log(`Average Fill Level Calculation (${timeFilter}):`, {
       totalDoneLogs: doneLogsWithLevel.length,
       average,
       totalLevel,
@@ -217,7 +217,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
   // Calculate critical bins from bin history data
   const calculateCriticalBins = useCallback((): CriticalBinData => {
     if (!binHistoryData || !binHistoryData.records || binHistoryData.records.length === 0) {
-      console.log('📊 No bin history data available for critical bins calculation');
+      console.log('No bin history data available for critical bins calculation');
       return { count: 0, bins: [] };
     }
 
@@ -242,7 +242,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
       criticalCount = criticalBins.length;
     }
 
-    console.log('📊 Critical Bins Calculation:', {
+    console.log('Critical Bins Calculation:', {
       totalRecords: binHistoryData.records.length,
       criticalCount,
       stats: binHistoryData.stats,
@@ -272,7 +272,7 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
     // This is a simplified calculation - in a real scenario, you'd want to compare done vs total
     const efficiency = Math.min(100, Math.round((allActivityLogs.length / 10) * 100)); // Assume 10 is a reasonable baseline
     
-    console.log('📊 Route Efficiency Calculation:', {
+    console.log('Route Efficiency Calculation:', {
       doneLogs: allActivityLogs.length,
       efficiency
     });
@@ -302,11 +302,11 @@ export const useDashboardMetrics = (timeFilter: "week" | "month" | "year" = "wee
         routeEfficiency: routeEfficiency,
       };
 
-      console.log(`📈 Dashboard Metrics Updated (${timeFilter}):`, newMetrics);
+      console.log(`Dashboard Metrics Updated (${timeFilter}):`, newMetrics);
       setMetrics(newMetrics);
       setError(null);
     } catch (err: any) {
-      console.error('❌ Error calculating dashboard metrics:', err);
+      console.error('Error calculating dashboard metrics:', err);
       setError(err.message || 'Failed to calculate dashboard metrics');
     }
   }, [

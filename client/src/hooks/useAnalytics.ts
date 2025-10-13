@@ -32,13 +32,13 @@ interface RouteEfficiency {
 
 // Fetch collection counts from activity logs
 const fetchCollectionCounts = async (): Promise<CollectionCounts> => {
-  console.log('🔄 [fetchCollectionCounts] Starting API call...');
+  console.log(' [fetchCollectionCounts] Starting API call...');
   try {
     const response = await api.get('/api/analytics/collection-counts', { timeout: 10000 });
-    console.log('📊 [fetchCollectionCounts] Success response:', response.data);
+    console.log('[fetchCollectionCounts] Success response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ [fetchCollectionCounts] Error details:', {
+    console.error('[fetchCollectionCounts] Error details:', {
       message: error.message,
       status: error.response?.status,
       data: error.response?.data,
@@ -51,26 +51,26 @@ const fetchCollectionCounts = async (): Promise<CollectionCounts> => {
 
 // Fetch average fill level from activity logs
 const fetchAverageFillLevel = async (): Promise<{ averageFillLevel: number }> => {
-  console.log('🔄 Fetching average fill level...');
+  console.log('Fetching average fill level...');
   try {
     const response = await api.get('/api/analytics/average-fill-level', { timeout: 10000 });
-    console.log('📊 Average fill level response:', response.data);
+    console.log('Average fill level response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error fetching average fill level:', error);
+    console.error('Error fetching average fill level:', error);
     return { averageFillLevel: 61 };
   }
 };
 
 // Fetch critical bins from bin history
 const fetchCriticalBins = async (): Promise<CriticalBin[]> => {
-  console.log('🔄 Fetching critical bins...');
+  console.log('Fetching critical bins...');
   try {
     const response = await api.get('/api/analytics/critical-bins', { timeout: 10000 });
-    console.log('📊 Critical bins response:', response.data);
+    console.log('Critical bins response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error fetching critical bins:', error);
+    console.error('Error fetching critical bins:', error);
     return [
       { id: 'sample1', bin_level: 95, status: 'critical', location: 'Sample Location 1' },
       { id: 'sample2', bin_level: 98, status: 'critical', location: 'Sample Location 2' },
@@ -81,13 +81,13 @@ const fetchCriticalBins = async (): Promise<CriticalBin[]> => {
 
 // Fetch route efficiency from map data
 const fetchRouteEfficiency = async (): Promise<RouteEfficiency> => {
-  console.log('🔄 Fetching route efficiency...');
+  console.log('Fetching route efficiency...');
   try {
     const response = await api.get('/api/analytics/route-efficiency', { timeout: 10000 });
-    console.log('📊 Route efficiency response:', response.data);
+    console.log('Route efficiency response:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ Error fetching route efficiency:', error);
+    console.error('Error fetching route efficiency:', error);
     return {
       routeEfficiency: {
         'Central Plaza': { efficiency: 95, totalBins: 5, highFillBins: 1 },
@@ -188,7 +188,7 @@ export const useAnalytics = (timeFilter: string = "This Week") => {
     routeEfficiency: calculateRouteEfficiency(routeEfficiencyData),
   };
 
-  console.log('📈 [useAnalytics] Combined analytics data:', analyticsData);
+  console.log('[useAnalytics] Combined analytics data:', analyticsData);
 
   const isLoading = isLoadingCollections || isLoadingFillLevel || isLoadingCriticalBins || isLoadingRouteEfficiency;
   const error = collectionsError || fillLevelError || criticalBinsError || routeEfficiencyError;

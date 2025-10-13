@@ -25,11 +25,11 @@ export function useUserInfo() {
     setLoading(true);
     setError(null);
     try {
-      console.log('🌐 Web App - Fetching user info...');
+      console.log('Web App - Fetching user info...');
       const res = await axios.get('http://localhost:8000/api/userinfo', {
         withCredentials: true // Include cookies for authentication
       });
-      console.log('🌐 Web App - User info response:', res.data);
+      console.log('Web App - User info response:', res.data);
       
       if (res.data.success && res.data.userInfo) {
         setUserInfo(res.data.userInfo);
@@ -37,7 +37,7 @@ export function useUserInfo() {
         setUserInfo(null);
       }
     } catch (err: any) {
-      console.error('🌐 Web App - Failed to fetch user info:', err);
+      console.error('Web App - Failed to fetch user info:', err);
       setError(err.response?.data?.error || 'Failed to fetch user info');
       setUserInfo(null);
     } finally {
@@ -47,22 +47,22 @@ export function useUserInfo() {
 
   const updateProfileFields = async (fields: { bio?: string; website?: string; location?: string; phone?: string }) => {
     try {
-      console.log('🌐 Web App - Updating profile fields...', fields);
+      console.log('Web App - Updating profile fields...', fields);
       const res = await axios.patch('http://localhost:8000/api/userinfo/profile-fields', fields, {
         withCredentials: true
       });
-      console.log('🌐 Web App - API Response:', res.data);
+      console.log('Web App - API Response:', res.data);
       
       if (res.data.success && res.data.userInfo) {
         setUserInfo(res.data.userInfo);
-        console.log('🌐 Web App - Profile fields updated successfully');
+        console.log('Web App - Profile fields updated successfully');
         return { success: true, data: res.data.userInfo };
       } else {
         throw new Error('Update failed');
       }
     } catch (err: any) {
-      console.error('🌐 Web App - Failed to update profile fields:', err);
-      console.error('🌐 Web App - Error details:', {
+      console.error('Web App - Failed to update profile fields:', err);
+      console.error('Web App - Error details:', {
         status: err.response?.status,
         statusText: err.response?.statusText,
         data: err.response?.data,
@@ -76,7 +76,7 @@ export function useUserInfo() {
 
   const updateUserInfo = async (formData: FormData) => {
     try {
-      console.log('🌐 Web App - Updating user info with file...');
+      console.log('Web App - Updating user info with file...');
       const res = await axios.put('http://localhost:8000/api/userinfo', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -86,13 +86,13 @@ export function useUserInfo() {
       
       if (res.data.success && res.data.userInfo) {
         setUserInfo(res.data.userInfo);
-        console.log('🌐 Web App - User info updated successfully');
+        console.log('Web App - User info updated successfully');
         return { success: true, data: res.data.userInfo };
       } else {
         throw new Error('Update failed');
       }
     } catch (err: any) {
-      console.error('🌐 Web App - Failed to update user info:', err);
+      console.error('Web App - Failed to update user info:', err);
       const errorMessage = err.response?.data?.error || 'Failed to update user info';
       setError(errorMessage);
       return { success: false, error: errorMessage };
@@ -101,7 +101,7 @@ export function useUserInfo() {
 
   const deleteProfileImage = async () => {
     try {
-      console.log('🌐 Web App - Deleting profile image...');
+      console.log('Web App - Deleting profile image...');
       const res = await axios.delete('http://localhost:8000/api/userinfo/profile-image', {
         withCredentials: true
       });
@@ -109,13 +109,13 @@ export function useUserInfo() {
       if (res.data.success) {
         // Refresh user info to get updated data
         await fetchUserInfo();
-        console.log('🌐 Web App - Profile image deleted successfully');
+        console.log('Web App - Profile image deleted successfully');
         return { success: true };
       } else {
         throw new Error('Delete failed');
       }
     } catch (err: any) {
-      console.error('🌐 Web App - Failed to delete profile image:', err);
+      console.error('Web App - Failed to delete profile image:', err);
       const errorMessage = err.response?.data?.error || 'Failed to delete profile image';
       setError(errorMessage);
       return { success: false, error: errorMessage };

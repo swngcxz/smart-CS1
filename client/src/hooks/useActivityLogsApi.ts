@@ -38,10 +38,10 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
       if (status) params.append('status', status);
 
       const url = `/api/activitylogs?${params.toString()}`;
-      console.log('🔍 useAllActivityLogs - Fetching from:', url);
+      console.log('useAllActivityLogs - Fetching from:', url);
       const response = await api.get(url);
       
-      console.log('🔍 useAllActivityLogs - Response:', {
+      console.log('useAllActivityLogs - Response:', {
         activitiesCount: response.data.activities?.length || 0,
         totalCount: response.data.totalCount || 0,
         activities: response.data.activities
@@ -169,10 +169,10 @@ export function useAdminActivityLogs(limit = 100, offset = 0) {
         params.append('status', 'done'); // Filter for done status only
 
         const url = `/api/activitylogs?${params.toString()}`;
-        console.log('🔍 useAdminActivityLogs - Fetching from:', url);
+        console.log('useAdminActivityLogs - Fetching from:', url);
         const response = await api.get(url);
         
-        console.log('🔍 useAdminActivityLogs - Response:', {
+        console.log('useAdminActivityLogs - Response:', {
           activitiesCount: response.data.activities?.length || 0,
           totalCount: response.data.totalCount || 0,
           activities: response.data.activities

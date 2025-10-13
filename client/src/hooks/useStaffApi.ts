@@ -20,12 +20,12 @@ export function useJanitors() {
     setLoading(true);
     setError(null);
     try {
-      console.log('🔄 Fetching janitors from API...');
+      console.log('Fetching janitors from API...');
       const response = await api.get("/api/staff/janitors");
-      console.log('📡 Janitors API Response:', response.data);
+      console.log('Janitors API Response:', response.data);
       setJanitors(response.data);
     } catch (err: any) {
-      console.error('❌ Error fetching janitors:', err);
+      console.error('Error fetching janitors:', err);
       setError(err?.response?.data?.error || "Failed to fetch janitors");
       setJanitors([]);
     } finally {
