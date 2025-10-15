@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useFeedback } from "@/hooks/useFeedback";
 import { ArrowLeft, Star, Loader2, Plus, MessageSquare } from "lucide-react";
+import { StaffFeedbackSkeleton } from "@/components/skeletons/StaffFeedbackSkeleton";
 import api from "@/lib/api";
 
 interface FeedbackItem {
@@ -232,6 +233,10 @@ const Feedback = () => {
         />
       </div>
     );
+  }
+
+  if (loading) {
+    return <StaffFeedbackSkeleton />;
   }
 
   if (error) {

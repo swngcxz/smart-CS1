@@ -19,7 +19,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import api from "@/lib/api";
-import BinHistorySkeleton from "@/components/skeletons/BinHistorySkeleton";
+import { BinHistorySkeleton } from "@/components/skeletons/BinHistorySkeleton";
 interface BinHistoryRecord {
   id: string;
   binId: string;

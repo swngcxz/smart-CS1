@@ -1,13 +1,27 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileSection } from "../pages/settings/ProfileSection";
 import { AccountSection } from "../pages/settings/AccountSection";
 import { PreferencesSection } from "../pages/settings/PreferencesSection";
 import { SecuritySection } from "../pages/settings/SecuritySection";
+import { AdminSettingsSkeleton } from "@/components/skeletons/AdminSettingsSkeleton";
 import { User, Settings, Shield, Bell } from "lucide-react";
 
 export const SettingsTab = () => {
+  const [loading, setLoading] = useState(true);
+
+  // Simulate loading for admin settings
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show skeleton while loading
+  if (loading) {
+    return <AdminSettingsSkeleton />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="w-full">

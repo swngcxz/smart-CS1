@@ -12,6 +12,7 @@ import { SchedulePopupModal } from "@/components/popups/staff/schedule/ScheduleP
 import { useTruckSchedulesList, useCreateTruckSchedule, useUpdateTruckScheduleStatus } from "@/hooks/useTruckSchedules";
 import { useCreateSchedule, useSchedulesList } from "@/hooks/useSchedules";
 import { useStaffList } from "@/hooks/useStaff";
+import { ScheduleSkeleton } from "@/components/skeletons/ScheduleSkeleton";
 
 // Using shared Collector/Schedule from AddScheduleDialog
 
@@ -435,6 +436,11 @@ export function ScheduleCollectionTabs() {
     setUpdateStatusValue(status);
     setTriggerUpdate(true);
   };
+
+  // Show skeleton while loading
+  if (truckLoading || regularLoading) {
+    return <ScheduleSkeleton />;
+  }
 
   return (
     <div>

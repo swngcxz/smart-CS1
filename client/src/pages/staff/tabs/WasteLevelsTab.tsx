@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
 import { Smartphone, Wifi, WifiOff } from "lucide-react";
 import { BinInfoModal } from "@/components/popups/BinInfoModal";
+import { WasteLevelsSkeleton } from "@/components/skeletons/WasteLevelsSkeleton";
 import api from "@/lib/api";
 
 // GSM Status Hook
@@ -279,6 +280,11 @@ export function WasteLevelsTab() {
     setIsModalOpen(false);
     setSelectedBin(null);
   };
+  // Show skeleton while loading
+  if (loading) {
+    return <WasteLevelsSkeleton />;
+  }
+
   return (
     <>
       <div className="space-y-6">

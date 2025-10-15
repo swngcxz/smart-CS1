@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileSection } from "../pages/settings/ProfileSection";
 import { AccountSection } from "../pages/settings/AccountSection";
@@ -6,8 +6,22 @@ import { PreferencesSection } from "../pages/settings/PreferencesSection";
 import { SecuritySection } from "../pages/settings/SecuritySection";
 import { Card } from "@/components/ui/card";
 import { User, Settings } from "lucide-react";
+import { StaffSettingsSkeleton } from "@/components/skeletons/StaffSettingsSkeleton";
 
 export const SettingsTab = () => {
+  const [loading, setLoading] = useState(true);
+
+  // Simulate loading for settings
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show skeleton while loading
+  if (loading) {
+    return <StaffSettingsSkeleton />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="w-full">

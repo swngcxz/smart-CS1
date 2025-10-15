@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Clock, MapPin, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { StaffInfoSkeleton } from "@/components/skeletons/StaffInfoSkeleton";
 import api from "@/lib/api";
 
 interface StaffCounts {
@@ -91,8 +92,15 @@ export function StaffTab() {
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Staff Information</h2>
       </div>
 
-      {/* {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>} */}
-      <StaffTable onStaffUpdate={loadStaffCounts} totalStaff={staffCounts.totalStaff} />
+      {/* Show skeleton while loading */}
+      {loading ? (
+        <StaffInfoSkeleton />
+      ) : (
+        <>
+          {/* {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">{error}</div>} */}
+          <StaffTable onStaffUpdate={loadStaffCounts} totalStaff={staffCounts.totalStaff} />
+        </>
+      )}
     </div>
   );
 }

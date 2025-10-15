@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, Navigation, Route, Save, Edit, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
 import { useUpdateBin } from "@/hooks/useUpdateBin";
+import { StaffMapSkeleton } from "@/components/skeletons/StaffMapSkeleton";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -135,6 +136,11 @@ export function MapTab() {
   const toggleLocationDropdown = () => {
     setIsLocationDropdownOpen(!isLocationDropdownOpen);
   };
+  // Show skeleton while loading
+  if (loading) {
+    return <StaffMapSkeleton />;
+  }
+
   return (
     <>
       <div className="space-y-6">
