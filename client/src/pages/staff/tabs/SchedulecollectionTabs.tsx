@@ -226,51 +226,36 @@ export function ScheduleCollectionTabs() {
 
     return (
       <div
-        className="w-full h-full p-1 flex flex-col items-center justify-start min-h-[80px] cursor-pointer"
+        className={`w-full h-full p-1 flex items-center justify-center min-h-[80px] cursor-pointer rounded-md transition-all duration-200 ${
+          hasOverdueSchedules
+            ? "bg-red-100 hover:bg-red-200"
+            : hasSchedules
+            ? "bg-green-100 hover:bg-green-200"
+            : "hover:bg-gray-50"
+        }`}
         onClick={(e) => {
           e.stopPropagation();
           handleDateClick(day);
         }}
+        title={
+          hasSchedules
+            ? `${daySchedules.length} schedule${daySchedules.length > 1 ? "s" : ""} on this day${
+                hasOverdueSchedules ? " (OVERDUE)" : ""
+              }`
+            : undefined
+        }
       >
         <span
-          className={`text-sm font-medium mb-1 ${
+          className={`text-sm font-medium ${
             hasOverdueSchedules
-              ? "w-6 h-6 rounded-full bg-red-100 text-red-700 flex items-center justify-center"
+              ? "text-red-700"
               : hasSchedules
-              ? "w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center"
+              ? "text-green-700"
               : ""
           }`}
         >
           {day.getDate()}
         </span>
-
-        {hasSchedules && (
-          <div className="w-full space-y-1.5">
-            {daySchedules.slice(0, 2).map((schedule, index) => {
-              const effectiveStatus = getEffectiveStatus(schedule);
-              const isOverdue = isScheduleOverdue(schedule);
-
-              return (
-                <div
-                  key={index}
-                  className={`text-xs px-2 py-1.5 rounded-lg text-center truncate flex items-center justify-center gap-1 shadow-sm transition-all duration-200 hover:scale-105 ${
-                    schedule.serviceType === "collection" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                  }`}
-                  title={`${schedule.serviceType === "collection" ? "Trash Collection" : "Maintenance"} - ${
-                    schedule.location
-                  } at ${schedule.time}${isOverdue ? " (OVERDUE)" : ""}`}
-                >
-                  <span className="truncate font-medium">{schedule.location}</span>
-                </div>
-              );
-            })}
-            {daySchedules.length > 2 && (
-              <div className="text-xs text-gray-500 text-center font-medium bg-gray-100 rounded-full px-2 py-1 hover:bg-gray-200 transition-colors duration-200">
-                +{daySchedules.length - 2} more
-              </div>
-            )}
-          </div>
-        )}
       </div>
     );
   };

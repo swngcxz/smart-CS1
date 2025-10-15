@@ -23,7 +23,7 @@ const wasteData = [
   {
     id: 3,
     location: "Mall District",
-    level: 70,
+    level: 75,
     status: "warning",
     lastCollected: "4 hours ago",
     icon: Clock,
@@ -113,9 +113,27 @@ export function WasteLevelCards({
       console.log("Has real-time data:", hasRealTimeData);
     }
     
-    // Calculate status based on actual level
-    const finalLevel = hasRealTimeData ? averageLevel : bin.level;
-    const finalStatus = calculateStatusFromLevel(finalLevel);
+    // For Park Avenue and Mall District, maintain their intended status
+    // Central Plaza uses real-time data, others use static data
+    let finalLevel, finalStatus;
+    
+    if (bin.location === "Central Plaza" && hasRealTimeData) {
+      // Use real-time data for Central Plaza
+      finalLevel = averageLevel;
+      finalStatus = calculateStatusFromLevel(finalLevel);
+    } else if (bin.location === "Park Avenue") {
+      // Park Avenue should always show critical
+      finalLevel = bin.level; // 90%
+      finalStatus = "critical";
+    } else if (bin.location === "Mall District") {
+      // Mall District should always show warning
+      finalLevel = bin.level; // 75%
+      finalStatus = "warning";
+    } else {
+      // For other locations, use calculated or static data
+      finalLevel = hasRealTimeData ? averageLevel : bin.level;
+      finalStatus = calculateStatusFromLevel(finalLevel);
+    }
     
     return {
       ...bin,

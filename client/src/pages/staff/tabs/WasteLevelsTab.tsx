@@ -139,12 +139,12 @@ export function WasteLevelsTab() {
       nextCollection: "Today 6:00 PM",
     },
 
-    // Park Avenue - 4 bins
+    // Park Avenue - 4 bins (critical status)
     {
       id: "5",
       location: "Park Avenue",
-      level: 45,
-      status: "normal",
+      level: 85,
+      status: "critical",
       lastCollected: "1 day ago",
       capacity: "300L",
       wasteType: "Organic",
@@ -153,8 +153,8 @@ export function WasteLevelsTab() {
     {
       id: "6",
       location: "Park Avenue",
-      level: 75,
-      status: "warning",
+      level: 95,
+      status: "critical",
       lastCollected: "3 hours ago",
       capacity: "350L",
       wasteType: "Mixed",
@@ -173,19 +173,19 @@ export function WasteLevelsTab() {
     {
       id: "8",
       location: "Park Avenue",
-      level: 30,
-      status: "normal",
+      level: 88,
+      status: "critical",
       lastCollected: "10 hours ago",
       capacity: "400L",
       wasteType: "Organic",
       nextCollection: "Tomorrow 10:00 AM",
     },
 
-    // Mall District - 4 bins
+    // Mall District - 4 bins (warning status)
     {
       id: "9",
       location: "Mall District",
-      level: 70,
+      level: 75,
       status: "warning",
       lastCollected: "4 hours ago",
       capacity: "750L",
@@ -195,7 +195,7 @@ export function WasteLevelsTab() {
     {
       id: "10",
       location: "Mall District",
-      level: 60,
+      level: 72,
       status: "warning",
       lastCollected: "6 hours ago",
       capacity: "650L",
@@ -205,8 +205,8 @@ export function WasteLevelsTab() {
     {
       id: "11",
       location: "Mall District",
-      level: 95,
-      status: "critical",
+      level: 78,
+      status: "warning",
       lastCollected: "1 hour ago",
       capacity: "800L",
       wasteType: "Recyclable",
@@ -215,8 +215,8 @@ export function WasteLevelsTab() {
     {
       id: "12",
       location: "Mall District",
-      level: 35,
-      status: "normal",
+      level: 73,
+      status: "warning",
       lastCollected: "9 hours ago",
       capacity: "700L",
       wasteType: "Organic",
