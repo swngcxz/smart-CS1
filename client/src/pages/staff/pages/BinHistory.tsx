@@ -70,10 +70,27 @@ export function BinHistory() {
   const [dateFilter, setDateFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
+  const [showCriticalDropdown, setShowCriticalDropdown] = useState(false);
+  const [selectedCriticalType, setSelectedCriticalType] = useState("all");
 
   // Fetch bin history data
   useEffect(() => {
     fetchBinHistory();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.critical-dropdown-container')) {
+        setShowCriticalDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   // Reverse geocoding function to get location name from coordinates
@@ -162,7 +179,7 @@ export function BinHistory() {
 
   // Apply filters
   useEffect(() => {
-    console.log("🔄 Applying filters to binHistory:", binHistory.length, "records");
+    console.log("Applying filters to binHistory:", binHistory.length, "records");
     let filtered = binHistory;
 
     // Search filter
@@ -208,7 +225,7 @@ export function BinHistory() {
       });
     }
 
-    console.log("✅ Filtered history:", filtered.length, "records");
+    console.log("Filtered history:", filtered.length, "records");
     setFilteredHistory(filtered);
     setCurrentPage(1);
   }, [binHistory, searchTerm, statusFilter, binIdFilter, dateFilter]);
@@ -216,16 +233,16 @@ export function BinHistory() {
   const fetchBinHistory = async () => {
     try {
       setLoading(true);
-      console.log("🔍 Fetching bin history from:", "http://localhost:8000/api/bin-history");
+      console.log("Fetching bin history from:", "http://localhost:8000/api/bin-history");
       const response = await api.get("/api/bin-history");
 
-      console.log("📊 API Response:", response);
-      console.log("📊 Response data:", response.data);
-      console.log("📊 Response status:", response.status);
+      console.log("API Response:", response);
+      console.log("Response data:", response.data);
+      console.log("Response status:", response.status);
 
       if (response.data && response.data.success && response.data.records) {
-        console.log("✅ Success! Records found:", response.data.records.length);
-        console.log("📋 Sample record:", response.data.records[0]);
+        console.log("Success! Records found:", response.data.records.length);
+        console.log("Sample record:", response.data.records[0]);
         setBinHistory(response.data.records);
         setStats(
           response.data.stats || {
@@ -238,15 +255,15 @@ export function BinHistory() {
           }
         );
       } else {
-        console.log("❌ No records in response:", response.data);
+        console.log("No records in response:", response.data);
         setBinHistory([]);
         setError(response.data?.message || "No data received");
       }
       setError(null);
     } catch (err: any) {
-      console.error("💥 Error fetching bin history:", err);
-      console.error("💥 Error response:", err.response);
-      console.error("💥 Error message:", err.message);
+      console.error("Error fetching bin history:", err);
+      console.error("Error response:", err.response);
+      console.error("Error message:", err.message);
       setError(err.response?.data?.message || err.message || "Failed to fetch bin history");
     } finally {
       setLoading(false);
@@ -270,7 +287,7 @@ export function BinHistory() {
         );
       case "MALFUNCTION":
         return (
-          <div className="flex items-center gap-1 text-orange-600">
+          <div className="flex items-center gap-1 text-red-600">
             <XCircle className="w-3 h-3" />
             Malfunction
           </div>
@@ -538,11 +555,68 @@ export function BinHistory() {
       {/* Status Summary */}
       <div className="flex items-center justify-between text-sm">
         <span className="text-gray-700 font-medium">Total: {stats.totalRecords}</span>
-        <span className="text-green-600 font-medium">Normal: {stats.normalCount}</span>
-        <span className="text-yellow-600 font-medium">Warning: {stats.warningCount}</span>
-        <div className="flex items-center gap-1">
-          <span className="text-red-600 font-medium">Critical: {stats.criticalCount}</span>
-          <ChevronDown className="w-3 h-3 text-gray-500" />
+        <span 
+          className="text-green-600 font-medium cursor-pointer hover:bg-gray-50 rounded px-2 py-1" 
+          onClick={() => setStatusFilter(statusFilter === "ok" ? "all" : "ok")}
+        >
+          Normal: {stats.normalCount}
+        </span>
+        <span 
+          className="text-yellow-600 font-medium cursor-pointer hover:bg-gray-50 rounded px-2 py-1" 
+          onClick={() => setStatusFilter(statusFilter === "warning" ? "all" : "warning")}
+        >
+          Warning: {stats.warningCount}
+        </span>
+        <div className="relative critical-dropdown-container">
+          <div className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 rounded px-2 py-1" onClick={() => setShowCriticalDropdown(!showCriticalDropdown)}>
+            <span className="text-red-600 font-medium">
+              {selectedCriticalType === "all" ? "Critical" : selectedCriticalType === "critical" ? "Critical" : selectedCriticalType === "error" ? "Error" : "Malfunction"}: {
+                selectedCriticalType === "all" ? stats.criticalCount + stats.errorCount + stats.malfunctionCount :
+                selectedCriticalType === "critical" ? stats.criticalCount :
+                selectedCriticalType === "error" ? stats.errorCount :
+                stats.malfunctionCount
+              }
+            </span>
+            <ChevronDown className={`w-3 h-3 text-gray-500 transition-transform ${showCriticalDropdown ? "rotate-180" : ""}`} />
+          </div>
+          
+          {/* Critical Dropdown */}
+          {showCriticalDropdown && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 min-w-[200px]">
+              <div className="py-1">
+                <div 
+                  className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 flex items-center justify-between"
+                  onClick={() => {
+                    setSelectedCriticalType("critical");
+                    setShowCriticalDropdown(false);
+                  }}
+                >
+                  <span className="text-red-600">Critical</span>
+                  <span className="text-gray-500">{stats.criticalCount}</span>
+                </div>
+                <div 
+                  className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 flex items-center justify-between"
+                  onClick={() => {
+                    setSelectedCriticalType("error");
+                    setShowCriticalDropdown(false);
+                  }}
+                >
+                  <span className="text-red-600">Error</span>
+                  <span className="text-gray-500">{stats.errorCount}</span>
+                </div>
+                <div 
+                  className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 flex items-center justify-between"
+                  onClick={() => {
+                    setSelectedCriticalType("malfunction");
+                    setShowCriticalDropdown(false);
+                  }}
+                >
+                  <span className="text-red-600">Malfunction</span>
+                  <span className="text-gray-500">{stats.malfunctionCount}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
