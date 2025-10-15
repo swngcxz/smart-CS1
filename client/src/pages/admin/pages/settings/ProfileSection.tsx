@@ -355,7 +355,7 @@ export const ProfileSection = () => {
           </div>
         ) : (
           <div className="group relative">
-            <div className="w-full p-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center transition-all duration-200 hover:shadow-sm hover:shadow-slate-200 dark:hover:shadow-slate-800">
+            <div className="w-full p-3 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center transition-all duration-200 hover:shadow-sm hover:shadow-slate-200 dark:hover:shadow-slate-800">
               {field === "bio" ? (
                 value ? (
                   <p className="whitespace-pre-wrap text-sm leading-relaxed w-full">{value}</p>
@@ -389,9 +389,8 @@ export const ProfileSection = () => {
         </div>
         <div className="space-y-6">
           {/* Profile Picture Section */}
-          <div className="flex items-center gap-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
             <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full blur opacity-20 group-hover:opacity-30 transition-opacity duration-200"></div>
               <Avatar className="w-24 h-24 border-2 border-white dark:border-slate-800 shadow-md">
                 <AvatarImage src={imageUrl} className="object-cover" />
                 <AvatarFallback className="text-2xl font-bold bg-gradient-to-r from-gray-500 to-gray-500 text-white">
@@ -413,27 +412,27 @@ export const ProfileSection = () => {
               </Button>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
             </div>
-            <div className="space-y-3">
-              <h3 className="text-xl font-semibold text-slate-900 dark:text-white">{profile.name}</h3>
+            <div className="space-y-2">
+              <h3 className="text-ml font-semibold text-slate-900 dark:text-white">{profile.name}</h3>
               <Badge
                 variant="secondary"
-                className="bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200 px-3 py-1 rounded-md font-medium"
+                className="text-xs bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200 px-3 py-1 rounded-md font-medium"
               >
                 {(user?.role || "User").charAt(0).toUpperCase() + (user?.role || "User").slice(1)}
               </Badge>
-              <p className="text-slate-600 dark:text-slate-400 text-sm">{profile.email}</p>
+              <p className="text-slate-600 dark:text-slate-400 text-xs">{profile.email}</p>
             </div>
           </div>
 
           {/* Editable Fields */}
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="text-sm grid grid-cols-1 md:grid-cols-2 gap-6">
               <EditableField field="name" value={profile.name} label="Full Name" />
               <EditableField field="email" value={profile.email} label="Email Address" type="email" />
               <EditableField field="phone" value={profile.phone} label="Phone Number" />
               <EditableField field="location" value={profile.location} label="Location" />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 text-sm">
               <EditableField field="website" value={profile.website} label="Website" type="url" />
               <EditableField field="bio" value={profile.bio} label="About Me" />
             </div>
@@ -446,18 +445,18 @@ export const ProfileSection = () => {
               {accountsData.map((acc) => (
                 <div
                   key={acc.name}
-                  className="flex items-center justify-between p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200"
+                  className="text-sm flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 text-sm bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
                       {acc.icon}
                     </div>
                     <div>
-                      <h4 className="font-medium text-slate-900 dark:text-white">{acc.name}</h4>
+                      <h4 className="text-sm  font-medium text-slate-900 dark:text-white">{acc.name}</h4>
                       {acc.linked ? (
-                        <p className="text-sm text-slate-600 dark:text-slate-400">{acc.value}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400">{acc.value}</p>
                       ) : (
-                        <p className="text-sm text-slate-400 dark:text-slate-500">Not connected</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">Not connected</p>
                       )}
                     </div>
                   </div>

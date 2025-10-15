@@ -127,7 +127,7 @@ export const SecuritySection = () => {
         <div className="space-y-6">
           <form onSubmit={handlePasswordSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {["current", "new", "confirm"].map((field) => (
+              {["current", "new"].map((field) => (
                 <div key={field} className="space-y-3">
                   <Label
                     htmlFor={`${field}-password`}
@@ -135,9 +135,7 @@ export const SecuritySection = () => {
                   >
                     {field === "current"
                       ? "Current Password"
-                      : field === "new"
-                      ? "New Password"
-                      : "Confirm New Password"}
+                      : "New Password"}
                   </Label>
                   <div className="relative">
                     <Input
@@ -164,6 +162,56 @@ export const SecuritySection = () => {
                 </div>
               ))}
             </div>
+            
+            {/* Confirm New Password and Update Button Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+              <div className="space-y-3">
+                <Label
+                  htmlFor="confirm-password"
+                  className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-wide"
+                >
+                  Confirm New Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="confirm-password"
+                    type={showPasswords.confirm ? "text" : "password"}
+                    value={passwords.confirm}
+                    onChange={(e) => handlePasswordChange("confirm", e.target.value)}
+                    className="w-full h-10 px-3 pr-10 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-green-500 dark:focus:border-green-400 focus:ring-2 focus:ring-green-100 dark:focus:ring-green-900/20 transition-all duration-200 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    onClick={() => togglePasswordVisibility("confirm")}
+                  >
+                    {showPasswords.confirm ? (
+                      <EyeOff className="w-4 h-4 text-slate-500" />
+                    ) : (
+                      <Eye className="w-4 h-4 text-slate-500" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-3 flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isChangingPassword ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Updating Password...
+                    </>
+                  ) : (
+                    "Update Password"
+                  )}
+                </Button>
+              </div>
+            </div>
 
             {/* Password Strength Meter */}
             {passwords.new && (
@@ -184,22 +232,6 @@ export const SecuritySection = () => {
               </div>
             )}
 
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                disabled={isChangingPassword}
-                className="bg-green-600 hover:bg-green-700 text-white px-8 py-2 rounded-lg font-medium transition-all duration-200 hover:shadow-lg hover:shadow-green-200 dark:hover:shadow-green-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isChangingPassword ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Updating Password...
-                  </>
-                ) : (
-                  "Update Password"
-                )}
-              </Button>
-            </div>
           </form>
         </div>
       </div>

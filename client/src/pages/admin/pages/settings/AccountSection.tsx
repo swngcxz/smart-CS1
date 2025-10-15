@@ -146,7 +146,7 @@ export const AccountSection = () => {
           </div>
         ) : (
           <div className="group relative">
-            <div className="w-full p-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center transition-all duration-200 hover:shadow-sm hover:shadow-slate-200 dark:hover:shadow-slate-800">
+            <div className="w-full p-3 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center transition-all duration-200 hover:shadow-sm hover:shadow-slate-200 dark:hover:shadow-slate-800">
               <span className="w-full">{value || <span className="text-slate-400 italic">Not set</span>}</span>
             </div>
             <Button
@@ -166,18 +166,18 @@ export const AccountSection = () => {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-6">
-        <div className="flex items-center gap-3 mb-6">
+      <div className="space-y-5">
+        <div className="flex items-center gap-3 mb-3">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Account Information</h2>
         </div>
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
             <EditableField field="username" value={accountInfo.username} label="Username" />
             <div className="space-y-3">
               <Label className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-wide">
                 Account Type
               </Label>
-              <div className="w-full p-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center">
+              <div className="text-sm w-full p-3 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center">
                 {accountInfo.accountType.charAt(0).toUpperCase() + accountInfo.accountType.slice(1)}
               </div>
             </div>
@@ -185,7 +185,7 @@ export const AccountSection = () => {
               <Label className="text-sm font-semibold text-slate-900 dark:text-slate-100 tracking-wide">
                 Member Since
               </Label>
-              <div className="w-full p-3 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center">
+              <div className=" text-sm w-full p-3 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[40px] flex items-center">
                 {accountInfo.memberSince}
               </div>
             </div>
@@ -199,10 +199,10 @@ export const AccountSection = () => {
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">Security Options</h2>
         </div>
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200">
             <div>
-              <h4 className="font-semibold text-slate-900 dark:text-slate-100">Deactivate Account</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Deactivate Account</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 Temporarily deactivate your account. You can reactivate at any time by logging back in.
               </p>
             </div>
@@ -210,7 +210,7 @@ export const AccountSection = () => {
               <AlertDialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  className="text-xs text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
                 >
                   Deactivate
                 </Button>
@@ -232,19 +232,19 @@ export const AccountSection = () => {
             </AlertDialog>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 transition-colors duration-200">
             <div>
-              <h4 className="font-semibold text-slate-900 dark:text-slate-100">Delete Account</h4>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Delete Account</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 Permanently delete your account and all associated data. This action cannot be undone.
               </p>
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="flex items-center gap-2 hover:bg-red-700">
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </Button>
+                 <Button variant="destructive" className="text-xs flex items-center gap-2 hover:bg-red-700">
+                   <Trash2 className="w-3 h-3" />
+                   Delete
+                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>

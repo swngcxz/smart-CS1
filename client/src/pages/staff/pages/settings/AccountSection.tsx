@@ -56,7 +56,7 @@ export const AccountSection = () => {
           </div>
         ) : (
           <div className="flex items-center gap-2 group">
-            <span className="flex-1 p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
+            <span className="flex-1 p-2 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
               {value}
             </span>
             <Button
@@ -84,13 +84,13 @@ export const AccountSection = () => {
             <EditableField field="username" value={accountInfo.username} label="Username" />
             <div className="space-y-2">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Account Type</Label>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
+              <div className="p-2 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
                 {accountInfo.accountType}
               </div>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Member Since</Label>
-              <div className="p-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
+              <div className="p-2 bg-gray-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-md">
                 {accountInfo.memberSince}
               </div>
             </div>

@@ -97,17 +97,50 @@ export const SecuritySection = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handlePasswordSubmit} className="space-y-4">
-          {["current", "new", "confirm"].map((field) => (
-            <div key={field} className="space-y-2">
-              <Label htmlFor={`${field}-password`}>
-                {field === "current" ? "Current Password" : field === "new" ? "New Password" : "Confirm New Password"}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {["current", "new"].map((field) => (
+              <div key={field} className="space-y-2">
+                <Label htmlFor={`${field}-password`}>
+                  {field === "current" ? "Current Password" : "New Password"}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id={`${field}-password`}
+                    type={showPasswords[field as keyof typeof showPasswords] ? "text" : "password"}
+                    value={passwords[field as keyof typeof passwords]}
+                    onChange={(e) => handlePasswordChange(field, e.target.value)}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => togglePasswordVisibility(field)}
+                  >
+                    {showPasswords[field as keyof typeof showPasswords] ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Confirm New Password and Update Button Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">
+                Confirm New Password
               </Label>
               <div className="relative">
                 <Input
-                  id={`${field}-password`}
-                  type={showPasswords[field as keyof typeof showPasswords] ? "text" : "password"}
-                  value={passwords[field as keyof typeof passwords]}
-                  onChange={(e) => handlePasswordChange(field, e.target.value)}
+                  id="confirm-password"
+                  type={showPasswords.confirm ? "text" : "password"}
+                  value={passwords.confirm}
+                  onChange={(e) => handlePasswordChange("confirm", e.target.value)}
                   className="pr-10"
                 />
                 <Button
@@ -115,9 +148,9 @@ export const SecuritySection = () => {
                   variant="ghost"
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => togglePasswordVisibility(field)}
+                  onClick={() => togglePasswordVisibility("confirm")}
                 >
-                  {showPasswords[field as keyof typeof showPasswords] ? (
+                  {showPasswords.confirm ? (
                     <EyeOff className="w-4 h-4" />
                   ) : (
                     <Eye className="w-4 h-4" />
@@ -125,7 +158,23 @@ export const SecuritySection = () => {
                 </Button>
               </div>
             </div>
-          ))}
+            <div className="space-y-2 flex justify-end">
+              <Button 
+                type="submit" 
+                disabled={isChangingPassword}
+                className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isChangingPassword ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Updating Password...
+                  </>
+                ) : (
+                  'Update Password'
+                )}
+              </Button>
+            </div>
+          </div>
 
           {passwords.new && (
             <div className="w-full">
@@ -143,20 +192,6 @@ export const SecuritySection = () => {
             </div>
           )}
 
-          <Button 
-            type="submit" 
-            disabled={isChangingPassword}
-            className="w-full md:w-auto bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isChangingPassword ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Updating Password...
-              </>
-            ) : (
-              'Update Password'
-            )}
-          </Button>
         </form>
       </CardContent>
     </Card>
