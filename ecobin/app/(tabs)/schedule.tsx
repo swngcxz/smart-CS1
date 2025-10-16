@@ -1,43 +1,117 @@
-import React from "react";
 import Header from "@/components/Header";
-import { useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState, useEffect } from "react";
+import { FlatList, Modal, Pressable, StyleSheet, Text, View, ActivityIndicator } from "react-native";
 import { Calendar } from "react-native-calendars";
+import { useMaintenanceSchedules, formatMaintenanceType, getMaintenanceTypeColor, formatMaintenanceDate, getMaintenanceCalendarDotColor, formatMaintenanceTimeRange, isDateInPast as isMaintenanceDateInPast } from "@/hooks/useMaintenanceSchedules";
+import { useTrashCollectionSchedules, formatTrashCollectionType, getTrashCollectionTypeColor, formatTrashCollectionDate, getTrashCollectionCalendarDotColor, formatTrashCollectionTimeRange, isDateInPast as isTrashCollectionDateInPast } from "@/hooks/useTrashCollectionSchedules";
 
 export default function ScheduleScreen() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const markedDates = {
-    "2025-07-24": { marked: true, dotColor: "#2e7d32" },
-    "2025-07-26": { marked: true, dotColor: "#2e7d32" },
-    "2025-07-29": { marked: true, dotColor: "#2e7d32" },
-  };
+  // Use the separate schedule hooks
+  const { schedules: maintenanceSchedules, loading: maintenanceLoading, getSchedulesByDate: getMaintenanceSchedulesByDate, getTodaySchedules: getTodayMaintenanceSchedules } = useMaintenanceSchedules();
+  const { schedules: trashCollectionSchedules, loading: trashCollectionLoading, getSchedulesByDate: getTrashCollectionSchedulesByDate, getTodaySchedules: getTodayTrashCollectionSchedules } = useTrashCollectionSchedules();
 
-  const collectorSchedule: Record<string, { time: string; collector: string }> = {
-    "2025-07-24": { time: "9:00 AM", collector: "Collector A" },
-    "2025-07-26": { time: "10:00 AM", collector: "Collector B" },
-    "2025-07-29": { time: "8:30 AM", collector: "Collector C" },
-  };
+  // Combine all schedules for display
+  const allSchedules = [...maintenanceSchedules, ...trashCollectionSchedules];
+  const todaySchedules = [...getTodayMaintenanceSchedules(), ...getTodayTrashCollectionSchedules()];
 
-  const userTasks = [
-    { id: "1", date: "2025-07-24", area: "Zone 1", task: "Collect Bin A" },
-    { id: "2", date: "2025-07-26", area: "Zone 3", task: "Collect Bin C" },
-    { id: "3", date: "2025-07-29", area: "Zone 2", task: "Collect Bin B" },
-  ];
+  // Debug logging
+  console.log('📅 All schedules:', allSchedules);
+  console.log('🔧 Maintenance schedules count:', maintenanceSchedules.length);
+  console.log('🗑️ Trash collection schedules count:', trashCollectionSchedules.length);
+
+  // Create marked dates for calendar with past date validation
+  const markedDates = allSchedules.reduce((acc, schedule) => {
+    const dateKey = schedule.date;
+    if (!acc[dateKey]) {
+      // Use appropriate dot color based on schedule type
+      const dotColor = schedule.type === 'maintenance' 
+        ? getMaintenanceCalendarDotColor(schedule.date)
+        : getTrashCollectionCalendarDotColor(schedule.date);
+      acc[dateKey] = { marked: true, dotColor };
+    }
+    return acc;
+  }, {} as Record<string, { marked: boolean; dotColor: string }>);
+
+  console.log('📅 Marked dates:', markedDates);
+
+  // Get schedules for selected date
+  const selectedDateSchedules = selectedDate ? [
+    ...getMaintenanceSchedulesByDate(selectedDate),
+    ...getTrashCollectionSchedulesByDate(selectedDate)
+  ] : [];
+
+  // Format assigned tasks for display with new structure (only upcoming schedules)
+  const assignedTasks = allSchedules
+    .filter(schedule => {
+      // Use appropriate date check based on schedule type
+      const isPast = schedule.type === 'maintenance' 
+        ? isMaintenanceDateInPast(schedule.date)
+        : isTrashCollectionDateInPast(schedule.date);
+      return !isPast;
+    })
+    .map(schedule => {
+      // Type-safe property access
+      const name = 'staffName' in schedule ? schedule.staffName : 
+                   'driverName' in schedule ? schedule.driverName : 'Unassigned';
+      const startTime = 'start_time' in schedule ? schedule.start_time : 
+                        'start_collected' in schedule ? schedule.start_collected : undefined;
+      const endTime = 'end_time' in schedule ? schedule.end_time : 
+                      'end_collected' in schedule ? schedule.end_collected : undefined;
+      
+      // Use appropriate formatting based on schedule type
+      const formattedTime = schedule.type === 'maintenance'
+        ? formatMaintenanceTimeRange(startTime, endTime)
+        : formatTrashCollectionTimeRange(startTime, endTime);
+      
+      const formattedType = schedule.type === 'maintenance'
+        ? formatMaintenanceType()
+        : formatTrashCollectionType();
+      
+      return {
+        id: schedule.id,
+        name: name || 'Unassigned',
+        time: formattedTime,
+        area: schedule.area,
+        type: formattedType,
+        status: schedule.status,
+        date: schedule.date, // Keep for filtering
+      };
+    });
+
+  // Debug logging for upcoming schedules
+  console.log('📅 Upcoming schedules count:', assignedTasks.length);
 
   const handleDayPress = (day: any) => {
     const date = day.dateString;
-    if (collectorSchedule[date]) {
+    const schedulesForDate = [
+      ...getMaintenanceSchedulesByDate(date),
+      ...getTrashCollectionSchedulesByDate(date)
+    ];
+    
+    if (schedulesForDate.length > 0) {
       setSelectedDate(date);
       setModalVisible(true);
     }
   };
 
+  // Show UI immediately, loading indicator in header
+  const isLoading = maintenanceLoading || trashCollectionLoading;
+
   return (
     <View style={styles.container}>
       <Header />
-      <Text style={styles.title}>Today's Collection Schedule</Text>
+      <Text style={styles.title}>Schedule Management</Text>
+      
+      {/* Loading indicator */}
+      {isLoading && (
+        <View style={styles.loadingHeader}>
+          <ActivityIndicator size="small" color="#2e7d32" />
+          <Text style={styles.loadingHeaderText}>Loading schedules...</Text>
+        </View>
+      )}
 
       <Calendar
         markedDates={markedDates}
@@ -83,43 +157,84 @@ export default function ScheduleScreen() {
 
             <Text style={styles.modalTitle}>Schedule Details</Text>
 
-            {selectedDate && (
+            {selectedDate && selectedDateSchedules.length > 0 && (
               <>
                 <View style={styles.rowBetween}>
                   <Text style={styles.label}>Date</Text>
-                  <Text style={styles.value}>{selectedDate}</Text>
+                  <Text style={styles.value}>
+                    {selectedDateSchedules.some(s => s.type === 'maintenance') 
+                      ? formatMaintenanceDate(selectedDate) 
+                      : formatTrashCollectionDate(selectedDate)}
+                  </Text>
+                </View>
+                <Text style={styles.scheduleCount}>
+                  {selectedDateSchedules.length} schedule{selectedDateSchedules.length > 1 ? 's' : ''} found
+                </Text>
+                
+                {selectedDateSchedules.map((schedule, index) => (
+                  <View key={schedule.id} style={styles.scheduleItem}>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.label}>Type</Text>
+                      <Text style={[styles.value, { 
+                        color: schedule.type === 'maintenance' 
+                          ? getMaintenanceTypeColor() 
+                          : getTrashCollectionTypeColor() 
+                      }]}>
+                        {schedule.type === 'maintenance' 
+                          ? formatMaintenanceType() 
+                          : formatTrashCollectionType()}
+                      </Text>
+                    </View>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.label}>Area</Text>
+                      <Text style={styles.value}>{schedule.area}</Text>
                 </View>
                 <View style={styles.rowBetween}>
                   <Text style={styles.label}>Time</Text>
-                  <Text style={styles.value}>{collectorSchedule[selectedDate].time}</Text>
+                      <Text style={styles.value}>{schedule.time || 'TBD'}</Text>
+                    </View>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.label}>Status</Text>
+                      <Text style={styles.value}>{schedule.status}</Text>
                 </View>
                 <View style={styles.rowBetween}>
-                  <Text style={styles.label}>Collector</Text>
-                  <Text style={styles.value}>{collectorSchedule[selectedDate].collector}</Text>
+                      <Text style={styles.label}>Assigned To</Text>
+                      <Text style={styles.value}>
+                        {'staffName' in schedule ? schedule.staffName : 
+                         'driverName' in schedule ? schedule.driverName : 'Unassigned'}
+                      </Text>
+                    </View>
+                    {index < selectedDateSchedules.length - 1 && <View style={styles.divider} />}
                 </View>
+                ))}
               </>
             )}
           </Pressable>
         </Pressable>
       </Modal>
 
-      {/* Assigned Task Table (optional / separate) */}
+      {/* Assigned Tasks Table */}
       <Text style={styles.taskTitle}>Assigned Tasks</Text>
       <FlatList
-        data={userTasks}
+        data={assignedTasks}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={styles.taskRow}>
-            <Text style={styles.taskText}>{item.date}</Text>
+            <Text style={styles.taskText}>{item.name}</Text>
+            <Text style={styles.taskText}>{item.time}</Text>
             <Text style={styles.taskText}>{item.area}</Text>
-            <Text style={styles.taskText}>{item.task}</Text>
           </View>
         )}
         ListHeaderComponent={() => (
           <View style={[styles.taskRow, { backgroundColor: "#e0e0e0" }]}>
-            <Text style={styles.taskHeader}>Date</Text>
+            <Text style={styles.taskHeader}>Name</Text>
+            <Text style={styles.taskHeader}>Time</Text>
             <Text style={styles.taskHeader}>Area</Text>
-            <Text style={styles.taskHeader}>Task</Text>
+          </View>
+        )}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No upcoming schedules found</Text>
           </View>
         )}
       />
@@ -208,5 +323,42 @@ const styles = StyleSheet.create({
   taskText: {
     flex: 1,
     color: "#333",
+  },
+  loadingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    backgroundColor: "#f8f9fa",
+    marginBottom: 10,
+    borderRadius: 8,
+  },
+  loadingHeaderText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#666",
+  },
+  scheduleCount: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  scheduleItem: {
+    marginBottom: 15,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#e0e0e0",
+    marginVertical: 10,
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#666",
+    fontStyle: "italic",
   },
 });

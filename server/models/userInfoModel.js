@@ -60,17 +60,22 @@ const UserInfoModel = {
   // Create or update user info (upsert)
   async upsertUserInfo(userId, userInfoData) {
     try {
+      console.log('[USER INFO MODEL] Upserting user info for userId:', userId);
+      console.log('[USER INFO MODEL] UserInfo data:', userInfoData);
+      
       const userInfoRef = db.collection('userInfo').doc(userId);
       const doc = await userInfoRef.get();
       
       if (doc.exists) {
         // Update existing record
+        console.log('[USER INFO MODEL] Updating existing record');
         await withRetry(() => userInfoRef.update({
           ...userInfoData,
           updatedAt: admin.firestore.FieldValue.serverTimestamp()
         }));
       } else {
         // Create new record
+        console.log('[USER INFO MODEL] Creating new record');
         await withRetry(() => userInfoRef.set({
           ...userInfoData,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -78,6 +83,7 @@ const UserInfoModel = {
         }));
       }
       
+      console.log('[USER INFO MODEL] Upsert completed successfully');
       return userId;
     } catch (error) {
       console.error('[USER INFO MODEL] Error upserting user info:', error);

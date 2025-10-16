@@ -1,301 +1,325 @@
-import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator, Platform } from "react-native";
-import { useRouter } from "expo-router";
-import { ProgressBar } from "react-native-paper";
-import * as Location from 'expo-location';
-import { useRealTimeData } from '../../contexts/RealTimeDataContext';
-import { DynamicBinMarker } from '../../components/DynamicBinMarker';
-import { GPSMarker } from '../../components/GPSMarker';
-import { BinLocation } from '../../utils/apiService';
+import React, { useState, useEffect } from "react";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, StatusBar, Modal, ScrollView } from "react-native";
 
-// Platform-specific imports
-let MapView: any, Marker: any, Callout: any, PROVIDER_GOOGLE: any;
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-  Callout = Maps.Callout;
-  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
-} else {
-  // Web fallback components
-  MapView = ({ children, style, region, ...props }: any) => (
-    <View style={[style, { backgroundColor: '#e5e7eb' }]}>
-      <Text style={{ textAlign: 'center', padding: 20, color: '#6b7280' }}>
-        Map not available on web platform
-      </Text>
-      {children}
-    </View>
-  );
-  Marker = ({ children, coordinate, title, description }: any) => (
-    <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
-      {children}
-    </View>
-  );
-  Callout = ({ children, style }: any) => (
-    <View style={[style]}>
-      {children}
-    </View>
-  );
-  PROVIDER_GOOGLE = 'google';
-}
+import { useRouter } from "expo-router";
+import MapView, { Callout, Marker } from "react-native-maps";
+import { ProgressBar } from "react-native-paper";
+import { useRealTimeData, getFillColor, getStatusColor } from "@/hooks/useRealTimeData";
+
+type Bin = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  percentage: number;
+  location: string;
+  lastCollectedBy: string;
+  lastCollectedDate: string;
+  gpsValid?: boolean;
+  coordinatesSource?: string;
+  locationSource?: string;
+};
+
+// Dynamic bin data - will be populated from API or real-time data
+const bins: Bin[] = [];
 
 export default function MapScreen() {
-  const { binLocations, bin1Data, loading, error, lastUpdate, refetch, isGPSValid } = useRealTimeData();
   const [region, setRegion] = useState({
     latitude: 10.2098,
     longitude: 123.758,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
+    latitudeDelta: 0.005,
+    longitudeDelta: 0.005,
   });
-  const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
-  const [selectedBin, setSelectedBin] = useState<BinLocation | null>(null);
-  const mapRef = useRef<any>(null);
 
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
+  const [selectedBin, setSelectedBin] = useState<Bin | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
   const router = useRouter();
 
-  // Update map center when bin locations change
+  // Real-time data hook
+  const { 
+    binData, 
+    loading: realTimeLoading, 
+    error: realTimeError, 
+    lastUpdate: realTimeLastUpdate,
+    isGPSValid,
+    getCurrentGPSLocation
+  } = useRealTimeData();
+
+  // Update region when real-time data is available (GPS live or backup)
   useEffect(() => {
-    if (binLocations.length > 0) {
-      const firstBin = binLocations[0];
-      const newRegion = {
-        latitude: firstBin.position[0],
-        longitude: firstBin.position[1],
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-      
-      // Only update if the region has actually changed
-      if (region.latitude !== newRegion.latitude || region.longitude !== newRegion.longitude) {
-        setRegion(newRegion);
+    if (binData) {
+      const realTimeMarkers = getRealTimeMarkers();
+      if (realTimeMarkers.length > 0) {
+        const marker = realTimeMarkers[0];
+        setRegion({
+          latitude: marker.latitude,
+          longitude: marker.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        });
       }
     }
-  }, [binLocations, region.latitude, region.longitude]);
+  }, [binData]);
 
-  // Function to get user's current location
-  const findMyLocation = async () => {
-    try {
-      setIsLocating(true);
-      
-      // Request permission
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Location permission is required to find your location.');
-        setIsLocating(false);
-        return;
-      }
-
-      // Get current position
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      const newLocation = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
-
-      setUserLocation(newLocation);
-      
-      // Update map region to center on user location
-      setRegion({
-        latitude: newLocation.latitude,
-        longitude: newLocation.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      });
-
-      setIsLocating(false);
-      
-    } catch (error) {
-      console.error('Error getting location:', error);
-      Alert.alert('Error', 'Unable to get your current location. Please try again.');
-      setIsLocating(false);
+  // Update last update time
+  useEffect(() => {
+    if (realTimeLastUpdate) {
+      setLastUpdate(new Date(realTimeLastUpdate).toLocaleTimeString());
     }
+  }, [realTimeLastUpdate]);
+
+  // Convert real-time data to map markers with GPS fallback logic
+  const getRealTimeMarkers = (): Bin[] => {
+    if (!binData) return [];
+    
+    const level = binData.bin_level || binData.weight_percent || 0;
+    const status = level >= 85 ? 'critical' : level >= 70 ? 'warning' : 'normal';
+    
+    // Determine coordinates source and validity
+    const isGPSOnline = binData.gps_valid && binData.latitude !== 0 && binData.longitude !== 0;
+    const coordinatesSource = binData.coordinates_source || (isGPSOnline ? 'gps_live' : 'gps_backup');
+    
+    // Use backup coordinates if GPS is offline/invalid
+    let latitude, longitude, locationSource;
+    if (isGPSOnline) {
+      latitude = binData.latitude;
+      longitude = binData.longitude;
+      locationSource = 'GPS Live';
+    } else {
+      // Use Firebase backup coordinates when GPS is invalid
+      latitude = binData.backup_latitude || 10.243723; // Firebase backup coordinates
+      longitude = binData.backup_longitude || 123.787124;
+      locationSource = 'GPS Backup';
+    }
+    
+    return [{
+      id: binData.bin_id || 'bin1',
+      name: binData.name || 'Smart Bin',
+      latitude: latitude,
+      longitude: longitude,
+      percentage: level,
+      location: binData.mainLocation || 'Central Plaza',
+      lastCollectedBy: 'System',
+      lastCollectedDate: new Date(binData.timestamp).toISOString().split('T')[0],
+      // Add metadata for display
+      gpsValid: isGPSOnline,
+      coordinatesSource: coordinatesSource,
+      locationSource: locationSource,
+    }];
   };
 
-  const handleBinPress = (bin: BinLocation) => {
+  const handleMarkerPress = (bin: Bin) => {
     setSelectedBin(bin);
-    // Center map on selected bin
-    if (mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: bin.position[0],
-        longitude: bin.position[1],
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      });
-    }
+    setModalVisible(true);
   };
 
-  const handleViewDetails = (bin: BinLocation) => {
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedBin(null);
+  };
+
+  const handleViewDetails = (binId: string) => {
     router.push({
       pathname: "/home/bin-details",
-      params: { 
-        binId: bin.id,
-        binName: bin.name,
-        binLevel: bin.level.toString(),
-        binStatus: bin.status,
-        binRoute: bin.route
-      },
+      params: { binId },
     });
   };
 
-  // Calculate bin statistics with null checks
-  const criticalBins = (binLocations || []).filter(bin => bin.status === 'critical').length;
-  const warningBins = (binLocations || []).filter(bin => bin.status === 'warning').length;
-  const normalBins = (binLocations || []).filter(bin => bin.status === 'normal').length;
+  // const handleOpenStreetView = async (latitude: number, longitude: number) => {
+  //   const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${latitude},${longitude}`;
+  //   const supported = await Linking.canOpenURL(url);
+  //   if (supported) {
+  //     await Linking.openURL(url);
+  //   } else {
+  //     alert("Cannot open Google Maps. Please check your device settings.");
+  //   }
+  // };
+  function formatDate(dateStr: string) {
+    const date = new Date(dateStr);
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    return date.toLocaleDateString("en-US", options);
+  }
+
+  // Get real-time markers
+  const realTimeMarkers = getRealTimeMarkers();
+  const allBins = [...bins, ...realTimeMarkers];
+
+  const filteredBins = allBins.filter((bin) => {
+    const matchesSearch =
+      bin.name.toLowerCase().includes(search.toLowerCase()) ||
+      bin.location.toLowerCase().includes(search.toLowerCase());
+
+    let matchesFilter = true;
+    if (filter === "<50") matchesFilter = bin.percentage < 50;
+    else if (filter === "50-75") matchesFilter = bin.percentage >= 50 && bin.percentage <= 75;
+    else if (filter === ">75") matchesFilter = bin.percentage > 75;
+
+    return matchesSearch && matchesFilter;
+  });
+
+  // Calculate status counts from real-time data
+  const normalCount = allBins.filter(bin => bin.percentage < 50).length;
+  const warningCount = allBins.filter(bin => bin.percentage >= 50 && bin.percentage <= 75).length;
+  const criticalCount = allBins.filter(bin => bin.percentage > 75).length;
 
   return (
     <View style={styles.container}>
-      {/* Header with statistics */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Smart Bin Map</Text>
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <View style={[styles.statDot, { backgroundColor: '#10b981' }]} />
-            <Text style={styles.statText}>Normal ({normalBins})</Text>
-          </View>
-          <View style={styles.statItem}>
-            <View style={[styles.statDot, { backgroundColor: '#f59e0b' }]} />
-            <Text style={styles.statText}>Warning ({warningBins})</Text>
-          </View>
-          <View style={styles.statItem}>
-            <View style={[styles.statDot, { backgroundColor: '#ef4444' }]} />
-            <Text style={styles.statText}>Critical ({criticalBins})</Text>
-          </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
+      {/* Google-style Search Bar */}
+      <View style={styles.searchBarContainer}>
+        <View style={styles.searchBar}>
+      <TextInput
+            style={styles.searchInput}
+        placeholder="Search bins or locations..."
+        value={search}
+        onChangeText={setSearch}
+            placeholderTextColor="#666"
+          />
         </View>
-        {lastUpdate && (
-          <Text style={styles.lastUpdateText}>
-            Last update: {new Date(lastUpdate).toLocaleTimeString()}
-          </Text>
-        )}
-        {bin1Data && (
-          <Text style={styles.gpsStatusText}>
-            🛰️ GPS Status: {bin1Data.coordinates_source === 'gps_live' ? 'Live GPS' : 
-                           bin1Data.coordinates_source === 'gps_cached' ? 'Cached GPS' : 
-                           'Waiting for satellite connection'}
-          </Text>
-        )}
       </View>
 
-      {/* Loading indicator */}
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Loading bin data...</Text>
-        </View>
-      )}
-
-      {/* GPS Status Message */}
-      {bin1Data && bin1Data.coordinates_source === 'no_data' && (
-        <View style={styles.gpsWarningContainer}>
-          <Text style={styles.gpsWarningText}>
-            🛰️ GPS Not Connected
-          </Text>
-          <Text style={styles.gpsSubText}>
-            Waiting for satellite connection... Bin will appear when GPS is available.
-          </Text>
-        </View>
-      )}
-
-      {/* Error Message */}
-      {error && isGPSValid() && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
-            Error: {error}
-          </Text>
-          <TouchableOpacity onPress={refetch} style={styles.retryButton}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+      {/* Category Buttons */}
+      <View style={styles.categoryContainer}>
+        <TouchableOpacity style={styles.categoryButton}>
+          <View style={[styles.statusBullet, { backgroundColor: '#4caf50' }]} />
+          <Text style={styles.categoryText}>Normal ({normalCount})</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.categoryButton}>
+          <View style={[styles.statusBullet, { backgroundColor: '#ff9800' }]} />
+          <Text style={styles.categoryText}>Warning ({warningCount})</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.categoryButton}>
+          <View style={[styles.statusBullet, { backgroundColor: '#f44336' }]} />
+          <Text style={styles.categoryText}>Critical ({criticalCount})</Text>
           </TouchableOpacity>
-        </View>
-      )}
+      </View>
+      
 
-      <MapView
-        ref={mapRef}
-        style={StyleSheet.absoluteFillObject}
-        provider={PROVIDER_GOOGLE}
+      {/* Map */}
+      <MapView 
+        style={StyleSheet.absoluteFillObject} 
         region={region}
-        mapType="hybrid"
+        mapType="satellite"
         showsUserLocation={false}
         showsMyLocationButton={false}
-        showsCompass={true}
-        showsScale={true}
+        showsCompass={false}
+        showsScale={false}
         showsBuildings={true}
         showsTraffic={false}
-        showsIndoors={true}
-        showsPointsOfInterest={false}
+        showsIndoors={false}
       >
-        {/* Bin Markers - Green markers showing bin locations from backup coordinates */}
-        {(binLocations || []).map((bin) => (
-          <Marker
-            key={bin.id}
-            coordinate={{
-              latitude: bin.position[0],
-              longitude: bin.position[1]
-            }}
-            onPress={() => handleBinPress(bin)}
+        {filteredBins.map((bin) => (
+          <Marker 
+            key={bin.id} 
+            coordinate={{ latitude: bin.latitude, longitude: bin.longitude }}
+            onPress={() => handleMarkerPress(bin)}
           >
-            <View style={styles.binMarker}>
-              <Text style={styles.binMarkerText}>{bin.level || 0}%</Text>
+            <View style={[styles.locationMarker, { backgroundColor: getFillColor(bin.percentage) }]}>
+              <Text style={styles.markerText}>{bin.percentage}%</Text>
             </View>
           </Marker>
         ))}
-
-        {/* User/Janitor Location Marker - Blue marker */}
-        {userLocation && (
-          <Marker
-            coordinate={userLocation}
-            title="Janitor Location"
-            description="Your current location"
-          >
-            <View style={styles.janitorMarker}>
-              <View style={styles.janitorMarkerInner} />
-            </View>
-          </Marker>
-        )}
       </MapView>
 
-      {/* Location Finder Button */}
-      <TouchableOpacity
-        style={[
-          styles.locationButton, 
-          isLocating && styles.locationButtonLoading,
-          selectedBin && styles.locationButtonWithSelection
-        ]}
-        onPress={findMyLocation}
-        disabled={isLocating}
+      {/* Location Details Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={closeModal}
       >
-        <Text style={styles.locationButtonText}>
-          {isLocating ? "📍" : "🎯"}
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {selectedBin && (
+              <>
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{selectedBin.name}</Text>
+                  <View style={styles.modalHeaderButtons}>
+                    <TouchableOpacity style={styles.editButton}>
+                      <Text style={styles.editButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
+                      <Text style={styles.closeButtonText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
 
-      {/* Selected Bin Details */}
-      {selectedBin && (
-        <View style={styles.selectedBinContainer}>
-          <View style={styles.selectedBinContent}>
-            <Text style={styles.selectedBinTitle}>{selectedBin.name}</Text>
-            <Text style={styles.selectedBinInfo}>
-              Fill Level: {selectedBin.level}% | Status: {selectedBin.status.toUpperCase()}
-            </Text>
-            <Text style={styles.selectedBinInfo}>Route: {selectedBin.route}</Text>
-            <View style={styles.selectedBinButtons}>
-              <TouchableOpacity
-                style={styles.detailsButton}
-                onPress={() => handleViewDetails(selectedBin)}
-              >
-                <Text style={styles.detailsButtonText}>View Details</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setSelectedBin(null)}
-              >
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+                {/* Fill Level Section */}
+                <View style={styles.fillLevelSection}>
+                  <Text style={styles.fillLevelLabel}>Fill Level</Text>
+                  <View style={styles.fillLevelContainer}>
+                    <Text style={styles.fillLevelPercentage}>{selectedBin.percentage}%</Text>
+                <ProgressBar
+                      progress={selectedBin.percentage / 100}
+                      style={styles.modalProgressBar}
+                      color={getFillColor(selectedBin.percentage)}
+                    />
+                  </View>
+                </View>
+
+                {/* Status Section */}
+                <View style={styles.statusSection}>
+                  <View style={styles.statusRow}>
+                    <Text style={styles.statusLabel}>Last Collection:</Text>
+                    <Text style={styles.statusValue}>Active 55y ago</Text>
+                  </View>
+                  <View style={styles.statusRow}>
+                    <Text style={styles.statusLabel}>GPS:</Text>
+                    <View style={styles.gpsStatusContainer}>
+                      <View style={[styles.gpsStatusDot, { backgroundColor: selectedBin.gpsValid ? '#4caf50' : '#f44336' }]} />
+                      <Text style={[styles.gpsStatusText, { color: selectedBin.gpsValid ? '#4caf50' : '#f44336' }]}>
+                        {selectedBin.gpsValid ? 'Valid' : 'Invalid'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Time Logs Section */}
+                <View style={styles.timeLogsSection}>
+                  <Text style={styles.timeLogsTitle}>Time Logs</Text>
+                  <ScrollView style={styles.timeLogsContainer}>
+                    <View style={styles.timeLogRow}>
+                      <Text style={styles.timeLogLabel}>Last Update:</Text>
+                      <Text style={styles.timeLogValue}>Active 55y ago</Text>
+                    </View>
+                    <View style={styles.timeLogRow}>
+                      <Text style={styles.timeLogLabel}>GPS Status:</Text>
+                      <Text style={[styles.timeLogValue, { color: selectedBin.gpsValid ? '#4caf50' : '#f44336' }]}>
+                        {selectedBin.gpsValid ? 'GPS Live' : 'No GPS'}
+                      </Text>
+                    </View>
+                    <View style={styles.timeLogRow}>
+                      <Text style={styles.timeLogLabel}>Bin Active:</Text>
+                      <Text style={styles.timeLogValue}>2025-10-08 01:00:00</Text>
+                    </View>
+                    {realTimeMarkers.some(rtBin => rtBin.id === selectedBin.id) && (
+                      <>
+                        <View style={styles.timeLogRow}>
+                          <Text style={styles.timeLogLabel}>Coordinates Source:</Text>
+                          <Text style={styles.timeLogValue}>{selectedBin.coordinatesSource}</Text>
+                        </View>
+                        <View style={styles.timeLogRow}>
+                          <Text style={styles.timeLogLabel}>Location Source:</Text>
+                          <Text style={styles.timeLogValue}>{selectedBin.locationSource}</Text>
+                        </View>
+                      </>
+                    )}
+                  </ScrollView>
+                </View>
+              </>
+            )}
+                </View>
+              </View>
+      </Modal>
     </View>
   );
 }
@@ -304,269 +328,337 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // Header styles
-  header: {
-    position: 'absolute',
+  
+  // Google-style Search Bar
+  searchBarContainer: {
+    position: "absolute",
     top: 50,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
-    padding: 16,
-    zIndex: 1000,
-    shadowColor: '#000',
+    zIndex: 3,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 4,
-  },
-  statText: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  lastUpdateText: {
-    fontSize: 10,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-  gpsStatusText: {
-    fontSize: 10,
-    color: '#d97706',
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  // Loading styles
-  loadingContainer: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -50 }, { translateY: -50 }],
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  loadingText: {
-    marginTop: 8,
+  searchInput: {
+    flex: 1,
     fontSize: 14,
-    color: '#6b7280',
+    color: "#333",
   },
-  // Error styles
-  errorContainer: {
-    position: 'absolute',
-    top: 150,
+
+  // Category Buttons
+  categoryContainer: {
+    position: "absolute",
+    top: 120,
     left: 20,
     right: 20,
-    backgroundColor: '#fef2f2',
-    borderColor: '#fecaca',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    zIndex: 2,
+  },
+  categoryButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginHorizontal: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    zIndex: 1000,
+    borderColor: "#e0e0e0",
   },
-  errorText: {
-    color: '#dc2626',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  // GPS Warning styles
-  gpsWarningContainer: {
-    backgroundColor: '#fef3c7',
-    borderColor: '#f59e0b',
-    borderWidth: 1,
-  },
-  gpsWarningText: {
-    color: '#d97706',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  gpsSubText: {
-    color: '#92400e',
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  retryButton: {
-    backgroundColor: '#dc2626',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  // User location marker styles
-  userLocationMarker: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#3b82f6',
-    borderWidth: 3,
-    borderColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userLocationInner: {
+  statusBullet: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'white',
+    marginRight: 6,
   },
-  // Location button styles
-  locationButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 20,
+  categoryText: {
+    fontSize: 11,
+    color: "#333",
+    fontWeight: "500",
+  },
+
+
+  // Callout Styles
+  customCallout: {
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  callout: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    width: 280,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  title: {
+    fontWeight: "bold",
+    fontSize: 18,
+    marginBottom: 8,
+    color: "#333",
+  },
+  percentage: {
+    fontWeight: "bold",
+    fontSize: 24,
+    color: "#4caf50",
+    marginBottom: 12,
+  },
+  fillRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  fillLabel: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  badgeText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 10,
+  },
+  critical: {
+    backgroundColor: "#f44336",
+  },
+  warning: {
+    backgroundColor: "#ff9800",
+  },
+  normal: {
+    backgroundColor: "#4caf50",
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    marginBottom: 16,
+    backgroundColor: "#e0e0e0",
+  },
+  infoGroup: {
+    marginBottom: 16,
+  },
+  infoText: {
+    fontSize: 13,
+    color: "#333",
+    marginBottom: 4,
+    lineHeight: 18,
+  },
+  infoLabel: {
+    fontWeight: "600",
+    color: "#666",
+  },
+  mapButton: {
+    backgroundColor: "#4caf50",
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  mapButtonText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  
+  // Location Marker Styles
+  locationMarker: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#3b82f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "white",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  locationButtonLoading: {
-    backgroundColor: '#9ca3af',
-  },
-  locationButtonWithSelection: {
-    bottom: 120, // Move up when bin details are shown
-  },
-  locationButtonText: {
-    fontSize: 24,
-  },
-  // Selected bin styles
-  selectedBinContainer: {
-    position: 'absolute',
-    bottom: 100,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 12,
-    padding: 16,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 5,
   },
-  selectedBinContent: {
-    alignItems: 'center',
-  },
-  selectedBinTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  selectedBinInfo: {
+  markerText: {
+    color: "white",
+    fontWeight: "bold",
     fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 2,
   },
-  selectedBinButtons: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 8,
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  detailsButton: {
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  modalContainer: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    width: "90%",
+    maxHeight: "80%",
+    padding: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  modalHeaderButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 6,
+    backgroundColor: "#4caf50",
+    marginRight: 10,
   },
-  detailsButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '500',
+  editButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
   },
   closeButton: {
-    backgroundColor: '#6b7280',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
+    padding: 4,
   },
   closeButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#666",
   },
-  // New marker styles
-  binMarker: {
-    backgroundColor: '#10b981', // Green color for bins
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 35,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
-    borderWidth: 2,
-    borderColor: 'white',
+
+  // Fill Level Section
+  fillLevelSection: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
   },
-  binMarkerText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 12,
+  fillLevelLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 10,
   },
-  janitorMarker: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#3b82f6', // Blue color for janitor
-    borderWidth: 3,
-    borderColor: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
+  fillLevelContainer: {
+    alignItems: "center",
   },
-  janitorMarkerInner: {
+  fillLevelPercentage: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
+  },
+  modalProgressBar: {
+    height: 12,
+    borderRadius: 6,
+    width: "100%",
+    backgroundColor: "#e0e0e0",
+  },
+
+  // Status Section
+  statusSection: {
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  statusRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  statusLabel: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  statusValue: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "600",
+  },
+  gpsStatusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  gpsStatusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'white',
+    marginRight: 6,
+  },
+  gpsStatusText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  // Time Logs Section
+  timeLogsSection: {
+    padding: 20,
+  },
+  timeLogsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 15,
+  },
+  timeLogsContainer: {
+    maxHeight: 200,
+  },
+  timeLogRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  timeLogLabel: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  timeLogValue: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "600",
   },
 });

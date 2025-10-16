@@ -1,4 +1,3 @@
-import React from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 import { Platform, StatusBar, useColorScheme, useWindowDimensions } from "react-native";
@@ -24,7 +23,7 @@ export default function TabLayout() {
   // --- Sizes (↑ height a bit; ↓ padding so text fits cleanly)
   const barHeight = compact ? 68 : medium ? 70 : 74; // was 64/66/70
   const barRadius = compact ? 18 : medium ? 20 : 22;
-  const iconSize = compact ? 18 : medium ? 20 : 20; // your sizes
+  const iconSize = compact ? 10 : medium ? 18 : 18; // your sizes
   const labelFontSize = compact ? 10 : medium ? 10 : 11; // a touch smaller for fit
 
   // lineHeight to prevent clipping; slight headroom
@@ -130,10 +129,10 @@ export default function TabLayout() {
         <Tabs.Screen
           name="schedule"
           options={{
-            tabBarLabel: "Activity",
-            title: "Activity",
+            tabBarLabel: "Schedule",
+            title: "Schedule",
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? "time" : "time-outline"} color={color} size={iconSize} />
+              <Ionicons name={focused ? "calendar" : "calendar-outline"} color={color} size={iconSize} />
             ),
           }}
         />

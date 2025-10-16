@@ -1,43 +1,56 @@
-import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from "react-native";
-import { useNotificationBadge } from "@/hooks/useNotificationBadge";
-import { useAccount } from "@/contexts/AccountContext";
-
+import { useNotifications } from "@/hooks/useNotifications";
+import { useProfile } from "@/hooks/useProfile";
 interface HeaderProps {
   showIcons?: boolean;
   style?: ViewStyle;
 }
 
-const Header = ({ showIcons = true, style }: HeaderProps) => {
+const Header: React.FC<HeaderProps> = ({ showIcons = true, style }) => {
   const router = useRouter();
-  const { account } = useAccount();
-  const { badgeData } = useNotificationBadge(account?.id);
+  const { getUnreadCount, notifications, loading } = useNotifications();
+  const { getProfileImageUrl, getUserInitials } = useProfile();
+  const unreadCount = getUnreadCount();
+  
+  const profileImageUrl = getProfileImageUrl();
+  const userInitials = getUserInitials();
 
   return (
     <View style={[styles.headerContainer, style]}>
       <Image source={require("@/assets/icon/logo-final2.png")} style={styles.logo} resizeMode="contain" />
 
       {/* Centered Text */}
-      <Text style={styles.centerText}>ECOBIN</Text>
+      <Text style={styles.centerText}>Ecobin</Text>
 
       {/* Icons (right-aligned) */}
       {showIcons && (
         <View style={styles.iconContainer}>
-          <TouchableOpacity onPress={() => router.push("/screens/notification")} style={styles.notificationButton}>
+          <TouchableOpacity onPress={() => router.push("/notifications")} style={styles.notificationButton}>
             <Ionicons name="notifications-outline" size={24} color="#000" />
-            {badgeData.hasNotifications && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {badgeData.unreadCount > 99 ? '99+' : badgeData.unreadCount}
+            {loading ? (
+              <View style={styles.loadingBadge}>
+                <Text style={styles.loadingBadgeText}>...</Text>
+              </View>
+            ) : unreadCount > 0 ? (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
                 </Text>
               </View>
-            )}
+            ) : null}
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => router.push("/(tabs)/settings")}>
-            <Ionicons name="person-circle-outline" size={26} color="#000" />
+            {profileImageUrl ? (
+              <Image source={{ uri: profileImageUrl }} style={styles.profileImage} />
+            ) : (
+              <View style={styles.profilePlaceholder}>
+                <Text style={styles.profileInitials}>{userInitials}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       )}
@@ -67,33 +80,66 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    top: 10,
     textAlign: "center",
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "600",
     color: "#000",
   },
   notificationButton: {
     position: "relative",
   },
-  badge: {
+  notificationBadge: {
     position: "absolute",
     top: -8,
     right: -8,
-    backgroundColor: "#FF4444",
+    backgroundColor: "#f44336",
     borderRadius: 10,
     minWidth: 20,
     height: 20,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
+    paddingHorizontal: 4,
   },
-  badgeText: {
+  notificationBadgeText: {
     color: "#fff",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+  loadingBadge: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: "#ff9800",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  loadingBadgeText: {
+    color: "#fff",
+    fontSize: 8,
+    fontWeight: "bold",
+  },
+  profileImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#ccc",
+  },
+  profilePlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#2e7d32",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profileInitials: {
     fontSize: 12,
     fontWeight: "bold",
-    textAlign: "center",
+    color: "#fff",
   },
 });
 

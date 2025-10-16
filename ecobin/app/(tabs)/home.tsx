@@ -1,634 +1,400 @@
-// app/(tabs)/home.tsx
-import React, { useCallback } from "react";
 import Header from "@/components/Header";
-import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { RootStackParamList } from "@/types/navigation";
 import { Ionicons } from "@expo/vector-icons";
-
-import { useRealTimeData } from "../../contexts/RealTimeDataContext";
-import { ProgressBar } from "react-native-paper";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
-import axiosInstance from "../../utils/axiosInstance";
-import { useAccount } from "../../contexts/AccountContext";
-import PickupWorkflowModal from "@/components/PickupWorkflowModal";
-import { safeTextRenderers } from "../../utils/textErrorHandler";
+import React, { useState, useEffect } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import apiClient from "@/utils/apiConfig";
+import { useAuth } from "@/hooks/useAuth";
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, "Home">;
+
+interface ActivityLog {
+  id: string;
+  bin_id: string;
+  bin_location: string;
+  bin_level: number;
+  activity_type: string;
+  task_note?: string;
+  assigned_janitor_id?: string;
+  assigned_janitor_name?: string;
+  status: string;
+  priority: string;
+  created_at: string;
+  updated_at: string;
+}
 
 export default function HomeScreen() {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const router = useRouter();
-  const { wasteBins, loading, error, isGPSValid, getSafeCoordinates } = useRealTimeData();
-  const { account, loading: accountLoading } = useAccount();
+  const { user } = useAuth();
+  const [selectedLocation, setSelectedLocation] = React.useState<string | null>(null);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [allActivityLogs, setAllActivityLogs] = useState<ActivityLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Pickup modal state - MOVED TO TOP to avoid hooks after early return
-  const [pickupModalVisible, setPickupModalVisible] = useState(false);
-  const [alertedBins, setAlertedBins] = useState<Set<string>>(new Set());
-
-  // Activity logs from backend - MOVED TO TOP to avoid hooks after early return
-  // Initialize with empty array and ensure it's never undefined
-  const [logs, setLogs] = useState<any[]>([]);
-
-  // Get bin1 data - MOVED TO TOP to avoid issues with alertBin
-  const centralPlazaRealTimeBins = (wasteBins || []).filter(
-    (bin) => bin && bin.location && bin.location.toLowerCase().includes("central") && typeof bin.level === "number"
-  );
-  const bin1 = centralPlazaRealTimeBins.find((bin) => bin.id === "bin1");
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!accountLoading && !account) {
-      console.log(" Mobile App - Not authenticated, redirecting to login");
-      router.replace("/(auth)/login");
+  // Fetch activity logs for the logged-in user
+  const fetchActivityLogs = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
     }
-  }, [account, accountLoading]);
-
-  // Fetch activity logs function - MEMOIZED to prevent infinite re-renders
-  const fetchActivityLogs = useCallback(async () => {
-    if (!account?.id) return;
 
     try {
-      console.log("📱 Mobile App - Fetching activity logs for user:", account.email, "ID:", account.id);
-
-      // Get all activity logs from the server
-      const response = await axiosInstance.get('/api/activitylogs');
-      console.log("📱 Mobile App - Raw API response:", response.data);
+      setLoading(true);
+      const response = await apiClient.get('/api/activitylogs');
       
-      const allActivities = response.data?.activities || [];
-      console.log("📱 Mobile App - Extracted activities:", allActivities);
-      
-      console.log("📱 Mobile App - Total activities from server:", allActivities.length);
-      
-      // Filter activities based on status and assignment
-      const filteredActivities = allActivities.filter((activity: any) => {
-        // Show all pending tasks to all janitors (no assigned janitor)
-        if (activity.status === 'pending' && !activity.assigned_janitor_id) {
-          console.log("📱 Mobile App - Including pending task:", activity.id, "for all janitors");
-          return true;
-        }
-        
-        // Show in-progress and done tasks only to assigned janitor
-        if ((activity.status === 'in_progress' || activity.status === 'done') && 
-            activity.assigned_janitor_id === account.id) {
-          console.log("📱 Mobile App - Including assigned task:", activity.id, "for user:", account.id);
-          return true;
-        }
-        
-        return false;
-      });
-      
-      console.log("📱 Mobile App - Filtered activities count:", filteredActivities.length);
-      
-      // Debug: Log all activities for analysis (only in development)
-      if (__DEV__ && allActivities.length > 0) {
-        console.log(`📱 Mobile App - All ${allActivities.length} activities:`, 
-          allActivities.map((activity: any) => ({
-            id: activity.id,
-            bin_id: activity.bin_id,
-            status: activity.status,
-            assigned_janitor_id: activity.assigned_janitor_id,
-          }))
+      if (response.data && response.data.activities) {
+        // Filter logs assigned to the current user and only show in_progress status
+        const userLogs = response.data.activities.filter((log: ActivityLog) => 
+          log.assigned_janitor_id === user.id && 
+          log.status === 'in_progress'
         );
+        
+        // Sort by creation date (newest first)
+        const sortedLogs = userLogs.sort((a: ActivityLog, b: ActivityLog) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        
+        // Store all logs and show only latest 3 on home
+        setAllActivityLogs(sortedLogs);
+        setActivityLogs(sortedLogs.slice(0, 3));
+        setError(null);
       }
-
-      // Update state with filtered activities (only show relevant ones)
-      // Ensure we never set logs to undefined - double safety check
-      const safeFilteredActivities = Array.isArray(filteredActivities) ? filteredActivities : [];
-      setLogs(safeFilteredActivities);
-
-      console.log(`📱 Mobile App - Found ${filteredActivities.length} filtered activity logs for ${account.email}`);
-    } catch (err) {
-      console.error("📱 Mobile App - Failed to fetch activity logs:", err);
-      setLogs([]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch activity logs');
+      setActivityLogs([]);
+    } finally {
+      setLoading(false);
     }
-  }, [account?.id, account?.email]);
+  };
 
-  // Fetch activity logs on component mount
+  // Fetch activity logs when component mounts or user changes
   useEffect(() => {
-    fetchActivityLogs();
-  }, [fetchActivityLogs]);
-
-  // Refresh activity logs when screen comes back into focus
-  useFocusEffect(
-    useCallback(() => {
-      console.log("📱 Mobile App - Screen focused, refreshing activity logs...");
-      if (account?.id) {
-        fetchActivityLogs();
-      }
-    }, [fetchActivityLogs, account?.id])
-  );
-
-  // Bin alert effect - FIXED to prevent infinite loops
-  useEffect(() => {
-    // Only run this effect after authentication is loaded
-    if (accountLoading) return;
-
-    // Debug logging only in development
-    if (__DEV__) {
-      console.log("🔍 DEBUG - Checking bin alert logic:");
-      console.log("🔍 DEBUG - wasteBins:", wasteBins);
-      console.log("🔍 DEBUG - wasteBins length:", wasteBins?.length);
-      console.log("🔍 DEBUG - centralPlazaRealTimeBins:", centralPlazaRealTimeBins);
-      console.log("🔍 DEBUG - bin1 found:", bin1);
-      console.log("🔍 DEBUG - bin1 level:", bin1?.level);
-      console.log("🔍 DEBUG - bin1 binData:", bin1?.binData);
-      console.log("🔍 DEBUG - alertedBins:", Array.from(alertedBins));
-      console.log("🔍 DEBUG - pickupModalVisible:", pickupModalVisible);
+    if (user) {
+      fetchActivityLogs();
     }
+  }, [user]);
 
-    if (!bin1 || typeof bin1.level !== "number") {
-      if (__DEV__) {
-        console.log("🔍 DEBUG - No valid bin1 found or level not a number");
-      }
-      return;
+  const getBadgeStyle = (status: string, activityType: string) => {
+    if (status === 'done') {
+      return styles.badgeEmptied; // Green for completed tasks
+    } else if (status === 'in_progress') {
+      return styles.badgePickup; // Yellow for in-progress tasks
+    } else if (activityType === 'task_assignment') {
+      return styles.badgeLogin; // Blue for task assignments
     }
+    return styles.badgeLogin; // Default
+  };
 
-    // Don't show alert if modal is already visible
-    if (pickupModalVisible) {
-      if (__DEV__) {
-        console.log("🔍 DEBUG - Pickup modal already visible, skipping alert logic");
-      }
-      return;
-    }
+  const formatActivityMessage = (log: ActivityLog) => {
+    // Since we only show in_progress tasks, always show "Working on"
+    return `Working on ${log.bin_id}`;
+  };
 
-    // Use functional state updates to avoid dependency on alertedBins
-    if (bin1.level >= 85) {
-      setAlertedBins((prev) => {
-        if (!prev.has("bin1")) {
-          if (__DEV__) {
-            console.log(`🚨 BIN1 CRITICAL: ${bin1.level}% - SHOWING PICKUP WORKFLOW MODAL`);
-          }
-          setPickupModalVisible(true);
-          return new Set([...prev, "bin1"]);
-        }
-        return prev;
-      });
-    } else if (bin1.level < 85) {
-      setAlertedBins((prev) => {
-        if (prev.has("bin1")) {
-          if (__DEV__) {
-            console.log(`🔍 DEBUG - Bin1 level ${bin1.level}% is below 85%, removing from alerted bins`);
-          }
-          const newSet = new Set(prev);
-          newSet.delete("bin1");
-          return newSet;
-        }
-        return prev;
-      });
+  const formatActivityTime = (createdAt: string) => {
+    const now = new Date();
+    const logDate = new Date(createdAt);
+    const diffInHours = Math.floor((now.getTime() - logDate.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
     } else {
-      if (__DEV__) {
-        console.log(`🔍 DEBUG - Bin1 level ${bin1.level}%, already alerted: ${alertedBins.has("bin1")}`);
-      }
-    }
-  }, [accountLoading, wasteBins, bin1, pickupModalVisible]); // REMOVED alertedBins from dependencies
-
-  // Show loading while checking authentication
-  if (accountLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Checking authentication...</Text>
-      </View>
-    );
-  }
-
-  // Static locations (except Central Plaza, which is real-time)
-  const staticLocations = [
-    { id: "central-plaza", name: "Central Plaza" },
-    { id: "park-avenue", name: "Park Avenue", bins: [30, 40, 55, 60], lastCollected: "1 day ago" },
-    { id: "mall-district", name: "Mall District", bins: [90, 95, 85, 100], lastCollected: "4 hours ago" },
-    { id: "residential-area", name: "Residential Area", bins: [45, 60, 50, 70], lastCollected: "6 hours ago" },
-  ];
-
-  // Central Plaza - 1 real-time bin + 3 static bins (centralPlazaRealTimeBins already defined at top)
-
-  // Static bins for Central Plaza (3 additional bins)
-  const centralPlazaStaticBins = [
-    { level: 45, lastCollected: "2 hours ago", id: "central-static-1" },
-    { level: 78, lastCollected: "1 hour ago", id: "central-static-2" },
-    { level: 32, lastCollected: "3 hours ago", id: "central-static-3" },
-  ];
-
-  // Combine real-time and static bins
-  const allCentralPlazaBins = [...centralPlazaRealTimeBins, ...centralPlazaStaticBins];
-
-  const centralPlazaLevels = allCentralPlazaBins
-    .filter((bin) => bin && typeof bin.level === "number")
-    .map((bin) => bin.level);
-  const centralPlazaAvg =
-    Array.isArray(centralPlazaLevels) && centralPlazaLevels.length > 0 ? centralPlazaLevels.reduce((s, v) => s + v, 0) / centralPlazaLevels.length : 0;
-  const centralPlazaNearlyFull = Array.isArray(centralPlazaLevels) ? centralPlazaLevels.filter((v) => v >= 80).length : 0;
-  const centralPlazaLastCollected = Array.isArray(allCentralPlazaBins) && allCentralPlazaBins.length > 0 ? allCentralPlazaBins[0].lastCollected : "Unknown";
-
-  // Pickup modal handler
-  const handlePickupRequest = () => {
-    setPickupModalVisible(true);
-  };
-
-  // Pickup modal handlers
-  const handlePickupConfirm = () => {
-    setPickupModalVisible(false);
-    // Reset the alerted bins when pickup is completed
-    setAlertedBins((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete("bin1");
-      return newSet;
-    });
-    // Additional logic for pickup confirmation can be added here
-  };
-
-  const handleAcknowledge = () => {
-    setPickupModalVisible(false);
-    // Don't reset alerted bins when modal is closed without completion
-    // This allows the alert to show again if bin level is still high
-    // Additional logic for acknowledgment can be added here
-  };
-
-  // Get bin1 for alerts - bin1 is already defined at the top
-  const alertBin = bin1;
-
-  // Map backend fields to UI-expected fields - SAFE: Check if logs exists before mapping
-  const mappedLogs = (logs || []).map((log) => ({
-    ...log,
-    type: log.activity_type || "task_assignment",
-    message: log.task_note && log.task_note.trim() !== "" ? log.task_note : `Task for bin ${log.bin_id}`,
-    bin: log.bin_id,
-    location: log.bin_location,
-    time: log.time,
-    date: log.date,
-    // Apply proper status logic: completed > in_progress > pending
-    status: (() => {
-      const hasProof = log.status === "done" || log.completed_at || log.proof_image || (log.photos && log.photos.length > 0);
-      const hasJanitor = log.assigned_janitor_id;
-
-      // Debug logging only in development
-      if (__DEV__) {
-        console.log("🔍 Homepage Status Debug:", {
-          bin_id: log.bin_id,
-          original_status: log.status,
-          assigned_janitor_id: log.assigned_janitor_id,
-          hasProof,
-          hasJanitor,
-          completed_at: log.completed_at,
-          proof_image: log.proof_image,
-          photos_length: log.photos?.length || 0,
-        });
-      }
-
-      if (hasProof) {
-        if (__DEV__) {
-          console.log("✅ Status: done (has proof)");
-        }
-        return "done"; // Task is completed (has proof)
-      } else if (hasJanitor) {
-        if (__DEV__) {
-          console.log("🔄 Status: in_progress (janitor assigned)");
-        }
-        return "in_progress"; // Janitor assigned but not completed
-      } else {
-        if (__DEV__) {
-          console.log("⏳ Status: pending (no janitor)");
-        }
-        return "pending"; // No janitor assigned
-      }
-    })(),
-  }));
-
-  // Filter and sort activity logs
-  const filteredAndSortedLogs = mappedLogs
-    .filter((log) => {
-      // Show pending tasks to all janitors (unassigned)
-      if (log.status === "pending" && !log.assigned_janitor_id) {
-        // Debug logging removed to prevent infinite loops
-        return true;
-      }
-      
-      // Show in_progress tasks only to assigned janitor
-      if (log.status === "in_progress" && log.assigned_janitor_id === account?.id) {
-        // Debug logging removed to prevent infinite loops
-        return true;
-      }
-      
-      // Debug logging removed to prevent infinite loops
-      return false;
-    }) // Only show pending (unassigned) and in_progress (assigned to me)
-    .sort((a, b) => {
-      // First sort by status: pending first, then in_progress
-      if (a.status !== b.status) {
-        if (a.status === "pending" && b.status === "in_progress") return -1;
-        if (a.status === "in_progress" && b.status === "pending") return 1;
-      }
-
-      // Then sort by date: most recent first
-      const dateA = new Date(a.created_at || a.timestamp || 0);
-      const dateB = new Date(b.created_at || b.timestamp || 0);
-      return dateB.getTime() - dateA.getTime();
-    });
-
-  // Only log when data actually changes to prevent infinite logging
-  useEffect(() => {
-    if (__DEV__ && Array.isArray(filteredAndSortedLogs) && filteredAndSortedLogs.length > 0) {
-      console.log("📊 Homepage Filtered Logs:", {
-        total: Array.isArray(mappedLogs) ? mappedLogs.length : 0,
-        filtered: filteredAndSortedLogs.length,
-        logs: filteredAndSortedLogs.map((log) => ({
-          bin_id: log.bin_id,
-          status: log.status,
-          assigned_janitor_id: log.assigned_janitor_id,
-        })),
+      return logDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
       });
     }
-  }, [mappedLogs.length, filteredAndSortedLogs.length]);
-
-  const getStatusColor = (val: number) => {
-    if (val >= 90) return "#f44336";
-    if (val >= 60) return "#ff9800";
-    return "#4caf50";
   };
 
-  const getBadgeStyle = (type: string) => {
-    switch (type) {
-      case "login":
-        return styles.badgeLogin;
-      case "pickup":
-        return styles.badgePickup;
-      case "emptied":
-        return styles.badgeEmptied;
-      case "error":
-        return styles.badgeError;
-      default:
-        return styles.badgeDefault;
-    }
+  // Updated data structure - only 4 locations in overview
+  const locationData = [
+    {
+      name: "Central Plaza",
+      overallLevel: 50,
+      status: "normal",
+      lastCollected: "55 min ago",
+      nearlyFullCount: 1, // Only Bin 3 is at 90% (nearly full)
+      totalBins: 4,
+      bins: [
+        { id: "Bin 1", level: 0, status: "normal", capacity: "500L", type: "Mixed", lastCollected: "55 min ago", nextCollection: "Tomorrow 9:00 AM" },
+        { id: "Bin 2", level: 60, status: "warning", capacity: "450L", type: "Organic", lastCollected: "3 hours ago", nextCollection: "Today 4:30 PM" },
+        { id: "Bin 3", level: 90, status: "critical", capacity: "600L", type: "Recyclable", lastCollected: "1 hour ago", nextCollection: "Today 5:30 PM" },
+        { id: "Bin 4", level: 50, status: "normal", capacity: "550L", type: "Mixed", lastCollected: "5 hours ago", nextCollection: "Today 6:00 PM" },
+      ]
+    },
+    {
+      name: "Park Avenue",
+      overallLevel: 46,
+      status: "normal",
+      lastCollected: "1 day ago",
+      nearlyFullCount: 2, // Bin 6 at 70% and Bin 7 at 95% (nearly full)
+      totalBins: 4,
+      bins: [
+        { id: "Bin 5", level: 46, status: "normal", capacity: "300L", type: "Mixed", lastCollected: "1 day ago", nextCollection: "Tomorrow 10:00 AM" },
+        { id: "Bin 6", level: 20, status: "normal", capacity: "250L", type: "Paper", lastCollected: "2 days ago", nextCollection: "Tomorrow 11:00 AM" },
+        { id: "Bin 7", level: 70, status: "warning", capacity: "400L", type: "Plastic", lastCollected: "1 day ago", nextCollection: "Today 3:00 PM" },
+        { id: "Bin 8", level: 95, status: "critical", capacity: "350L", type: "Glass", lastCollected: "1 day ago", nextCollection: "Today 2:00 PM" },
+      ]
+    },
+    {
+      name: "Mall District",
+      overallLevel: 93,
+      status: "critical",
+      lastCollected: "4 hours ago",
+      nearlyFullCount: 4, // All bins are nearly full (85%+)
+      totalBins: 4,
+      bins: [
+        { id: "Bin 9", level: 93, status: "critical", capacity: "700L", type: "Mixed", lastCollected: "4 hours ago", nextCollection: "Today 1:00 PM" },
+        { id: "Bin 10", level: 98, status: "critical", capacity: "650L", type: "Organic", lastCollected: "4 hours ago", nextCollection: "Today 1:00 PM" },
+        { id: "Bin 11", level: 85, status: "critical", capacity: "500L", type: "Recyclable", lastCollected: "4 hours ago", nextCollection: "Today 1:00 PM" },
+        { id: "Bin 12", level: 90, status: "critical", capacity: "550L", type: "Plastic", lastCollected: "4 hours ago", nextCollection: "Today 1:00 PM" },
+      ]
+    },
+    {
+      name: "Residential Area",
+      overallLevel: 35,
+      status: "normal",
+      lastCollected: "2 hours ago",
+      nearlyFullCount: 0,
+      totalBins: 3,
+      bins: [
+        { id: "Bin 13", level: 20, status: "normal", capacity: "300L", type: "Mixed", lastCollected: "2 hours ago", nextCollection: "Tomorrow 8:00 AM" },
+        { id: "Bin 14", level: 45, status: "normal", capacity: "250L", type: "Organic", lastCollected: "3 hours ago", nextCollection: "Tomorrow 9:00 AM" },
+        { id: "Bin 15", level: 40, status: "normal", capacity: "400L", type: "Recyclable", lastCollected: "4 hours ago", nextCollection: "Tomorrow 10:00 AM" },
+      ]
+    },
+  ];
+
+  const getFillColor = (level: number) => {
+    if (level <= 50) return "#4caf50";
+    if (level <= 80) return "#ff9800";
+    return "#f44336";
   };
 
-  const getStatusBadgeStyle = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case "done":
-        return styles.statusDone;
-      case "in_progress":
-        return styles.statusInProgress;
-      case "cancelled":
-        return styles.statusCancelled;
-      case "pending":
-      default:
-        return styles.statusPending;
+      case "normal": return "#4caf50";
+      case "warning": return "#ff9800";
+      case "critical": return "#f44336";
+      default: return "#4caf50";
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "done":
-        return "checkmark-circle";
-      case "in_progress":
-        return "time";
-      case "cancelled":
-        return "close-circle";
-      case "pending":
-      default:
-        return "hourglass";
-    }
+  const handleLocationPress = (locationName: string) => {
+    // Navigate to location bins page
+    router.push({
+      pathname: "/location-bins",
+      params: {
+        locationName,
+        locationData: JSON.stringify(locationData.find(loc => loc.name === locationName))
+      },
+    });
+  };
+
+  const handleBinPress = (binId: string, locationName: string) => {
+    router.push({
+      pathname: "/home/bin-details",
+      params: {
+        binId,
+        location: locationName,
+        logs: JSON.stringify(activityLogs),
+      },
+    });
   };
 
   return (
-    <>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
-        <View style={styles.header}>
-          <Header />
-        </View>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
+      <View style={styles.header}>
+        <Header />
+      </View>
 
-        {/* GPS Status Indicator */}
-        {!isGPSValid() && (
-          <View style={styles.gpsStatusContainer}>
-            <Text style={styles.gpsStatusText}>🛰️ GPS Not Connected</Text>
-            <Text style={styles.gpsStatusSubText}>Real-time bin locations will appear when GPS is available</Text>
-          </View>
-        )}
-
-        <Text style={styles.sectionTitle}>Bin Locations</Text>
-        {/* Central Plaza (real-time) */}
-        <TouchableOpacity
-          key="central-plaza"
-          style={styles.locationCard}
-          onPress={() =>
-            router.push({
-              pathname: "/home/binlocation",
-              params: { id: "central-plaza" },
-            })
-          }
-        >
-          <View style={styles.topRow}>
-            <Text style={styles.locationName}>Central Plaza</Text>
-            <View style={styles.badgeContainer}>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(centralPlazaAvg) }]}>
-                <Text style={styles.badgeText}>
-                  {centralPlazaAvg >= 90 ? "critical" : centralPlazaAvg >= 60 ? "warning" : "normal"}
+      <Text style={styles.sectionTitle}>Location Overview</Text>
+      
+      {/* Location Cards - Vertical Layout */}
+      <View style={styles.locationContainer}>
+        {locationData.map((location, index) => (
+          <TouchableOpacity 
+            key={index} 
+            onPress={() => handleLocationPress(location.name)} 
+            style={styles.locationCard}
+          >
+            <View style={styles.locationHeader}>
+              <Text style={styles.locationName}>{location.name}</Text>
+              <View style={styles.statusBadge}>
+                <Text style={[styles.statusLabel, { color: getStatusColor(location.status) }]}>
+                  {location.status}
                 </Text>
               </View>
-              {!isGPSValid() && (
-                <View style={[styles.statusBadge, { backgroundColor: "#f44336" }]}>
-                  <Text style={styles.badgeText}>GPS Offline</Text>
-                </View>
-              )}
-            </View>
           </View>
-          <Text style={styles.percentText}>{Math.round(centralPlazaAvg)}%</Text>
-          <ProgressBar
-            progress={centralPlazaAvg / 100}
-            color={getStatusColor(centralPlazaAvg)}
-            style={styles.progress}
-          />
-          <Text style={styles.subText}>
-            Nearly full bins: {centralPlazaNearlyFull} / {Array.isArray(centralPlazaLevels) ? centralPlazaLevels.length : 0}
-          </Text>
-          <Text style={styles.subText}>Last collected: {centralPlazaLastCollected}</Text>
-        </TouchableOpacity>
-
-        {/* Other locations (static) */}
-        {staticLocations.slice(1).map((loc) => {
-          // Robust checks for missing bins and lastCollected
-          const bins = Array.isArray(loc.bins) ? loc.bins : [];
-          const avg = bins.length > 0 ? bins.reduce((s, v) => s + v, 0) / bins.length : 0;
-          const nearlyFull = bins.filter((v) => v >= 80).length;
-          const lastCollected = typeof loc.lastCollected === "string" ? loc.lastCollected : "Unknown";
-          return (
-            <TouchableOpacity
-              key={loc.id}
-              style={styles.locationCard}
-              onPress={() =>
-                router.push({
-                  pathname: "/home/binlocation",
-                  params: { id: loc.id },
-                })
-              }
-            >
-              <View style={styles.topRow}>
-                <Text style={styles.locationName}>{loc.name}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(avg) }]}>
-                  <Text style={styles.badgeText}>{avg >= 90 ? "critical" : avg >= 60 ? "warning" : "normal"}</Text>
-                </View>
-              </View>
-              <Text style={styles.percentText}>{Math.round(avg)}%</Text>
-              <ProgressBar progress={avg / 100} color={getStatusColor(avg)} style={styles.progress} />
-              <Text style={styles.subText}>
-                Nearly full bins: {nearlyFull} / {bins.length}
+            
+            <Text style={styles.locationLevel}>{location.overallLevel}%</Text>
+            
+          <View style={styles.progressBarContainer}>
+            <View
+              style={[
+                styles.progressBarFill,
+                {
+                    width: `${location.overallLevel}%`,
+                    backgroundColor: getFillColor(location.overallLevel),
+                },
+              ]}
+            />
+          </View>
+            
+            <View style={styles.locationFooter}>
+              <Text style={styles.lastCollectedText}>Last collected {location.lastCollected}</Text>
+              <Text style={styles.nearlyFullText}>
+                {location.nearlyFullCount} nearly full bins
               </Text>
-              <Text style={styles.subText}>Last collected: {lastCollected}</Text>
-            </TouchableOpacity>
-          );
-        })}
-        <View style={styles.activityHeader}>
-          <View style={styles.activityTitleRow}>
-            <Text style={styles.sectionTitle}>Activity Logs</Text>
-            <TouchableOpacity
-              onPress={() => {
-                // Use the memoized fetchActivityLogs function
-                fetchActivityLogs();
-              }}
-              style={styles.refreshButton}
-            >
-              <Ionicons name="refresh" size={20} color="#2e7d32" />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity onPress={() => router.push("/home/activity-logs")}>
+            </View>
+        </TouchableOpacity>
+      ))}
+      </View>
+
+      <View style={styles.activityHeader}>
+        <Text style={styles.sectionTitle}>Current Tasks</Text>
+        {allActivityLogs.length > 0 && (
+          <TouchableOpacity onPress={() => {
+            console.log('Navigating to activity logs, current logs:', allActivityLogs.length);
+            router.push("/activity-logs");
+          }}>
             <Text style={styles.seeAllText}>See All</Text>
           </TouchableOpacity>
+        )}
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color="#2e7d32" />
+          <Text style={styles.loadingText}>Loading current tasks...</Text>
         </View>
-        {filteredAndSortedLogs.slice(0, 3).map((log, i) => (
-          <TouchableOpacity
-            key={i}
-            onPress={() =>
-              router.push({
-                pathname: "/home/activity-details",
-                params: {
-                  binId: log.bin ?? "N/A",
-                  activityLog: JSON.stringify(log),
-                  isReadOnly: log.status === "done" ? "true" : "false",
-                },
-              })
-            }
-          >
-            <View style={styles.logCard}>
-              {/* Title row with status and type badges */}
-              <View style={styles.logTitleRow}>
-                <Text style={styles.logTitle}>{safeTextRenderers.binTitle(log.bin)}</Text>
-                <View style={{ flex: 1 }} />
-                <View style={styles.badgeContainer}>
-                  <View style={[styles.statusBadge, getStatusBadgeStyle(log.status)]}>
-                    <Ionicons
-                      name={getStatusIcon(log.status) as any}
-                      size={12}
-                      color="#fff"
-                      style={styles.statusIcon}
-                    />
-                    <Text style={styles.statusText}>{safeTextRenderers.statusText(log.status)}</Text>
-                  </View>
-                  <View style={[styles.typeBadge, getBadgeStyle(log.type)]}>
-                    <Text style={styles.badgeText}>{safeTextRenderers.typeText(log.type)}</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Message */}
-              <View style={styles.logMsgRow}>
-                <Text style={styles.logMessage}>{safeTextRenderers.messageText(log.message)}</Text>
-              </View>
-
-              {/* Location and Time details */}
-              <View style={styles.logDetailsRow}>
-                <View style={styles.detailItem}>
-                  <Ionicons name="location-outline" size={14} color="#666" />
-                  <Text style={styles.logSubtext}>{safeTextRenderers.locationText(log.location)}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Ionicons name="time-outline" size={14} color="#666" />
-                  <Text style={styles.logTime}>{safeTextRenderers.timeText(log.date, log.time)}</Text>
-                </View>
-              </View>
-            </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load activity logs</Text>
+          <TouchableOpacity onPress={fetchActivityLogs} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        </View>
+      ) : activityLogs.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No current tasks</Text>
+          <Text style={styles.emptySubtext}>You don't have any tasks in progress right now</Text>
+        </View>
+      ) : (
+        activityLogs.map((log, index) => (
+          <View key={log.id} style={styles.logCard}>
+          <View style={styles.logTextContainer}>
+              <Text style={styles.logMessage}>{formatActivityMessage(log)}</Text>
+            <Text style={styles.logTime}>
+                {formatActivityTime(log.created_at)}
+            </Text>
+              <Text style={styles.logSubtext}>
+                📍 {log.bin_id} – {log.bin_location}
+              </Text>
+          </View>
 
-      {/* Pickup Workflow Modal */}
-      <PickupWorkflowModal
-        visible={pickupModalVisible}
-        onClose={handleAcknowledge}
-        binData={alertBin}
-        onPickupComplete={handlePickupConfirm}
-        onAcknowledge={handleAcknowledge}
-      />
-    </>
+          <View style={styles.rightColumn}>
+              <View style={[styles.typeBadge, getBadgeStyle(log.status, log.activity_type)]}>
+                <Text style={styles.badgeText}>
+                  IN PROGRESS
+                </Text>
+            </View>
+          </View>
+        </View>
+        ))
+      )}
+
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", paddingHorizontal: 20, paddingTop: 16, marginBottom: 90 },
-  header: { marginTop: 44, marginBottom: 10 },
-  sectionTitle: { fontSize: 20, fontWeight: "600", marginBottom: 15, color: "#000" },
-
-  // Location cards
-  locationCard: {
-    backgroundColor: "#fafafa",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    elevation: 2,
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
-  topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  locationName: { fontSize: 16, fontWeight: "600", color: "#333" },
-  percentText: { fontSize: 22, fontWeight: "700", color: "#000", marginTop: 8 },
-  progress: { height: 6, borderRadius: 6, marginVertical: 6 },
-  subText: { fontSize: 12, color: "#555" },
-
-  // Logs
+  header: {
+    marginTop: 44,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 10,
+    color: "#000",
+  },
+  card: {
+    backgroundColor: "#f0f4f0",
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  cardHeader: {
+    marginBottom: 6,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  cardSub: {
+    fontSize: 13,
+    color: "#666",
+  },
+  progressBarContainer: {
+    height: 10,
+    backgroundColor: "#ddd",
+    borderRadius: 6,
+    overflow: "hidden",
+    marginVertical: 8,
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 6,
+  },
+  cardValue: {
+    fontSize: 13,
+    color: "#333",
+  },
   activityHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 10,
-    marginTop: 20,
   },
-  activityTitleRow: { flexDirection: "row", alignItems: "center" },
-  refreshButton: {
-    marginLeft: 10,
-    padding: 5,
-    borderRadius: 15,
-    backgroundColor: "#f0f8f0",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
+  seeAllText: {
+    color: "#2e7d32",
+    fontWeight: "500",
+    fontSize: 13,
+    marginTop: 2,
   },
-  seeAllText: { color: "#2e7d32", fontWeight: "500", fontSize: 13, marginTop: 2 },
   logCard: {
-    flexDirection: "column",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderRadius: 10,
     padding: 14,
     marginBottom: 12,
-    backgroundColor: "#fafafa",
-    borderWidth: 1,
-    borderColor: "#ddd",
+    backgroundColor: "#f4f4f4",
   },
-  logTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  logTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 2,
-  },
-  logMsgRow: {
-    marginBottom: 8,
+  logTextContainer: {
+    flex: 1,
+    paddingRight: 10,
   },
   logMessage: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: "#333",
-  },
-  logLocTimeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 2,
   },
   logTime: {
     fontSize: 12,
@@ -640,84 +406,131 @@ const styles = StyleSheet.create({
     color: "#555",
     marginTop: 4,
   },
-
-  // Badges
-  typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: "center" },
-  badgeLogin: { backgroundColor: "#64b5f6" },
-  badgePickup: { backgroundColor: "#ffd54f" },
-  badgeEmptied: { backgroundColor: "#81c784" },
-  badgeError: { backgroundColor: "#f44336" },
-  badgeDefault: { backgroundColor: "#9e9e9e" },
-  badgeText: { fontSize: 11, fontWeight: "bold", color: "#fff", textTransform: "uppercase" },
-
-  // Badge container
-  badgeContainer: {
-    flexDirection: "row",
+  rightColumn: {
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
   },
-
-  // Status indicator styles
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 10,
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: "#ccc",
   },
-  statusIcon: {
-    marginRight: 3,
-  },
-  statusText: {
-    fontSize: 9,
-    fontWeight: "bold",
+  badgeText: {
     color: "#fff",
+    fontSize: 11,
+    fontWeight: "bold",
   },
-  statusDone: {
-    backgroundColor: "#4CAF50",
+  badgeLogin: {
+    backgroundColor: "#64b5f6",
   },
-  statusInProgress: {
-    backgroundColor: "#FF9800",
+  badgePickup: {
+    backgroundColor: "#ffd54f",
   },
-  statusCancelled: {
-    backgroundColor: "#F44336",
+  badgeEmptied: {
+    backgroundColor: "#81c784",
   },
-  statusPending: {
-    backgroundColor: "#9E9E9E",
+  // Location Overview Styles
+  locationContainer: {
+    marginBottom: 20,
   },
-
-  // Details row styles
-  logDetailsRow: {
+  locationCard: {
+    backgroundColor: "#f0f4f0",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  locationHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
-    paddingVertical: 4,
-  },
-  detailItem: {
-    flexDirection: "row",
     alignItems: "center",
+    marginBottom: 8,
+  },
+  locationName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
     flex: 1,
   },
-
-  // GPS Status styles
-  gpsStatusContainer: {
-    backgroundColor: "#fef3c7",
-    borderColor: "#f59e0b",
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    margin: 16,
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: "#f0f0f0",
+  },
+  statusLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "capitalize",
+  },
+  locationLevel: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 8,
   },
-  gpsStatusText: {
-    color: "#d97706",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
+  locationFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
   },
-  gpsStatusSubText: {
-    color: "#92400e",
+  lastCollectedText: {
+    fontSize: 11,
+    color: "#666",
+  },
+  nearlyFullText: {
+    fontSize: 11,
+    color: "#666",
+    fontWeight: "500",
+  },
+  // Activity Logs Loading/Error Styles
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#666',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#f44336',
+    marginBottom: 10,
+  },
+  retryButton: {
+    backgroundColor: '#2e7d32',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#fff',
     fontSize: 12,
-    lineHeight: 16,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  emptySubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

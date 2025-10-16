@@ -1,11 +1,9 @@
-import React from "react";
 import Input from "@/components/fields/Input";
 import Label from "@/components/fields/Label";
 import { Poppins_400Regular, Poppins_700Bold, useFonts } from "@expo-google-fonts/poppins";
 import { AntDesign, FontAwesome, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import React, { useState } from "react";
 import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 
@@ -20,7 +18,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { signup, loading, error } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [fontsLoaded] = useFonts({
@@ -28,14 +26,12 @@ export default function RegisterScreen() {
     Poppins_700Bold,
   });
 
-  const handleRegister = async () => {
-    if (!fullName || !email || !password || !confirmPassword) return;
-    if (password !== confirmPassword) return;
-    const res = await signup(fullName, email, password);
-    if (res && res.id) {
+  const handleRegister = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
       router.replace("/(auth)/login");
-    }
-    // else error is handled by hook
+    }, 1500);
   };
 
   if (!fontsLoaded) return null;
@@ -99,9 +95,6 @@ export default function RegisterScreen() {
 
 
         {/* Register Button */}
-        {error ? (
-          <Text style={{ color: 'red', textAlign: 'center', marginBottom: 8 }}>{error}</Text>
-        ) : null}
         <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading}>
           <Text style={styles.registerButtonText}>
             {loading ? "Creating Account..." : "Create Account"}

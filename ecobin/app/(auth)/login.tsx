@@ -1,11 +1,8 @@
 // app/(auth)/login.tsx
-import React from "react";
 import { AntDesign, FontAwesome, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { useAccount } from "@/contexts/AccountContext";
-import { LoginErrorPopup } from "@/components/LoginErrorPopup";
+import React, { useState } from "react";
+import { useAuth } from "../../hooks/useAuth";
 
 import {
   KeyboardAvoidingView,
@@ -17,6 +14,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
 } from "react-native";
 
 import {
@@ -47,79 +45,63 @@ export default function LoginScreen() {
     Poppins_700Bold,
   });
 
+  const { login, loading, error, clearError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showErrorPopup, setShowErrorPopup] = useState(false);
-  const [errorType, setErrorType] = useState<'invalid_credentials' | 'network_error' | 'server_error' | 'validation_error' | 'generic'>('generic');
-  const { login, loading, error, validationErrors } = useAuth();
-  const { updateAccountFromLogin } = useAccount();
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const showErrorModalWithMessage = (message: string) => {
+    setErrorMessage(message);
+    setShowErrorModal(true);
+  };
+
+  const hideErrorModal = () => {
+    setShowErrorModal(false);
+    setErrorMessage("");
+    clearError();
+  };
 
   const handleLogin = async () => {
-    console.log('🔐 Mobile App - Attempting login with:', { email });
-    const res = await login(email, password);
-    console.log('🔐 Mobile App - Login response:', res);
-    console.log('🔐 Mobile App - Response structure:', {
-      hasMessage: !!res?.message,
-      message: res?.message,
-      hasUser: !!res?.user,
-      hasUserId: !!res?.user?.id,
-      hasToken: !!res?.token
-    });
+    // Clear any previous errors
+    clearError();
+
+    // Basic validation
+    if (!email.trim()) {
+      showErrorModalWithMessage("Please enter your email address");
+      return;
+    }
+
+    if (!password.trim()) {
+      showErrorModalWithMessage("Please enter your password");
+      return;
+    }
+
+    if (!email.includes("@")) {
+      showErrorModalWithMessage("Please enter a valid email address");
+      return;
+    }
+
+    // Attempt login
+    const result = await login({ email: email.trim(), password });
     
-    // Check for successful login response - handle multiple response formats
-    const isLoginSuccessful = res && (
-      (res.message === "Login successful" && res.user?.id) ||
-      (res.user?.id && res.token) ||
-      (res.message === "Login successful")
-    );
-    
-    if (isLoginSuccessful) {
-      console.log('✅ Mobile App - Login successful, redirecting to home');
-      // Update account context with login data immediately
-      updateAccountFromLogin(res);
-      router.replace("/(tabs)/home");
-    } else {
-      console.log('❌ Mobile App - Login failed, response:', res);
-      // Show error popup
-      const errorType = determineErrorType();
-      setErrorType(errorType);
-      setShowErrorPopup(true);
-    }
-  };
-
-  const determineErrorType = (): 'invalid_credentials' | 'network_error' | 'server_error' | 'validation_error' | 'generic' => {
-    // Check validation errors first
-    if (validationErrors.email || validationErrors.password) {
-      return 'validation_error';
-    }
-
-    // Check general error message
-    if (error) {
-      if (error.includes('Invalid email or password') || error.includes('Invalid credentials')) {
-        return 'invalid_credentials';
+    if (!result.success) {
+      // Show specific error message based on the error type
+      let displayMessage = result.message;
+      
+      if (result.message.includes("Invalid credentials") || 
+          result.message.includes("Invalid email or password")) {
+        displayMessage = "Username and password is incorrect. Please try again.";
+      } else if (result.message.includes("Too many login attempts")) {
+        displayMessage = "Too many failed attempts. Please try again later.";
+      } else if (result.message.includes("Please verify your email")) {
+        displayMessage = "Please verify your email before logging in.";
       }
-      if (error.includes('Network error') || error.includes('internet connection')) {
-        return 'network_error';
-      }
-      if (error.includes('Server error') || error.includes('try again later')) {
-        return 'server_error';
-      }
+      
+      showErrorModalWithMessage(displayMessage);
     }
-
-    return 'invalid_credentials'; // Default to invalid credentials for login failures
-  };
-
-  const handleRetry = () => {
-    handleLogin();
-  };
-
-  const handleForgotPassword = () => {
-    router.push("/(auth)/forgot-password");
-  };
-
-  const closeErrorPopup = () => {
-    setShowErrorPopup(false);
+    // If successful, the hook will handle navigation automatically
   };
 
   if (!fontsLoaded) return null;
@@ -143,6 +125,13 @@ export default function LoginScreen() {
           <Text style={styles.logoText}>ECOBIN</Text>
           <Text style={styles.description}>Your cleaner choices start here</Text>
         </View>
+
+        {/* Error Display */}
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
 
         {/* Inputs */}
         <View style={styles.inputContainer}>
@@ -206,21 +195,44 @@ export default function LoginScreen() {
 
         {/* Register Redirect */}
         <Text style={styles.signInPrompt}>
-          Don’t have an account?{" "}
+          Don't have an account?{" "}
           <Text style={styles.signInLink} onPress={() => router.push("/register")}>
             Register
           </Text>
         </Text>
       </ScrollView>
 
-      {/* Error Popup */}
-      <LoginErrorPopup
-        visible={showErrorPopup}
-        errorType={errorType}
-        onClose={closeErrorPopup}
-        onRetry={handleRetry}
-        onForgotPassword={handleForgotPassword}
-      />
+      {/* Error Modal */}
+      <Modal
+        visible={showErrorModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={hideErrorModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Login Failed</Text>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <View style={styles.errorIconContainer}>
+                <Ionicons name="alert-circle" size={48} color="#f44336" />
+              </View>
+              <Text style={styles.modalMessage}>{errorMessage}</Text>
+            </View>
+            
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={hideErrorModal}
+              >
+                <Text style={styles.modalButtonText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -248,6 +260,18 @@ const styles = StyleSheet.create<{
   socialContainer: ViewStyle;
   signInPrompt: TextStyle;
   signInLink: TextStyle;
+  errorContainer: ViewStyle;
+  errorText: TextStyle;
+  modalOverlay: ViewStyle;
+  modalContainer: ViewStyle;
+  modalHeader: ViewStyle;
+  modalTitle: TextStyle;
+  modalBody: ViewStyle;
+  errorIconContainer: ViewStyle;
+  modalMessage: TextStyle;
+  modalFooter: ViewStyle;
+  modalButton: ViewStyle;
+  modalButtonText: TextStyle;
 }>({
   scrollContainer: {
     flexGrow: 1,
@@ -369,5 +393,79 @@ const styles = StyleSheet.create<{
     color: "#2e7d32",
     fontFamily: poppins.regular,
     textDecorationLine: "underline", 
+  },
+  errorContainer: {
+    backgroundColor: "#ffebee",
+    borderColor: "#f44336",
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: "#d32f2f",
+    fontSize: 13,
+    fontFamily: poppins.regular,
+    textAlign: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    width: "100%",
+    maxWidth: 320,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    padding: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: poppins.semibold,
+    color: "#333",
+    textAlign: "center",
+  },
+  modalBody: {
+    padding: 20,
+    alignItems: "center",
+  },
+  errorIconContainer: {
+    marginBottom: 16,
+  },
+  modalMessage: {
+    fontSize: 14,
+    fontFamily: poppins.regular,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  modalFooter: {
+    padding: 20,
+    paddingTop: 10,
+  },
+  modalButton: {
+    backgroundColor: "#2e7d32",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: poppins.medium,
   },
 });

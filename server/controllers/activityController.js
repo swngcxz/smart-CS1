@@ -21,9 +21,15 @@ const notificationModel = require('../models/notificationModel');
 const { admin } = require("../models/firebase");
 const realtimeDb = admin.database();
 
-// Helper function to create notifications in Realtime Database
+// Helper function to create notifications with fallback to Firestore
 const createRealtimeNotification = async (userId, notificationData) => {
   try {
+    // Check if Firebase is properly initialized
+    if (!realtimeDb) {
+      console.warn('[REALTIME NOTIFICATION] Realtime Database not available, trying Firestore fallback');
+      return await createFirestoreNotification(userId, notificationData);
+    }
+
     const notification = {
       ...notificationData,
       timestamp: Date.now(),
@@ -31,9 +37,9 @@ const createRealtimeNotification = async (userId, notificationData) => {
       createdAt: new Date().toISOString()
     };
     
-    // Add timeout to prevent hanging
+    // Add timeout to prevent hanging (increased to 5 seconds)
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Realtime Database timeout')), 3000)
+      setTimeout(() => reject(new Error('Realtime Database timeout')), 5000)
     );
     
     const notificationPromise = realtimeDb.ref(`notifications/${userId}`).push(notification);
@@ -42,13 +48,98 @@ const createRealtimeNotification = async (userId, notificationData) => {
     console.log(`[REALTIME NOTIFICATION] Created notification for user ${userId}: ${notification.title}`);
     return true;
   } catch (error) {
-    console.error('[REALTIME NOTIFICATION] Error creating notification:', error);
-    throw error;
+    console.error('[REALTIME NOTIFICATION] Error creating notification:', error.message);
+    
+    // Try Firestore fallback
+    console.log('[REALTIME NOTIFICATION] Attempting Firestore fallback...');
+    try {
+      const fallbackResult = await createFirestoreNotification(userId, notificationData);
+      if (fallbackResult) {
+        console.log('[REALTIME NOTIFICATION] Successfully created notification in Firestore fallback');
+        return true;
+      }
+    } catch (fallbackError) {
+      console.error('[REALTIME NOTIFICATION] Firestore fallback also failed:', fallbackError.message);
+    }
+    
+    // Don't throw error, just log and return false to allow other operations to continue
+    if (error.message.includes('timeout')) {
+      console.warn('[REALTIME NOTIFICATION] Database timeout - notification will not be delivered');
+    } else if (error.message.includes('permission')) {
+      console.warn('[REALTIME NOTIFICATION] Permission denied - check Firebase rules');
+    } else if (error.message.includes('network')) {
+      console.warn('[REALTIME NOTIFICATION] Network error - Firebase may be unreachable');
+    }
+    
+    return false; // Return false instead of throwing
+  }
+};
+
+// Fallback function to create notifications in Firestore
+const createFirestoreNotification = async (userId, notificationData) => {
+  try {
+    if (!db) {
+      console.warn('[FIRESTORE NOTIFICATION] Firestore not available');
+      return false;
+    }
+
+    const notification = {
+      ...notificationData,
+      userId,
+      timestamp: Date.now(),
+      read: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    await db.collection('notifications').add(notification);
+    console.log(`[FIRESTORE NOTIFICATION] Created fallback notification for user ${userId}: ${notification.title}`);
+    return true;
+  } catch (error) {
+    console.error('[FIRESTORE NOTIFICATION] Error creating fallback notification:', error.message);
+    return false;
   }
 };
 const fcmService = require('../services/fcmService');
 const smsNotificationService = require('../services/smsNotificationService');
 const gsmService = require('../services/gsmService');
+
+// Test notification endpoint
+const testNotification = async (req, res, next) => {
+  try {
+    const { userId = 'test-user-123' } = req.body;
+    
+    const testNotificationData = {
+      title: 'Test Notification',
+      message: 'This is a test notification to verify the system is working',
+      type: 'test',
+      priority: 'low'
+    };
+
+    console.log('[TEST NOTIFICATION] Testing notification system...');
+    
+    // Test the notification creation
+    const result = await createRealtimeNotification(userId, testNotificationData);
+    
+    if (result) {
+      res.status(200).json({
+        success: true,
+        message: 'Test notification created successfully',
+        notification: testNotificationData
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Test notification failed - both Realtime Database and Firestore fallback failed'
+      });
+    }
+  } catch (error) {
+    console.error('[TEST NOTIFICATION] Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Test notification error: ' + error.message
+    });
+  }
+};
 
 // Database health check function
 const checkDatabaseHealth = async () => {
@@ -329,7 +420,10 @@ const saveActivityLog = async (req, res, next) => {
       activity_type,
       timestamp,
       description,
-      source
+      source,
+      available_for_acceptance,
+      created_by,
+      acceptance_deadline
     } = req.body;
 
     const now = new Date();
@@ -349,7 +443,12 @@ const saveActivityLog = async (req, res, next) => {
       date: now.toISOString().split('T')[0],
       time: now.toTimeString().split(' ')[0],
       created_at: now.toISOString(),
-      updated_at: now.toISOString()
+      updated_at: now.toISOString(),
+      // Add automatic task fields
+      source: source || null,
+      available_for_acceptance: available_for_acceptance || false,
+      created_by: created_by || null,
+      acceptance_deadline: acceptance_deadline || null
     };
 
     console.log("Saving activity log to Firestore collection: activitylogs", data);
@@ -730,7 +829,7 @@ const updateActivityLog = async (req, res, next) => {
         
         return res.status(409).json({ 
           error: "Task assignment conflict",
-          message: `This task is already assigned to ${originalData.assigned_janitor_name}. Cannot reassign to ${req.body.assigned_janitor_name || 'another janitor'}.`,
+          message: `This Task is already assigned to ${originalData.assigned_janitor_name}. Cannot reassign to ${req.body.assigned_janitor_name || 'another janitor'}.`,
           currentAssignee: originalData.assigned_janitor_name,
           currentAssigneeId: originalData.assigned_janitor_id,
           attemptedAssignee: req.body.assigned_janitor_name,
@@ -1043,7 +1142,7 @@ const sendActivityCompletedNotification = async (notificationData) => {
     }
 
     const title = 'Activity Completed';
-    const message = `Activity for bin ${binId} at ${binLocation} has been completed by ${completedBy}. Type: ${activityType}`;
+    const message = `Activity for bin ${binId} at ${binLocation} has been completed by ${completedBy}.`;
 
     const notificationPayload = {
       binId: binId,
@@ -1118,7 +1217,7 @@ const sendBinCollectionNotification = async (notificationData) => {
     }
 
     const title = 'Bin Collection Completed';
-    const message = `Bin ${binId} at ${binLocation} has been collected by ${collectedBy}. Weight: ${collectedWeight || 'N/A'}kg, Condition: ${binCondition}`;
+    const message = `Bin ${binId} at ${binLocation} has been collected by ${collectedBy}.`;
 
     const notificationPayload = {
       binId: binId,
@@ -1194,7 +1293,7 @@ const sendTaskAcceptanceNotification = async (notificationData) => {
     }
 
     const title = 'Task Accepted';
-    const message = `${janitorName || 'A janitor'} has accepted the task for bin ${binId} at ${binLocation}. Status: In Progress`;
+    const message = `${janitorName || 'A janitor'} has accepted the task for bin ${binId} at ${binLocation}.`;
 
     const notificationPayload = {
       binId: binId,
@@ -1215,8 +1314,12 @@ const sendTaskAcceptanceNotification = async (notificationData) => {
     const notificationPromises = staffUsers.map(async (staff) => {
       try {
         // Create notification in Realtime Database (same as other notifications)
-        await createRealtimeNotification(staff.id, notificationPayload);
+        const notificationCreated = await createRealtimeNotification(staff.id, notificationPayload);
+        if (notificationCreated) {
         console.log(`[TASK ACCEPTANCE] Created Realtime Database notification for staff ${staff.email}`);
+        } else {
+          console.warn(`[TASK ACCEPTANCE] Failed to create Realtime Database notification for staff ${staff.email}`);
+        }
         
         // Send push notification if FCM token exists
         if (staff.fcmToken) {
@@ -1231,7 +1334,7 @@ const sendTaskAcceptanceNotification = async (notificationData) => {
         // Send SMS notification if contact number exists (optional)
         if (staff.contactNumber) {
           try {
-            const smsMessage = `Task Accepted: ${janitorName} has accepted task for bin ${binId} at ${binLocation}. Status: In Progress`;
+            const smsMessage = `Task Accepted: ${janitorName} has accepted task for bin ${binId} at ${binLocation}.`;
             // You can implement SMS service here if needed
             console.log(`[TASK ACCEPTANCE] SMS notification would be sent to ${staff.contactNumber}: ${smsMessage}`);
           } catch (smsErr) {
@@ -1320,7 +1423,7 @@ const sendTaskAvailableNotification = async (notificationData) => {
     const locationText = binLocation ? ` at ${binLocation}` : '';
     
     const title = 'Bin Needs Collection';
-    const message = `Bin ${binId}${locationText}${binLevelText} needs collection. Please accept this task.\n📝 ${taskNote}\n\nPriority: ${priorityEmoji} ${priority}\n\n⚠️ Click to accept this task!`;
+    const message = `Bin ${binId}${locationText}${binLevelText} needs to collect. Please accept this task.\n ${taskNote}`;
 
     const notificationPayload = {
       binId: binId,
@@ -1404,9 +1507,9 @@ const sendJanitorAssignmentNotification = async (notificationData) => {
     const binLevelText = binLevel ? ` (${binLevel}% full)` : '';
     const locationText = binLocation ? ` at ${binLocation}` : '';
     const taskTypeText = activityType ? ` (${activityType})` : '';
-    const noteText = taskNote ? `\n📝 Note: ${taskNote}` : '';
+    const noteText = taskNote ? `\nNote: ${taskNote}` : '';
 
-    const title = isTaskAssignment ? 'New Task Assigned' : '📋 New Activity Assigned';
+    const title = isTaskAssignment ? 'New Task Assigned' : 'New Activity Assigned';
     const message = `You have been assigned a new ${activityType || 'task'} for bin ${binId}${locationText}${binLevelText}${taskTypeText}.${noteText}\n\nPriority: ${priorityEmoji} ${priority || 'normal'}`;
 
     const notificationPayload = {
@@ -1721,5 +1824,6 @@ module.exports = {
   sendActivityCompletedNotification,
   sendTaskAcceptanceNotification,
   assignTaskManually,
-  testJanitorNotification
+  testJanitorNotification,
+  testNotification
 };

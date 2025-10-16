@@ -1,7 +1,7 @@
 
 const express = require("express");
 const router = express.Router();
-const { saveActivityLog, saveTaskAssignment, getUserActivityLogs, getDailyActivitySummary, getAllActivityLogs, getActivityLogsByUserId, getAssignedActivityLogs, updateActivityStatus, updateActivityLog, deleteActivityLog, assignTaskAtomically, getActivityStatsSimple, getLoginHistory, testJanitorNotification } = require("../controllers/activityController");
+const { saveActivityLog, saveTaskAssignment, getUserActivityLogs, getDailyActivitySummary, getAllActivityLogs, getActivityLogsByUserId, getAssignedActivityLogs, updateActivityStatus, updateActivityLog, deleteActivityLog, assignTaskAtomically, getActivityStatsSimple, getLoginHistory, testJanitorNotification, testNotification } = require("../controllers/activityController");
 
 // Get all activity logs assigned to a janitor
 router.get("/activitylogs/assigned/:janitorId", getAssignedActivityLogs);
@@ -43,5 +43,8 @@ router.delete("/activitylogs/:activityId", deleteActivityLog);
 
 // Test janitor notification endpoint
 router.post("/test-notification", testJanitorNotification);
+
+// Test notification system endpoint
+router.post("/test-notification-system", testNotification);
 
 module.exports = router;

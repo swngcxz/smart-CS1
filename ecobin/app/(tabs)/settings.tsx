@@ -1,36 +1,24 @@
 import { useTheme } from "@/hooks/useTheme";
-import { Feather, Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import React from "react";
-import { useState, useCallback } from "react";
-import { useFocusEffect } from '@react-navigation/native';
-import { useAccount } from "@/contexts/AccountContext";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserInfo } from "@/hooks/useUserInfo";
+import { useProfile } from "@/hooks/useProfile";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import { Alert, Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 
 export default function SettingsScreen() {
-  console.log('🔄 SettingsScreen - Component rendered');
-  
   const { isDarkMode, toggleDarkMode } = useTheme();
+  const { user: authUser, logout } = useAuth();
+  const { profile, getProfileImageUrl, getUserInitials } = useProfile();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [faceIDEnabled, setFaceIDEnabled] = useState(false);
   const router = useRouter();
-  const { account, loading: accountLoading, error: accountError } = useAccount();
-  const { userInfo, fetchUserInfo } = useUserInfo();
-  
-  console.log('🔄 SettingsScreen - Hook values:', { account, userInfo, accountLoading });
 
-  // Refresh userInfo when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      console.log('👤 Settings screen focused, refreshing user info...');
-      fetchUserInfo();
-    }, [fetchUserInfo])
-  );
+  // Get user data with fallback
+  const userData = profile || authUser;
+  const profileImageUrl = getProfileImageUrl();
+  const userInitials = getUserInitials();
 
-  const { logout } = useAuth();
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
@@ -38,12 +26,12 @@ export default function SettingsScreen() {
         text: "Logout",
         style: "destructive",
         onPress: async () => {
-          const ok = await logout();
-          if (ok) {
-            await AsyncStorage.clear();
-            router.replace("/landing");
-          } else {
-            Alert.alert("Logout Failed", "Could not log out. Please try again.");
+          try {
+            await logout();
+          } catch (error) {
+            console.error('Logout failed:', error);
+            // Still redirect even if logout fails
+            router.replace("/(auth)/login");
           }
         },
       },
@@ -60,33 +48,31 @@ export default function SettingsScreen() {
     <ScrollView style={[styles.container, { backgroundColor: bgColor }]} contentInsetAdjustmentBehavior="automatic">
       {/* Profile Header */}
       <View style={styles.profileContainer}>
-      <View style={styles.profileHeader}>
-        <Image 
-          source={
-            userInfo?.profileImagePath 
-              ? { uri: (() => {
-                  const filename = userInfo.profileImagePath.split('/').pop();
-                  return filename ? `http://192.168.254.114:8000/api/userinfo/profile-image/${filename}` : undefined;
-                })() }
-              : { uri: "https://i.pravatar.cc/100?u=" + (account?.email || 'user') }
-          } 
-          style={styles.avatar} 
-        />
-        <View>
-          {accountLoading ? (
-            <Text style={[styles.name, { color: textColor }]}>Loading...</Text>
-          ) : accountError ? (
-            <Text style={[styles.name, { color: 'red' }]}>{accountError}</Text>
-          ) : account ? (
-            <>
-              <Text style={[styles.name, { color: textColor }]}>{account.fullName}</Text>
-              <Text style={[styles.username, { color: secondaryTextColor }]}>{account.email}</Text>
-            </>
-          ) : null}
+        <View style={styles.profileHeader}>
+          {profileImageUrl ? (
+            <Image source={{ uri: profileImageUrl }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarText}>{userInitials}</Text>
+            </View>
+          )}
+          <View>
+            <Text style={[styles.name, { color: textColor }]}>
+              {userData?.fullName || (userData as any)?.name || 'User'}
+            </Text>
+            <Text style={[styles.username, { color: secondaryTextColor }]}>
+              @{userData?.email || 'user@example.com'}
+            </Text>
+            {userData?.role && (
+              <Text style={[styles.role, { color: secondaryTextColor }]}>
+                {userData.role.charAt(0).toUpperCase() + userData.role.slice(1)}
+              </Text>
+            )}
+          </View>
         </View>
-      </View>
         <View style={[styles.divider, { backgroundColor: borderColor }]} />
       </View>
+
 
       {/* Account */}
       <Text style={[styles.sectionHeader, { color: secondaryTextColor }]}>ACCOUNT</Text>
@@ -191,7 +177,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 60,
   },
   sectionHeader: {
     fontSize: 13,
@@ -219,7 +205,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   profileContainer: {
-    marginBottom: 0,
+    marginBottom: 20,
   },
   profileHeader: {
     flexDirection: "row",
@@ -232,13 +218,29 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     backgroundColor: "#ccc",
   },
+  avatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 50,
+    backgroundColor: "#2e7d32",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+  },
   name: {
     fontSize: 18,
     fontWeight: "600",
   },
   username: {
+    fontSize: 14,
+  },
+  role: {
     fontSize: 12,
-
+    marginTop: 2,
   },
   divider: {
     height: StyleSheet.hairlineWidth,

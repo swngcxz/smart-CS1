@@ -39,6 +39,23 @@ if (admin.apps.length > 0) {
   bucket = admin.storage().bucket();
   rtdb = admin.database();
   console.log('Firebase services ready');
+  
+  // Test Realtime Database connection with detailed logging
+  rtdb.ref('.info/connected').on('value', (snapshot) => {
+    if (snapshot.val() === true) {
+      console.log('Firebase Realtime Database connected');
+    } else {
+      console.warn('Firebase Realtime Database disconnected');
+    }
+  });
+
+  // Test Realtime Database write capability
+  rtdb.ref('test').set({ test: true }).then(() => {
+    console.log('Firebase Realtime Database write test successful');
+    rtdb.ref('test').remove(); // Clean up test data
+  }).catch((error) => {
+    console.error('Firebase Realtime Database write test failed:', error.message);
+  });
 } else {
   console.error('Firebase services not available - app not initialized');
 }

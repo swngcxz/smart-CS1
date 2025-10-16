@@ -1,204 +1,174 @@
-
-import React from "react";
 import BackButton from "@/components/BackButton";
-import { useLocalSearchParams } from "expo-router";
-import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View, ActivityIndicator, Platform } from "react-native";
+import PickupHistoryModal from "@/components/modals/PickupHistoryModal";
+import { RootStackParamList } from "@/types/navigation";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as ImagePicker from "expo-image-picker";
+import React, { useState } from "react";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import MapView, { Marker } from "react-native-maps";
 import { ProgressBar } from "react-native-paper";
-import { useRealTimeData } from "../../contexts/RealTimeDataContext";
-import { getActiveTimeAgo } from "../../utils/timeUtils";
-
-// Platform-specific imports
-let MapView: any, Marker: any, PROVIDER_GOOGLE: any;
-if (Platform.OS !== 'web') {
-  const Maps = require('react-native-maps');
-  MapView = Maps.default;
-  Marker = Maps.Marker;
-  PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
-} else {
-  // Web fallback components
-  MapView = ({ children, style, region, ...props }: any) => (
-    <View style={[style, { backgroundColor: '#e5e7eb' }]}>
-      <Text style={{ textAlign: 'center', padding: 20, color: '#6b7280' }}>
-        Map not available on web platform
-      </Text>
-      {children}
-    </View>
-  );
-  Marker = ({ children, coordinate, title, description }: any) => (
-    <View style={{ position: 'absolute', left: coordinate.longitude * 100, top: coordinate.latitude * 100 }}>
-      {children}
-    </View>
-  );
-  PROVIDER_GOOGLE = 'google';
-}
+type BinDetailRouteProp = RouteProp<RootStackParamList, "BinDetailScreen">;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function BinDetailScreen() {
-  const params = useLocalSearchParams<{ 
-    binId: string; 
-    binName?: string; 
-    binLevel?: string; 
-    binStatus?: string; 
-    binRoute?: string; 
-  }>();
-  const { binLocations, bin1Data, loading, getTimeSinceLastGPS } = useRealTimeData();
+  const route = useRoute<BinDetailRouteProp>();
+  const navigation = useNavigation<NavigationProp>();
+  const { binId, logs } = route.params as { binId: string; logs: string };
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
 
-  // SIMPLIFIED: Focus only on bin1
-  const bin = (binLocations || []).find((b) => b && b.id === 'bin1');
-  
-  // Create safe bin data with defaults
-  const safeBinData = {
-    id: bin?.id || params.binId || 'bin1',
-    name: bin?.name || params.binName || 'Central Plaza Bin 1',
-    position: bin?.position || [10.2098, 123.758] as [number, number],
-    level: typeof bin?.level === 'number' && !isNaN(bin.level) ? bin.level : parseFloat(params.binLevel || '0'),
-    status: bin?.status || (params.binStatus as 'normal' | 'warning' | 'critical') || 'normal',
-    route: bin?.route || params.binRoute || 'Central Plaza Route',
-    lastCollection: bin?.lastCollection || new Date().toISOString(),
-    gps_valid: Boolean(bin?.gps_valid),
-    satellites: typeof bin?.satellites === 'number' ? bin.satellites : 0
+  const parsedLogs: string[] = JSON.parse(logs);
+  const relatedLogs = parsedLogs.filter((log) => log.includes(binId));
+
+  const [images, setImages] = useState<string[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const bin = {
+    id: binId,
+    name: binId,
+    location: "Main Entrance",
+    latitude: 10.2103,
+    longitude: 123.758,
+    level: 85,
+    lastEmptied: "Today 9:42 AM",
+    status: "Operational",
   };
 
-  const getStatusColor = (val: number) => {
-    const safeVal = typeof val === 'number' && !isNaN(val) ? val : 0;
-    if (safeVal >= 90) return "#f44336"; // red
-    if (safeVal >= 60) return "#ff9800"; // orange
-    return "#4caf50"; // green
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: true,
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      const uris = result.assets.map((asset) => asset.uri);
+      setImages((prev) => [...prev, ...uris]);
+    }
   };
 
-  // Derived metrics from real-time data
-  const weightKg = (typeof bin1Data?.weight_kg === 'number' ? bin1Data?.weight_kg : 0) || 0;
-  const heightPercent = (typeof bin1Data?.height_percent === 'number' ? bin1Data?.height_percent : 0) || 0;
-  const gpsValid = (bin1Data?.gps_valid ?? safeBinData.gps_valid) ? true : false;
-  const gpsValidDisplay = gpsValid ? 'Valid' : 'Invalid';
-  const satellitesDisplay = bin1Data?.satellites ?? safeBinData.satellites ?? 0;
-  const lastSeenText = gpsValid && bin1Data?.timestamp
-    ? 'Online'
-    : (bin1Data?.timestamp ? `Offline · ${getTimeSinceLastGPS(bin1Data.timestamp)}` : 'Offline · Unknown');
-
-  // MiniBar: always-visible track with colored fill
-  const MiniBar = ({ percent }: { percent: number }) => {
-    const safe = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
-    return (
-      <View style={styles.miniTrack}>
-        <View style={[styles.miniFill, { width: `${safe}%`, backgroundColor: getStatusColor(safe) }]} />
-      </View>
-    );
-  };
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#2e7d32" />
-        <Text>Loading bin data...</Text>
-      </View>
-    );
-  }
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <BackButton />
-      <Text style={styles.sectionTitle}>{safeBinData.name} Location</Text>
+      <Text style={styles.sectionTitle}>Bin Location on Map</Text>
 
       <MapView
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
         initialRegion={{
-          latitude: safeBinData.position[0],
-          longitude: safeBinData.position[1],
-          latitudeDelta: 0.0008,
-          longitudeDelta: 0.0008,
+          latitude: bin.latitude,
+          longitude: bin.longitude,
+          latitudeDelta: 0.0015,
+          longitudeDelta: 0.0015,
         }}
-        mapType="hybrid"
-        showsBuildings={true}
-        showsCompass={true}
-        showsScale={true}
       >
-        <Marker coordinate={{ 
-          latitude: safeBinData.position[0], 
-          longitude: safeBinData.position[1] 
-        }}>
-          <View style={[styles.marker, { backgroundColor: getStatusColor(safeBinData.level) }]}>
-            <Text style={styles.markerText}>{safeBinData.level}%</Text>
-          </View>
-        </Marker>
+        <Marker
+          coordinate={{ latitude: bin.latitude, longitude: bin.longitude }}
+          title={bin.name}
+          description={bin.location}
+        />
       </MapView>
 
       <View style={styles.detailsHeader}>
-        <Text style={styles.title}>Details for {safeBinData.name}</Text>
+        <Text style={styles.title}>Details for {bin.id}</Text>
+        <TouchableOpacity onPress={() => setHistoryModalVisible(true)}>
+          <Text style={styles.smallHistoryText}>History</Text>
+        </TouchableOpacity>
       </View>
 
-      <Text style={styles.text}>Route: {safeBinData.route}</Text>
-      <Text style={styles.text}>Current Level: {safeBinData.level}%</Text>
+      <Text style={styles.text}>Location: {bin.location}</Text>
+      <Text style={styles.text}>Current Level: {bin.level}%</Text>
       <ProgressBar
-        progress={safeBinData.level / 100}
-        color={getStatusColor(safeBinData.level)}
+        progress={bin.level / 100}
+        color={bin.level >= 80 ? "red" : bin.level >= 50 ? "orange" : "green"}
         style={{ height: 10, borderRadius: 5, marginBottom: 15 }}
       />
-      <Text style={styles.text}>Last Update: {getActiveTimeAgo(safeBinData)}</Text>
-      <Text style={[styles.text, styles.status]}>Status: {safeBinData.status.toUpperCase()}</Text>
+      <Text style={styles.text}>Last Emptied: {bin.lastEmptied}</Text>
+      <Text style={[styles.text, styles.status]}>Status: {bin.status}</Text>
 
-      <View style={styles.metricsContainer}>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>Weight</Text>
-          <Text style={styles.metricValue}>{weightKg.toFixed(3)} kg</Text>
-          <MiniBar percent={(bin1Data?.weight_percent ?? 0)} />
-        </View>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>Height</Text>
-          <Text style={styles.metricValue}>{heightPercent}%</Text>
-          <MiniBar percent={heightPercent} />
-        </View>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricLabel}>GPS Status</Text>
-          <Text style={[styles.metricValue, gpsValid ? styles.ok : styles.warn]}>
-            {gpsValidDisplay} ({satellitesDisplay} satellites)
-          </Text>
-          <Text style={styles.subtle}>{lastSeenText}</Text>
-        </View>
+      <Text style={styles.sectionTitle}>Proof of Pickup (Optional)</Text>
+      <View style={styles.imageContainer}>
+        {images.slice(0, 3).map((uri, index) => (
+          <Image key={index} source={{ uri }} style={styles.imagePreview} />
+        ))}
+        <TouchableOpacity style={styles.addButton} onPress={pickImage}>
+          <Text style={styles.addButtonText}>+</Text>
+        </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        style={[
+          {
+            backgroundColor: bin.level < 80 ? "#ccc" : "#2e7d32",
+            padding: 14,
+            borderRadius: 10,
+            alignItems: "center",
+          },
+        ]}
+        disabled={bin.level < 80}
+        onPress={() => alert("Marked as Picked Up!")}
+      >
+        <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>Pick Up</Text>
+      </TouchableOpacity>
+
+      <PickupHistoryModal
+        visible={historyModalVisible}
+        onClose={() => setHistoryModalVisible(false)}
+        binId={binId}
+        logs={parsedLogs}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { paddingTop: 50, backgroundColor: "#fff", paddingHorizontal: 20 },
+  header: { marginTop: 44, marginBottom: 10 },
   title: { fontSize: 22, fontWeight: "600", marginBottom: 15, color: "#2e7d32" },
   sectionTitle: { marginTop: 5, fontSize: 18, fontWeight: "500", color: "#000", marginBottom: 10 },
   text: { fontSize: 16, marginBottom: 10, color: "#444" },
   status: { fontWeight: "bold", color: "#2e7d32" },
-  map: { width: "100%", height: 300, borderRadius: 10, marginBottom: 20 },
-
-  // Marker with percentage
-  marker: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "#fff",
+  map: {
+    width: "100%",
+    height: 200,
+    borderRadius: 10,
+    marginBottom: 20,
   },
-  markerText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
+  imageContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 20,
   },
-  metricsContainer: {
-    marginTop: 10,
-    marginBottom: 24,
-    backgroundColor: "#f7faf7",
-    borderRadius: 12,
-    padding: 16,
+  imagePreview: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+    marginRight: 10,
+    marginBottom: 10,
+  },
+  addButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+    backgroundColor: "#f1f1f1",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e2e8f0"
+    borderColor: "#aaa",
   },
-  metricItem: { marginBottom: 12 },
-  metricLabel: { fontSize: 13, color: "#6b7280", marginBottom: 4 },
-  metricValue: { fontSize: 16, color: "#111827", fontWeight: "600" },
-  subtle: { fontSize: 12, color: "#6b7280", marginTop: 4 },
-  smallBar: { height: 8, borderRadius: 4, marginTop: 6 },
-  miniTrack: { height: 8, borderRadius: 4, marginTop: 6, backgroundColor: "#e5e7eb", overflow: "hidden" },
-  miniFill: { height: 8, borderRadius: 4 },
-  ok: { color: "#065f46" },
-  warn: { color: "#92400e" },
-  detailsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  smallHistoryText: { fontSize: 14, color: "gray", fontWeight: "500" },
+  addButtonText: {
+    fontSize: 32,
+    color: "#444",
+  },
+  detailsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+
+  smallHistoryText: {
+    fontSize: 14,
+    color: "gray",
+    fontWeight: "500",
+  },
 });
