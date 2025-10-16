@@ -1,11 +1,11 @@
 const { db } = require("../models/firebase");
 
 async function migrateScheduleData() {
-  console.log("🔄 Starting schedule data migration...");
+  console.log("Starting schedule data migration...");
   
   try {
     // Update truck schedules
-    console.log("📦 Updating truck schedules...");
+    console.log("Updating truck schedules...");
     const truckSchedulesSnapshot = await db.collection("truckSchedules").get();
     
     for (const doc of truckSchedulesSnapshot.docs) {
@@ -20,12 +20,12 @@ async function migrateScheduleData() {
       
       if (Object.keys(updates).length > 0) {
         await doc.ref.update(updates);
-        console.log(`✅ Updated truck schedule ${doc.id}:`, updates);
+        console.log(`Updated truck schedule ${doc.id}:`, updates);
       }
     }
     
     // Update regular schedules
-    console.log("📋 Updating regular schedules...");
+    console.log("Updating regular schedules...");
     const schedulesSnapshot = await db.collection("schedules").get();
     
     for (const doc of schedulesSnapshot.docs) {
@@ -39,14 +39,14 @@ async function migrateScheduleData() {
       
       if (Object.keys(updates).length > 0) {
         await doc.ref.update(updates);
-        console.log(`✅ Updated schedule ${doc.id}:`, updates);
+        console.log(`Updated schedule ${doc.id}:`, updates);
       }
     }
     
-    console.log("🎉 Schedule data migration completed successfully!");
+    console.log("Schedule data migration completed successfully!");
     
   } catch (error) {
-    console.error("❌ Error during migration:", error);
+    console.error("Error during migration:", error);
   }
 }
 
