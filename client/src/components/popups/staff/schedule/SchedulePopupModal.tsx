@@ -10,6 +10,7 @@ import { DeleteScheduleModal } from "./DeleteScheduleModal";
 interface SchedulePopupModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onReopen?: () => void; // Callback to reopen the popup modal
   selectedDate: Date | undefined;
   schedules: Schedule[];
   getEffectiveStatus: (schedule: Schedule) => string;
@@ -39,6 +40,7 @@ const getProfilePicture = (name: string) => {
 export function SchedulePopupModal({
   isOpen,
   onClose,
+  onReopen,
   selectedDate,
   schedules,
   getEffectiveStatus,
@@ -65,12 +67,22 @@ export function SchedulePopupModal({
   // Handler functions
   const handleEditSchedule = (schedule: Schedule) => {
     setEditingSchedule(schedule);
+    // Close the popup modal when opening edit dialog
+    onClose();
   };
 
   const handleUpdateSchedule = (updatedSchedule: Schedule) => {
     // TODO: Implement actual update functionality
     console.log("Updating schedule:", updatedSchedule);
     setEditingSchedule(null);
+  };
+
+  const handleEditDialogClose = () => {
+    setEditingSchedule(null);
+    // Reopen the popup modal when edit dialog closes
+    if (onReopen) {
+      onReopen();
+    }
   };
 
   const handleDeleteSchedule = (schedule: Schedule) => {
@@ -93,9 +105,6 @@ export function SchedulePopupModal({
           <DialogTitle className="flex items-center gap-3 text-xl">
             Schedules for {selectedDate && format(selectedDate, "MMMM dd, yyyy")}
           </DialogTitle>
-          <DialogDescription className="text-sm">
-            {schedules.length} Schedule{schedules.length > 1 ? "s" : ""} for this date
-          </DialogDescription>
         </DialogHeader>
         {/* Modern Tab Navigation - Only show if there are both types */}
         {showTabs && (
@@ -309,7 +318,7 @@ export function SchedulePopupModal({
       {!viewOnly && (
         <EditScheduleModal
           isOpen={!!editingSchedule}
-          onClose={() => setEditingSchedule(null)}
+          onClose={handleEditDialogClose}
           schedule={editingSchedule}
           onUpdateSchedule={handleUpdateSchedule}
         />

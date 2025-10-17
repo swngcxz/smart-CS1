@@ -243,11 +243,7 @@ export function ScheduleCollectionTabs() {
       >
         <span
           className={`text-sm font-medium ${
-            hasOverdueSchedules
-              ? "text-red-700"
-              : hasSchedules
-              ? "text-green-700"
-              : ""
+            hasOverdueSchedules ? "text-red-700" : hasSchedules ? "text-green-700" : ""
           }`}
         >
           {day.getDate()}
@@ -305,6 +301,7 @@ export function ScheduleCollectionTabs() {
       <SchedulePopupModal
         isOpen={isSchedulePopupOpen}
         onClose={() => setIsSchedulePopupOpen(false)}
+        onReopen={() => setIsSchedulePopupOpen(true)}
         selectedDate={selectedDate}
         schedules={selectedDateSchedules}
         getEffectiveStatus={getEffectiveStatus}
