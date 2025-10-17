@@ -1,5 +1,3 @@
-import Input from "@/components/fields/Input";
-import Label from "@/components/fields/Label";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@react-navigation/elements";
 import { router } from "expo-router";
@@ -13,9 +11,12 @@ export default function ForgotPasswordScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [step, setStep] = useState(1); // 1: email, 2: otp, 3: new password
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [validationError, setValidationError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [otpError, setOtpError] = useState(false);
+  const [newPasswordError, setNewPasswordError] = useState(false);
+  const [confirmPasswordError, setConfirmPasswordError] = useState(false);
 
   const { 
     requestPasswordReset, 
@@ -26,38 +27,30 @@ export default function ForgotPasswordScreen() {
     clearError 
   } = usePasswordReset();
 
-  const showErrorModalWithMessage = (message: string) => {
-    setErrorMessage(message);
-    setShowErrorModal(true);
-  };
-
-  const hideErrorModal = () => {
-    setShowErrorModal(false);
-    setErrorMessage("");
-    clearError();
-  };
 
   const showSuccessModalWithMessage = (message: string) => {
-    setErrorMessage(message);
     setShowSuccessModal(true);
   };
 
   const hideSuccessModal = () => {
     setShowSuccessModal(false);
-    setErrorMessage("");
     router.replace("/(auth)/login");
   };
 
   const handleSubmit = async () => {
     clearError();
+    setValidationError("");
+    setEmailError(false);
 
     if (!email.trim()) {
-      showErrorModalWithMessage("Please enter your email address");
+      setValidationError("Please enter your email address");
+      setEmailError(true);
       return;
     }
 
     if (!email.includes("@")) {
-      showErrorModalWithMessage("Please enter a valid email address");
+      setValidationError("Please enter a valid email address");
+      setEmailError(true);
       return;
     }
 
@@ -66,20 +59,24 @@ export default function ForgotPasswordScreen() {
     if (result.success) {
       setStep(2); // Move to OTP step
     } else {
-      showErrorModalWithMessage(result.message);
+      setValidationError(result.message);
     }
   };
 
   const handleVerifyOtp = async () => {
     clearError();
+    setValidationError("");
+    setOtpError(false);
 
     if (!otp.trim()) {
-      showErrorModalWithMessage("Please enter the OTP code");
+      setValidationError("Please enter the OTP code");
+      setOtpError(true);
       return;
     }
 
     if (otp.length !== 6) {
-      showErrorModalWithMessage("OTP must be 6 digits");
+      setValidationError("OTP must be 6 digits");
+      setOtpError(true);
       return;
     }
 
@@ -88,30 +85,39 @@ export default function ForgotPasswordScreen() {
     if (result.success) {
       setStep(3); // Move to new password step
     } else {
-      showErrorModalWithMessage(result.message);
+      setValidationError(result.message);
+      setOtpError(true);
     }
   };
 
   const handleResetPassword = async () => {
     clearError();
+    setValidationError("");
+    setNewPasswordError(false);
+    setConfirmPasswordError(false);
 
     if (!newPassword.trim()) {
-      showErrorModalWithMessage("Please enter a new password");
-      return;
-    }
-
-    if (!confirmPassword.trim()) {
-      showErrorModalWithMessage("Please confirm your new password");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      showErrorModalWithMessage("Passwords do not match");
+      setValidationError("Please enter a new password");
+      setNewPasswordError(true);
       return;
     }
 
     if (newPassword.length < 8) {
-      showErrorModalWithMessage("Password must be at least 8 characters long");
+      setValidationError("Password must be at least 8 characters long");
+      setNewPasswordError(true);
+      return;
+    }
+
+    if (!confirmPassword.trim()) {
+      setValidationError("Please confirm your new password");
+      setConfirmPasswordError(true);
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setValidationError("Passwords do not match");
+      setNewPasswordError(true);
+      setConfirmPasswordError(true);
       return;
     }
 
@@ -120,18 +126,21 @@ export default function ForgotPasswordScreen() {
     if (result.success) {
       showSuccessModalWithMessage("Password reset successful! You can now log in with your new password.");
     } else {
-      showErrorModalWithMessage(result.message);
+      setValidationError(result.message);
+      setNewPasswordError(true);
+      setConfirmPasswordError(true);
     }
   };
 
   const handleResendOtp = async () => {
     clearError();
+    setValidationError("");
     const result = await requestPasswordReset(email.trim());
     
     if (result.success) {
       showSuccessModalWithMessage("New OTP code sent to your email");
     } else {
-      showErrorModalWithMessage(result.message);
+      setValidationError(result.message);
     }
   };
 
@@ -172,25 +181,41 @@ export default function ForgotPasswordScreen() {
         {/* Step 1: Email Input */}
         {step === 1 && (
         <View style={styles.InputContainer}>
-          <Label>Email</Label>
-            <Input 
+          <Text style={styles.label}>Email</Text>
+            <TextInput 
               placeholder="Enter your email" 
+              style={[styles.input, emailError && styles.inputError]}
+              placeholderTextColor="#999"
               value={email} 
-              onChangeText={setEmail} 
+              onChangeText={(text) => {
+                setEmail(text);
+                if (validationError) setValidationError("");
+                if (emailError) setEmailError(false);
+              }} 
               keyboardType="email-address" 
             />
+            
+            {/* Error Display */}
+            {validationError && (
+              <Text style={styles.errorText}>{validationError}</Text>
+            )}
           </View>
         )}
 
         {/* Step 2: OTP Input */}
         {step === 2 && (
           <View style={styles.InputContainer}>
-            <Label>OTP Code</Label>
+            <Text style={styles.label}>OTP Code</Text>
             <TextInput
-              style={styles.otpInput}
+              style={[styles.otpInput, otpError && styles.inputError]}
               placeholder="Enter 6-digit code"
+              placeholderTextColor="#999"
               value={otp}
-              onChangeText={setOtp}
+              onChangeText={(text) => {
+                setOtp(text);
+                if (validationError) setValidationError("");
+                if (otpError) setOtpError(false);
+              }}
               keyboardType="numeric"
               maxLength={6}
               textAlign="center"
@@ -198,26 +223,48 @@ export default function ForgotPasswordScreen() {
             <TouchableOpacity onPress={handleResendOtp} style={styles.resendButton}>
               <Text style={styles.resendText}>Resend OTP</Text>
             </TouchableOpacity>
+            
+            {/* Error Display */}
+            {validationError && (
+              <Text style={styles.errorText}>{validationError}</Text>
+            )}
           </View>
         )}
 
         {/* Step 3: New Password Input */}
         {step === 3 && (
           <View style={styles.InputContainer}>
-            <Label>New Password</Label>
-            <Input 
+            <Text style={styles.label}>New Password</Text>
+            <TextInput 
               placeholder="Enter new password" 
+              style={[styles.input, newPasswordError && styles.inputError]}
+              placeholderTextColor="#999"
               value={newPassword} 
-              onChangeText={setNewPassword} 
+              onChangeText={(text) => {
+                setNewPassword(text);
+                if (validationError) setValidationError("");
+                if (newPasswordError) setNewPasswordError(false);
+              }} 
               secureTextEntry={true}
             />
-            <Label style={{ marginTop: 15 }}>Confirm Password</Label>
-            <Input 
+            <Text style={[styles.label, { marginTop: 15 }]}>Confirm Password</Text>
+            <TextInput 
               placeholder="Confirm new password" 
+              style={[styles.input, confirmPasswordError && styles.inputError]}
+              placeholderTextColor="#999"
               value={confirmPassword} 
-              onChangeText={setConfirmPassword} 
+              onChangeText={(text) => {
+                setConfirmPassword(text);
+                if (validationError) setValidationError("");
+                if (confirmPasswordError) setConfirmPasswordError(false);
+              }} 
               secureTextEntry={true}
             />
+            
+            {/* Error Display */}
+            {validationError && (
+              <Text style={styles.errorText}>{validationError}</Text>
+            )}
         </View>
         )}
 
@@ -245,42 +292,10 @@ export default function ForgotPasswordScreen() {
             onPress={() => setStep(step - 1)} 
             style={styles.backStepButton}
           >
-            <Text style={styles.backStepText}>← Back</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
 
-      {/* Error Modal */}
-      <Modal
-        visible={showErrorModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={hideErrorModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Error</Text>
-            </View>
-            
-            <View style={styles.modalBody}>
-              <View style={styles.errorIconContainer}>
-                <Ionicons name="alert-circle" size={48} color="#f44336" />
-              </View>
-              <Text style={styles.modalMessage}>{errorMessage}</Text>
-            </View>
-            
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={hideErrorModal}
-              >
-                <Text style={styles.modalButtonText}>OK</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* Success Modal */}
       <Modal
@@ -296,10 +311,7 @@ export default function ForgotPasswordScreen() {
             </View>
             
             <View style={styles.modalBody}>
-              <View style={styles.successIconContainer}>
-                <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
-              </View>
-              <Text style={styles.modalMessage}>{errorMessage}</Text>
+              <Text style={styles.modalMessage}>Password reset successful! You can now log in with your new password.</Text>
             </View>
             
             <View style={styles.modalFooter}>
@@ -351,19 +363,46 @@ const styles = StyleSheet.create({
     marginTop: 5,
     gap: 5,
   },
+  label: {
+    fontSize: 13,
+    fontFamily: "Poppins_400Regular",
+    color: "#333",
+    marginBottom: 5,
+  },
+  input: {
+    width: "100%",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    borderColor: "#ccc",
+    borderWidth: 1,
+    fontSize: 13,
+    color: "#333",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    fontFamily: "Poppins_400Regular",
+  },
+  inputError: {
+    borderColor: "#f44336",
+    borderWidth: 1,
+  },
   otpInput: {
     borderWidth: 1,
     borderColor: "#ccc",
     padding: 14,
     borderRadius: 8,
-    fontSize: 18,
+    fontSize: 15,
     color: "#000",
     fontFamily: "Poppins_400Regular",
-    letterSpacing: 2,
   },
+  
   resendButton: {
-    alignSelf: "center",
-    marginTop: 10,
+    alignSelf: "flex-end",
+    marginTop: 5,
   },
   resendText: {
     color: "#2e7d32",
@@ -443,5 +482,13 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontFamily: "Poppins_500Medium",
+  },
+  errorText: {
+    color: "#f44336",
+    fontSize: 12,
+    fontFamily: "Poppins_400Regular",
+    flex: 1,
+    marginRight: 12, 
+    marginTop: -20,
   },
 });

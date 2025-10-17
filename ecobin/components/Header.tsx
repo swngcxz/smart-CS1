@@ -22,8 +22,6 @@ const Header: React.FC<HeaderProps> = ({ showIcons = true, style }) => {
     <View style={[styles.headerContainer, style]}>
       <Image source={require("@/assets/icon/logo-final2.png")} style={styles.logo} resizeMode="contain" />
 
-      {/* Centered Text */}
-      <Text style={styles.centerText}>Ecobin</Text>
 
       {/* Icons (right-aligned) */}
       {showIcons && (

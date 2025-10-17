@@ -14,7 +14,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Modal,
 } from "react-native";
 
 import {
@@ -49,59 +48,45 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [validationError, setValidationError] = useState("");
+  const [emailError, setEmailError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
 
-  const showErrorModalWithMessage = (message: string) => {
-    setErrorMessage(message);
-    setShowErrorModal(true);
-  };
-
-  const hideErrorModal = () => {
-    setShowErrorModal(false);
-    setErrorMessage("");
-    clearError();
-  };
 
   const handleLogin = async () => {
     // Clear any previous errors
     clearError();
+    setValidationError("");
+    setEmailError(false);
+    setPasswordError(false);
 
     // Basic validation
     if (!email.trim()) {
-      showErrorModalWithMessage("Please enter your email address");
-      return;
-    }
-
-    if (!password.trim()) {
-      showErrorModalWithMessage("Please enter your password");
+      setValidationError("Please enter your email address");
+      setEmailError(true);
       return;
     }
 
     if (!email.includes("@")) {
-      showErrorModalWithMessage("Please enter a valid email address");
+      setValidationError("Please enter a valid email address");
+      setEmailError(true);
+      return;
+    }
+
+    if (!password.trim()) {
+      setValidationError("Please enter your password");
+      setPasswordError(true);
       return;
     }
 
     // Attempt login
     const result = await login({ email: email.trim(), password });
     
+    // If login fails, highlight both fields
     if (!result.success) {
-      // Show specific error message based on the error type
-      let displayMessage = result.message;
-      
-      if (result.message.includes("Invalid credentials") || 
-          result.message.includes("Invalid email or password")) {
-        displayMessage = "Username and password is incorrect. Please try again.";
-      } else if (result.message.includes("Too many login attempts")) {
-        displayMessage = "Too many failed attempts. Please try again later.";
-      } else if (result.message.includes("Please verify your email")) {
-        displayMessage = "Please verify your email before logging in.";
-      }
-      
-      showErrorModalWithMessage(displayMessage);
+      setEmailError(true);
+      setPasswordError(true);
     }
-    // If successful, the hook will handle navigation automatically
   };
 
   if (!fontsLoaded) return null;
@@ -126,22 +111,19 @@ export default function LoginScreen() {
           <Text style={styles.description}>Your cleaner choices start here</Text>
         </View>
 
-        {/* Error Display */}
-        {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
         {/* Inputs */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
           <TextInput
             placeholder="Enter your email"
-            style={styles.input}
+            style={[styles.input, emailError && styles.inputError]}
             placeholderTextColor="#aaa"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (validationError) setValidationError("");
+              if (emailError) setEmailError(false);
+            }}
             keyboardType="email-address"
           />
 
@@ -150,9 +132,13 @@ export default function LoginScreen() {
             <TextInput
               placeholder="Enter your password"
               placeholderTextColor="#aaa"
-              style={[styles.input, styles.passwordInput]}
+              style={[styles.input, styles.passwordInput, passwordError && styles.inputError]}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (validationError) setValidationError("");
+                if (passwordError) setPasswordError(false);
+              }}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)} style={styles.eyeIcon}>
@@ -160,12 +146,17 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
+          <View style={styles.forgotPasswordContainer}>
+            {(validationError || error) && (
+              <Text style={styles.errorText}>{validationError || error}</Text>
+            )}
           <TouchableOpacity
-            style={styles.forgotPasswordContainer}
+              style={styles.forgotPasswordLink}
             onPress={() => router.push("/forgot-password")}
           >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
+          </View>
         </View>
 
         {/* Login Button */}
@@ -202,37 +193,6 @@ export default function LoginScreen() {
         </Text>
       </ScrollView>
 
-      {/* Error Modal */}
-      <Modal
-        visible={showErrorModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={hideErrorModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Login Failed</Text>
-            </View>
-            
-            <View style={styles.modalBody}>
-              <View style={styles.errorIconContainer}>
-                <Ionicons name="alert-circle" size={48} color="#f44336" />
-              </View>
-              <Text style={styles.modalMessage}>{errorMessage}</Text>
-            </View>
-            
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={hideErrorModal}
-              >
-                <Text style={styles.modalButtonText}>Try Again</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -247,10 +207,13 @@ const styles = StyleSheet.create<{
   inputContainer: ViewStyle;
   label: TextStyle;
   input: TextStyle;
+  inputError: TextStyle;
   passwordWrapper: ViewStyle;
   passwordInput: TextStyle;
   eyeIcon: ViewStyle;
+  errorText: TextStyle;
   forgotPasswordContainer: ViewStyle;
+  forgotPasswordLink: ViewStyle;
   forgotPasswordText: TextStyle;
   loginButton: ViewStyle;
   loginButtonText: TextStyle;
@@ -261,17 +224,6 @@ const styles = StyleSheet.create<{
   signInPrompt: TextStyle;
   signInLink: TextStyle;
   errorContainer: ViewStyle;
-  errorText: TextStyle;
-  modalOverlay: ViewStyle;
-  modalContainer: ViewStyle;
-  modalHeader: ViewStyle;
-  modalTitle: TextStyle;
-  modalBody: ViewStyle;
-  errorIconContainer: ViewStyle;
-  modalMessage: TextStyle;
-  modalFooter: ViewStyle;
-  modalButton: ViewStyle;
-  modalButtonText: TextStyle;
 }>({
   scrollContainer: {
     flexGrow: 1,
@@ -326,6 +278,10 @@ const styles = StyleSheet.create<{
     color: "#000",
     fontFamily: poppins.regular, 
   },
+  inputError: {
+    borderColor: "#f44336",
+    borderWidth: 1,
+  },
 
   passwordWrapper: {
     position: "relative",
@@ -341,14 +297,27 @@ const styles = StyleSheet.create<{
     right: 10,
     top: 12,
   },
+  errorText: {
+    fontSize: 12,
+    fontFamily: poppins.regular,
+    color: "#f44336",
+    marginBottom: 8,
+  },
   forgotPasswordContainer: {
+    position: "relative",
     marginTop: 8,
-    alignItems: "flex-end",
+    minHeight: 18,
+  },
+  forgotPasswordLink: {
+    position: "absolute",
+    right: 0,
+    top: 0,
   },
   forgotPasswordText: {
     fontSize: 13,
     fontFamily: poppins.regular,
     color: "#2e7d32",
+    textDecorationLine: "underline",
   },
   loginButton: {
     backgroundColor: "#2e7d32",
@@ -400,72 +369,5 @@ const styles = StyleSheet.create<{
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: "#d32f2f",
-    fontSize: 13,
-    fontFamily: poppins.regular,
-    textAlign: "center",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    width: "100%",
-    maxWidth: 320,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalHeader: {
-    padding: 20,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: poppins.semibold,
-    color: "#333",
-    textAlign: "center",
-  },
-  modalBody: {
-    padding: 20,
-    alignItems: "center",
-  },
-  errorIconContainer: {
-    marginBottom: 16,
-  },
-  modalMessage: {
-    fontSize: 14,
-    fontFamily: poppins.regular,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  modalFooter: {
-    padding: 20,
-    paddingTop: 10,
-  },
-  modalButton: {
-    backgroundColor: "#2e7d32",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  modalButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontFamily: poppins.medium,
   },
 });

@@ -5,9 +5,12 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, FlatList, Modal, Pressable } from "react-native";
 import apiClient from "@/utils/apiConfig";
 import { useAuth } from "@/hooks/useAuth";
+import { Calendar } from "react-native-calendars";
+import { useMaintenanceSchedules, formatMaintenanceType, getMaintenanceTypeColor, formatMaintenanceDate, getMaintenanceCalendarDotColor, formatMaintenanceTimeRange, isDateInPast as isMaintenanceDateInPast } from "@/hooks/useMaintenanceSchedules";
+import { useTrashCollectionSchedules, formatTrashCollectionType, getTrashCollectionTypeColor, formatTrashCollectionDate, getTrashCollectionCalendarDotColor, formatTrashCollectionTimeRange, isDateInPast as isTrashCollectionDateInPast } from "@/hooks/useTrashCollectionSchedules";
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, "Home">;
 
@@ -35,6 +38,14 @@ export default function HomeScreen() {
   const [allActivityLogs, setAllActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Schedule state
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // Use the separate schedule hooks
+  const { schedules: maintenanceSchedules, loading: maintenanceLoading, getSchedulesByDate: getMaintenanceSchedulesByDate, getTodaySchedules: getTodayMaintenanceSchedules } = useMaintenanceSchedules();
+  const { schedules: trashCollectionSchedules, loading: trashCollectionLoading, getSchedulesByDate: getTrashCollectionSchedulesByDate, getTodaySchedules: getTodayTrashCollectionSchedules } = useTrashCollectionSchedules();
 
   // Fetch activity logs for the logged-in user
   const fetchActivityLogs = async () => {
@@ -210,6 +221,95 @@ export default function HomeScreen() {
     });
   };
 
+  // Schedule functions
+  const handleDayPress = (day: any) => {
+    const date = day.dateString;
+    const schedulesForDate = [
+      ...getMaintenanceSchedulesByDate(date),
+      ...getTrashCollectionSchedulesByDate(date)
+    ];
+    
+    if (schedulesForDate.length > 0) {
+      setSelectedDate(date);
+      setModalVisible(true);
+    }
+  };
+
+  // Combine all schedules for display
+  const allSchedules = [...maintenanceSchedules, ...trashCollectionSchedules];
+  const todaySchedules = [...getTodayMaintenanceSchedules(), ...getTodayTrashCollectionSchedules()];
+
+  // Create marked dates for calendar with enhanced visual styling
+  const markedDates = allSchedules.reduce((acc, schedule) => {
+    const dateKey = schedule.date;
+    if (!acc[dateKey]) {
+      acc[dateKey] = { 
+        marked: true,
+        dots: [
+          {
+            key: schedule.type,
+            color: schedule.type === 'maintenance' ? '#ff9800' : '#2e7d32',
+            selectedDotColor: '#ffffff'
+          }
+        ],
+        selectedColor: '#2e7d32',
+        selectedTextColor: '#ffffff'
+      };
+    } else {
+      // Add additional dots for multiple schedules on same day
+      acc[dateKey].dots?.push({
+        key: schedule.type,
+        color: schedule.type === 'maintenance' ? '#ff9800' : '#2e7d32',
+        selectedDotColor: '#ffffff'
+      });
+    }
+    return acc;
+  }, {} as Record<string, any>);
+
+  // Get schedules for selected date
+  const selectedDateSchedules = selectedDate ? [
+    ...getMaintenanceSchedulesByDate(selectedDate),
+    ...getTrashCollectionSchedulesByDate(selectedDate)
+  ] : [];
+
+  // Format assigned tasks for display with new structure (only upcoming schedules)
+  const assignedTasks = allSchedules
+    .filter(schedule => {
+      // Use appropriate date check based on schedule type
+      const isPast = schedule.type === 'maintenance' 
+        ? isMaintenanceDateInPast(schedule.date)
+        : isTrashCollectionDateInPast(schedule.date);
+      return !isPast;
+    })
+    .map(schedule => {
+      // Type-safe property access
+      const name = 'staffName' in schedule ? schedule.staffName : 
+                   'driverName' in schedule ? schedule.driverName : 'Unassigned';
+      const startTime = 'start_time' in schedule ? schedule.start_time : 
+                        'start_collected' in schedule ? schedule.start_collected : undefined;
+      const endTime = 'end_time' in schedule ? schedule.end_time : 
+                      'end_collected' in schedule ? schedule.end_collected : undefined;
+      
+      // Use appropriate formatting based on schedule type
+      const formattedTime = schedule.type === 'maintenance'
+        ? formatMaintenanceTimeRange(startTime, endTime)
+        : formatTrashCollectionTimeRange(startTime, endTime);
+      
+      const formattedType = schedule.type === 'maintenance'
+        ? formatMaintenanceType()
+        : formatTrashCollectionType();
+      
+      return {
+        id: schedule.id,
+        name: name || 'Unassigned',
+        time: formattedTime,
+        area: schedule.area,
+        type: formattedType,
+        status: schedule.status,
+        date: schedule.date, // Keep for filtering
+      };
+    });
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 20 }}>
       <View style={styles.header}>
@@ -259,58 +359,148 @@ export default function HomeScreen() {
       ))}
       </View>
 
-      <View style={styles.activityHeader}>
-        <Text style={styles.sectionTitle}>Current Tasks</Text>
-        {allActivityLogs.length > 0 && (
-          <TouchableOpacity onPress={() => {
-            console.log('Navigating to activity logs, current logs:', allActivityLogs.length);
-            router.push("/activity-logs");
-          }}>
-            <Text style={styles.seeAllText}>See All</Text>
-          </TouchableOpacity>
-        )}
+      {/* Schedule Section */}
+      <Text style={styles.sectionTitle}>Schedule Overview</Text>
+      
+      {/* Loading indicator for schedules */}
+      {(maintenanceLoading || trashCollectionLoading) && (
+        <View style={styles.loadingHeader}>
+          <ActivityIndicator size="small" color="#2e7d32" />
+          <Text style={styles.loadingHeaderText}>Loading schedules...</Text>
+        </View>
+      )}
+
+      <View style={styles.scheduleContainer}>
+        <View style={styles.calendarWrapper}>
+          <Calendar
+            markedDates={markedDates}
+            enableSwipeMonths
+            hideExtraDays
+            firstDay={1}
+            showWeekNumbers={false}
+            disableMonthChange={false}
+            disableArrowLeft={false}
+            disableArrowRight={false}
+            theme={{
+              backgroundColor: "#ffffff",
+              calendarBackground: "#ffffff",
+              textSectionTitleColor: "#2e7d32",
+              selectedDayBackgroundColor: "#2e7d32",
+              selectedDayTextColor: "#ffffff",
+              todayTextColor: "#ffffff",
+              todayBackgroundColor: "#4caf50",
+              dayTextColor: "#2d3748",
+              textDisabledColor: "#a0aec0",
+              dotColor: "#2e7d32",
+              selectedDotColor: "#ffffff",
+              arrowColor: "#2e7d32",
+              monthTextColor: "#1a202c",
+              indicatorColor: "#2e7d32",
+              textDayFontWeight: "600",
+              textMonthFontWeight: "700",
+              textDayHeaderFontWeight: "600",
+              textDayFontSize: 16,
+              textMonthFontSize: 20,
+              textDayHeaderFontSize: 14,
+            }}
+            onDayPress={handleDayPress}
+            markingType="multi-dot"
+            hideArrows={false}
+            renderArrow={(direction) => (
+              direction === 'left' ? 
+                <Ionicons name="chevron-back" size={24} color="#2e7d32" /> : 
+                <Ionicons name="chevron-forward" size={24} color="#2e7d32" />
+            )}
+            renderHeader={(date) => {
+              const month = date.toString('MMMM yyyy');
+              return (
+                <View style={styles.calendarHeader}>
+                  <Text style={styles.calendarHeaderText}>{month}</Text>
+                </View>
+              );
+            }}
+          />
       </View>
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#2e7d32" />
-          <Text style={styles.loadingText}>Loading current tasks...</Text>
         </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Failed to load activity logs</Text>
-          <TouchableOpacity onPress={fetchActivityLogs} style={styles.retryButton}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+
+      {/* Schedule Details Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        presentationStyle="overFullScreen"
+        statusBarTranslucent
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable style={styles.modalBackground} onPress={() => setModalVisible(false)}>
+          <Pressable style={styles.modalContainer} onPress={(e) => e.stopPropagation()}>
+            <Pressable
+              accessibilityLabel="Close"
+              onPress={() => setModalVisible(false)}
+              hitSlop={12}
+              style={styles.closeIcon}
+            >
+              <Text style={styles.closeIconText}>×</Text>
+            </Pressable>
+
+            <Text style={styles.modalTitle}>Schedule Details</Text>
+
+            {selectedDate && selectedDateSchedules.length > 0 && (
+              <>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.label}>Date</Text>
+                  <Text style={styles.value}>
+                    {selectedDateSchedules.some(s => s.type === 'maintenance') 
+                      ? formatMaintenanceDate(selectedDate) 
+                      : formatTrashCollectionDate(selectedDate)}
+                  </Text>
         </View>
-      ) : activityLogs.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No current tasks</Text>
-          <Text style={styles.emptySubtext}>You don't have any tasks in progress right now</Text>
-        </View>
-      ) : (
-        activityLogs.map((log, index) => (
-          <View key={log.id} style={styles.logCard}>
-          <View style={styles.logTextContainer}>
-              <Text style={styles.logMessage}>{formatActivityMessage(log)}</Text>
-            <Text style={styles.logTime}>
-                {formatActivityTime(log.created_at)}
+                <Text style={styles.scheduleCount}>
+                  {selectedDateSchedules.length} schedule{selectedDateSchedules.length > 1 ? 's' : ''} found
             </Text>
-              <Text style={styles.logSubtext}>
-                📍 {log.bin_id} – {log.bin_location}
+                
+                {selectedDateSchedules.map((schedule, index) => (
+                  <View key={schedule.id} style={styles.scheduleItem}>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.label}>Type</Text>
+                      <Text style={[styles.value, { 
+                        color: schedule.type === 'maintenance' 
+                          ? getMaintenanceTypeColor() 
+                          : getTrashCollectionTypeColor() 
+                      }]}>
+                        {schedule.type === 'maintenance' 
+                          ? formatMaintenanceType() 
+                          : formatTrashCollectionType()}
               </Text>
           </View>
-
-          <View style={styles.rightColumn}>
-              <View style={[styles.typeBadge, getBadgeStyle(log.status, log.activity_type)]}>
-                <Text style={styles.badgeText}>
-                  IN PROGRESS
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.label}>Area</Text>
+                      <Text style={styles.value}>{schedule.area}</Text>
+                    </View>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.label}>Time</Text>
+                      <Text style={styles.value}>{schedule.time || 'TBD'}</Text>
+                    </View>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.label}>Status</Text>
+                      <Text style={styles.value}>{schedule.status}</Text>
+                    </View>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.label}>Assigned To</Text>
+                      <Text style={styles.value}>
+                        {'staffName' in schedule ? schedule.staffName : 
+                         'driverName' in schedule ? schedule.driverName : 'Unassigned'}
                 </Text>
             </View>
+                    {index < selectedDateSchedules.length - 1 && <View style={styles.divider} />}
           </View>
-        </View>
-        ))
+                ))}
+              </>
       )}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
     </ScrollView>
   );
@@ -532,5 +722,118 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
     textAlign: 'center',
+  },
+  // Schedule Styles
+  scheduleContainer: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  calendarWrapper: {
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  calendarHeader: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: "#f8fafc",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  calendarHeaderText: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1a202c",
+    letterSpacing: 0.5,
+  },
+  loadingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: "#f8f9fa",
+    marginBottom: 10,
+    borderRadius: 8,
+  },
+  loadingHeaderText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: "#666",
+  },
+  // Modal Styles
+  modalBackground: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
+    width: "88%",
+    elevation: 5,
+    position: "relative",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 14,
+    color: "#111",
+  },
+  closeIcon: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    padding: 8,
+    zIndex: 10,
+  },
+  closeIconText: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#2e7d32",
+    lineHeight: 22,
+  },
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  label: {
+    fontWeight: "600",
+    color: "#333",
+  },
+  value: {
+    color: "#111",
+    fontWeight: "600",
+  },
+  scheduleCount: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  scheduleItem: {
+    marginBottom: 15,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#e0e0e0",
+    marginVertical: 10,
   },
 });

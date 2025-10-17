@@ -16,14 +16,14 @@ export default function TabLayout() {
   const isWeb = Platform.OS === "web";
 
   // --- Colors
-  const backgroundColor = isDark ? "#1c1c1e" : "#ffffffee";
+  const backgroundColor = "#ffffff"; // Solid white background
   const activeTintColor = isDark ? "#90ee90" : "#2e7d32";
   const inactiveTintColor = isDark ? "#ccc" : "#9e9e9e";
 
   // --- Sizes (↑ height a bit; ↓ padding so text fits cleanly)
-  const barHeight = compact ? 68 : medium ? 70 : 74; // was 64/66/70
-  const barRadius = compact ? 18 : medium ? 20 : 22;
-  const iconSize = compact ? 10 : medium ? 18 : 18; // your sizes
+  const barHeight = compact ? 80 : medium ? 85 : 90; // Increased height for better proportions
+  const barRadius = 32; // Add even more pronounced curve to the top
+  const iconSize = compact ? 18 : medium ? 26 : 28; // Bigger icons
   const labelFontSize = compact ? 10 : medium ? 10 : 11; // a touch smaller for fit
 
   // lineHeight to prevent clipping; slight headroom
@@ -36,7 +36,7 @@ export default function TabLayout() {
 
   const leftPosition = isWeb ? Math.max((width - (computedBarWidth ?? width)) / 2, horizontalMargin) : horizontalMargin;
 
-  const bottomOffset = Math.max(insets.bottom, compact ? 8 : 12);
+  const bottomOffset = 0; // Position at the very bottom
 
   // --- Styles (no inline objects below)
   const tabBarStyleBase = {
@@ -45,14 +45,15 @@ export default function TabLayout() {
     height: barHeight,
     backgroundColor,
     borderRadius: barRadius,
-    paddingTop: compact ? 4 : 6, // was 6/8
-    paddingBottom: compact ? 8 : 10, // was 10/12
+    paddingTop: compact ? 8 : 10, // Increased padding for taller bar
+    paddingBottom: compact ? 12 : 14, // Increased padding for taller bar
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 10,
-    borderTopWidth: 0,
+    shadowOffset: { width: 0, height: -2 }, // Shadow above the bar
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
   };
 
   const tabBarStyleWeb = isWeb
@@ -65,8 +66,8 @@ export default function TabLayout() {
 
   const tabBarStyleNative = !isWeb
     ? ({
-        left: horizontalMargin,
-        right: horizontalMargin,
+        left: 12,
+        right: 12,
       } as const)
     : ({} as const);
 
@@ -127,12 +128,12 @@ export default function TabLayout() {
         />
 
         <Tabs.Screen
-          name="schedule"
+          name="activitylogs"
           options={{
-            tabBarLabel: "Schedule",
-            title: "Schedule",
+            tabBarLabel: "Activity Logs",
+            title: "Activity Logs",
             tabBarIcon: ({ color, focused }) => (
-              <Ionicons name={focused ? "calendar" : "calendar-outline"} color={color} size={iconSize} />
+              <Ionicons name={focused ? "list" : "list-outline"} color={color} size={iconSize} />
             ),
           }}
         />
