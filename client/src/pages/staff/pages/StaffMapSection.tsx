@@ -14,12 +14,13 @@ import "@/styles/map-transitions.css";
 import { Viewer } from "mapillary-js";
 import "mapillary-js/dist/mapillary.css";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
-import { MapPin, Wifi, WifiOff, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, Wifi, WifiOff, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { getActiveTimeAgo } from "@/utils/timeUtils";
 import { getDistanceFromMap } from "@/utils/distanceUtils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { AddBinModal, BinFormData } from "@/components/modals/AddBinModal";
 
 // Add custom styles for user location marker
 const userLocationStyles = `
@@ -93,6 +94,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
   const [showGPSTracking, setShowGPSTracking] = useState(false);
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
   const [selectedRoute, setSelectedRoute] = useState<string>("");
+  const [isAddBinModalOpen, setIsAddBinModalOpen] = useState(false);
 
   const handleBinClick = (binId: string) => {
     if (onBinClick) onBinClick(binId);
@@ -107,6 +109,25 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
   // Toggle location dropdown
   const toggleLocationDropdown = () => {
     setIsLocationDropdownOpen(!isLocationDropdownOpen);
+  };
+
+  // Handle adding new bin
+  const handleAddBin = async (binData: BinFormData) => {
+    try {
+      // TODO: Implement API call to add bin to database
+      console.log("Adding new bin:", binData);
+
+      // For now, just simulate the API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // You can add the actual API call here later
+      // Example: await addBinToDatabase(binData);
+
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Error adding bin:", error);
+      throw error;
+    }
   };
   const [userLocation, setUserLocation] = useState<LatLngTuple | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -440,6 +461,14 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
                   </div>
                 )}
               </div>
+              <Button
+                size="sm"
+                className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
+                onClick={() => setIsAddBinModalOpen(true)}
+              >
+                <Plus className="w-3 h-3" />
+                <span>Add Bin</span>
+              </Button>
 
               {/* GPS Tracking Toggle */}
               {gpsHistory.length > 1 && (
@@ -450,7 +479,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
                   }`}
                   title="Toggle GPS tracking path"
                 >
-                {showGPSTracking ? "Hide" : "Show"} Path
+                  {showGPSTracking ? "Hide" : "Show"} Path
                 </button>
               )}
             </div>
@@ -513,12 +542,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
               <MapTypeIndicator transitionZoomLevel={18} />
 
               {updatedBinLocations.map((bin) => (
-                <DynamicBinMarker 
-                  key={bin.id} 
-                  bin={bin} 
-                  onBinClick={handleBinClick} 
-                  showPopup={!showRightPanel} 
-                />
+                <DynamicBinMarker key={bin.id} bin={bin} onBinClick={handleBinClick} showPopup={!showRightPanel} />
               ))}
 
               {/* GPS Tracking Line */}
@@ -616,6 +640,9 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
           )}
         </CardContent>
       </Card>
+
+      {/* Add Bin Modal */}
+      <AddBinModal isOpen={isAddBinModalOpen} onClose={() => setIsAddBinModalOpen(false)} onAddBin={handleAddBin} />
     </>
   );
 }
