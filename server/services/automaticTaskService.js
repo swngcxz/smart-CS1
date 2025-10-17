@@ -314,7 +314,7 @@ class AutomaticTaskService {
           binId: binId,
           binLocation: binLocation,
           binLevel: binLevel,
-          taskNote: `🚨 AUTOMATIC TASK: Bin level ${binLevel}% exceeds threshold (85%). Click to accept this task.`,
+          taskNote: `AUTOMATIC TASK: Bin level ${binLevel}% exceeds threshold (85%).`,
           activityType: 'task_assignment',
           priority: priority,
           activityId: taskId,

@@ -111,6 +111,26 @@ class PerformanceController {
         activityCount: userActivityCounts[userId]
       })).sort((a, b) => b.activityCount - a.activityCount);
 
+      // Add performance percentile for each janitor
+      const activityCounts = janitorPerformance.map(j => j.activityCount);
+      janitorPerformance.forEach((janitor, index) => {
+        const percentile = activityCounts.length > 1 ? 
+          ((activityCounts.length - index - 1) / (activityCounts.length - 1)) * 100 : 50;
+        
+        janitor.performancePercentile = Math.round(percentile);
+        
+        // Add performance level based on percentile
+        if (percentile >= 80) {
+          janitor.performanceLevel = 'Excellent';
+        } else if (percentile >= 60) {
+          janitor.performanceLevel = 'Good';
+        } else if (percentile >= 30) {
+          janitor.performanceLevel = 'Average';
+        } else {
+          janitor.performanceLevel = 'Needs Improvement';
+        }
+      });
+
       // Calculate statistics
       const totalActivities = activityLogs.length;
       const topPerformer = janitorPerformance.length > 0 ? janitorPerformance[0] : null;

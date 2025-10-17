@@ -156,11 +156,34 @@ export function PerformanceTab() {
     return null;
   };
 
-  const getActivityLevel = (count: number) => {
-    if (count >= 100) return { label: "Excellent", color: "text-green-600 bg-green-100" };
-    if (count >= 50) return { label: "Good", color: "text-blue-600 bg-blue-100" };
-    if (count >= 20) return { label: "Average", color: "text-yellow-600 bg-yellow-100" };
-    return { label: "Needs Improvement", color: "text-red-600 bg-red-100" };
+  const getActivityLevel = (count: number, allCounts: number[]) => {
+    if (!allCounts || allCounts.length === 0) {
+      return { label: "No Data", color: "text-gray-600 bg-gray-100" };
+    }
+
+    // Sort counts to find percentiles
+    const sortedCounts = [...allCounts].sort((a, b) => b - a);
+    const maxCount = sortedCounts[0];
+    const minCount = sortedCounts[sortedCounts.length - 1];
+    
+    // If all counts are the same, everyone is average
+    if (maxCount === minCount) {
+      return { label: "Average", color: "text-yellow-600 bg-yellow-100" };
+    }
+
+    // Calculate percentile position
+    const percentile = (sortedCounts.indexOf(count) / (sortedCounts.length - 1)) * 100;
+    
+    // Determine performance level based on percentile
+    if (percentile <= 20) {
+      return { label: "Excellent", color: "text-green-600 bg-green-100" };
+    } else if (percentile <= 40) {
+      return { label: "Good", color: "text-blue-600 bg-blue-100" };
+    } else if (percentile <= 70) {
+      return { label: "Average", color: "text-yellow-600 bg-yellow-100" };
+    } else {
+      return { label: "Needs Improvement", color: "text-red-600 bg-red-100" };
+    }
   };
 
   // Don't return early on loading - show skeleton instead
@@ -349,7 +372,8 @@ export function PerformanceTab() {
                 <>
                   {performanceData.janitors.map((janitor, index) => {
                     const rank = index + 1;
-                    const activityLevel = getActivityLevel(janitor.activityCount);
+                    const allCounts = performanceData.janitors.map(j => j.activityCount);
+                    const activityLevel = getActivityLevel(janitor.activityCount, allCounts);
 
                     return (
                       <TableRow key={janitor.id} className="opacity-50">
@@ -390,7 +414,8 @@ export function PerformanceTab() {
               ) : (
                 performanceData?.janitors?.map((janitor, index) => {
                   const rank = index + 1;
-                  const activityLevel = getActivityLevel(janitor.activityCount);
+                  const allCounts = performanceData.janitors.map(j => j.activityCount);
+                  const activityLevel = getActivityLevel(janitor.activityCount, allCounts);
 
                   return (
                     <TableRow key={janitor.id}>
