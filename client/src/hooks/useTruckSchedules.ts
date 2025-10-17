@@ -1,4 +1,4 @@
-import { useApiGet, useApiPost, useApiPut } from "./useApi";
+import { useApiGet, useApiPost, useApiPut, useApiDelete } from "./useApi";
 
 export function useTruckSchedulesList() {
   const result = useApiGet("/api/truck-schedules");
@@ -24,4 +24,8 @@ export function useCreateTruckSchedule(truckScheduleData: any, trigger: boolean)
 
 export function useUpdateTruckScheduleStatus(truckScheduleId: string | null, status: string, trigger: boolean) {
   return useApiPut(truckScheduleId ? `/api/truck-schedules/${truckScheduleId}` : null, { status }, trigger);
+}
+
+export function useDeleteTruckSchedule(truckScheduleId: string | null, trigger: boolean) {
+  return useApiDelete(truckScheduleId ? `/api/truck-schedules/${truckScheduleId}` : null, trigger);
 }

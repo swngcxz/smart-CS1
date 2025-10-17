@@ -60,6 +60,26 @@ export function useApiPut<T = any>(url: string | null, body: any, trigger: boole
   return { data, loading, error };
 }
 
+// Generic DELETE hook
+export function useApiDelete<T = any>(url: string | null, trigger: boolean) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!url || !trigger) return;
+    setLoading(true);
+    setError(null);
+    api.delete(url)
+      .then(res => setData(res.data))
+      .catch(err => setError(err?.response?.data?.error || "Failed to delete data"))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line
+  }, [url, trigger]);
+
+  return { data, loading, error };
+}
+
 // Example usage for each controller:
 // useApiGet("/api/staff")
 // useApiGet("/api/schedules")

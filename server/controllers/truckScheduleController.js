@@ -8,6 +8,7 @@ const {
 } = require("../models/truckScheduleModel");
 
 const StaffModel= require("../models/staffModel");
+const { db } = require("../models/firebase");
 async function createNewTruckSchedule(req, res) {
   console.log('🚛 Creating new truck schedule with data:', req.body);
   const {
@@ -110,8 +111,117 @@ async function updateTruckSchedule(req, res) {
   }
 }
 
+async function updateFullTruckSchedule(req, res) {
+  const { id } = req.params;
+  const { 
+    staffId, 
+    sched_type, 
+    start_collected, 
+    end_collected, 
+    location, 
+    status, 
+    date, 
+    priority, 
+    contactPerson, 
+    notes,
+    truckPlate
+  } = req.body;
+
+  if (!id) {
+    return res.status(400).json({ error: "Truck schedule ID is required" });
+  }
+
+  try {
+    // Check if truck schedule exists
+    const scheduleRef = db.collection("truckSchedules").doc(id);
+    const scheduleDoc = await scheduleRef.get();
+    
+    if (!scheduleDoc.exists) {
+      return res.status(404).json({ error: "Truck schedule not found" });
+    }
+
+    // Validate that the date is not in the past (if date is being updated)
+    if (date) {
+      const scheduleDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (scheduleDate < today) {
+        return res.status(400).json({ 
+          error: "Cannot update schedule to past dates. Please select today or a future date." 
+        });
+      }
+    }
+
+    // Prepare update data
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    // Only update fields that are provided
+    if (staffId !== undefined) updateData.staffId = staffId;
+    if (sched_type !== undefined) updateData.sched_type = sched_type;
+    if (start_collected !== undefined) updateData.start_collected = start_collected;
+    if (end_collected !== undefined) updateData.end_collected = end_collected;
+    if (location !== undefined) updateData.location = location;
+    if (status !== undefined) updateData.status = status;
+    if (date !== undefined) updateData.date = date;
+    if (priority !== undefined) updateData.priority = priority;
+    if (contactPerson !== undefined) updateData.contactPerson = contactPerson;
+    if (notes !== undefined) updateData.notes = notes;
+    if (truckPlate !== undefined) updateData.truckPlate = truckPlate;
+
+    // Update the truck schedule
+    await scheduleRef.update(updateData);
+
+    console.log(`Truck schedule ${id} updated successfully`);
+    return res.status(200).json({ 
+      message: "Truck schedule updated successfully",
+      scheduleId: id,
+      updatedData: updateData
+    });
+
+  } catch (err) {
+    console.error("Error updating truck schedule:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+async function deleteTruckSchedule(req, res) {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: "Truck schedule ID is required" });
+  }
+
+  try {
+    // Check if truck schedule exists
+    const scheduleRef = db.collection("truckSchedules").doc(id);
+    const scheduleDoc = await scheduleRef.get();
+    
+    if (!scheduleDoc.exists) {
+      return res.status(404).json({ error: "Truck schedule not found" });
+    }
+
+    // Delete the truck schedule
+    await scheduleRef.delete();
+
+    console.log(`Truck schedule ${id} deleted successfully`);
+    return res.status(200).json({ 
+      message: "Truck schedule deleted successfully",
+      scheduleId: id
+    });
+
+  } catch (err) {
+    console.error("Error deleting truck schedule:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   createNewTruckSchedule,
   getAllTruckSchedules,
-  updateTruckSchedule
+  updateTruckSchedule,
+  updateFullTruckSchedule,
+  deleteTruckSchedule
 };

@@ -395,6 +395,26 @@ export function ScheduleCollectionTabs() {
     }
   };
 
+  const handleUpdateSchedule = (updatedSchedule: Schedule) => {
+    console.log("Updating schedule:", updatedSchedule);
+    
+    // Update the schedule in local state
+    setScheduleData((prev) => 
+      prev.map((schedule) => 
+        schedule.id === updatedSchedule.id ? updatedSchedule : schedule
+      )
+    );
+    
+    // Update selected date schedules if it's the same date
+    if (selectedDate && isSameDay(new Date(updatedSchedule.date), selectedDate)) {
+      setSelectedDateSchedules((prev) => 
+        prev.map((schedule) => 
+          schedule.id === updatedSchedule.id ? updatedSchedule : schedule
+        )
+      );
+    }
+  };
+
   // Update: PUT status
   const [updateTargetId, setUpdateTargetId] = useState<string | null>(null);
   const [updateStatusValue, setUpdateStatusValue] = useState<string>("");
@@ -517,6 +537,12 @@ export function ScheduleCollectionTabs() {
         getStatusColor={getStatusColor}
         getCapacityColor={getCapacityColor}
         formatTimeRange={formatTimeRange}
+        onScheduleDeleted={(scheduleId) => {
+          // Remove the deleted schedule from local state
+          setScheduleData((prev) => prev.filter((schedule) => schedule.id !== scheduleId));
+          setSelectedDateSchedules((prev) => prev.filter((schedule) => schedule.id !== scheduleId));
+        }}
+        onScheduleUpdated={handleUpdateSchedule}
       />
 
       <AddScheduleDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} onAddSchedule={handleAddSchedule} />

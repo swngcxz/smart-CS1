@@ -3,9 +3,12 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, User, Phone, MessageSquare, Calendar, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Schedule } from "@/pages/staff/pages/scheduleTypes";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EditScheduleModal } from "./EditScheduleModal";
 import { DeleteScheduleModal } from "./DeleteScheduleModal";
+import { useDeleteTruckSchedule } from "@/hooks/useTruckSchedules";
+import { useDeleteSchedule } from "@/hooks/useSchedules";
+import { toast } from "sonner";
 
 interface SchedulePopupModalProps {
   isOpen: boolean;
@@ -19,6 +22,8 @@ interface SchedulePopupModalProps {
   getCapacityColor: (capacity: string) => string;
   formatTimeRange: (timeRange: string) => string;
   viewOnly?: boolean; // New prop for admin view-only mode
+  onScheduleDeleted?: (scheduleId: string) => void; // Callback when schedule is deleted
+  onScheduleUpdated?: (schedule: Schedule) => void; // Callback when schedule is updated
 }
 
 // Helper function to get profile picture or initials
@@ -49,10 +54,21 @@ export function SchedulePopupModal({
   getCapacityColor,
   formatTimeRange,
   viewOnly = false, // Default to false for staff
+  onScheduleDeleted,
+  onScheduleUpdated,
 }: SchedulePopupModalProps) {
   const [activeTab, setActiveTab] = useState<"collection" | "maintenance">("collection");
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [deletingSchedule, setDeletingSchedule] = useState<Schedule | null>(null);
+
+  // Delete hooks
+  const [deleteTruckScheduleId, setDeleteTruckScheduleId] = useState<string | null>(null);
+  const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null);
+  const [triggerTruckDelete, setTriggerTruckDelete] = useState(false);
+  const [triggerScheduleDelete, setTriggerScheduleDelete] = useState(false);
+
+  const { data: truckDeleteResult, error: truckDeleteError } = useDeleteTruckSchedule(deleteTruckScheduleId, triggerTruckDelete);
+  const { data: scheduleDeleteResult, error: scheduleDeleteError } = useDeleteSchedule(deleteScheduleId, triggerScheduleDelete);
 
   // Get counts for tabs
   const collectionCount = schedules.filter((s) => s.serviceType === "collection").length;
@@ -72,8 +88,10 @@ export function SchedulePopupModal({
   };
 
   const handleUpdateSchedule = (updatedSchedule: Schedule) => {
-    // TODO: Implement actual update functionality
     console.log("Updating schedule:", updatedSchedule);
+    if (onScheduleUpdated) {
+      onScheduleUpdated(updatedSchedule);
+    }
     setEditingSchedule(null);
   };
 
@@ -90,14 +108,65 @@ export function SchedulePopupModal({
   };
 
   const confirmDelete = () => {
-    // TODO: Implement actual delete functionality
+    if (!deletingSchedule?.id) return;
+    
     console.log("Deleting schedule:", deletingSchedule);
+    
+    // Determine which API to call based on service type
+    if (deletingSchedule.serviceType === "collection") {
+      setDeleteTruckScheduleId(deletingSchedule.id);
+      setTriggerTruckDelete(true);
+    } else {
+      setDeleteScheduleId(deletingSchedule.id);
+      setTriggerScheduleDelete(true);
+    }
+    
     setDeletingSchedule(null);
   };
 
   const cancelDelete = () => {
     setDeletingSchedule(null);
   };
+
+  // Handle delete results
+  useEffect(() => {
+    if (truckDeleteResult && triggerTruckDelete) {
+      toast.success("Truck schedule deleted successfully");
+      if (onScheduleDeleted) {
+        onScheduleDeleted(deleteTruckScheduleId!);
+      }
+      setTriggerTruckDelete(false);
+      setDeleteTruckScheduleId(null);
+    }
+  }, [truckDeleteResult, triggerTruckDelete, deleteTruckScheduleId, onScheduleDeleted]);
+
+  useEffect(() => {
+    if (scheduleDeleteResult && triggerScheduleDelete) {
+      toast.success("Schedule deleted successfully");
+      if (onScheduleDeleted) {
+        onScheduleDeleted(deleteScheduleId!);
+      }
+      setTriggerScheduleDelete(false);
+      setDeleteScheduleId(null);
+    }
+  }, [scheduleDeleteResult, triggerScheduleDelete, deleteScheduleId, onScheduleDeleted]);
+
+  // Handle delete errors
+  useEffect(() => {
+    if (truckDeleteError && triggerTruckDelete) {
+      toast.error("Failed to delete truck schedule");
+      setTriggerTruckDelete(false);
+      setDeleteTruckScheduleId(null);
+    }
+  }, [truckDeleteError, triggerTruckDelete]);
+
+  useEffect(() => {
+    if (scheduleDeleteError && triggerScheduleDelete) {
+      toast.error("Failed to delete schedule");
+      setTriggerScheduleDelete(false);
+      setDeleteScheduleId(null);
+    }
+  }, [scheduleDeleteError, triggerScheduleDelete]);
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[550px] max-h-[93vh]">

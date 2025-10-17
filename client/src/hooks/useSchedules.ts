@@ -1,4 +1,4 @@
-import { useApiGet, useApiPost } from "./useApi";
+import { useApiGet, useApiPost, useApiPut, useApiDelete } from "./useApi";
 
 export function useSchedulesList() {
   const result = useApiGet("/api/schedules");
@@ -20,4 +20,12 @@ export function useScheduleDetail(scheduleId: string | null) {
 
 export function useCreateSchedule(scheduleData: any, trigger: boolean) {
   return useApiPost("/api/schedules", scheduleData, trigger);
+}
+
+export function useUpdateScheduleStatus(scheduleId: string | null, status: string, trigger: boolean) {
+  return useApiPut(scheduleId ? `/api/schedules/${scheduleId}` : null, { status }, trigger);
+}
+
+export function useDeleteSchedule(scheduleId: string | null, trigger: boolean) {
+  return useApiDelete(scheduleId ? `/api/schedules/${scheduleId}` : null, trigger);
 }

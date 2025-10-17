@@ -6,6 +6,7 @@ const {
 } = require("../models/scheduleModel");
 
 const { validateSchedule } = require("../utils/validateSchedule");
+const { db } = require("../models/firebase");
 
 async function createNewSchedule(req, res) {
   console.log('Creating new schedule with data:', req.body);
@@ -102,8 +103,119 @@ async function updateSchedule(req, res) {
   }
 }
 
+async function updateFullSchedule(req, res) {
+  const { id } = req.params;
+  const { 
+    staffId, 
+    sched_type, 
+    start_time, 
+    end_time, 
+    location, 
+    status, 
+    date, 
+    priority, 
+    contactPerson, 
+    notes,
+    lunch_break_start,
+    lunch_break_end
+  } = req.body;
+
+  if (!id) {
+    return res.status(400).json({ error: "Schedule ID is required" });
+  }
+
+  try {
+    // Check if schedule exists
+    const scheduleRef = db.collection("schedules").doc(id);
+    const scheduleDoc = await scheduleRef.get();
+    
+    if (!scheduleDoc.exists) {
+      return res.status(404).json({ error: "Schedule not found" });
+    }
+
+    // Validate that the date is not in the past (if date is being updated)
+    if (date) {
+      const scheduleDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (scheduleDate < today) {
+        return res.status(400).json({ 
+          error: "Cannot update schedule to past dates. Please select today or a future date." 
+        });
+      }
+    }
+
+    // Prepare update data
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    // Only update fields that are provided
+    if (staffId !== undefined) updateData.staffId = staffId;
+    if (sched_type !== undefined) updateData.sched_type = sched_type;
+    if (start_time !== undefined) updateData.start_time = start_time;
+    if (end_time !== undefined) updateData.end_time = end_time;
+    if (location !== undefined) updateData.location = location;
+    if (status !== undefined) updateData.status = status;
+    if (date !== undefined) updateData.date = date;
+    if (priority !== undefined) updateData.priority = priority;
+    if (contactPerson !== undefined) updateData.contactPerson = contactPerson;
+    if (notes !== undefined) updateData.notes = notes;
+    if (lunch_break_start !== undefined) updateData.lunch_break_start = lunch_break_start;
+    if (lunch_break_end !== undefined) updateData.lunch_break_end = lunch_break_end;
+
+    // Update the schedule
+    await scheduleRef.update(updateData);
+
+    console.log(`Schedule ${id} updated successfully`);
+    return res.status(200).json({ 
+      message: "Schedule updated successfully",
+      scheduleId: id,
+      updatedData: updateData
+    });
+
+  } catch (err) {
+    console.error("Error updating schedule:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+async function deleteSchedule(req, res) {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: "Schedule ID is required" });
+  }
+
+  try {
+    // Check if schedule exists
+    const scheduleRef = db.collection("schedules").doc(id);
+    const scheduleDoc = await scheduleRef.get();
+    
+    if (!scheduleDoc.exists) {
+      return res.status(404).json({ error: "Schedule not found" });
+    }
+
+    // Delete the schedule
+    await scheduleRef.delete();
+
+    console.log(`Schedule ${id} deleted successfully`);
+    return res.status(200).json({ 
+      message: "Schedule deleted successfully",
+      scheduleId: id
+    });
+
+  } catch (err) {
+    console.error("Error deleting schedule:", err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   createNewSchedule,
   getAllSchedules,
   updateSchedule,
+  updateFullSchedule,
+  deleteSchedule,
 };
