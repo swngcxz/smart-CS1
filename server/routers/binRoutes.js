@@ -22,7 +22,7 @@ let cachedBinData = null;
 let lastCacheTime = 0;
 const CACHE_DURATION = 2000; // 2 seconds cache
 
-// Add bin1 endpoint to handle real-time data - OPTIMIZED with caching
+// Add bin1 endpoint to handle real-time data - OPTIMIZED with caching and fallback
 router.get("/bin1", async (req, res) => {
   console.log('[BIN ROUTES] /bin1 endpoint called');
   try {

@@ -43,8 +43,8 @@ export function useRealTimeData() {
         setLoading(true);
         console.log('Fetching initial data from Firebase...');
         
-        // Fetch bin1 data and backup coordinates
-        const [bin1Response, backupResponse] = await Promise.all([
+        // Fetch bin1 data and backup coordinates with better error handling
+        const [bin1Response, backupResponse] = await Promise.allSettled([
           api.get('/api/bin1'),
           api.get('/api/gps-backup/display/bin1').catch(err => {
             console.warn('Backup coordinates not available:', err.message);
@@ -52,34 +52,35 @@ export function useRealTimeData() {
           })
         ]);
 
-        console.log('API Response:', bin1Response);
-        console.log('Backup Response:', backupResponse);
-        
-        if (bin1Response.data) {
-          console.log('Real-time bin1 data received:', bin1Response.data);
-          console.log('Bin Level:', bin1Response.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.data.bin_level));
-          setBin1Data(bin1Response.data);
+        // Handle bin1 response
+        if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
+          console.log('Real-time bin1 data received:', bin1Response.value.data);
+          console.log('Bin Level:', bin1Response.value.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.value.data.bin_level));
+          setBin1Data(bin1Response.value.data);
           // Track GPS history if valid
-          if (bin1Response.data.gps_valid && bin1Response.data.latitude && bin1Response.data.longitude) {
+          if (bin1Response.value.data.gps_valid && bin1Response.value.data.latitude && bin1Response.value.data.longitude) {
             setGpsHistory(prev => [...prev, {
-              lat: bin1Response.data.latitude,
-              lng: bin1Response.data.longitude,
-              timestamp: bin1Response.data.timestamp
+              lat: bin1Response.value.data.latitude,
+              lng: bin1Response.value.data.longitude,
+              timestamp: bin1Response.value.data.timestamp
             }].slice(-50)); // Keep last 50 points
           }
         } else {
           console.log('No bin1 data received from API');
+          setBin1Data(null);
         }
         
-        if (backupResponse.data) {
-          console.log('Backup coordinates received:', backupResponse.data);
-          setBackupCoordinates(backupResponse.data);
+        // Handle backup response
+        if (backupResponse.status === 'fulfilled' && backupResponse.value.data) {
+          console.log('Backup coordinates received:', backupResponse.value.data);
+          setBackupCoordinates(backupResponse.value.data);
         }
         
         setError(null);
       } catch (err: any) {
         console.error('Error fetching initial data:', err);
         setError(err.message || 'Failed to fetch data');
+        setBin1Data(null);
       } finally {
         setLoading(false);
       }
@@ -92,7 +93,7 @@ export function useRealTimeData() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const [bin1Response, backupResponse] = await Promise.all([
+        const [bin1Response, backupResponse] = await Promise.allSettled([
           api.get('/api/bin1'),
           api.get('/api/gps-backup/display/bin1').catch(err => {
             console.warn('Backup coordinates not available in polling:', err.message);
@@ -100,31 +101,37 @@ export function useRealTimeData() {
           })
         ]);
 
-        if (bin1Response.data) {
-          console.log('Polling update - bin1 data:', bin1Response.data);
-          console.log('Bin Level:', bin1Response.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.data.bin_level));
-          setBin1Data(bin1Response.data);
+        // Handle bin1 response
+        if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
+          console.log('Polling update - bin1 data:', bin1Response.value.data);
+          console.log('Bin Level:', bin1Response.value.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.value.data.bin_level));
+          setBin1Data(bin1Response.value.data);
           // Track GPS history if valid
-          if (bin1Response.data.gps_valid && bin1Response.data.latitude && bin1Response.data.longitude) {
+          if (bin1Response.value.data.gps_valid && bin1Response.value.data.latitude && bin1Response.value.data.longitude) {
             setGpsHistory(prev => [...prev, {
-              lat: bin1Response.data.latitude,
-              lng: bin1Response.data.longitude,
-              timestamp: bin1Response.data.timestamp
+              lat: bin1Response.value.data.latitude,
+              lng: bin1Response.value.data.longitude,
+              timestamp: bin1Response.value.data.timestamp
             }].slice(-50)); // Keep last 50 points
           }
+        } else {
+          // If polling fails, keep existing data and don't spam errors
+          console.log('Polling failed, keeping existing data');
         }
         
-        if (backupResponse.data) {
-          console.log('Polling update - backup coordinates:', backupResponse.data);
-          setBackupCoordinates(backupResponse.data);
+        // Handle backup response
+        if (backupResponse.status === 'fulfilled' && backupResponse.value.data) {
+          console.log('Polling update - backup coordinates:', backupResponse.value.data);
+          setBackupCoordinates(backupResponse.value.data);
         }
         
         setError(null);
       } catch (err: any) {
+        // Log all errors for debugging Firebase connection issues
         console.error('Error fetching real-time data:', err);
         setError(err.message || 'Failed to fetch real-time data');
       }
-    }, 1500); // Poll every 1.5 seconds - OPTIMIZED
+    }, 5000); // Increased interval to 5 seconds to reduce load
 
     return () => clearInterval(interval);
   }, []);
@@ -154,7 +161,7 @@ export function useRealTimeData() {
       
       console.log('Created WasteBin:', bins[0]);
     } else {
-      console.log('No bin1Data available for conversion');
+      console.log('No bin1Data available for conversion - waiting for Firebase data');
     }
     
     return bins;
@@ -214,6 +221,7 @@ export function useRealTimeData() {
     gpsHistory,
     loading,
     error,
+    isUsingMockData: false, // Always false since we're not using mock data
     refresh: async () => {
       setLoading(true);
       try {

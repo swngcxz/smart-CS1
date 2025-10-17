@@ -26,7 +26,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.log('API Error:', error.response?.status, error.response?.data);
+    // Log Firebase and API errors for debugging
+    if (error.response?.status === 500 && error.response?.data?.error?.includes('Firebase')) {
+      console.error('Firebase Error:', error.response.data.error);
+    } else if (error.response?.status) {
+      console.log('API Error:', error.response.status, error.response.data);
+    }
     
     // If unauthorized, clear token and redirect to login
     if (error.response?.status === 401) {
