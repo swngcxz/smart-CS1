@@ -1117,6 +1117,46 @@ const deleteActivityLog = async (req, res, next) => {
   }
 };
 
+// Clear all activity logs
+const clearAllActivityLogs = async (req, res, next) => {
+  try {
+    console.log('[CLEAR ALL ACTIVITY LOGS] Starting to clear all activity logs...');
+    
+    // Get all activity logs
+    const snapshot = await db.collection("activitylogs").get();
+    
+    if (snapshot.empty) {
+      console.log('[CLEAR ALL ACTIVITY LOGS] No activity logs found to delete');
+      return res.status(200).json({ 
+        message: "No activity logs found to delete",
+        deletedCount: 0
+      });
+    }
+
+    // Delete all activity logs in batches
+    const batch = db.batch();
+    let deletedCount = 0;
+    
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+      deletedCount++;
+    });
+    
+    await batch.commit();
+    
+    console.log(`[CLEAR ALL ACTIVITY LOGS] Successfully deleted ${deletedCount} activity logs`);
+    
+    res.status(200).json({ 
+      message: "All activity logs cleared successfully",
+      deletedCount
+    });
+
+  } catch (err) {
+    console.error("Error in clearAllActivityLogs:", err);
+    next(err);
+  }
+};
+
 // Helper function to send activity completed notifications
 const sendActivityCompletedNotification = async (notificationData) => {
   try {
@@ -1814,6 +1854,7 @@ module.exports = {
   updateActivityStatus,
   updateActivityLog,
   deleteActivityLog,
+  clearAllActivityLogs,
   assignTaskAtomically,
   getActivityStatsSimple,
   getLoginHistory,
