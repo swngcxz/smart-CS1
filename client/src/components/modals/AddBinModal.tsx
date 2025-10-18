@@ -106,7 +106,7 @@ export function AddBinModal({ isOpen, onClose, onBinRegistered }: AddBinModalPro
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[100vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">Add New Bin</DialogTitle>
         </DialogHeader>
@@ -177,10 +177,16 @@ export function AddBinModal({ isOpen, onClose, onBinRegistered }: AddBinModalPro
               {/* Bottom Details Row */}
               <div className="flex items-center justify-between">
                 <div className="text-gray-700 text-xs">
-                  Location: <span className="font-regular">{selectedBin.location}</span>
+                  Location:{" "}
+                  <span className="font-regular">
+                    {selectedBin.location?.charAt(0).toUpperCase() + selectedBin.location?.slice(1)}
+                  </span>
                 </div>
                 <div className="text-gray-700 text-xs">
-                  Type: <span className="font-regular capitalize">{selectedBin.type}</span>
+                  Type:{" "}
+                  <span className="font-regular">
+                    {selectedBin.type?.charAt(0).toUpperCase() + selectedBin.type?.slice(1)}
+                  </span>
                 </div>
               </div>
             </div>
