@@ -29,6 +29,15 @@ export function DoneActivityDetailsModal({
 }: DoneActivityDetailsModalProps) {
   if (!activity) return null;
 
+  // Debug logging for image data
+  console.log("DoneActivityDetailsModal - Activity data:", {
+    id: activity.id,
+    photos: activity.photos,
+    proof_image: activity.proof_image,
+    hasPhotos: activity.photos && activity.photos.length > 0,
+    firstPhoto: activity.photos?.[0]
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
@@ -44,21 +53,46 @@ export function DoneActivityDetailsModal({
           <div className="space-y-2">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Proof of Completion</h3>
             <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
-              {activity.proof_image ? (
+              {(activity.photos && activity.photos.length > 0) || activity.proof_image ? (
                 <div className="space-y-4">
                   <img
-                    src={activity.proof_image}
+                    src={activity.photos?.[0] || activity.proof_image}
                     alt="Proof of completion"
                     className="max-w-full h-auto max-h-64 mx-auto rounded-lg shadow-md"
                     onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                      e.currentTarget.nextElementSibling.style.display = "block";
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.style.display = "none";
+                      const nextElement = target.nextElementSibling as HTMLElement;
+                      if (nextElement) nextElement.style.display = "block";
                     }}
                   />
                   <div style={{ display: "none" }} className="text-gray-500">
                     <AlertTriangle className="w-12 h-12 mx-auto mb-2 text-gray-400" />
                     <p>Image failed to load</p>
                   </div>
+                  
+                  {/* Show additional photos if available */}
+                  {activity.photos && activity.photos.length > 1 && (
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                        Additional photos ({activity.photos.length - 1} more):
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
+                        {activity.photos.slice(1).map((photo: string, index: number) => (
+                          <img
+                            key={index}
+                            src={photo}
+                            alt={`Additional proof ${index + 2}`}
+                            className="w-full h-24 object-cover rounded-lg shadow-sm"
+                            onError={(e) => {
+                              const target = e.currentTarget as HTMLImageElement;
+                              target.style.display = "none";
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-gray-500">

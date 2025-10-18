@@ -22,28 +22,23 @@ export function RoleBasedActivityLogs({ onRefresh }: RoleBasedActivityLogsProps)
   const isAdmin = user?.role === "admin";
   const logs = isAdmin ? adminLogs : staffLogs;
 
-  // Modal states for done activity details
-  const [doneModalOpen, setDoneModalOpen] = useState(false);
-  const [selectedDoneActivity, setSelectedDoneActivity] = useState<any>(null);
+  // Modal states for activity details
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
 
-  // Handler for opening done activity details modal
-  const handleViewDoneActivity = (activity: any) => {
-    console.log("Opening done activity modal for:", activity);
-    setSelectedDoneActivity(activity);
-    setDoneModalOpen(true);
+  // Handler for opening activity details modal
+  const handleViewActivity = (activity: any) => {
+    console.log("Opening activity modal for:", activity);
+    setSelectedActivity(activity);
+    setActivityModalOpen(true);
   };
 
-  // Helper function to handle cell clicks for done activities
+  // Helper function to handle cell clicks for all activities
   const handleCellClick = (e: React.MouseEvent, activity: any) => {
-    if (
-      activity.status?.toLowerCase() === "done" ||
-      activity.status?.toLowerCase() === "completed" ||
-      activity.status?.toLowerCase() === "finished"
-    ) {
-      e.preventDefault();
-      e.stopPropagation();
-      handleViewDoneActivity(activity);
-    }
+    // Show modal for all activities, regardless of status
+    e.preventDefault();
+    e.stopPropagation();
+    handleViewActivity(activity);
   };
 
   // Utility functions for formatting
@@ -156,11 +151,11 @@ export function RoleBasedActivityLogs({ onRefresh }: RoleBasedActivityLogsProps)
         onCellClick={handleCellClick}
       />
 
-      {/* Done Activity Details Modal */}
+      {/* Activity Details Modal */}
       <DoneActivityDetailsModal
-        open={doneModalOpen}
-        onOpenChange={setDoneModalOpen}
-        activity={selectedDoneActivity}
+        open={activityModalOpen}
+        onOpenChange={setActivityModalOpen}
+        activity={selectedActivity}
         getActivityTypeColor={getActivityTypeColor}
         getStatusColor={getStatusColor}
         getPriorityColor={getPriorityColor}
