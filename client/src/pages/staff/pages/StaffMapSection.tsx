@@ -117,11 +117,11 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
     // The real-time data hook will automatically pick up the registered bin
     // You can add additional logic here if needed
     toast.success(`Bin ${binId} is now being monitored!`);
-    
+
     // Refresh the registered bins data after a short delay
     setTimeout(() => {
       // Trigger a refresh of the waste levels tab by dispatching a custom event
-      window.dispatchEvent(new CustomEvent('binRegistered', { detail: { binId } }));
+      window.dispatchEvent(new CustomEvent("binRegistered", { detail: { binId } }));
     }, 1000);
   };
   const [userLocation, setUserLocation] = useState<LatLngTuple | null>(null);
@@ -637,10 +637,10 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
       </Card>
 
       {/* Add Bin Modal */}
-      <AddBinModal 
-        isOpen={isAddBinModalOpen} 
-        onClose={() => setIsAddBinModalOpen(false)} 
-        onBinRegistered={handleBinRegistered} 
+      <AddBinModal
+        isOpen={isAddBinModalOpen}
+        onClose={() => setIsAddBinModalOpen(false)}
+        onBinRegistered={handleBinRegistered}
       />
     </>
   );

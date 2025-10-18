@@ -14,19 +14,14 @@ interface AddBinModalProps {
 }
 
 // Available locations - moved outside component to avoid recreation
-const AVAILABLE_LOCATIONS = [
-  "Central Plaza",
-  "Park Avenue", 
-  "Mall District",
-  "Residential Area"
-] as const;
+const AVAILABLE_LOCATIONS = ["Central Plaza", "Park Avenue", "Mall District", "Residential Area"] as const;
 
 export function AddBinModal({ isOpen, onClose, onBinRegistered }: AddBinModalProps) {
   const [selectedBinId, setSelectedBinId] = useState<string>("");
   const [customName, setCustomName] = useState<string>("");
   const [customLocation, setCustomLocation] = useState<string>("");
   const [assignedLocation, setAssignedLocation] = useState<string>(AVAILABLE_LOCATIONS[0]);
-  
+
   const { availableBins, fetchAvailableBins, isLoading: loadingBins, error: binsError } = useAvailableBins();
   const { registerBin, isLoading: registeringBin, error: registerError } = useRegisterBin();
 
@@ -47,24 +42,39 @@ export function AddBinModal({ isOpen, onClose, onBinRegistered }: AddBinModalPro
   }, [isOpen]); // Remove function dependencies to prevent infinite loops
 
   // Get selected bin data
-  const selectedBin = availableBins.find(bin => bin.binId === selectedBinId);
+  const selectedBin = availableBins.find((bin) => bin.binId === selectedBinId);
+
+  // Auto-populate form when bin is selected
+  useEffect(() => {
+    if (selectedBin) {
+      setCustomName(selectedBin.name || selectedBin.binId);
+      setCustomLocation(selectedBin.location || "");
+      // Set assigned location based on bin's current location
+      const matchingLocation = AVAILABLE_LOCATIONS.find((loc) =>
+        selectedBin.location?.toLowerCase().includes(loc.toLowerCase())
+      );
+      if (matchingLocation) {
+        setAssignedLocation(matchingLocation);
+      }
+    }
+  }, [selectedBin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
-    if (!selectedBinId) {
-      toast.error("Please select a bin to register");
+    if (!customName.trim()) {
+      toast.error("Bin name is required");
       return;
     }
 
     try {
-      // Register the selected bin
+      // Register the bin
       const registrationData: BinRegistrationData = {
-        binId: selectedBinId,
+        binId: selectedBinId || "new-bin", // Use selected bin or create new one
         customName: customName.trim() || undefined,
         customLocation: customLocation.trim() || undefined,
-        assignedLocation: assignedLocation
+        assignedLocation: assignedLocation,
       };
 
       const result = await registerBin(registrationData);
@@ -72,16 +82,18 @@ export function AddBinModal({ isOpen, onClose, onBinRegistered }: AddBinModalPro
       resetForm(); // Use the resetForm function
 
       toast.success(`Bin ${result.binId} registered successfully for monitoring!`);
-      
+
       // Notify parent component that bin was registered
       if (onBinRegistered) {
         onBinRegistered(result.binId);
       }
-      
+
       onClose();
     } catch (error) {
       console.error("Error registering bin:", error);
-      toast.error(registerError || (error instanceof Error ? error.message : "Failed to register bin. Please try again."));
+      toast.error(
+        registerError || (error instanceof Error ? error.message : "Failed to register bin. Please try again.")
+      );
     }
   };
 
@@ -96,7 +108,7 @@ export function AddBinModal({ isOpen, onClose, onBinRegistered }: AddBinModalPro
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">Register Bin for Monitoring</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">Add New Bin</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -104,116 +116,123 @@ export function AddBinModal({ isOpen, onClose, onBinRegistered }: AddBinModalPro
             <Label htmlFor="binSelect" className="text-sm font-medium">
               Select Bin from Firebase
             </Label>
-            <Select
-              value={selectedBinId}
-              onValueChange={setSelectedBinId}
-              disabled={registeringBin || loadingBins}
-            >
+            <Select value={selectedBinId} onValueChange={setSelectedBinId} disabled={registeringBin || loadingBins}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingBins ? "Loading bins..." : "Select a bin to register"} />
+                <SelectValue placeholder={"Select a bin"} />
               </SelectTrigger>
               <SelectContent>
                 {availableBins.length === 0 && !loadingBins && !binsError && (
-                  <SelectItem value="no-bins" disabled>No bins available</SelectItem>
+                  <SelectItem value="no-bins" disabled>
+                    No bins available
+                  </SelectItem>
                 )}
                 {availableBins.map((bin) => (
                   <SelectItem key={bin.binId} value={bin.binId}>
                     <div className="flex flex-col">
                       <span className="font-medium">{bin.name || bin.binId}</span>
-                      <span className="text-xs text-gray-500">{bin.location}</span>
-                      <span className="text-xs text-gray-400">Level: {bin.bin_level}% | Type: {bin.type}</span>
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {binsError && (
-              <p className="text-sm text-red-500">{binsError}</p>
-            )}
+            {binsError && <p className="text-sm text-red-500">{binsError}</p>}
           </div>
 
           {selectedBin && (
-            <>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <h4 className="font-medium text-sm mb-2">Selected Bin Details:</h4>
-                <div className="text-xs space-y-1">
-                  <div><span className="font-medium">ID:</span> {selectedBin.binId}</div>
-                  <div><span className="font-medium">Current Level:</span> {selectedBin.bin_level}%</div>
-                  <div><span className="font-medium">Location:</span> {selectedBin.location}</div>
-                  <div><span className="font-medium">Type:</span> {selectedBin.type}</div>
-                  <div><span className="font-medium">GPS Valid:</span> {selectedBin.gps_valid ? 'Yes' : 'No'}</div>
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-gray-900 text-base">
+                    {selectedBin.binId.charAt(0).toUpperCase() + selectedBin.binId.slice(1)}
+                  </h4>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-green-600 text-xs font-medium">Live</span>
+                  </div>
+                </div>
+                <span
+                  className={`px-3 py-1 text-xs font-regular rounded-full ${
+                    selectedBin.bin_level < 80 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {selectedBin.bin_level < 80 ? "Active" : "Inactive"}
+                </span>
+              </div>
+
+              {/* Fill Level Section */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-gray-700 text-xs">Fill Level:</span>
+                  <span className="text-gray-900 font-medium text-sm">{selectedBin.bin_level}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 text-xs">
+                  <div
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300 text-xs"
+                    style={{ width: `${selectedBin.bin_level}%` }}
+                  ></div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="customName" className="text-sm font-medium">
-                  Custom Name (Optional)
-                </Label>
-                <Input
-                  id="customName"
-                  placeholder={`Leave empty to use: ${selectedBin.name || selectedBin.binId}`}
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  disabled={registeringBin}
-                />
+              {/* Bottom Details Row */}
+              <div className="flex items-center justify-between">
+                <div className="text-gray-700 text-xs">
+                  Location: <span className="font-regular">{selectedBin.location}</span>
+                </div>
+                <div className="text-gray-700 text-xs">
+                  Type: <span className="font-regular capitalize">{selectedBin.type}</span>
+                </div>
               </div>
+            </div>
+          )}
 
-              <div className="space-y-2">
-                <Label htmlFor="customLocation" className="text-sm font-medium">
-                  Custom Location (Optional)
+          <div className="space-y-2">
+            <Label htmlFor="customName" className="text-sm font-medium">
+              Bin Name
             </Label>
             <Input
-                  id="customLocation"
-                  placeholder={`Leave empty to use: ${selectedBin.location}`}
-                  value={customLocation}
-                  onChange={(e) => setCustomLocation(e.target.value)}
-                  disabled={registeringBin}
+              id="customName"
+              placeholder="e.g. Park Avenue Bin 1"
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              disabled={registeringBin}
             />
           </div>
 
           <div className="space-y-2">
-                <Label htmlFor="assignedLocation" className="text-sm font-medium">
-                  Assign to Location
+            <Label htmlFor="assignedLocation" className="text-sm font-medium">
+              Location
             </Label>
-            <Select
-                  value={assignedLocation}
-                  onValueChange={setAssignedLocation}
-                  disabled={registeringBin}
-            >
+            <Select value={assignedLocation} onValueChange={setAssignedLocation} disabled={registeringBin}>
               <SelectTrigger>
-                    <SelectValue placeholder="Select location" />
+                <SelectValue placeholder="Select location" />
               </SelectTrigger>
               <SelectContent>
-                    {AVAILABLE_LOCATIONS.map((location) => (
-                      <SelectItem key={location} value={location}>
-                        {location}
-                      </SelectItem>
-                    ))}
+                {AVAILABLE_LOCATIONS.map((location) => (
+                  <SelectItem key={location} value={location}>
+                    {location}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-                <p className="text-xs text-gray-500">
-                  This bin will appear in the selected location section
-                </p>
           </div>
-            </>
-          )}
 
           <DialogFooter className="flex gap-2 pt-4">
             <Button type="button" variant="outline" onClick={handleClose} disabled={registeringBin}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              className="bg-green-600 hover:bg-green-700 text-white" 
-              disabled={registeringBin || loadingBins || !selectedBinId}
+            <Button
+              type="submit"
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={registeringBin || loadingBins}
             >
               {registeringBin ? (
                 <>
                   <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  Registering...
+                  Adding...
                 </>
               ) : (
-                "Register Bin"
+                "Add Bin"
               )}
             </Button>
           </DialogFooter>
