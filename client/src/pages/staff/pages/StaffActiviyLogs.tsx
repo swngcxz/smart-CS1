@@ -639,10 +639,7 @@ export function StaffActivityLogs() {
                               variant="outline"
                               size="sm"
                               className="h-8 px-3 text-xs bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAssignClick(activity);
-                              }}
+                              onClick={() => handleAssignClick(activity)}
                             >
                               <Plus className="w-3 h-3 mr-1" />
                               Assign

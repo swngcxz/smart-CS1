@@ -59,7 +59,7 @@ export function useRealTimeData() {
           const bins = allBinsResponse.value.data.bins;
           console.log('All bins data received:', bins);
           
-          // Set individual bin data
+          // Set individual bin data (exclude backup data)
           bins.forEach((bin: any) => {
             if (bin.binId === 'bin1') {
               setBin1Data(bin);
@@ -71,13 +71,14 @@ export function useRealTimeData() {
               setMonitoringData(bin);
               console.log('Monitoring data set:', bin);
             }
+            // Skip backup data - it's not a bin
           });
           
           setAllBinsData(bins);
           
-          // Track GPS history for all bins
+          // Track GPS history for all bins (exclude backup data)
           bins.forEach((bin: any) => {
-            if (bin.gps_valid && bin.latitude && bin.longitude) {
+            if (bin.binId !== 'backup' && bin.gps_valid && bin.latitude && bin.longitude) {
             setGpsHistory(prev => [...prev, {
                 lat: bin.latitude,
                 lng: bin.longitude,
@@ -96,7 +97,20 @@ export function useRealTimeData() {
         // Handle backup response
         if (backupResponse.status === 'fulfilled' && backupResponse.value.data) {
           console.log('Backup coordinates received:', backupResponse.value.data);
-          setBackupCoordinates(backupResponse.value.data);
+          // Transform backup data to match expected structure
+          const backupData = backupResponse.value.data;
+          if (backupData.coordinates) {
+            setBackupCoordinates(backupData);
+          } else if (backupData.bin1) {
+            // Handle direct backup structure
+            setBackupCoordinates({
+              coordinates: {
+                latitude: backupData.bin1.backup_latitude,
+                longitude: backupData.bin1.backup_longitude,
+                timestamp: backupData.bin1.backup_timestamp
+              }
+            });
+          }
         }
         
         setError(null);
@@ -131,7 +145,7 @@ export function useRealTimeData() {
           const bins = allBinsResponse.value.data.bins;
           console.log('Polling update - all bins data:', bins);
           
-          // Update individual bin data
+          // Update individual bin data (exclude backup data)
           bins.forEach((bin: any) => {
             if (bin.binId === 'bin1') {
               setBin1Data(bin);
@@ -143,13 +157,14 @@ export function useRealTimeData() {
               setMonitoringData(bin);
               console.log('Monitoring data updated:', bin.bin_level, 'Status:', getStatusFromLevel(bin.bin_level));
             }
+            // Skip backup data - it's not a bin
           });
           
           setAllBinsData(bins);
           
-          // Track GPS history for all bins
+          // Track GPS history for all bins (exclude backup data)
           bins.forEach((bin: any) => {
-            if (bin.gps_valid && bin.latitude && bin.longitude) {
+            if (bin.binId !== 'backup' && bin.gps_valid && bin.latitude && bin.longitude) {
             setGpsHistory(prev => [...prev, {
                 lat: bin.latitude,
                 lng: bin.longitude,
@@ -166,7 +181,20 @@ export function useRealTimeData() {
         // Handle backup response
         if (backupResponse.status === 'fulfilled' && backupResponse.value.data) {
           console.log('Polling update - backup coordinates:', backupResponse.value.data);
-          setBackupCoordinates(backupResponse.value.data);
+          // Transform backup data to match expected structure
+          const backupData = backupResponse.value.data;
+          if (backupData.coordinates) {
+            setBackupCoordinates(backupData);
+          } else if (backupData.bin1) {
+            // Handle direct backup structure
+            setBackupCoordinates({
+              coordinates: {
+                latitude: backupData.bin1.backup_latitude,
+                longitude: backupData.bin1.backup_longitude,
+                timestamp: backupData.bin1.backup_timestamp
+              }
+            });
+          }
         }
         
         setError(null);
@@ -184,24 +212,27 @@ export function useRealTimeData() {
   const getWasteBins = (): WasteBin[] => {
     const bins: WasteBin[] = [];
     
-    // Process all bins from Firebase
+    // Process all bins from Firebase (exclude backup data)
     allBinsData.forEach((binData) => {
-      if (binData) {
+      if (binData && binData.binId !== 'backup') {
         console.log(`Converting ${binData.binId} to WasteBin format:`, binData);
       
       // Calculate level from weight_percent if bin_level is not available or very low
         const calculatedLevel = (binData.bin_level && binData.bin_level > 0) ? binData.bin_level : (binData.weight_percent || 0);
         
-        // Determine location name based on bin ID
+        // Determine location name based on bin ID - use actual name from Firebase
         let locationName = 'Unknown Location';
-        if (binData.binId === 'bin1') {
+        if (binData.name) {
+          // Use the actual name from Firebase if available
+          locationName = binData.name;
+        } else if (binData.binId === 'bin1') {
           locationName = 'Central Plaza';
         } else if (binData.binId === 'bin2') {
           locationName = 'East Wing';
         } else if (binData.binId === 'data') {
           locationName = 'S1Bin3';
         } else {
-          locationName = binData.name || `Bin ${binData.binId}`;
+          locationName = `Bin ${binData.binId}`;
         }
       
       bins.push({
@@ -233,33 +264,47 @@ export function useRealTimeData() {
   const getDynamicBinLocations = () => {
     const locations = [];
     
-    // Process all bins from Firebase
+    // Process all bins from Firebase (exclude backup data)
     allBinsData.forEach((binData) => {
-      if (binData) {
-      // Determine coordinates: use live GPS if valid, otherwise use fallback
+      if (binData && binData.binId !== 'backup') {
+      // Determine coordinates: use live GPS if valid, otherwise use backup coordinates
       let coordinates: [number, number];
       let coordinatesSource: string;
       
-        if (binData.latitude && binData.longitude) {
-        // ESP32 provides coordinates (either live GPS or cached)
+        if (binData.latitude && binData.longitude && binData.latitude !== 0 && binData.longitude !== 0) {
+        // ESP32 provides valid coordinates (either live GPS or cached)
           coordinates = [binData.latitude, binData.longitude];
           coordinatesSource = binData.coordinates_source || 'gps_live';
+      } else if (backupCoordinates?.coordinates && binData.binId === 'bin1') {
+        // Use backup coordinates for bin1 when GPS is offline
+        coordinates = [backupCoordinates.coordinates.latitude, backupCoordinates.coordinates.longitude];
+        coordinatesSource = 'gps_backup';
+      } else if (binData.binId === 'bin2') {
+        // For bin2, use slightly offset coordinates from bin1 backup (since no bin2 backup available)
+        const bin1BackupLat = backupCoordinates?.coordinates?.latitude || 10.24371;
+        const bin1BackupLng = backupCoordinates?.coordinates?.longitude || 123.786917;
+        // Offset bin2 by ~100 meters northeast
+        coordinates = [bin1BackupLat + 0.0009, bin1BackupLng + 0.0009];
+        coordinatesSource = 'gps_backup_offset';
       } else {
-        // No coordinates from ESP32 - use default fallback position
+        // No coordinates available - use default fallback position
         coordinates = [10.24371, 123.786917]; // Default Central Plaza coordinates
         coordinatesSource = 'no_data';
       }
         
-        // Determine location name based on bin ID
+        // Determine location name based on bin ID - use actual name from Firebase
         let locationName = 'Unknown Location';
-        if (binData.binId === 'bin1') {
+        if (binData.name) {
+          // Use the actual name from Firebase if available
+          locationName = binData.name;
+        } else if (binData.binId === 'bin1') {
           locationName = 'Central Plaza';
         } else if (binData.binId === 'bin2') {
           locationName = 'East Wing';
         } else if (binData.binId === 'data') {
           locationName = 'S1Bin3';
         } else {
-          locationName = binData.name || `Bin ${binData.binId}`;
+          locationName = `Bin ${binData.binId}`;
         }
       
       locations.push({
@@ -301,12 +346,57 @@ export function useRealTimeData() {
     refresh: async () => {
       setLoading(true);
       try {
-        // Trigger a refresh by refetching data
-        const bin1Response = await api.get('/api/bin1');
-        if (bin1Response.data) {
-          console.log('Manual refresh - bin1 data:', bin1Response.data);
-          setBin1Data(bin1Response.data);
+        // Trigger a refresh by refetching all bins data
+        const [allBinsResponse, backupResponse] = await Promise.allSettled([
+          api.get('/api/all'),
+          api.get('/api/gps-backup/display/bin1').catch(err => {
+            console.warn('Backup coordinates not available during refresh:', err.message);
+            return { data: null };
+          })
+        ]);
+
+        // Handle all bins response
+        if (allBinsResponse.status === 'fulfilled' && allBinsResponse.value.data?.success) {
+          const bins = allBinsResponse.value.data.bins;
+          console.log('Manual refresh - all bins data:', bins);
+          
+          // Update individual bin data (exclude backup data)
+          bins.forEach((bin: any) => {
+            if (bin.binId === 'bin1') {
+              setBin1Data(bin);
+              console.log('Manual refresh - Bin1 updated:', bin);
+            } else if (bin.binId === 'bin2') {
+              setBin2Data(bin);
+              console.log('Manual refresh - Bin2 updated:', bin);
+            } else if (bin.binId === 'data') {
+              setMonitoringData(bin);
+              console.log('Manual refresh - Monitoring data updated:', bin);
+            }
+            // Skip backup data - it's not a bin
+          });
+          
+          setAllBinsData(bins);
         }
+        
+        // Handle backup response
+        if (backupResponse.status === 'fulfilled' && backupResponse.value.data) {
+          console.log('Manual refresh - backup coordinates:', backupResponse.value.data);
+          // Transform backup data to match expected structure
+          const backupData = backupResponse.value.data;
+          if (backupData.coordinates) {
+            setBackupCoordinates(backupData);
+          } else if (backupData.bin1) {
+            // Handle direct backup structure
+            setBackupCoordinates({
+              coordinates: {
+                latitude: backupData.bin1.backup_latitude,
+                longitude: backupData.bin1.backup_longitude,
+                timestamp: backupData.bin1.backup_timestamp
+              }
+            });
+          }
+        }
+        
         setError(null);
       } catch (err: any) {
         console.error('Error during manual refresh:', err);
