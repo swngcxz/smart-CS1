@@ -260,11 +260,11 @@ export function ScheduleCollectionTabs() {
   // Create: POST to backend
   const [createBody, setCreateBody] = useState<any>(null);
   const [triggerCreate, setTriggerCreate] = useState(false);
-  const { data: createRes, error: createErr } = useCreateTruckSchedule(createBody, triggerCreate);
+  const { response: createRes, error: createErr } = useCreateTruckSchedule(createBody, triggerCreate);
   // Create (maintenance via /api/schedules)
   const [createMaintBody, setCreateMaintBody] = useState<any>(null);
   const [triggerCreateMaint, setTriggerCreateMaint] = useState(false);
-  const { data: createMaintRes, error: createMaintErr } = useCreateSchedule(createMaintBody, triggerCreateMaint);
+  const { response: createMaintRes, error: createMaintErr } = useCreateSchedule(createMaintBody, triggerCreateMaint);
   useEffect(() => {
     if (!triggerCreate) return;
     if (createRes || createErr) {

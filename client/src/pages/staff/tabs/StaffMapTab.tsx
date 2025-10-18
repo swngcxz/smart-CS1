@@ -69,17 +69,22 @@ export function MapTab() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log("Form submission started:", { selectedBinId, binForm });
+
     if (!selectedBinId) {
       toast.error("Please select a bin to update");
       return;
     }
 
     try {
+      console.log("Calling updateBin with:", selectedBinId, binForm);
       const success = await updateBin(selectedBinId, binForm);
+      console.log("Update result:", success);
 
       if (success) {
         toast.success("Bin details updated successfully!");
         // Refresh the real-time data to get updated information
+        console.log("Refreshing data after successful update...");
         await refresh();
         setIsEditing(false);
         setSelectedBinId("");
@@ -89,6 +94,7 @@ export function MapTab() {
           binType: "",
           mainLocation: "",
         });
+        console.log("Form reset and panel closed");
       } else {
         toast.error("Failed to update bin details");
       }
@@ -100,13 +106,16 @@ export function MapTab() {
 
   // Load bin data for editing (called when clicking on map bin)
   const loadBinForEdit = (bin: { id?: string; name?: string; type?: string; mainLocation?: string }) => {
+    console.log("Loading bin for edit:", bin);
     // Map the real-time database structure to form fields
     // Use actual data from Firebase
-    setBinForm({
+    const formData = {
       binName: bin.name || bin.id || "",
       binType: bin.type || "general", // Use actual type from Firebase
       mainLocation: bin.mainLocation || "central-plaza", // Use actual mainLocation from Firebase
-    });
+    };
+    console.log("Setting form data:", formData);
+    setBinForm(formData);
     setSelectedBinId(bin.id || "");
     setIsEditing(true);
   };
