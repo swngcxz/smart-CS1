@@ -134,11 +134,16 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
   // Debug logging for real-time data
   useEffect(() => {
     if (bin1Data) {
-      console.log("Staff Map - Real-time bin1 data received:", bin1Data);
+      console.log("🗺️ Staff Map - Real-time bin1 data received:", bin1Data);
       console.log("GPS Valid:", bin1Data.gps_valid, "Coordinates:", bin1Data.latitude, bin1Data.longitude);
     }
     if (dynamicBinLocations.length > 0) {
-      console.log("Staff Map - Dynamic bin locations:", dynamicBinLocations);
+      console.log("🗺️ Staff Map - Dynamic bin locations:", dynamicBinLocations.map(bin => ({
+        id: bin.id,
+        name: bin.name,
+        level: bin.level,
+        timestamp: bin.timestamp
+      })));
     }
   }, [bin1Data, dynamicBinLocations]);
 
@@ -537,7 +542,12 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
               <MapTypeIndicator transitionZoomLevel={18} />
 
               {updatedBinLocations.map((bin) => (
-                <DynamicBinMarker key={bin.id} bin={bin} onBinClick={handleBinClick} showPopup={!showRightPanel} />
+                <DynamicBinMarker 
+                  key={`${bin.id}-${bin.name}-${bin.timestamp}`} 
+                  bin={bin} 
+                  onBinClick={handleBinClick} 
+                  showPopup={!showRightPanel}
+                />
               ))}
 
               {/* GPS Tracking Line */}

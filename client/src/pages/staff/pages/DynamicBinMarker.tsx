@@ -115,6 +115,21 @@ const createDynamicIcon = (
 export function DynamicBinMarker({ bin, onBinClick, showPopup = true }: DynamicBinMarkerProps) {
   const [isLive, setIsLive] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [popupKey, setPopupKey] = useState(0);
+
+  // Debug logging for bin data updates
+  useEffect(() => {
+    console.log(`🔍 DynamicBinMarker ${bin.id} - Bin data updated:`, {
+      id: bin.id,
+      name: bin.name,
+      timestamp: bin.timestamp,
+      binData: bin.binData,
+      fullBinObject: bin
+    });
+    
+    // Force popup re-render when bin name changes
+    setPopupKey(prev => prev + 1);
+  }, [bin.id, bin.name, bin.timestamp, bin.binData]);
 
   // Check if bin has live data
   useEffect(() => {
@@ -159,7 +174,11 @@ export function DynamicBinMarker({ bin, onBinClick, showPopup = true }: DynamicB
   return (
     <Marker position={bin.position} icon={icon}>
       {showPopup && (
-        <Popup className="custom-popup" maxWidth={300}>
+        <Popup 
+          className="custom-popup" 
+          maxWidth={300}
+          key={`${bin.id}-${popupKey}`} // Force re-render when bin data changes
+        >
         <div className="p-3 min-w-[250px]">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">

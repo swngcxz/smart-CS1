@@ -131,6 +131,7 @@ export function useRealTimeData() {
   // Set up real-time updates using polling - get all bins data
   useEffect(() => {
     const interval = setInterval(async () => {
+      console.log("⏰ useRealTimeData - Polling for updates...");
       try {
         const [allBinsResponse, backupResponse] = await Promise.allSettled([
           api.get('/api/all'),
@@ -144,6 +145,11 @@ export function useRealTimeData() {
         if (allBinsResponse.status === 'fulfilled' && allBinsResponse.value.data?.success) {
           const bins = allBinsResponse.value.data.bins;
           console.log('Polling update - all bins data:', bins);
+          console.log('Polling update - bin1 name:', bins.find(b => b.binId === 'bin1')?.name);
+          
+          // Update state with new data
+          setAllBinsData(bins);
+          console.log('✅ Polling update - State updated with new bin data');
           
           // Update individual bin data (exclude backup data)
           bins.forEach((bin: any) => {
@@ -220,19 +226,27 @@ export function useRealTimeData() {
       // Calculate level from weight_percent if bin_level is not available or very low
         const calculatedLevel = (binData.bin_level && binData.bin_level > 0) ? binData.bin_level : (binData.weight_percent || 0);
         
-        // Determine location name based on bin ID - use actual name from Firebase
+        // Determine location name based on bin ID - use standardized location names
         let locationName = 'Unknown Location';
-        if (binData.name) {
-          // Use the actual name from Firebase if available
-          locationName = binData.name;
-        } else if (binData.binId === 'bin1') {
+        if (binData.binId === 'bin1') {
           locationName = 'Central Plaza';
         } else if (binData.binId === 'bin2') {
-          locationName = 'East Wing';
+          locationName = 'Park Avenue';
         } else if (binData.binId === 'data') {
           locationName = 'S1Bin3';
         } else {
-          locationName = `Bin ${binData.binId}`;
+          // For other bins, try to extract location from name or use fallback
+          if (binData.name) {
+            // Extract location from name (e.g., "Central Plaza Bin1" -> "Central Plaza")
+            const nameParts = binData.name.split(' ');
+            if (nameParts.length >= 2) {
+              locationName = nameParts.slice(0, -1).join(' '); // Remove last word (usually "Bin1", "Bin2", etc.)
+            } else {
+              locationName = binData.name;
+            }
+          } else {
+            locationName = `Bin ${binData.binId}`;
+          }
         }
       
       bins.push({
@@ -292,24 +306,32 @@ export function useRealTimeData() {
         coordinatesSource = 'no_data';
       }
         
-        // Determine location name based on bin ID - use actual name from Firebase
+        // Determine location name based on bin ID - use standardized location names
         let locationName = 'Unknown Location';
-        if (binData.name) {
-          // Use the actual name from Firebase if available
-          locationName = binData.name;
-        } else if (binData.binId === 'bin1') {
+        if (binData.binId === 'bin1') {
           locationName = 'Central Plaza';
         } else if (binData.binId === 'bin2') {
-          locationName = 'East Wing';
+          locationName = 'Park Avenue';
         } else if (binData.binId === 'data') {
           locationName = 'S1Bin3';
         } else {
-          locationName = `Bin ${binData.binId}`;
+          // For other bins, try to extract location from name or use fallback
+          if (binData.name) {
+            // Extract location from name (e.g., "Central Plaza Bin1" -> "Central Plaza")
+            const nameParts = binData.name.split(' ');
+            if (nameParts.length >= 2) {
+              locationName = nameParts.slice(0, -1).join(' '); // Remove last word (usually "Bin1", "Bin2", etc.)
+            } else {
+              locationName = binData.name;
+            }
+          } else {
+            locationName = `Bin ${binData.binId}`;
+          }
         }
       
       locations.push({
           id: binData.binId,
-          name: locationName,
+          name: binData.name || locationName, // Use actual bin name from database, fallback to location name
         position: coordinates,
           level: binData.bin_level || 0,
           status: getStatusFromLevel(binData.bin_level || 0),
@@ -326,6 +348,14 @@ export function useRealTimeData() {
           type: binData.type,
           mainLocation: binData.mainLocation,
         backup_timestamp: backupCoordinates?.coordinates?.timestamp || backupCoordinates?.backup_timestamp
+      });
+      
+      console.log(`📍 Created DynamicBinLocation for ${binData.binId}:`, {
+        id: binData.binId,
+        name: binData.name || locationName,
+        locationName: locationName,
+        coordinates: coordinates,
+        coordinatesSource: coordinatesSource
       });
     }
     });
@@ -344,6 +374,7 @@ export function useRealTimeData() {
     error,
     isUsingMockData: false, // Always false since we're not using mock data
     refresh: async () => {
+      console.log("🔄 useRealTimeData - Manual refresh triggered");
       setLoading(true);
       try {
         // Trigger a refresh by refetching all bins data

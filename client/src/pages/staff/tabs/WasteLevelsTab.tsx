@@ -102,15 +102,18 @@ export function WasteLevelsTab() {
       : null,
   });
 
-  // Get real-time bin1 data
-  const realTimeBin1 = wasteBins.find((wb) => wb.location === "Central Plaza" && wb.id === "bin1");
+  // Get real-time bin1 data - try multiple search strategies
+  const realTimeBin1 = wasteBins.find((wb) => 
+    (wb.location === "Central Plaza" && wb.id === "bin1") ||
+    (wb.id === "bin1") // Fallback: just find bin1 regardless of location
+  );
 
   // Debug logging for real-time bin detection
   console.log("🔍 Real-time bin detection:", {
     wasteBinsCount: wasteBins.length,
-    wasteBins: wasteBins.map((wb) => ({ id: wb.id, location: wb.location, level: wb.level })),
+    wasteBins: wasteBins.map((wb) => ({ id: wb.id, location: wb.location, level: wb.level, name: wb.binData?.name })),
     realTimeBin1: realTimeBin1
-      ? { id: realTimeBin1.id, location: realTimeBin1.location, level: realTimeBin1.level }
+      ? { id: realTimeBin1.id, location: realTimeBin1.location, level: realTimeBin1.level, name: realTimeBin1.binData?.name }
       : null,
   });
 
@@ -121,13 +124,14 @@ export function WasteLevelsTab() {
       ? [
           {
             id: realTimeBin1.id,
-            location: realTimeBin1.location,
+            location: "Central Plaza", // Force location to Central Plaza for consistency
             level: realTimeBin1.level,
             status: realTimeBin1.status,
             lastCollected: realTimeBin1.lastCollected,
             capacity: realTimeBin1.capacity,
             wasteType: realTimeBin1.wasteType || "Mixed",
             nextCollection: realTimeBin1.nextCollection || "Today 3:00 PM",
+            binData: realTimeBin1.binData, // Include binData for live indicator
           },
         ]
       : []),
