@@ -30,44 +30,67 @@ export interface WasteBin {
 
 export function useRealTimeData() {
   const [bin1Data, setBin1Data] = useState<BinData | null>(null);
+  const [bin2Data, setBin2Data] = useState<BinData | null>(null);
+  const [allBinsData, setAllBinsData] = useState<BinData[]>([]);
   const [monitoringData, setMonitoringData] = useState<BinData | null>(null);
   const [backupCoordinates, setBackupCoordinates] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gpsHistory, setGpsHistory] = useState<Array<{lat: number, lng: number, timestamp: number}>>([]);
 
-  // Fetch initial data - ONLY bin1 as requested
+  // Fetch initial data - Get all bins from Firebase
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
-        console.log('Fetching initial data from Firebase...');
+        console.log('Fetching all bins data from Firebase...');
         
-        // Fetch bin1 data and backup coordinates with better error handling
-        const [bin1Response, backupResponse] = await Promise.allSettled([
-          api.get('/api/bin1'),
+        // Fetch all bins data and backup coordinates with better error handling
+      const [allBinsResponse, backupResponse] = await Promise.allSettled([
+        api.get('/api/all'),
           api.get('/api/gps-backup/display/bin1').catch(err => {
             console.warn('Backup coordinates not available:', err.message);
             return { data: null };
           })
         ]);
 
-        // Handle bin1 response
-        if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
-          console.log('Real-time bin1 data received:', bin1Response.value.data);
-          console.log('Bin Level:', bin1Response.value.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.value.data.bin_level));
-          setBin1Data(bin1Response.value.data);
-          // Track GPS history if valid
-          if (bin1Response.value.data.gps_valid && bin1Response.value.data.latitude && bin1Response.value.data.longitude) {
+        // Handle all bins response
+        if (allBinsResponse.status === 'fulfilled' && allBinsResponse.value.data?.success) {
+          const bins = allBinsResponse.value.data.bins;
+          console.log('All bins data received:', bins);
+          
+          // Set individual bin data
+          bins.forEach((bin: any) => {
+            if (bin.binId === 'bin1') {
+              setBin1Data(bin);
+              console.log('Bin1 data set:', bin);
+            } else if (bin.binId === 'bin2') {
+              setBin2Data(bin);
+              console.log('Bin2 data set:', bin);
+            } else if (bin.binId === 'data') {
+              setMonitoringData(bin);
+              console.log('Monitoring data set:', bin);
+            }
+          });
+          
+          setAllBinsData(bins);
+          
+          // Track GPS history for all bins
+          bins.forEach((bin: any) => {
+            if (bin.gps_valid && bin.latitude && bin.longitude) {
             setGpsHistory(prev => [...prev, {
-              lat: bin1Response.value.data.latitude,
-              lng: bin1Response.value.data.longitude,
-              timestamp: bin1Response.value.data.timestamp
-            }].slice(-50)); // Keep last 50 points
-          }
+                lat: bin.latitude,
+                lng: bin.longitude,
+                timestamp: bin.timestamp,
+                binId: bin.binId
+              }].slice(-100)); // Keep last 100 points for all bins
+            }
+          });
         } else {
-          console.log('No bin1 data received from API');
+          console.log('No bins data received from API');
           setBin1Data(null);
+          setBin2Data(null);
+          setAllBinsData([]);
         }
         
         // Handle backup response
@@ -81,6 +104,8 @@ export function useRealTimeData() {
         console.error('Error fetching initial data:', err);
         setError(err.message || 'Failed to fetch data');
         setBin1Data(null);
+        setBin2Data(null);
+        setAllBinsData([]);
       } finally {
         setLoading(false);
       }
@@ -89,31 +114,50 @@ export function useRealTimeData() {
     fetchInitialData();
   }, []);
 
-  // Set up real-time updates using polling - only bin1 data as requested
+  // Set up real-time updates using polling - get all bins data
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const [bin1Response, backupResponse] = await Promise.allSettled([
-          api.get('/api/bin1'),
+        const [allBinsResponse, backupResponse] = await Promise.allSettled([
+          api.get('/api/all'),
           api.get('/api/gps-backup/display/bin1').catch(err => {
             console.warn('Backup coordinates not available in polling:', err.message);
             return { data: null };
           })
         ]);
 
-        // Handle bin1 response
-        if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
-          console.log('Polling update - bin1 data:', bin1Response.value.data);
-          console.log('Bin Level:', bin1Response.value.data.bin_level, 'Status:', getStatusFromLevel(bin1Response.value.data.bin_level));
-          setBin1Data(bin1Response.value.data);
-          // Track GPS history if valid
-          if (bin1Response.value.data.gps_valid && bin1Response.value.data.latitude && bin1Response.value.data.longitude) {
+        // Handle all bins response
+        if (allBinsResponse.status === 'fulfilled' && allBinsResponse.value.data?.success) {
+          const bins = allBinsResponse.value.data.bins;
+          console.log('Polling update - all bins data:', bins);
+          
+          // Update individual bin data
+          bins.forEach((bin: any) => {
+            if (bin.binId === 'bin1') {
+              setBin1Data(bin);
+              console.log('Bin1 updated:', bin.bin_level, 'Status:', getStatusFromLevel(bin.bin_level));
+            } else if (bin.binId === 'bin2') {
+              setBin2Data(bin);
+              console.log('Bin2 updated:', bin.bin_level, 'Status:', getStatusFromLevel(bin.bin_level));
+            } else if (bin.binId === 'data') {
+              setMonitoringData(bin);
+              console.log('Monitoring data updated:', bin.bin_level, 'Status:', getStatusFromLevel(bin.bin_level));
+            }
+          });
+          
+          setAllBinsData(bins);
+          
+          // Track GPS history for all bins
+          bins.forEach((bin: any) => {
+            if (bin.gps_valid && bin.latitude && bin.longitude) {
             setGpsHistory(prev => [...prev, {
-              lat: bin1Response.value.data.latitude,
-              lng: bin1Response.value.data.longitude,
-              timestamp: bin1Response.value.data.timestamp
-            }].slice(-50)); // Keep last 50 points
-          }
+                lat: bin.latitude,
+                lng: bin.longitude,
+                timestamp: bin.timestamp,
+                binId: bin.binId
+              }].slice(-100)); // Keep last 100 points for all bins
+            }
+          });
         } else {
           // If polling fails, keep existing data and don't spam errors
           console.log('Polling failed, keeping existing data');
@@ -131,85 +175,117 @@ export function useRealTimeData() {
         console.error('Error fetching real-time data:', err);
         setError(err.message || 'Failed to fetch real-time data');
       }
-    }, 5000); // Increased interval to 5 seconds to reduce load
+    }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(interval);
   }, []);
 
-  // Convert Firebase data to waste bin format - use actual data from Firebase
+  // Convert Firebase data to waste bin format - use actual data from Firebase for all bins
   const getWasteBins = (): WasteBin[] => {
     const bins: WasteBin[] = [];
     
-    // Use actual bin1 data from Firebase
-    if (bin1Data) {
-      console.log('Converting bin1Data to WasteBin format:', bin1Data);
+    // Process all bins from Firebase
+    allBinsData.forEach((binData) => {
+      if (binData) {
+        console.log(`Converting ${binData.binId} to WasteBin format:`, binData);
       
       // Calculate level from weight_percent if bin_level is not available or very low
-      const calculatedLevel = (bin1Data.bin_level && bin1Data.bin_level > 0) ? bin1Data.bin_level : (bin1Data.weight_percent || 0);
+        const calculatedLevel = (binData.bin_level && binData.bin_level > 0) ? binData.bin_level : (binData.weight_percent || 0);
+        
+        // Determine location name based on bin ID
+        let locationName = 'Unknown Location';
+        if (binData.binId === 'bin1') {
+          locationName = 'Central Plaza';
+        } else if (binData.binId === 'bin2') {
+          locationName = 'East Wing';
+        } else if (binData.binId === 'data') {
+          locationName = 'S1Bin3';
+        } else {
+          locationName = binData.name || `Bin ${binData.binId}`;
+        }
       
       bins.push({
-        id: 'bin1',
-        location: 'Central Plaza', // Standardize location name for filtering
+          id: binData.binId,
+          location: locationName,
         level: calculatedLevel,
         status: getStatusFromLevel(calculatedLevel),
-        lastCollected: getTimeAgoUtil(bin1Data.timestamp).text,
+          lastCollected: getTimeAgoUtil(binData.timestamp).text,
         capacity: '500L',
-        wasteType: bin1Data.type || 'Mixed',
+          wasteType: binData.type || 'Mixed',
         nextCollection: getNextCollectionTime(calculatedLevel),
-        binData: bin1Data
-      });
-      
-      console.log('Created WasteBin:', bins[0]);
+          binData: binData
+        });
+        
+        console.log(`Created WasteBin for ${binData.binId}:`, bins[bins.length - 1]);
+      }
+    });
+    
+    if (bins.length === 0) {
+      console.log('No bins data available for conversion - waiting for Firebase data');
     } else {
-      console.log('No bin1Data available for conversion - waiting for Firebase data');
+      console.log(`Created ${bins.length} waste bins from Firebase data`);
     }
     
     return bins;
   };
 
-  // Create dynamic bin locations with live coordinates or GPS fallback
+  // Create dynamic bin locations with live coordinates for all bins
   const getDynamicBinLocations = () => {
     const locations = [];
     
-    // Always add bin1 if we have any bin data (continuous monitoring)
-    if (bin1Data) {
+    // Process all bins from Firebase
+    allBinsData.forEach((binData) => {
+      if (binData) {
       // Determine coordinates: use live GPS if valid, otherwise use fallback
       let coordinates: [number, number];
       let coordinatesSource: string;
       
-      if (bin1Data.latitude && bin1Data.longitude) {
+        if (binData.latitude && binData.longitude) {
         // ESP32 provides coordinates (either live GPS or cached)
-        coordinates = [bin1Data.latitude, bin1Data.longitude];
-        coordinatesSource = bin1Data.coordinates_source || 'gps_live';
+          coordinates = [binData.latitude, binData.longitude];
+          coordinatesSource = binData.coordinates_source || 'gps_live';
       } else {
         // No coordinates from ESP32 - use default fallback position
         coordinates = [10.24371, 123.786917]; // Default Central Plaza coordinates
         coordinatesSource = 'no_data';
       }
+        
+        // Determine location name based on bin ID
+        let locationName = 'Unknown Location';
+        if (binData.binId === 'bin1') {
+          locationName = 'Central Plaza';
+        } else if (binData.binId === 'bin2') {
+          locationName = 'East Wing';
+        } else if (binData.binId === 'data') {
+          locationName = 'S1Bin3';
+        } else {
+          locationName = binData.name || `Bin ${binData.binId}`;
+        }
       
       locations.push({
-        id: 'bin1',
-        name: bin1Data.name || 'Central Plaza', // Use actual name from Firebase
+          id: binData.binId,
+          name: locationName,
         position: coordinates,
-        level: bin1Data.bin_level || 0,
-        status: getStatusFromLevel(bin1Data.bin_level || 0),
-        lastCollection: getTimeAgoUtil(bin1Data.timestamp).text,
+          level: binData.bin_level || 0,
+          status: getStatusFromLevel(binData.bin_level || 0),
+          lastCollection: getTimeAgoUtil(binData.timestamp).text,
         route: 'Route A - Central',
-        gps_valid: bin1Data.gps_valid,
-        satellites: bin1Data.satellites,
-        timestamp: bin1Data.timestamp,
-        weight_kg: bin1Data.weight_kg,
-        distance_cm: bin1Data.distance_cm,
+          gps_valid: binData.gps_valid,
+          satellites: binData.satellites,
+          timestamp: binData.timestamp,
+          weight_kg: binData.weight_kg,
+          distance_cm: binData.distance_cm,
         coordinates_source: coordinatesSource,
-        last_active: bin1Data.last_active,
-        gps_timestamp: bin1Data.gps_timestamp,
-        type: bin1Data.type, // Include type from Firebase
-        mainLocation: bin1Data.mainLocation, // Include mainLocation from Firebase
-        // Include backup coordinates timestamp for proper time calculation
+          last_active: binData.last_active,
+          gps_timestamp: binData.gps_timestamp,
+          type: binData.type,
+          mainLocation: binData.mainLocation,
         backup_timestamp: backupCoordinates?.coordinates?.timestamp || backupCoordinates?.backup_timestamp
       });
     }
+    });
     
+    console.log(`Created ${locations.length} dynamic bin locations from Firebase data`);
     return locations;
   };
 

@@ -21,8 +21,8 @@ export function useApiGet<T = any>(url: string | null) {
 }
 
 // Generic POST hook
-export function useApiPost<T = any>(url: string | null, body: any, trigger: boolean) {
-  const [data, setData] = useState<T | null>(null);
+export function useApiPost<T = any>(url: string | null, data: any, trigger: boolean) {
+  const [response, setResponse] = useState<T | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,14 +30,14 @@ export function useApiPost<T = any>(url: string | null, body: any, trigger: bool
     if (!url || !trigger) return;
     setLoading(true);
     setError(null);
-    api.post(url, body)
-      .then(res => setData(res.data))
+    api.post(url, data)
+      .then(res => setResponse(res.data))
       .catch(err => setError(err?.response?.data?.error || "Failed to post data"))
       .finally(() => setLoading(false));
     // eslint-disable-next-line
-  }, [url, trigger]);
+  }, [url, data, trigger]);
 
-  return { data, loading, error };
+  return { response, loading, error };
 }
 
 // Generic PUT hook

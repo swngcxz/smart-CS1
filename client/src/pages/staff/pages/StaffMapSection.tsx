@@ -20,7 +20,7 @@ import { getDistanceFromMap } from "@/utils/distanceUtils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { AddBinModal, BinFormData } from "@/components/modals/AddBinModal";
+import { AddBinModal } from "@/components/modals/AddBinModal";
 
 // Add custom styles for user location marker
 const userLocationStyles = `
@@ -111,23 +111,18 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
     setIsLocationDropdownOpen(!isLocationDropdownOpen);
   };
 
-  // Handle adding new bin
-  const handleAddBin = async (binData: BinFormData) => {
-    try {
-      // TODO: Implement API call to add bin to database
-      console.log("Adding new bin:", binData);
-
-      // For now, just simulate the API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // You can add the actual API call here later
-      // Example: await addBinToDatabase(binData);
-
-      return Promise.resolve();
-    } catch (error) {
-      console.error("Error adding bin:", error);
-      throw error;
-    }
+  // Handle when a new bin is registered
+  const handleBinRegistered = (binId: string) => {
+    console.log(`Bin ${binId} registered successfully for monitoring!`);
+    // The real-time data hook will automatically pick up the registered bin
+    // You can add additional logic here if needed
+    toast.success(`Bin ${binId} is now being monitored!`);
+    
+    // Refresh the registered bins data after a short delay
+    setTimeout(() => {
+      // Trigger a refresh of the waste levels tab by dispatching a custom event
+      window.dispatchEvent(new CustomEvent('binRegistered', { detail: { binId } }));
+    }, 1000);
   };
   const [userLocation, setUserLocation] = useState<LatLngTuple | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -642,7 +637,11 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
       </Card>
 
       {/* Add Bin Modal */}
-      <AddBinModal isOpen={isAddBinModalOpen} onClose={() => setIsAddBinModalOpen(false)} onAddBin={handleAddBin} />
+      <AddBinModal 
+        isOpen={isAddBinModalOpen} 
+        onClose={() => setIsAddBinModalOpen(false)} 
+        onBinRegistered={handleBinRegistered} 
+      />
     </>
   );
 }

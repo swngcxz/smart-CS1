@@ -3,6 +3,7 @@ import { WasteLevelCards } from "../pages/WasteLevelCards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
+import { useRegisteredBins } from "@/hooks/useBinApi";
 import { Smartphone, Wifi, WifiOff } from "lucide-react";
 import { BinInfoModal } from "@/components/popups/BinInfoModal";
 import { WasteLevelsSkeleton } from "@/components/skeletons/WasteLevelsSkeleton";
@@ -60,6 +61,23 @@ export function WasteLevelsTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { wasteBins, loading, error, bin1Data } = useRealTimeData();
+  const { registeredBins, fetchRegisteredBins, isLoading: loadingRegisteredBins } = useRegisteredBins();
+
+  // Fetch registered bins when component mounts - only once
+  useEffect(() => {
+    fetchRegisteredBins(true); // Force initial fetch
+  }, []); // Empty dependency array - only run once
+
+  // Listen for bin registration events
+  useEffect(() => {
+    const handleBinRegistered = () => {
+      console.log('Bin registered event received, refreshing registered bins...');
+      fetchRegisteredBins(true); // Force refresh
+    };
+
+    window.addEventListener('binRegistered', handleBinRegistered);
+    return () => window.removeEventListener('binRegistered', handleBinRegistered);
+  }, []);
 
   // Debug logging
   console.log("🔍 WasteLevelsTab Debug:", {
@@ -67,7 +85,9 @@ export function WasteLevelsTab() {
     loading,
     error,
     bin1Data,
+    registeredBins,
     wasteBinsLength: wasteBins.length,
+    registeredBinsLength: registeredBins.length,
     bin1DataDetails: bin1Data
       ? {
           bin_level: bin1Data.bin_level,
@@ -108,6 +128,21 @@ export function WasteLevelsTab() {
         ]
       : []),
 
+    // Add registered bins for Central Plaza
+    ...registeredBins
+      .filter(rb => rb.assignedLocation === "Central Plaza")
+      .map(rb => ({
+        id: rb.binId,
+        location: "Central Plaza",
+        level: rb.bin_level,
+        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal" as const,
+        lastCollected: "Real-time",
+        capacity: "500L",
+        wasteType: rb.type || "Mixed",
+        nextCollection: "Today 3:00 PM",
+        binData: rb
+      })),
+
     // Always include the 3 static bins for Central Plaza
     {
       id: "2",
@@ -139,6 +174,21 @@ export function WasteLevelsTab() {
       wasteType: "Mixed",
       nextCollection: "Today 6:00 PM",
     },
+
+    // Park Avenue - Add registered bins + 4 static bins
+    ...registeredBins
+      .filter(rb => rb.assignedLocation === "Park Avenue")
+      .map(rb => ({
+        id: rb.binId,
+        location: "Park Avenue",
+        level: rb.bin_level,
+        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal" as const,
+        lastCollected: "Real-time",
+        capacity: "500L",
+        wasteType: rb.type || "Mixed",
+        nextCollection: "Today 3:00 PM",
+        binData: rb
+      })),
 
     // Park Avenue - 4 bins (critical status)
     {
@@ -182,6 +232,21 @@ export function WasteLevelsTab() {
       nextCollection: "Tomorrow 10:00 AM",
     },
 
+    // Mall District - Add registered bins + 4 static bins
+    ...registeredBins
+      .filter(rb => rb.assignedLocation === "Mall District")
+      .map(rb => ({
+        id: rb.binId,
+        location: "Mall District",
+        level: rb.bin_level,
+        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal" as const,
+        lastCollected: "Real-time",
+        capacity: "500L",
+        wasteType: rb.type || "Mixed",
+        nextCollection: "Today 3:00 PM",
+        binData: rb
+      })),
+
     // Mall District - 4 bins (warning status)
     {
       id: "9",
@@ -223,6 +288,21 @@ export function WasteLevelsTab() {
       wasteType: "Organic",
       nextCollection: "Tomorrow 8:00 AM",
     },
+
+    // Residential Area - Add registered bins + 4 static bins
+    ...registeredBins
+      .filter(rb => rb.assignedLocation === "Residential Area")
+      .map(rb => ({
+        id: rb.binId,
+        location: "Residential Area",
+        level: rb.bin_level,
+        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal" as const,
+        lastCollected: "Real-time",
+        capacity: "500L",
+        wasteType: rb.type || "Mixed",
+        nextCollection: "Today 3:00 PM",
+        binData: rb
+      })),
 
     // Residential Area - 4 bins
     {
@@ -354,12 +434,12 @@ export function WasteLevelsTab() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{bin.location}</h3>
-                        {bin.id === "bin1" && bin1Data && (
+                        {(bin.id === "bin1" && bin1Data) || bin.binData ? (
                           <div className="flex items-center gap-1">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                             <span className="text-xs text-green-600 dark:text-green-400 font-medium">Live</span>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
@@ -409,7 +489,7 @@ export function WasteLevelsTab() {
         isOpen={isModalOpen}
         onClose={handleModalClose}
         bin={selectedBin}
-        binData={selectedBin?.id === "bin1" ? bin1Data : null}
+        binData={selectedBin?.id === "bin1" ? bin1Data : selectedBin?.binData || null}
       />
     </>
   );

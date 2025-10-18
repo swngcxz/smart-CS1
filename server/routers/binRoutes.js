@@ -83,4 +83,362 @@ router.get("/bin1", async (req, res) => {
   }
 });
 
+// Add endpoint to get all bins from monitoring
+router.get("/all", async (req, res) => {
+  console.log('[BIN ROUTES] /all endpoint called');
+  try {
+    const db = admin.database();
+    const monitoringRef = db.ref('monitoring');
+    
+    // Get all bins under monitoring
+    const snapshot = await Promise.race([
+      monitoringRef.once('value'),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Firebase timeout')), 3000)
+      )
+    ]);
+    
+    const allData = snapshot.val();
+    console.log('[BIN ROUTES] All monitoring data:', allData);
+    
+    if (!allData) {
+      console.log('[BIN ROUTES] No data found in monitoring');
+      return res.status(404).json({ success: false, message: "No bins found" });
+    }
+    
+    // Process each bin
+    const bins = [];
+    Object.keys(allData).forEach(binKey => {
+      const binData = allData[binKey];
+      if (binData && typeof binData === 'object') {
+        const formattedData = {
+          binId: binKey,
+          ...binData,
+          latitude: parseFloat(binData?.latitude) || 0,
+          longitude: parseFloat(binData?.longitude) || 0,
+          gps_valid: Boolean(binData?.gps_valid),
+          satellites: parseInt(binData?.satellites) || 0,
+          bin_level: parseFloat(binData?.bin_level) || 0,
+          weight_percent: parseFloat(binData?.weight_percent) || 0,
+          height_percent: parseFloat(binData?.height_percent) || 0,
+          timestamp: binData?.timestamp || Date.now()
+        };
+        bins.push(formattedData);
+      }
+    });
+    
+    console.log(`[BIN ROUTES] Found ${bins.length} bins:`, bins.map(b => b.binId));
+    res.json({ success: true, bins });
+    
+  } catch (err) {
+    console.error('[BIN ROUTES] Error fetching all bins:', err);
+    res.status(500).json({ error: 'Failed to fetch bins', details: err.message });
+  }
+});
+
+// Add bin2 endpoint to handle real-time data
+router.get("/bin2", async (req, res) => {
+  console.log('[BIN ROUTES] /bin2 endpoint called');
+  try {
+    const db = admin.database();
+    const bin2Ref = db.ref('monitoring/bin2');
+    
+    // Add timeout to prevent hanging requests
+    const snapshot = await Promise.race([
+      bin2Ref.once('value'),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Firebase timeout')), 2000)
+      )
+    ]);
+    const data = snapshot.val();
+    
+    console.log('[BIN ROUTES] Raw bin2 data from Firebase:', data);
+    
+    if (!data) {
+      console.log('[BIN ROUTES] No data found in monitoring/bin2');
+      return res.status(404).json({ success: false, message: "Bin2 not found" });
+    }
+    
+    // Ensure coordinates are properly formatted
+    const formattedData = {
+      ...data,
+      latitude: parseFloat(data?.latitude) || 0,
+      longitude: parseFloat(data?.longitude) || 0,
+      gps_valid: Boolean(data?.gps_valid),
+      satellites: parseInt(data?.satellites) || 0,
+      bin_level: parseFloat(data?.bin_level) || 0,
+      weight_percent: parseFloat(data?.weight_percent) || 0,
+      height_percent: parseFloat(data?.height_percent) || 0,
+      timestamp: data?.timestamp || Date.now()
+    };
+    
+    console.log(`[BIN ROUTES] Serving bin2 data with coordinates: ${formattedData.latitude}, ${formattedData.longitude}`);
+    res.json(formattedData);
+  } catch (err) {
+    console.error('[BIN ROUTES] Error fetching bin2 data:', err);
+    res.status(500).json({ error: 'Failed to fetch bin2 data', details: err.message });
+  }
+});
+
+// Simple endpoint to check what bins exist in monitoring
+router.get("/check", async (req, res) => {
+  console.log('[BIN ROUTES] /check endpoint called - checking available bins');
+  try {
+    const db = admin.database();
+    const monitoringRef = db.ref('monitoring');
+    
+    // Get all bins under monitoring
+    const snapshot = await Promise.race([
+      monitoringRef.once('value'),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Firebase timeout')), 3000)
+      )
+    ]);
+    
+    const allData = snapshot.val();
+    console.log('[BIN ROUTES] Raw monitoring data structure:', allData);
+    
+    if (!allData) {
+      console.log('[BIN ROUTES] No data found in monitoring');
+      return res.json({ 
+        success: true, 
+        message: "No bins found in monitoring",
+        bins: [],
+        structure: null
+      });
+    }
+    
+    // Get the keys (bin names) from monitoring
+    const binKeys = Object.keys(allData);
+    console.log(`[BIN ROUTES] Found ${binKeys.length} bins in monitoring:`, binKeys);
+    
+    // Check if each bin has data
+    const binStatus = {};
+    binKeys.forEach(binKey => {
+      const binData = allData[binKey];
+      binStatus[binKey] = {
+        exists: !!binData,
+        hasData: binData && typeof binData === 'object' && Object.keys(binData).length > 0,
+        dataKeys: binData ? Object.keys(binData) : [],
+        sampleData: binData ? {
+          bin_level: binData.bin_level,
+          latitude: binData.latitude,
+          longitude: binData.longitude,
+          timestamp: binData.timestamp
+        } : null
+      };
+    });
+    
+    console.log('[BIN ROUTES] Bin status:', binStatus);
+    
+    res.json({ 
+      success: true, 
+      message: `Found ${binKeys.length} bins in monitoring`,
+      bins: binKeys,
+      binStatus: binStatus,
+      totalBins: binKeys.length
+    });
+    
+  } catch (err) {
+    console.error('[BIN ROUTES] Error checking bins:', err);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to check bins', 
+      details: err.message 
+    });
+  }
+});
+
+// Get available bins from Firebase for registration
+router.get("/available", async (req, res) => {
+  console.log('[BIN ROUTES] /available endpoint called');
+  try {
+    const db = admin.database();
+    const monitoringRef = db.ref('monitoring');
+    
+    // Get all bins under monitoring
+    const snapshot = await monitoringRef.once('value');
+    const allData = snapshot.val();
+    
+    if (!allData) {
+      console.log('[BIN ROUTES] No bins found in monitoring');
+      return res.json({ 
+        success: true, 
+        message: "No bins found in monitoring",
+        availableBins: []
+      });
+    }
+    
+    // Filter out backup and get only actual bins
+    const availableBins = [];
+    Object.keys(allData).forEach(binKey => {
+      if (binKey !== 'backup' && binKey.startsWith('bin')) {
+        const binData = allData[binKey];
+        if (binData && typeof binData === 'object') {
+          availableBins.push({
+            binId: binKey,
+            name: binData.name || binKey,
+            location: binData.mainLocation || binData.location || 'Unknown Location',
+            type: binData.type || 'general',
+            bin_level: binData.bin_level || 0,
+            latitude: binData.latitude || 0,
+            longitude: binData.longitude || 0,
+            gps_valid: binData.gps_valid || false,
+            last_active: binData.last_active || binData.timestamp || Date.now()
+          });
+        }
+      }
+    });
+    
+    console.log(`[BIN ROUTES] Found ${availableBins.length} available bins for registration:`, availableBins.map(b => b.binId));
+    
+    res.json({ 
+      success: true, 
+      message: `Found ${availableBins.length} available bins`,
+      availableBins: availableBins
+    });
+    
+  } catch (err) {
+    console.error('[BIN ROUTES] Error getting available bins:', err);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get available bins', 
+      details: err.message 
+    });
+  }
+});
+
+// Register a bin for monitoring (add to active bins list)
+router.post("/register", async (req, res) => {
+  console.log('[BIN ROUTES] /register endpoint called');
+  try {
+    const { binId, customName, customLocation, assignedLocation } = req.body;
+    
+    // Validation
+    if (!binId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required field: binId' 
+      });
+    }
+    
+    const db = admin.database();
+    
+    // Check if bin exists in Firebase
+    const binRef = db.ref(`monitoring/${binId}`);
+    const binSnapshot = await binRef.once('value');
+    const binData = binSnapshot.val();
+    
+    if (!binData) {
+      return res.status(404).json({ 
+        success: false, 
+        error: `Bin ${binId} not found in Firebase` 
+      });
+    }
+    
+    // Get or create active bins list
+    const activeBinsRef = db.ref('activeBins');
+    const activeBinsSnapshot = await activeBinsRef.once('value');
+    const activeBins = activeBinsSnapshot.val() || {};
+    
+    // Check if bin is already registered - allow updates
+    if (activeBins[binId]) {
+      console.log(`[BIN ROUTES] Bin ${binId} is already registered, updating registration...`);
+    }
+    
+    // Register the bin with location assignment
+    const registrationData = {
+      binId: binId,
+      registeredAt: Date.now(),
+      registeredBy: 'system',
+      customName: customName || binData.name || binId,
+      customLocation: customLocation || binData.mainLocation || binData.location || 'Unknown Location',
+      assignedLocation: assignedLocation || 'Central Plaza', // Default to Central Plaza
+      isActive: true,
+      lastProcessed: Date.now()
+    };
+    
+    await activeBinsRef.child(binId).set(registrationData);
+    
+    const isUpdate = !!activeBins[binId];
+    console.log(`[BIN ROUTES] Successfully ${isUpdate ? 'updated' : 'registered'} bin ${binId} for monitoring at location: ${assignedLocation}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Bin ${binId} ${isUpdate ? 'updated' : 'registered'} successfully for monitoring at ${assignedLocation}`,
+      binId: binId,
+      registrationData: registrationData,
+      isUpdate: isUpdate
+    });
+    
+  } catch (err) {
+    console.error('[BIN ROUTES] Error registering bin:', err);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to register bin', 
+      details: err.message 
+    });
+  }
+});
+
+// Get registered bins by location
+router.get("/registered", async (req, res) => {
+  console.log('[BIN ROUTES] /registered endpoint called');
+  try {
+    const db = admin.database();
+    
+    // Get registered bins
+    const activeBinsRef = db.ref('activeBins');
+    const activeBinsSnapshot = await activeBinsRef.once('value');
+    const activeBins = activeBinsSnapshot.val() || {};
+    
+    // Get real-time data for each registered bin
+    const monitoringRef = db.ref('monitoring');
+    const monitoringSnapshot = await monitoringRef.once('value');
+    const monitoringData = monitoringSnapshot.val() || {};
+    
+    // Combine registration data with real-time data
+    const registeredBins = [];
+    Object.keys(activeBins).forEach(binId => {
+      const registration = activeBins[binId];
+      const realTimeData = monitoringData[binId];
+      
+      if (registration.isActive && realTimeData) {
+        registeredBins.push({
+          binId: binId,
+          assignedLocation: registration.assignedLocation || 'Central Plaza', // Default fallback
+          customName: registration.customName,
+          customLocation: registration.customLocation,
+          registeredAt: registration.registeredAt,
+          // Real-time data
+          bin_level: realTimeData.bin_level || 0,
+          weight_percent: realTimeData.weight_percent || 0,
+          height_percent: realTimeData.height_percent || 0,
+          latitude: realTimeData.latitude || 0,
+          longitude: realTimeData.longitude || 0,
+          gps_valid: realTimeData.gps_valid || false,
+          timestamp: realTimeData.timestamp || Date.now(),
+          type: realTimeData.type || 'general'
+        });
+      }
+    });
+    
+    console.log(`[BIN ROUTES] Found ${registeredBins.length} registered bins`);
+    
+    res.json({ 
+      success: true, 
+      message: `Found ${registeredBins.length} registered bins`,
+      registeredBins: registeredBins
+    });
+    
+  } catch (err) {
+    console.error('[BIN ROUTES] Error getting registered bins:', err);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to get registered bins', 
+      details: err.message 
+    });
+  }
+});
+
 module.exports = router;
