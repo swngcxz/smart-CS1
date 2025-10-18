@@ -1,7 +1,9 @@
 import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAllActivityLogs, useStaffActivityLogs, useAdminActivityLogs } from "@/hooks/useActivityLogsApi";
+import { useAllActivityLogs, useAdminActivityLogs } from "@/hooks/useActivityLogsApi";
 import { ActivityLogsTable } from "./ActivityLogsTable";
+import { DoneActivityDetailsModal } from "@/components/modals/DoneActivityDetailsModal";
+import { useState } from "react";
 
 interface RoleBasedActivityLogsProps {
   onRefresh?: () => void;
@@ -20,6 +22,108 @@ export function RoleBasedActivityLogs({ onRefresh }: RoleBasedActivityLogsProps)
   const isAdmin = user?.role === "admin";
   const logs = isAdmin ? adminLogs : staffLogs;
 
+  // Modal states for done activity details
+  const [doneModalOpen, setDoneModalOpen] = useState(false);
+  const [selectedDoneActivity, setSelectedDoneActivity] = useState<any>(null);
+
+  // Handler for opening done activity details modal
+  const handleViewDoneActivity = (activity: any) => {
+    console.log("Opening done activity modal for:", activity);
+    setSelectedDoneActivity(activity);
+    setDoneModalOpen(true);
+  };
+
+  // Helper function to handle cell clicks for done activities
+  const handleCellClick = (e: React.MouseEvent, activity: any) => {
+    if (
+      activity.status?.toLowerCase() === "done" ||
+      activity.status?.toLowerCase() === "completed" ||
+      activity.status?.toLowerCase() === "finished"
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleViewDoneActivity(activity);
+    }
+  };
+
+  // Utility functions for formatting
+  const formatDisplayDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return "N/A";
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const formatDisplayTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return "N/A";
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  const formatActivityDescription = (activity: any) => {
+    if (activity.bin_id && activity.bin_location) {
+      return `Bin ${activity.bin_id} at ${activity.bin_location}`;
+    }
+    if (activity.task_note) {
+      return activity.task_note;
+    }
+    return activity.activity_type || "Activity logged";
+  };
+
+  const getActivityTypeColor = (type: string) => {
+    switch (type) {
+      case "Task_assignment":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "Bin_emptied":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "Maintenance":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "Route_change":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
+      case "Schedule_update":
+        return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200";
+      case "Bin_alert":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "inprogress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "done":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority?.toLowerCase()) {
+      case "low":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "high":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "urgent":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
   // Debug logging
   console.log("RoleBasedActivityLogs Debug:", {
     userRole: user?.role,
@@ -31,8 +135,6 @@ export function RoleBasedActivityLogs({ onRefresh }: RoleBasedActivityLogsProps)
     staffLoading: staffLogs.loading,
     adminError: adminLogs.error,
     staffError: staffLogs.error,
-    adminLogs: adminLogs.logs,
-    staffLogs: staffLogs.logs,
   });
 
   // Show loading state
@@ -42,24 +144,29 @@ export function RoleBasedActivityLogs({ onRefresh }: RoleBasedActivityLogsProps)
     );
   }
 
-  // Show appropriate message based on role
-  const getEmptyMessage = () => {
-    if (isAdmin) {
-      return "No completed activity logs found. Tasks will appear here once they are marked as done.";
-    } else {
-      return "No activity logs found. Create some tasks to get started.";
-    }
-  };
-
   return (
     <div className="space-y-4">
-      {/* Activity logs table */}
+      {/* Activity logs table with modal functionality */}
       <ActivityLogsTable
         logs={logs.logs}
         loading={logs.loading}
         error={logs.error}
         onRefresh={onRefresh || logs.refetch}
         userRole={user?.role}
+        onCellClick={handleCellClick}
+      />
+
+      {/* Done Activity Details Modal */}
+      <DoneActivityDetailsModal
+        open={doneModalOpen}
+        onOpenChange={setDoneModalOpen}
+        activity={selectedDoneActivity}
+        getActivityTypeColor={getActivityTypeColor}
+        getStatusColor={getStatusColor}
+        getPriorityColor={getPriorityColor}
+        formatDisplayDate={formatDisplayDate}
+        formatDisplayTime={formatDisplayTime}
+        formatActivityDescription={formatActivityDescription}
       />
     </div>
   );

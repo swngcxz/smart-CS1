@@ -37,7 +37,7 @@ const Feedback = () => {
   const [showSubmitForm, setShowSubmitForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Feedback submission form state
   const [feedback, setFeedback] = useState("");
   const [name, setName] = useState("");
@@ -45,7 +45,7 @@ const Feedback = () => {
   const [rating, setRating] = useState<number>(0);
   const [wordCount, setWordCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  
+
   const { fetchFeedback, fetchStats, submitFeedback } = useFeedback();
 
   // Word count validation
@@ -57,7 +57,10 @@ const Feedback = () => {
 
   // Update word count
   useEffect(() => {
-    const words = feedback.trim().split(/\s+/).filter(word => word.length > 0);
+    const words = feedback
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0);
     setWordCount(words.length);
   }, [feedback]);
 
@@ -123,9 +126,7 @@ const Feedback = () => {
       return (
         <Star
           key={i}
-          className={`h-6 w-6 cursor-pointer ${
-            value <= rating ? "text-yellow-400 fill-current" : "text-gray-300"
-          }`}
+          className={`h-6 w-6 cursor-pointer ${value <= rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
           onClick={() => setRating(value)}
         />
       );
@@ -135,7 +136,7 @@ const Feedback = () => {
   // Handle feedback submission
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isTooShort || isTooLong || rating === 0) {
       toast.error(`Please provide at least ${minWords} words, no more than ${maxLength} characters, and a rating.`);
       return;
@@ -147,7 +148,7 @@ const Feedback = () => {
         content: feedback,
         name: name.trim() || undefined,
         email: email.trim() || undefined,
-        rating
+        rating,
       });
 
       if (result.success) {
@@ -158,7 +159,7 @@ const Feedback = () => {
         setRating(0);
         setWordCount(0);
         setShowSubmitForm(false);
-        
+
         // Refresh feedback list
         const feedbackResponse = await api.get("/api/feedback");
         setFeedbacks(feedbackResponse.data.feedback || []);
@@ -208,10 +209,10 @@ const Feedback = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowArchived(false)} 
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowArchived(false)}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 h-auto"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -254,11 +255,11 @@ const Feedback = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Feedback</h1>
+          <h1 className="text-lg font-bold text-gray-900">Feedback</h1>
         </div>
         <div className="flex gap-2">
-          <Button 
-            onClick={() => setShowArchived(true)} 
+          <Button
+            onClick={() => setShowArchived(true)}
             variant="ghost"
             className="text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-1 h-auto text-sm"
           >
@@ -330,7 +331,7 @@ const Feedback = () => {
                   className="min-h-32"
                   required
                 />
-                
+
                 {/* Word Counter */}
                 {wordCount > 0 && (
                   <div className="flex items-center justify-between text-sm">
@@ -351,7 +352,7 @@ const Feedback = () => {
                         </div>
                       )}
                     </div>
-                    <span className={`text-xs ${isTooShort || isTooLong ? 'text-red-500' : 'text-gray-500'}`}>
+                    <span className={`text-xs ${isTooShort || isTooLong ? "text-red-500" : "text-gray-500"}`}>
                       {wordCount} words / {feedback.length} chars
                     </span>
                   </div>
@@ -359,8 +360,8 @@ const Feedback = () => {
               </div>
 
               {/* Submit Button */}
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={submitting || !isValidLength || rating === 0}
                 className="w-full bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 h-auto"
               >
@@ -370,14 +371,13 @@ const Feedback = () => {
                     Submitting...
                   </>
                 ) : (
-                  'Submit Feedback'
+                  "Submit Feedback"
                 )}
               </Button>
             </form>
           </CardContent>
         </Card>
       )}
-
 
       <FeedbackList
         feedbacks={filteredFeedbacks}

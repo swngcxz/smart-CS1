@@ -82,14 +82,14 @@ export function BinHistory() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.critical-dropdown-container')) {
+      if (!target.closest(".critical-dropdown-container")) {
         setShowCriticalDropdown(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -292,7 +292,7 @@ export function BinHistory() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Bin History</h1>
+          <p className="text-lg font-bold text-gray-900 dark:text-white">Bin History</p>
         </div>
         <Button
           onClick={exportToCSV}
@@ -306,36 +306,50 @@ export function BinHistory() {
       {/* Status Summary */}
       <div className="flex items-center justify-between text-sm">
         <span className="text-gray-700 dark:text-gray-300 font-medium">Total: {stats.totalRecords}</span>
-        <span 
-          className="text-green-600 font-medium cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1" 
+        <span
+          className="text-green-600 font-medium cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1"
           onClick={() => setStatusFilter(statusFilter === "ok" ? "all" : "ok")}
         >
           Normal: {stats.normalCount}
         </span>
-        <span 
-          className="text-yellow-600 font-medium cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1" 
+        <span
+          className="text-yellow-600 font-medium cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1"
           onClick={() => setStatusFilter(statusFilter === "warning" ? "all" : "warning")}
         >
           Warning: {stats.warningCount}
         </span>
         <div className="relative critical-dropdown-container">
-          <div className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1" onClick={() => setShowCriticalDropdown(!showCriticalDropdown)}>
+          <div
+            className="flex items-center gap-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded px-2 py-1"
+            onClick={() => setShowCriticalDropdown(!showCriticalDropdown)}
+          >
             <span className="text-red-600 font-medium">
-              {selectedCriticalType === "all" ? "Critical" : selectedCriticalType === "critical" ? "Critical" : selectedCriticalType === "error" ? "Error" : "Malfunction"}: {
-                selectedCriticalType === "all" ? stats.criticalCount + stats.errorCount + stats.malfunctionCount :
-                selectedCriticalType === "critical" ? stats.criticalCount :
-                selectedCriticalType === "error" ? stats.errorCount :
-                stats.malfunctionCount
-              }
+              {selectedCriticalType === "all"
+                ? "Critical"
+                : selectedCriticalType === "critical"
+                ? "Critical"
+                : selectedCriticalType === "error"
+                ? "Error"
+                : "Malfunction"}
+              :{" "}
+              {selectedCriticalType === "all"
+                ? stats.criticalCount + stats.errorCount + stats.malfunctionCount
+                : selectedCriticalType === "critical"
+                ? stats.criticalCount
+                : selectedCriticalType === "error"
+                ? stats.errorCount
+                : stats.malfunctionCount}
             </span>
-            <ChevronDown className={`w-3 h-3 text-gray-500 transition-transform ${showCriticalDropdown ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`w-3 h-3 text-gray-500 transition-transform ${showCriticalDropdown ? "rotate-180" : ""}`}
+            />
           </div>
-          
+
           {/* Critical Dropdown */}
           {showCriticalDropdown && (
             <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-10 min-w-[200px]">
               <div className="py-1">
-                <div 
+                <div
                   className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between"
                   onClick={() => {
                     setSelectedCriticalType("critical");
@@ -345,7 +359,7 @@ export function BinHistory() {
                   <span className="text-red-600">Critical</span>
                   <span className="text-gray-500 dark:text-gray-400">{stats.criticalCount}</span>
                 </div>
-                <div 
+                <div
                   className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between"
                   onClick={() => {
                     setSelectedCriticalType("error");
@@ -355,7 +369,7 @@ export function BinHistory() {
                   <span className="text-red-600">Error</span>
                   <span className="text-gray-500 dark:text-gray-400">{stats.errorCount}</span>
                 </div>
-                <div 
+                <div
                   className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between"
                   onClick={() => {
                     setSelectedCriticalType("malfunction");

@@ -397,20 +397,16 @@ export function ScheduleCollectionTabs() {
 
   const handleUpdateSchedule = (updatedSchedule: Schedule) => {
     console.log("Updating schedule:", updatedSchedule);
-    
+
     // Update the schedule in local state
-    setScheduleData((prev) => 
-      prev.map((schedule) => 
-        schedule.id === updatedSchedule.id ? updatedSchedule : schedule
-      )
+    setScheduleData((prev) =>
+      prev.map((schedule) => (schedule.id === updatedSchedule.id ? updatedSchedule : schedule))
     );
-    
+
     // Update selected date schedules if it's the same date
     if (selectedDate && isSameDay(new Date(updatedSchedule.date), selectedDate)) {
-      setSelectedDateSchedules((prev) => 
-        prev.map((schedule) => 
-          schedule.id === updatedSchedule.id ? updatedSchedule : schedule
-        )
+      setSelectedDateSchedules((prev) =>
+        prev.map((schedule) => (schedule.id === updatedSchedule.id ? updatedSchedule : schedule))
       );
     }
   };
@@ -464,7 +460,7 @@ export function ScheduleCollectionTabs() {
         <CardHeader className="pb-4 pt-0">
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-2xl">Schedules</CardTitle>
+              <CardTitle className="text-lg font-bold">Schedules</CardTitle>
               {/* <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-green-500 rounded"></div>

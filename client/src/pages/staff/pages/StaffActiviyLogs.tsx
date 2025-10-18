@@ -35,6 +35,7 @@ type SortField = "timestamp" | "activity_type" | "status" | "priority";
 type SortDirection = "asc" | "desc";
 
 import { StaffActivityLogsSkeleton } from "@/components/skeletons/StaffActivityLogsSkeleton";
+import { DoneActivityDetailsModal } from "@/components/modals/DoneActivityDetailsModal";
 
 export function StaffActivityLogs() {
   // Get userId from auth context
@@ -66,6 +67,10 @@ export function StaffActivityLogs() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [assigningActivity, setAssigningActivity] = useState<any>(null);
   const [selectedJanitorId, setSelectedJanitorId] = useState("");
+
+  // Done activity details modal states
+  const [doneModalOpen, setDoneModalOpen] = useState(false);
+  const [selectedDoneActivity, setSelectedDoneActivity] = useState<any>(null);
 
   // Mock staff list - in real app, this would come from an API
   const staffList = [
@@ -287,6 +292,26 @@ export function StaffActivityLogs() {
     } catch (error) {
       console.error("Error deleting activity:", error);
       alert("Error deleting activity. Please try again.");
+    }
+  };
+
+  // Handler for opening done activity details modal
+  const handleViewDoneActivity = (activity: any) => {
+    console.log("Opening done activity modal for:", activity);
+    setSelectedDoneActivity(activity);
+    setDoneModalOpen(true);
+  };
+
+  // Helper function to handle cell clicks for done activities
+  const handleCellClick = (e: React.MouseEvent, activity: any) => {
+    if (
+      activity.status?.toLowerCase() === "done" ||
+      activity.status?.toLowerCase() === "completed" ||
+      activity.status?.toLowerCase() === "finished"
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleViewDoneActivity(activity);
     }
   };
 
@@ -538,9 +563,22 @@ export function StaffActivityLogs() {
                       <TableRow
                         key={activity.id}
                         className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors duration-200 cursor-pointer group border-b border-gray-100 dark:border-gray-700"
-                        title={`Click to view details for ${activity.activity_type || "activity"}`}
+                        title={
+                          activity.status?.toLowerCase() === "done" ||
+                          activity.status?.toLowerCase() === "completed" ||
+                          activity.status?.toLowerCase() === "finished"
+                            ? `Click to view completion details for ${activity.activity_type || "activity"}`
+                            : `Activity: ${activity.activity_type || "activity"}`
+                        }
+                        onClick={(e) => {
+                          console.log("Table row clicked, activity status:", activity.status);
+                          handleCellClick(e, activity);
+                        }}
                       >
-                        <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                        <TableCell
+                          className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white"
+                          onClick={(e) => handleCellClick(e, activity)}
+                        >
                           <div className="space-y-1">
                             <div className="font-semibold text-sm leading-tight text-gray-800 dark:text-gray-100">
                               {activity.formatted_date || formatDisplayDate(activity.timestamp)}
@@ -550,7 +588,7 @@ export function StaffActivityLogs() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3">
+                        <TableCell className="px-4 py-3" onClick={(e) => handleCellClick(e, activity)}>
                           <Badge
                             className={`${getActivityTypeColor(
                               activity.activity_type || "Unknown"
@@ -560,7 +598,10 @@ export function StaffActivityLogs() {
                             {activity.activity_type || "Unknown"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        <TableCell
+                          className="px-4 py-3 text-sm text-gray-900 dark:text-white"
+                          onClick={(e) => handleCellClick(e, activity)}
+                        >
                           <div className="space-y-2">
                             <div
                               className="font-medium text-sm leading-tight text-gray-800 dark:text-gray-100"
@@ -579,7 +620,10 @@ export function StaffActivityLogs() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        <TableCell
+                          className="px-4 py-3 text-sm text-gray-900 dark:text-white"
+                          onClick={(e) => handleCellClick(e, activity)}
+                        >
                           {activity.assigned_janitor_name && activity.assigned_janitor_name.trim() !== "" ? (
                             <div className="flex items-center gap-2">
                               <User className="w-4 h-4 text-gray-500" />
@@ -595,14 +639,20 @@ export function StaffActivityLogs() {
                               variant="outline"
                               size="sm"
                               className="h-8 px-3 text-xs bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:border-blue-800 dark:text-blue-300"
-                              onClick={() => handleAssignJanitor(activity)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAssignClick(activity);
+                              }}
                             >
                               <Plus className="w-3 h-3 mr-1" />
                               Assign
                             </Button>
                           )}
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        <TableCell
+                          className="px-4 py-3 text-sm text-gray-900 dark:text-white"
+                          onClick={(e) => handleCellClick(e, activity)}
+                        >
                           <div className="space-y-1">
                             {activity.bin_location && (
                               <div className="font-medium text-sm leading-tight" title={activity.bin_location}>
@@ -616,7 +666,7 @@ export function StaffActivityLogs() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3">
+                        <TableCell className="px-4 py-3" onClick={(e) => handleCellClick(e, activity)}>
                           <Badge
                             className={`${getPriorityColor(activity.priority)} text-xs px-3 py-1 font-medium`}
                             title={`Priority: ${activity.display_priority || activity.priority || "Low"}`}
@@ -624,7 +674,10 @@ export function StaffActivityLogs() {
                             {activity.display_priority || activity.priority || "Low"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                        <TableCell
+                          className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400"
+                          onClick={(e) => handleCellClick(e, activity)}
+                        >
                           <div className="space-y-1">
                             {activity.bin_level !== undefined && (
                               <div className="flex items-center gap-2">
@@ -645,7 +698,7 @@ export function StaffActivityLogs() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 py-3">
+                        <TableCell className="px-4 py-3" onClick={(e) => handleCellClick(e, activity)}>
                           <Badge
                             className={`${getStatusColor(
                               activity.status
@@ -655,10 +708,10 @@ export function StaffActivityLogs() {
                             {activity.display_status || activity.status || "Pending"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="px-4 py-3">
+                        <TableCell className="px-4 py-3" onClick={(e) => handleCellClick(e, activity)}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
+                              <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
                                 <span className="sr-only">Open menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
@@ -690,7 +743,17 @@ export function StaffActivityLogs() {
                   <div
                     key={activity.id}
                     className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer"
-                    title={`Click to view details for ${activity.activity_type || "activity"}`}
+                    title={
+                      activity.status?.toLowerCase() === "done" ||
+                      activity.status?.toLowerCase() === "completed" ||
+                      activity.status?.toLowerCase() === "finished"
+                        ? `Click to view completion details for ${activity.activity_type || "activity"}`
+                        : `Activity: ${activity.activity_type || "activity"}`
+                    }
+                    onClick={(e) => {
+                      console.log("Mobile card clicked, activity status:", activity.status);
+                      handleCellClick(e, activity);
+                    }}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
@@ -982,6 +1045,19 @@ export function StaffActivityLogs() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Done Activity Details Modal */}
+      <DoneActivityDetailsModal
+        open={doneModalOpen}
+        onOpenChange={setDoneModalOpen}
+        activity={selectedDoneActivity}
+        getActivityTypeColor={getActivityTypeColor}
+        getStatusColor={getStatusColor}
+        getPriorityColor={getPriorityColor}
+        formatDisplayDate={formatDisplayDate}
+        formatDisplayTime={formatDisplayTime}
+        formatActivityDescription={formatActivityDescription}
+      />
     </ErrorBoundary>
   );
 }

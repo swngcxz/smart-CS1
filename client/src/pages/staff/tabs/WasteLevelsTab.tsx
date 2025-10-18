@@ -71,12 +71,12 @@ export function WasteLevelsTab() {
   // Listen for bin registration events
   useEffect(() => {
     const handleBinRegistered = () => {
-      console.log('Bin registered event received, refreshing registered bins...');
+      console.log("Bin registered event received, refreshing registered bins...");
       fetchRegisteredBins(true); // Force refresh
     };
 
-    window.addEventListener('binRegistered', handleBinRegistered);
-    return () => window.removeEventListener('binRegistered', handleBinRegistered);
+    window.addEventListener("binRegistered", handleBinRegistered);
+    return () => window.removeEventListener("binRegistered", handleBinRegistered);
   }, []);
 
   // Debug logging
@@ -130,17 +130,17 @@ export function WasteLevelsTab() {
 
     // Add registered bins for Central Plaza
     ...registeredBins
-      .filter(rb => rb.assignedLocation === "Central Plaza")
-      .map(rb => ({
+      .filter((rb) => rb.assignedLocation === "Central Plaza")
+      .map((rb) => ({
         id: rb.binId,
         location: "Central Plaza",
         level: rb.bin_level,
-        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal" as const,
+        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : ("normal" as const),
         lastCollected: "Real-time",
         capacity: "500L",
         wasteType: rb.type || "Mixed",
         nextCollection: "Today 3:00 PM",
-        binData: rb
+        binData: rb,
       })),
 
     // Always include the 3 static bins for Central Plaza
@@ -177,17 +177,17 @@ export function WasteLevelsTab() {
 
     // Park Avenue - Add registered bins + 4 static bins
     ...registeredBins
-      .filter(rb => rb.assignedLocation === "Park Avenue")
-      .map(rb => ({
+      .filter((rb) => rb.assignedLocation === "Park Avenue")
+      .map((rb) => ({
         id: rb.binId,
         location: "Park Avenue",
         level: rb.bin_level,
-        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal" as const,
+        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : ("normal" as const),
         lastCollected: "Real-time",
         capacity: "500L",
         wasteType: rb.type || "Mixed",
         nextCollection: "Today 3:00 PM",
-        binData: rb
+        binData: rb,
       })),
 
     // Park Avenue - 4 bins (critical status)
@@ -234,17 +234,17 @@ export function WasteLevelsTab() {
 
     // Mall District - Add registered bins + 4 static bins
     ...registeredBins
-      .filter(rb => rb.assignedLocation === "Mall District")
-      .map(rb => ({
+      .filter((rb) => rb.assignedLocation === "Mall District")
+      .map((rb) => ({
         id: rb.binId,
         location: "Mall District",
         level: rb.bin_level,
-        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal" as const,
+        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : ("normal" as const),
         lastCollected: "Real-time",
         capacity: "500L",
         wasteType: rb.type || "Mixed",
         nextCollection: "Today 3:00 PM",
-        binData: rb
+        binData: rb,
       })),
 
     // Mall District - 4 bins (warning status)
@@ -291,17 +291,17 @@ export function WasteLevelsTab() {
 
     // Residential Area - Add registered bins + 4 static bins
     ...registeredBins
-      .filter(rb => rb.assignedLocation === "Residential Area")
-      .map(rb => ({
+      .filter((rb) => rb.assignedLocation === "Residential Area")
+      .map((rb) => ({
         id: rb.binId,
         location: "Residential Area",
         level: rb.bin_level,
-        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal" as const,
+        status: rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : ("normal" as const),
         lastCollected: "Real-time",
         capacity: "500L",
         wasteType: rb.type || "Mixed",
         nextCollection: "Today 3:00 PM",
-        binData: rb
+        binData: rb,
       })),
 
     // Residential Area - 4 bins

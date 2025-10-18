@@ -145,7 +145,7 @@ export function MapTab() {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Map View</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Map View</h2>
           <div className="flex items-center gap-3 text-xs">
             {" "}
             {/* smaller font */}

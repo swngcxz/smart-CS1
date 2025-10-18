@@ -19,9 +19,10 @@ interface ActivityLogsTableProps {
   error: string | null;
   onRefresh: () => void;
   userRole?: string;
+  onCellClick?: (e: React.MouseEvent, activity: ActivityLog) => void;
 }
 
-export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }: ActivityLogsTableProps) {
+export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole, onCellClick }: ActivityLogsTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -206,7 +207,7 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }:
       <Card className="bg-white dark:bg-gray-800 border-transparent dark:border-gray-700">
         <CardHeader className="pb-4 pt-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-l font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
+            <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">Activity Logs</CardTitle>
             <div className="flex items-center gap-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 {filteredLogs.length} of {logs.length} Logs
@@ -214,13 +215,13 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }:
               <TooltipProvider>
                 <Tooltip>
                   <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setClearAllModalOpen(true)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-3 py-1 h-auto"
-              >
-                Clear All
-              </Button>
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setClearAllModalOpen(true)}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-3 py-1 h-auto"
+                  >
+                    Clear All
+                  </Button>
                 </Tooltip>
               </TooltipProvider>
             </div>
@@ -339,8 +340,15 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }:
                     </TableRow>
                   ) : (
                     filteredLogs.map((log) => (
-                      <TableRow key={log.id} className="border-gray-100 dark:border-gray-800">
-                        <TableCell className="text-sm text-gray-900 dark:text-white w-32">
+                      <TableRow
+                        key={log.id}
+                        className="border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                        onClick={(e) => onCellClick?.(e, log)}
+                      >
+                        <TableCell
+                          className="text-sm text-gray-900 dark:text-white w-32"
+                          onClick={(e) => onCellClick?.(e, log)}
+                        >
                           <div className="flex items-center gap-2">
                             <div>
                               <div className="font-medium text-xs">
@@ -360,12 +368,15 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }:
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm text-gray-900 dark:text-white w-64">
+                        <TableCell
+                          className="text-sm text-gray-900 dark:text-white w-64"
+                          onClick={(e) => onCellClick?.(e, log)}
+                        >
                           <div className="break-words whitespace-pre-wrap leading-relaxed text-xs">
                             {log.task_note || log.message || "No description"}
                           </div>
                         </TableCell>
-                        <TableCell className="w-32">
+                        <TableCell className="w-32" onClick={(e) => onCellClick?.(e, log)}>
                           {log.assigned_janitor_name && log.status !== "pending" ? (
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-900 dark:text-white">{log.assigned_janitor_name}</span>
@@ -385,11 +396,16 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole }:
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm text-gray-900 dark:text-white w-24">
+                        <TableCell
+                          className="text-sm text-gray-900 dark:text-white w-24"
+                          onClick={(e) => onCellClick?.(e, log)}
+                        >
                           <div className="text-xs">{log.bin_location || log.location || "Unknown"}</div>
                         </TableCell>
-                        <TableCell className="w-20 hover:bg-transparent">{getStatusBadge(log.status || "")}</TableCell>
-                        <TableCell className="w-20 hover:bg-transparent">
+                        <TableCell className="w-20 hover:bg-transparent" onClick={(e) => onCellClick?.(e, log)}>
+                          {getStatusBadge(log.status || "")}
+                        </TableCell>
+                        <TableCell className="w-20 hover:bg-transparent" onClick={(e) => onCellClick?.(e, log)}>
                           {getPriorityBadge(log.priority || "")}
                         </TableCell>
                       </TableRow>

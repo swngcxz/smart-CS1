@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -10,11 +10,9 @@ export const StaffActivitySkeleton = () => {
         <Card>
           <CardHeader className="pb-4 pt-4">
             <div className="flex items-center justify-between">
-              <Skeleton className="h-6 w-32" />
+              <h3 className="text-l font-bold text-gray-900 dark:text-white">Activity Logs</h3>
               <div className="flex items-center gap-4">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  0 of 0 Logs
-                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">0 of 0 Logs</div>
                 <Skeleton className="h-6 w-20 rounded-md" />
               </div>
             </div>
@@ -38,7 +36,7 @@ export const StaffActivitySkeleton = () => {
                   <div className="flex items-start gap-3">
                     {/* Avatar */}
                     <Skeleton className="h-10 w-10 rounded-full" />
-                    
+
                     <div className="flex-1 space-y-2">
                       {/* Header */}
                       <div className="flex items-center justify-between">
@@ -48,11 +46,11 @@ export const StaffActivitySkeleton = () => {
                         </div>
                         <Skeleton className="h-3 w-20" />
                       </div>
-                      
+
                       {/* Activity Description */}
                       <Skeleton className="h-4 w-full" />
                       <Skeleton className="h-4 w-3/4" />
-                      
+
                       {/* Details */}
                       <div className="flex items-center gap-4 text-sm">
                         <Skeleton className="h-3 w-16" />
@@ -60,7 +58,7 @@ export const StaffActivitySkeleton = () => {
                         <Skeleton className="h-3 w-24" />
                       </div>
                     </div>
-                    
+
                     {/* Action Button */}
                     <Skeleton className="h-8 w-20 rounded-md" />
                   </div>
