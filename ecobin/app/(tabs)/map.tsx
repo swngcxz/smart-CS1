@@ -4,6 +4,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, StatusBar, Modal, 
 import { useRouter, useLocalSearchParams } from "expo-router";
 import MapView, { Callout, Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { ProgressBar } from "react-native-paper";
+import * as Location from 'expo-location';
 import { useRealTimeData, getFillColor, getStatusColor } from "@/hooks/useRealTimeData";
 import { LocationUtils, LocationPoint } from "@/utils/locationUtils";
 
@@ -45,6 +46,10 @@ export default function MapScreen() {
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [targetBin, setTargetBin] = useState<Bin | null>(null);
   const [travelMode, setTravelMode] = useState<'walking' | 'driving'>('driving');
+  const [currentUserLocation, setCurrentUserLocation] = useState<LocationPoint | null>(null);
+  const [isLocationTracking, setIsLocationTracking] = useState(false);
+  const [arrivalDetected, setArrivalDetected] = useState(false);
+  const [proximityThreshold] = useState(50); // 50 meters proximity threshold
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -117,6 +122,116 @@ export default function MapScreen() {
       router.replace('/(tabs)/map');
     }
   }, [params.activityStatus, params.binId]);
+
+  // Function to calculate distance between two points
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // Distance in meters
+  };
+
+  // Function to start location tracking
+  const startLocationTracking = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Location permission is required for arrival detection.');
+        return;
+      }
+
+      setIsLocationTracking(true);
+      
+      // Start watching position
+      const locationSubscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 5000, // Update every 5 seconds
+          distanceInterval: 10, // Update every 10 meters
+        },
+        (location) => {
+          const newLocation: LocationPoint = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          };
+          setCurrentUserLocation(newLocation);
+          
+          // Check proximity to target bin
+          if (targetBin && !arrivalDetected) {
+            const distance = calculateDistance(
+              newLocation.latitude,
+              newLocation.longitude,
+              targetBin.latitude,
+              targetBin.longitude
+            );
+            
+            console.log(`Distance to bin: ${distance.toFixed(2)} meters`);
+            
+            if (distance <= proximityThreshold) {
+              setArrivalDetected(true);
+              handleArrivalAtBin();
+            }
+          }
+        }
+      );
+
+      return locationSubscription;
+    } catch (error) {
+      console.error('Error starting location tracking:', error);
+      setIsLocationTracking(false);
+    }
+  };
+
+  // Function to handle arrival at bin location
+  const handleArrivalAtBin = () => {
+    if (!targetBin) return;
+
+    Alert.alert(
+      'Arrived at Destination! 🎉',
+      `You have arrived at ${targetBin.location} (Bin ${targetBin.id}). Would you like to open the activity details?`,
+      [
+        {
+          text: 'Not Now',
+          style: 'cancel',
+          onPress: () => {
+            setArrivalDetected(false);
+          }
+        },
+        {
+          text: 'Open Activity',
+          onPress: () => {
+            // Navigate back to activity logs with the specific activity
+            router.push({
+              pathname: '/(tabs)/activitylogs',
+              params: {
+                openActivityId: targetBin.id,
+                binLocation: targetBin.location
+              }
+            });
+            setArrivalDetected(false);
+          }
+        }
+      ]
+    );
+  };
+
+  // Start location tracking when target bin is set
+  useEffect(() => {
+    if (targetBin && !isLocationTracking) {
+      startLocationTracking();
+    } else if (!targetBin && isLocationTracking) {
+      setIsLocationTracking(false);
+      setArrivalDetected(false);
+    }
+  }, [targetBin]);
 
   // Convert real-time data to map markers with GPS fallback logic
   const getRealTimeMarkers = (): Bin[] => {
@@ -376,6 +491,15 @@ export default function MapScreen() {
         </View>
       )}
 
+      {/* Arrival Notification - Small overlay */}
+      {arrivalDetected && (
+        <View style={styles.arrivalNotification}>
+          <Text style={styles.arrivalNotificationText}>
+            🎉 Arrived at destination!
+          </Text>
+        </View>
+      )}
+
       {/* Category Buttons */}
       {!isNavigating && (
         <View style={styles.categoryContainer}>
@@ -417,6 +541,28 @@ export default function MapScreen() {
             strokeWidth={4}
             lineDashPattern={[5, 5]}
           />
+        )}
+
+        {/* Distance Marker on Route */}
+        {isNavigating && targetBin && currentUserLocation && (
+          <Marker
+            coordinate={{
+              latitude: (currentUserLocation.latitude + targetBin.latitude) / 2,
+              longitude: (currentUserLocation.longitude + targetBin.longitude) / 2,
+            }}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View style={styles.distanceMarker}>
+              <Text style={styles.distanceMarkerText}>
+                {calculateDistance(
+                  currentUserLocation.latitude,
+                  currentUserLocation.longitude,
+                  targetBin.latitude,
+                  targetBin.longitude
+                ).toFixed(0)}m
+              </Text>
+            </View>
+          </Marker>
         )}
 
         {/* User Location Marker */}
@@ -1018,5 +1164,104 @@ const styles = StyleSheet.create({
   },
   userLocationText: {
     fontSize: 20,
+  },
+
+  // Location Tracking Styles
+  locationTrackingContainer: {
+    position: "absolute",
+    top: 120,
+    left: 20,
+    right: 20,
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 3,
+  },
+  locationTrackingHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  locationTrackingTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  trackingIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  locationTrackingContent: {
+    alignItems: "center",
+  },
+  locationTrackingText: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  distanceText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2e7d32",
+    marginBottom: 4,
+  },
+  arrivalText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4caf50",
+    textAlign: "center",
+  },
+
+  // Distance Marker on Route
+  distanceMarker: {
+    backgroundColor: "#2e7d32",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  distanceMarkerText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+
+  // Arrival Notification
+  arrivalNotification: {
+    position: "absolute",
+    top: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: "#4caf50",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 4,
+  },
+  arrivalNotificationText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

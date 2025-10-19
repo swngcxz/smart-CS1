@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { FlatList, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import apiClient from "@/utils/apiConfig";
 import ActivityDetailsModal from "@/components/ActivityDetailsModal";
 
@@ -31,6 +31,7 @@ interface ActivityLog {
 export default function ActivityLogsScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,6 +101,40 @@ export default function ActivityLogsScreen() {
   const handleUpdateActivity = () => {
     fetchActivityLogs();
   };
+
+  // Handle automatic opening of activity when arriving at bin location
+  useEffect(() => {
+    try {
+      // Only proceed if we have the required params and activity logs are loaded
+      if (!params || !params.openActivityId || !params.binLocation || activityLogs.length === 0) {
+        return;
+      }
+
+      console.log('[ActivityLogsScreen] Looking for activity:', {
+        binId: params.openActivityId,
+        location: params.binLocation
+      });
+      
+      // Find the activity that matches the bin ID and location
+      const targetActivity = activityLogs.find(log => 
+        log.bin_id === params.openActivityId && 
+        log.bin_location === params.binLocation
+      );
+      
+      if (targetActivity) {
+        console.log('[ActivityLogsScreen] Found target activity:', targetActivity.id);
+        setSelectedActivity(targetActivity);
+        setModalVisible(true);
+        
+        // Clear the params to prevent re-triggering
+        router.replace('/(tabs)/activitylogs');
+      } else {
+        console.log('[ActivityLogsScreen] No matching activity found');
+      }
+    } catch (error) {
+      console.error('[ActivityLogsScreen] Error handling params:', error);
+    }
+  }, [params, activityLogs]);
 
   // Handle navigation to map with route
   const handleNavigateToMap = (binId: string, binLocation: string, coordinates: { latitude: number; longitude: number }, activityStatus?: string) => {
