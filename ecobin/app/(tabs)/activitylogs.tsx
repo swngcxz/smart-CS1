@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { FlatList, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "expo-router";
 import apiClient from "@/utils/apiConfig";
 import ActivityDetailsModal from "@/components/ActivityDetailsModal";
 
@@ -29,6 +30,7 @@ interface ActivityLog {
 
 export default function ActivityLogsScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -97,6 +99,22 @@ export default function ActivityLogsScreen() {
   // Handle updating activity (refresh the list)
   const handleUpdateActivity = () => {
     fetchActivityLogs();
+  };
+
+  // Handle navigation to map with route
+  const handleNavigateToMap = (binId: string, binLocation: string, coordinates: { latitude: number; longitude: number }, activityStatus?: string) => {
+    // Navigate to map tab with route parameters
+    router.push({
+      pathname: "/(tabs)/map",
+      params: { 
+        navigateToBin: 'true',
+        binId: binId,
+        binLocation: binLocation,
+        latitude: coordinates.latitude.toString(),
+        longitude: coordinates.longitude.toString(),
+        activityStatus: activityStatus || 'pending'
+      }
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -228,6 +246,7 @@ export default function ActivityLogsScreen() {
         activity={selectedActivity}
         onClose={handleCloseModal}
         onUpdate={handleUpdateActivity}
+        onNavigateToMap={handleNavigateToMap}
         user={user}
       />
     </View>

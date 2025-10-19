@@ -11,6 +11,7 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
+import { LocationUtils, LocationPoint } from '@/utils/locationUtils';
 
 interface MapRouteProps {
   destination: {
@@ -91,125 +92,80 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
         return;
       }
 
-      // If no real-time or backup data, try to get current device location
-      console.log('[MapRoute] No real-time data available, getting device location...');
+      // Use LocationUtils for robust location handling
+      const locationResult = await LocationUtils.getCurrentLocation();
       
-      // Request location permissions
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      console.log('[MapRoute] Permission status:', status);
-      
-      if (status !== 'granted') {
-        // Try to get last known location from AsyncStorage
-        const lastKnownLocation = await AsyncStorage.getItem('lastKnownLocation');
-        if (lastKnownLocation) {
-          const location = JSON.parse(lastKnownLocation);
-          console.log('[MapRoute] Using last known location:', location);
-          setUserLocation(location);
-          setIsUsingBackupLocation(true);
-          await getRoute(location, destination);
-          setLoading(false);
-          return;
-        }
+      if (locationResult.success && locationResult.location) {
+        console.log('[MapRoute] Got location:', locationResult.location);
+        setUserLocation(locationResult.location);
+        setIsUsingBackupLocation(locationResult.isUsingFallback || false);
+        await getRoute(locationResult.location, destination);
         
-        setError('Location permission denied. Please enable location access to view routes.');
-        setLoading(false);
-        return;
+        if (locationResult.isUsingFallback) {
+          LocationUtils.showLocationUnavailableAlert();
+        }
+      } else {
+        setError(locationResult.error || 'Failed to get location');
+        LocationUtils.showLocationPermissionAlert();
       }
-
-      // Get current location
-      console.log('[MapRoute] Getting current position...');
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-        timeoutMs: 10000, // 10 second timeout
-      });
-
-      const currentLocation = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
-
-      console.log('[MapRoute] Got device location:', currentLocation);
-      
-      // Store as backup location
-      await AsyncStorage.setItem('lastKnownLocation', JSON.stringify(currentLocation));
-      
-      setUserLocation(currentLocation);
-      await getRoute(currentLocation, destination);
     } catch (err) {
       console.error('[MapRoute] Error getting location:', err);
-      
-      // Try to use last known location as final fallback
-      try {
-        const lastKnownLocation = await AsyncStorage.getItem('lastKnownLocation');
-        if (lastKnownLocation) {
-          const location = JSON.parse(lastKnownLocation);
-          console.log('[MapRoute] Using last known location as fallback:', location);
-          setUserLocation(location);
-          setIsUsingBackupLocation(true);
-          await getRoute(location, destination);
-          setLoading(false);
-          return;
-        }
-      } catch (fallbackErr) {
-        console.error('[MapRoute] Fallback location also failed:', fallbackErr);
-      }
-      
       setError(`Failed to get your current location: ${err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
+
   const getRoute = async (start: RoutePoint, end: RoutePoint) => {
     try {
       console.log('[MapRoute] Calculating route from:', start, 'to:', end);
       
-      // Calculate distance and estimated duration
-      const distance = calculateDistance(start, end);
-      setDistance(distance);
-      setDuration(estimateDuration(distance));
+      // Try to get route from backend API first
+      try {
+        const response = await fetch('http://localhost:3000/api/routes/calculate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${await AsyncStorage.getItem('authToken')}`,
+          },
+          body: JSON.stringify({
+            startLat: start.latitude,
+            startLng: start.longitude,
+            endLat: end.latitude,
+            endLng: end.longitude,
+            mode: 'driving'
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            console.log('[MapRoute] Route calculated from backend:', data.data);
+            setDistance(data.data.distance);
+            setDuration(data.data.duration);
+            setRouteCoordinates(data.data.coordinates);
+            return;
+          }
+        }
+      } catch (apiError) {
+        console.log('[MapRoute] Backend API failed, using local calculation:', apiError);
+      }
       
-      // For now, create a simple straight line route
-      // In a production app, you would use a routing service like Google Directions API
-      // or OpenRouteService that doesn't require an API key
+      // Fallback to local calculation
+      const distance = LocationUtils.calculateDistance(start, end);
+      setDistance(distance);
+      setDuration(LocationUtils.estimateDuration(distance, 'driving'));
       setRouteCoordinates([start, end]);
       
-      console.log(`[MapRoute] Route calculated: ${distance.toFixed(0)}m, estimated ${estimateDuration(distance)}`);
+      console.log(`[MapRoute] Route calculated locally: ${LocationUtils.formatDistance(distance)}, estimated ${LocationUtils.estimateDuration(distance, 'driving')}`);
     } catch (err) {
       console.error('[MapRoute] Error getting route:', err);
-      // Fallback: create a simple straight line route
+      // Final fallback: create a simple straight line route
+      const distance = LocationUtils.calculateDistance(start, end);
+      setDistance(distance);
+      setDuration(LocationUtils.estimateDuration(distance, 'driving'));
       setRouteCoordinates([start, end]);
-    }
-  };
-
-  // Calculate distance between two points using Haversine formula
-  const calculateDistance = (point1: RoutePoint, point2: RoutePoint): number => {
-    const R = 6371e3; // Earth's radius in meters
-    const lat1 = point1.latitude * Math.PI / 180;
-    const lat2 = point2.latitude * Math.PI / 180;
-    const deltaLat = (point2.latitude - point1.latitude) * Math.PI / 180;
-    const deltaLng = (point2.longitude - point1.longitude) * Math.PI / 180;
-
-    const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
-              Math.cos(lat1) * Math.cos(lat2) *
-              Math.sin(deltaLng/2) * Math.sin(deltaLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-    return R * c; // Distance in meters
-  };
-
-  // Estimate walking duration based on distance
-  const estimateDuration = (distanceInMeters: number): string => {
-    const walkingSpeed = 1.4; // meters per second (average walking speed)
-    const durationInSeconds = distanceInMeters / walkingSpeed;
-    const durationInMinutes = Math.round(durationInSeconds / 60);
-    
-    if (durationInMinutes < 60) {
-      return `${durationInMinutes} min`;
-    } else {
-      const hours = Math.floor(durationInMinutes / 60);
-      const minutes = durationInMinutes % 60;
-      return `${hours}h ${minutes}min`;
     }
   };
 
@@ -252,13 +208,6 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
     return points;
   };
 
-  const formatDistance = (meters: number): string => {
-    if (meters < 1000) {
-      return `${Math.round(meters)}m`;
-    } else {
-      return `${(meters / 1000).toFixed(1)}km`;
-    }
-  };
 
   const openInMaps = () => {
     if (userLocation) {
@@ -354,7 +303,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
         <View style={styles.routeInfoItem}>
           <Text style={styles.routeInfoLabel}>Distance:</Text>
           <Text style={styles.routeInfoValue}>
-            {distance ? formatDistance(distance) : 'Calculating...'}
+            {distance ? LocationUtils.formatDistance(distance) : 'Calculating...'}
           </Text>
         </View>
         <View style={styles.routeInfoItem}>

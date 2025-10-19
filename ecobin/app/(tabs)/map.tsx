@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, StatusBar, Modal, ScrollView } from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View, StatusBar, Modal, ScrollView, Alert } from "react-native";
 
-import { useRouter } from "expo-router";
-import MapView, { Callout, Marker } from "react-native-maps";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import MapView, { Callout, Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { ProgressBar } from "react-native-paper";
 import { useRealTimeData, getFillColor, getStatusColor } from "@/hooks/useRealTimeData";
+import { LocationUtils, LocationPoint } from "@/utils/locationUtils";
 
 type Bin = {
   id: string;
@@ -36,7 +37,16 @@ export default function MapScreen() {
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
   const [selectedBin, setSelectedBin] = useState<Bin | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [userLocation, setUserLocation] = useState<LocationPoint | null>(null);
+  const [routeCoordinates, setRouteCoordinates] = useState<LocationPoint[]>([]);
+  const [routeDistance, setRouteDistance] = useState<number | null>(null);
+  const [routeDuration, setRouteDuration] = useState<string | null>(null);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [targetBin, setTargetBin] = useState<Bin | null>(null);
+  const [travelMode, setTravelMode] = useState<'walking' | 'driving'>('driving');
   const router = useRouter();
+  const params = useLocalSearchParams();
 
   // Real-time data hook
   const { 
@@ -71,6 +81,43 @@ export default function MapScreen() {
     }
   }, [realTimeLastUpdate]);
 
+  // Handle navigation from activity logs
+  useEffect(() => {
+    if (params.navigateToBin === 'true' && params.binId && params.latitude && params.longitude) {
+      const bin: Bin = {
+        id: params.binId as string,
+        name: `Bin ${params.binId}`,
+        latitude: parseFloat(params.latitude as string),
+        longitude: parseFloat(params.longitude as string),
+        percentage: 0, // Will be updated from real-time data
+        location: params.binLocation as string || 'Unknown Location',
+        lastCollectedBy: 'System',
+        lastCollectedDate: new Date().toISOString().split('T')[0],
+      };
+      
+      setTargetBin(bin);
+      handleGetDirections(bin);
+      
+      // Clear the params to prevent re-triggering
+      router.replace('/(tabs)/map');
+    }
+  }, [params]);
+
+  // Clear route when activity status changes to completed
+  useEffect(() => {
+    if (params.activityStatus === 'done' && params.binId) {
+      // Clear the current route if the activity is completed
+      setTargetBin(null);
+      setRouteCoordinates([]);
+      setRouteDistance(null);
+      setRouteDuration(null);
+      setIsNavigating(false);
+      
+      // Clear the params
+      router.replace('/(tabs)/map');
+    }
+  }, [params.activityStatus, params.binId]);
+
   // Convert real-time data to map markers with GPS fallback logic
   const getRealTimeMarkers = (): Bin[] => {
     if (!binData) return [];
@@ -80,7 +127,7 @@ export default function MapScreen() {
     
     // Determine coordinates source and validity
     const isGPSOnline = binData.gps_valid && binData.latitude !== 0 && binData.longitude !== 0;
-    const coordinatesSource = binData.coordinates_source || (isGPSOnline ? 'gps_live' : 'gps_backup');
+    const coordinatesSource = (isGPSOnline ? 'gps_live' : 'gps_backup');
     
     // Use backup coordinates if GPS is offline/invalid
     let latitude, longitude, locationSource;
@@ -126,6 +173,92 @@ export default function MapScreen() {
       pathname: "/home/bin-details",
       params: { binId },
     });
+  };
+
+  // Get directions to bin
+  const handleGetDirections = async (bin: Bin) => {
+    try {
+      setIsCalculatingRoute(true);
+      setIsNavigating(true);
+      
+      // Get user's current location
+      const locationResult = await LocationUtils.getCurrentLocation();
+      
+      if (locationResult.success && locationResult.location) {
+        setUserLocation(locationResult.location);
+        
+        // Calculate route
+        const distance = LocationUtils.calculateDistance(
+          locationResult.location,
+          { latitude: bin.latitude, longitude: bin.longitude }
+        );
+        
+        setRouteDistance(distance);
+        setRouteDuration(LocationUtils.estimateDuration(distance, travelMode));
+        
+        // Create route coordinates (straight line for now)
+        setRouteCoordinates([locationResult.location, { latitude: bin.latitude, longitude: bin.longitude }]);
+        
+        // Update map region to show both locations
+        const midLat = (locationResult.location.latitude + bin.latitude) / 2;
+        const midLng = (locationResult.location.longitude + bin.longitude) / 2;
+        
+        setRegion({
+          latitude: midLat,
+          longitude: midLng,
+          latitudeDelta: Math.abs(locationResult.location.latitude - bin.latitude) * 1.5,
+          longitudeDelta: Math.abs(locationResult.location.longitude - bin.longitude) * 1.5,
+        });
+        
+        // Close modal
+        setModalVisible(false);
+        setSelectedBin(null);
+        
+        if (locationResult.isUsingFallback) {
+          Alert.alert(
+            'Using Approximate Location',
+            'Unable to get your exact location. Using approximate location for route calculation.',
+            [{ text: 'OK' }]
+          );
+        }
+      } else {
+        Alert.alert(
+          'Location Unavailable',
+          'Unable to get your current location. Please enable location services.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error getting directions:', error);
+      Alert.alert(
+        'Error',
+        'Failed to get directions. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsCalculatingRoute(false);
+    }
+  };
+
+  // Stop navigation
+  const handleStopNavigation = () => {
+    setIsNavigating(false);
+    setRouteCoordinates([]);
+    setRouteDistance(null);
+    setRouteDuration(null);
+    setUserLocation(null);
+    setTargetBin(null);
+  };
+
+  // Handle travel mode change
+  const handleTravelModeChange = (mode: 'walking' | 'driving') => {
+    setTravelMode(mode);
+    // Recalculate route with new mode if currently navigating
+    if (isNavigating && targetBin && userLocation) {
+      const distance = LocationUtils.calculateDistance(userLocation, targetBin);
+      setRouteDistance(distance);
+      setRouteDuration(LocationUtils.estimateDuration(distance, mode));
+    }
   };
 
   // const handleOpenStreetView = async (latitude: number, longitude: number) => {
@@ -186,21 +319,80 @@ export default function MapScreen() {
         </View>
       </View>
 
+      {/* Route Information Display */}
+      {isNavigating && (
+        <View style={styles.routeInfoContainer}>
+          <View style={styles.routeInfoHeader}>
+            <Text style={styles.routeInfoTitle}>Route to Bin</Text>
+            <TouchableOpacity onPress={handleStopNavigation} style={styles.stopNavigationButton}>
+              <Text style={styles.stopNavigationText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.routeInfoContent}>
+            <View style={styles.routeInfoItem}>
+              <Text style={styles.routeInfoLabel}>Distance:</Text>
+              <Text style={styles.routeInfoValue}>
+                {routeDistance ? LocationUtils.formatDistance(routeDistance) : 'Calculating...'}
+              </Text>
+            </View>
+            <View style={styles.routeInfoItem}>
+              <Text style={styles.routeInfoLabel}>Duration:</Text>
+              <Text style={styles.routeInfoValue}>
+                {routeDuration || 'Calculating...'}
+              </Text>
+            </View>
+          </View>
+          {/* Travel Mode Selector */}
+          <View style={styles.travelModeContainer}>
+            <TouchableOpacity
+              style={[
+                styles.travelModeButton,
+                travelMode === 'driving' && styles.travelModeButtonActive
+              ]}
+              onPress={() => handleTravelModeChange('driving')}
+            >
+              <Text style={[
+                styles.travelModeText,
+                travelMode === 'driving' && styles.travelModeTextActive
+              ]}>
+                🚗 Driving
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.travelModeButton,
+                travelMode === 'walking' && styles.travelModeButtonActive
+              ]}
+              onPress={() => handleTravelModeChange('walking')}
+            >
+              <Text style={[
+                styles.travelModeText,
+                travelMode === 'walking' && styles.travelModeTextActive
+              ]}>
+                🚶 Walking
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Category Buttons */}
-      <View style={styles.categoryContainer}>
-        <TouchableOpacity style={styles.categoryButton}>
-          <View style={[styles.statusBullet, { backgroundColor: '#4caf50' }]} />
-          <Text style={styles.categoryText}>Normal ({normalCount})</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.categoryButton}>
-          <View style={[styles.statusBullet, { backgroundColor: '#ff9800' }]} />
-          <Text style={styles.categoryText}>Warning ({warningCount})</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.categoryButton}>
-          <View style={[styles.statusBullet, { backgroundColor: '#f44336' }]} />
-          <Text style={styles.categoryText}>Critical ({criticalCount})</Text>
+      {!isNavigating && (
+        <View style={styles.categoryContainer}>
+          <TouchableOpacity style={styles.categoryButton}>
+            <View style={[styles.statusBullet, { backgroundColor: '#4caf50' }]} />
+            <Text style={styles.categoryText}>Normal ({normalCount})</Text>
           </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={styles.categoryButton}>
+            <View style={[styles.statusBullet, { backgroundColor: '#ff9800' }]} />
+            <Text style={styles.categoryText}>Warning ({warningCount})</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.categoryButton}>
+            <View style={[styles.statusBullet, { backgroundColor: '#f44336' }]} />
+            <Text style={styles.categoryText}>Critical ({criticalCount})</Text>
+            </TouchableOpacity>
+        </View>
+      )}
       
 
       {/* Map */}
@@ -210,19 +402,52 @@ export default function MapScreen() {
         mapType="satellite"
         showsUserLocation={false}
         showsMyLocationButton={false}
-        showsCompass={false}
+        showsCompass={true}
         showsScale={false}
         showsBuildings={true}
         showsTraffic={false}
         showsIndoors={false}
+        provider={PROVIDER_GOOGLE}
       >
+        {/* Route Polyline */}
+        {isNavigating && routeCoordinates.length > 0 && (
+          <Polyline
+            coordinates={routeCoordinates}
+            strokeColor="#2e7d32"
+            strokeWidth={4}
+            lineDashPattern={[5, 5]}
+          />
+        )}
+
+        {/* User Location Marker */}
+        {isNavigating && userLocation && (
+          <Marker
+            coordinate={userLocation}
+            title="Your Location"
+            description="Current position"
+          >
+            <View style={styles.userLocationMarker}>
+              <View style={styles.userLocationCircle}>
+                <Text style={styles.userLocationText}>📍</Text>
+              </View>
+            </View>
+          </Marker>
+        )}
+
+        {/* Bin Markers */}
         {filteredBins.map((bin) => (
           <Marker 
             key={bin.id} 
             coordinate={{ latitude: bin.latitude, longitude: bin.longitude }}
             onPress={() => handleMarkerPress(bin)}
           >
-            <View style={[styles.locationMarker, { backgroundColor: getFillColor(bin.percentage) }]}>
+            <View style={[
+              styles.locationMarker, 
+              { 
+                backgroundColor: getFillColor(bin.percentage),
+                borderColor: isNavigating ? '#2e7d32' : 'white'
+              }
+            ]}>
               <Text style={styles.markerText}>{bin.percentage}%</Text>
             </View>
           </Marker>
@@ -244,6 +469,15 @@ export default function MapScreen() {
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>{selectedBin.name}</Text>
                   <View style={styles.modalHeaderButtons}>
+                    <TouchableOpacity 
+                      style={styles.directionsButton}
+                      onPress={() => handleGetDirections(selectedBin)}
+                      disabled={isCalculatingRoute}
+                    >
+                      <Text style={styles.directionsButtonText}>
+                        {isCalculatingRoute ? 'Calculating...' : '🧭 Get Directions'}
+                      </Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.editButton}>
                       <Text style={styles.editButtonText}>Edit</Text>
                     </TouchableOpacity>
@@ -660,5 +894,129 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
     fontWeight: "600",
+  },
+
+  // Navigation Styles
+  routeInfoContainer: {
+    position: "absolute",
+    top: 120,
+    left: 20,
+    right: 20,
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 3,
+  },
+  routeInfoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  routeInfoTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  stopNavigationButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f44336",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  stopNavigationText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  routeInfoContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  routeInfoItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  routeInfoLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 4,
+  },
+  routeInfoValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2e7d32",
+  },
+  // Travel Mode Selector
+  travelModeContainer: {
+    flexDirection: "row",
+    marginTop: 12,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 8,
+    padding: 4,
+  },
+  travelModeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  travelModeButtonActive: {
+    backgroundColor: "#2e7d32",
+  },
+  travelModeText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  travelModeTextActive: {
+    color: "white",
+  },
+
+  // Directions Button in Modal
+  directionsButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: "#2196f3",
+    marginRight: 10,
+  },
+  directionsButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  // User Location Marker
+  userLocationMarker: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  userLocationCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#2196f3",
+    borderWidth: 3,
+    borderColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  userLocationText: {
+    fontSize: 20,
   },
 });

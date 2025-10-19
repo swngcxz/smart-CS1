@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as ImagePicker from 'expo-image-picker';
 import { CLOUDINARY_CONFIG } from '@/config/cloudinary';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -44,6 +45,7 @@ interface ActivityDetailsModalProps {
   activity: ActivityLog | null;
   onClose: () => void;
   onUpdate: () => void;
+  onNavigateToMap?: (binId: string, binLocation: string, coordinates: { latitude: number; longitude: number }, activityStatus?: string) => void;
   user: any;
 }
 
@@ -52,6 +54,7 @@ export default function ActivityDetailsModal({
   activity,
   onClose,
   onUpdate,
+  onNavigateToMap,
   user
 }: ActivityDetailsModalProps) {
   const { completeActivity, loading } = useNotifications();
@@ -65,7 +68,7 @@ export default function ActivityDetailsModal({
   const [showMapRoute, setShowMapRoute] = useState(false);
 
   // Reset form when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible && activity) {
       setCompletionNotes(activity.completion_notes || '');
       setBinCondition((activity.bin_condition as 'good' | 'damaged' | 'needs_repair') || 'good');
@@ -225,11 +228,11 @@ export default function ActivityDetailsModal({
       // Fallback: Use mock coordinates based on location name
       console.log('[ActivityDetailsModal] No real-time data available, using mock coordinates');
       const mockCoordinates: { [key: string]: { latitude: number; longitude: number } } = {
-        'Central Plaza': { latitude: 14.5995, longitude: 120.9842 }, // Manila coordinates
-        'Office Complex': { latitude: 14.6042, longitude: 120.9822 },
-        'Residential Area': { latitude: 14.5942, longitude: 120.9922 },
-        'Shopping Mall': { latitude: 14.6092, longitude: 120.9722 },
-        'Park Entrance': { latitude: 14.5892, longitude: 120.9622 },
+        'Central Plaza': { latitude: 10.243723, longitude: 123.787124 }, // Updated to match Firebase backup coordinates
+        'Office Complex': { latitude: 10.244723, longitude: 123.786124 },
+        'Residential Area': { latitude: 10.242723, longitude: 123.788124 },
+        'Shopping Mall': { latitude: 10.245723, longitude: 123.785124 },
+        'Park Entrance': { latitude: 10.241723, longitude: 123.789124 },
       };
 
       // Try to find coordinates by location name
@@ -243,8 +246,8 @@ export default function ActivityDetailsModal({
       }
 
       // Final fallback: generate coordinates based on bin ID
-      const baseLat = 14.5995;
-      const baseLng = 120.9842;
+      const baseLat = 10.243723; // Updated to match Firebase backup coordinates
+      const baseLng = 123.787124;
       const binNumber = parseInt(binId.replace(/\D/g, '')) || 1;
       
       const fallbackCoords = {
@@ -256,16 +259,26 @@ export default function ActivityDetailsModal({
       return fallbackCoords;
     } catch (error) {
       console.error('[ActivityDetailsModal] Error getting bin coordinates:', error);
-      // Default coordinates (Manila)
+      // Default coordinates (Cebu)
       return {
-        latitude: 14.5995,
-        longitude: 120.9842,
+        latitude: 10.243723,
+        longitude: 123.787124,
       };
     }
   };
 
   const handleShowRoute = () => {
     if (activity) {
+      // Check if activity is completed - don't show route for completed activities
+      if (activity.status === 'done') {
+        Alert.alert(
+          'Task Completed', 
+          'This task has already been completed. No route navigation available.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
       try {
         console.log('[ActivityDetailsModal] Showing route for activity:', activity.id);
         console.log('[ActivityDetailsModal] Bin location:', activity.bin_location);
@@ -274,7 +287,13 @@ export default function ActivityDetailsModal({
         const coordinates = getBinCoordinates(activity.bin_location, activity.bin_id);
         console.log('[ActivityDetailsModal] Bin coordinates:', coordinates);
         
-        setShowMapRoute(true);
+        // Close the modal first
+        onClose();
+        
+        // Navigate to map tab with route parameters
+        if (onNavigateToMap) {
+          onNavigateToMap(activity.bin_id, activity.bin_location, coordinates, activity.status);
+        }
       } catch (error) {
         console.error('[ActivityDetailsModal] Error showing route:', error);
         Alert.alert('Error', 'Failed to show route. Please try again.');
@@ -301,6 +320,12 @@ export default function ActivityDetailsModal({
 
       if (result.success) {
         Alert.alert('Success', result.message || 'Activity completed successfully!');
+        
+        // Notify map to clear route since activity is now completed
+        if (onNavigateToMap) {
+          onNavigateToMap(activity.bin_id, activity.bin_location, getBinCoordinates(activity.bin_location, activity.bin_id), 'done');
+        }
+        
         onUpdate();
         onClose();
       } else {
@@ -428,6 +453,124 @@ export default function ActivityDetailsModal({
                   <Text style={styles.infoValue}>{activity.task_note}</Text>
                 </View>
               )}
+            </View>
+          </View>
+
+          {/* Map Display Section */}
+          <View style={styles.section}>
+            <View style={styles.mapSectionHeader}>
+              <Text style={styles.sectionTitle}>📍 Bin Location</Text>
+              <View style={[
+                styles.mapStatusBadge, 
+                { backgroundColor: binData && isGPSValid() ? '#4caf50' : binData && binData.backup_latitude ? '#ff9800' : '#666' }
+              ]}>
+                <Text style={styles.mapStatusText}>
+                  {binData && isGPSValid() ? 'GPS LIVE' : binData && binData.backup_latitude ? 'GPS BACKUP' : 'OFFLINE'}
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.mapCard}>
+              <View style={styles.mapContainer}>
+                <MapView
+                  style={styles.map}
+                  provider={PROVIDER_GOOGLE}
+                  mapType="satellite"
+                  initialRegion={{
+                    latitude: getBinCoordinates(activity.bin_location, activity.bin_id).latitude,
+                    longitude: getBinCoordinates(activity.bin_location, activity.bin_id).longitude,
+                    latitudeDelta: 0.003,
+                    longitudeDelta: 0.003,
+                  }}
+                  showsUserLocation={false}
+                  showsMyLocationButton={false}
+                  showsCompass={false}
+                  showsScale={false}
+                  showsBuildings={true}
+                  showsTraffic={false}
+                  showsIndoors={false}
+                  scrollEnabled={true}
+                  zoomEnabled={true}
+                  rotateEnabled={false}
+                  pitchEnabled={false}
+                  loadingEnabled={true}
+                  loadingIndicatorColor="#2e7d32"
+                  loadingBackgroundColor="#f8f8f8"
+                >
+                  <Marker
+                    coordinate={getBinCoordinates(activity.bin_location, activity.bin_id)}
+                    title={`Bin ${activity.bin_id}`}
+                    description={activity.bin_location}
+                  >
+                    <View style={styles.cleanMarker}>
+                      <View style={[styles.cleanMarkerCircle, { 
+                        backgroundColor: activity.bin_level > 80 ? '#f44336' : 
+                                        activity.bin_level > 50 ? '#ff9800' : '#4caf50' 
+                      }]}>
+                        <Text style={styles.cleanMarkerText}>{activity.bin_level}%</Text>
+                      </View>
+                    </View>
+                  </Marker>
+                </MapView>
+                
+                {/* Map Overlay with Location Info */}
+                <View style={styles.mapOverlay}>
+                  <View style={styles.mapLocationInfo}>
+                    <View style={styles.mapLocationRow}>
+                      <View style={styles.mapLocationIcon}>
+                        <Text style={styles.mapLocationIconText}>🗑️</Text>
+                      </View>
+                      <View style={styles.mapLocationDetails}>
+                        <Text style={styles.mapLocationTitle}>Bin {activity.bin_id}</Text>
+                        <Text style={styles.mapLocationAddress}>{activity.bin_location}</Text>
+                        {/* GPS Status Info */}
+                        {binData && (
+                          <Text style={styles.mapGPSStatus}>
+                            📡 {binData && isGPSValid() ? 
+                              `GPS Live (${binData.satellites} satellites)` : 
+                              binData && binData.backup_latitude ? 
+                              'GPS Backup' : 
+                              'GPS Offline'
+                            }
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.mapLocationStatus}>
+                        <View style={[styles.mapFillIndicator, { 
+                          backgroundColor: activity.bin_level > 80 ? '#f44336' : 
+                                          activity.bin_level > 50 ? '#ff9800' : '#4caf50' 
+                        }]} />
+                        <Text style={styles.mapFillText}>{activity.bin_level}%</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </View>
+              
+              {/* Map Actions */}
+              <View style={styles.mapActions}>
+                <TouchableOpacity 
+                  style={[
+                    styles.mapActionButton, 
+                    activity.status === 'done' && styles.mapActionButtonDisabled
+                  ]} 
+                  onPress={handleShowRoute}
+                  disabled={activity.status === 'done'}
+                >
+                  <Text style={styles.mapActionIcon}>🧭</Text>
+                  <Text style={[
+                    styles.mapActionText,
+                    activity.status === 'done' && styles.mapActionTextDisabled
+                  ]}>
+                    {activity.status === 'done' ? 'Task Completed' : 'Get Directions'}
+                  </Text>
+                </TouchableOpacity>
+                <View style={styles.mapActionDivider} />
+                <TouchableOpacity style={styles.mapActionButton}>
+                  <Text style={styles.mapActionIcon}>📍</Text>
+                  <Text style={styles.mapActionText}>Share Location</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -1030,5 +1173,175 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  mapSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  mapStatusBadge: {
+    backgroundColor: '#4caf50',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  mapStatusText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  mapCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  mapContainer: {
+    height: 220,
+    position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  map: {
+    flex: 1,
+  },
+  mapOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'box-none',
+  },
+  mapLocationInfo: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    right: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mapLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mapLocationIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f0f8ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  mapLocationIconText: {
+    fontSize: 16,
+  },
+  mapLocationDetails: {
+    flex: 1,
+  },
+  mapLocationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  mapLocationAddress: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+  },
+  mapGPSStatus: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  mapLocationStatus: {
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  mapFillIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  mapFillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#333',
+  },
+  mapActions: {
+    flexDirection: 'row',
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  mapActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  mapActionIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  mapActionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2e7d32',
+  },
+  mapActionButtonDisabled: {
+    opacity: 0.5,
+  },
+  mapActionTextDisabled: {
+    color: '#999',
+  },
+  mapActionDivider: {
+    width: 1,
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: 8,
+  },
+  cleanMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cleanMarkerCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  cleanMarkerText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
