@@ -12,6 +12,7 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
 import { LocationUtils, LocationPoint } from '@/utils/locationUtils';
+import { routingService } from '@/utils/routingService';
 
 interface MapRouteProps {
   destination: {
@@ -121,51 +122,26 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
     try {
       console.log('[MapRoute] Calculating route from:', start, 'to:', end);
       
-      // Try to get route from backend API first
-      try {
-        const response = await fetch('http://localhost:3000/api/routes/calculate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${await AsyncStorage.getItem('authToken')}`,
-          },
-          body: JSON.stringify({
-            startLat: start.latitude,
-            startLng: start.longitude,
-            endLat: end.latitude,
-            endLng: end.longitude,
-            mode: 'driving'
-          })
+      // Get route using Google Maps Directions API
+      const routeResult = await routingService.getRoute(start, end, 'driving');
+      
+      if (routeResult.success) {
+        setDistance(routeResult.distance);
+        setDuration(routeResult.duration);
+        setRouteCoordinates(routeResult.coordinates);
+        
+        console.log('[MapRoute] Route calculated successfully:', {
+          distance: routingService.formatDistance(routeResult.distance),
+          duration: routeResult.duration,
+          coordinatesCount: routeResult.coordinates.length
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            console.log('[MapRoute] Route calculated from backend:', data.data);
-            setDistance(data.data.distance);
-            setDuration(data.data.duration);
-            setRouteCoordinates(data.data.coordinates);
-            return;
-          }
-        }
-      } catch (apiError) {
-        console.log('[MapRoute] Backend API failed, using local calculation:', apiError);
+      } else {
+        console.error('[MapRoute] Route calculation failed:', routeResult.error);
+        setError(routeResult.error || 'Failed to calculate route');
       }
-      
-      // Fallback to local calculation
-      const distance = LocationUtils.calculateDistance(start, end);
-      setDistance(distance);
-      setDuration(LocationUtils.estimateDuration(distance, 'driving'));
-      setRouteCoordinates([start, end]);
-      
-      console.log(`[MapRoute] Route calculated locally: ${LocationUtils.formatDistance(distance)}, estimated ${LocationUtils.estimateDuration(distance, 'driving')}`);
     } catch (err) {
       console.error('[MapRoute] Error getting route:', err);
-      // Final fallback: create a simple straight line route
-      const distance = LocationUtils.calculateDistance(start, end);
-      setDistance(distance);
-      setDuration(LocationUtils.estimateDuration(distance, 'driving'));
-      setRouteCoordinates([start, end]);
+      setError('Failed to calculate route');
     }
   };
 
