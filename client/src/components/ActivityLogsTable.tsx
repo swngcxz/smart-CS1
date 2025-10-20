@@ -218,19 +218,6 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole, o
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={onRefresh}
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-xs px-3 py-1 h-auto"
-                    >
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      Refresh
-                    </Button>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <Button
-                      variant="ghost"
-                      size="sm"
                       onClick={() => setClearAllModalOpen(true)}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs px-3 py-1 h-auto"
                     >
