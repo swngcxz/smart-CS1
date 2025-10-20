@@ -370,6 +370,8 @@ export default function MapScreen() {
         setUserLocation(locationResult.location);
         
         // Get route using Google Maps Directions API
+        console.log('[Map] Getting route from USER LOCATION:', locationResult.location, 'to BIN LOCATION:', { latitude: bin.latitude, longitude: bin.longitude });
+        
         const routeResult = await routingService.getRoute(
           locationResult.location,
           { latitude: bin.latitude, longitude: bin.longitude },

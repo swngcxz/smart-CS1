@@ -52,52 +52,11 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
       setIsUsingBackupLocation(false);
       console.log('[MapRoute] Starting location request...');
 
-      // First, try to use real-time bin data if available and GPS is valid
-      if (binData && isGPSValid() && binData.latitude && binData.longitude) {
-        console.log('[MapRoute] Using real-time bin data:', {
-          latitude: binData.latitude,
-          longitude: binData.longitude,
-          gps_valid: binData.gps_valid,
-          satellites: binData.satellites
-        });
-        
-        const realTimeLocation = {
-          latitude: binData.latitude,
-          longitude: binData.longitude,
-        };
-        
-        setUserLocation(realTimeLocation);
-        await getRoute(realTimeLocation, destination);
-        setLoading(false);
-        return;
-      }
-
-      // If real-time data not available, try backup GPS coordinates
-      if (binData && binData.backup_latitude && binData.backup_longitude) {
-        console.log('[MapRoute] Using backup GPS coordinates:', {
-          latitude: binData.backup_latitude,
-          longitude: binData.backup_longitude,
-          backup_source: binData.backup_source,
-          backup_timestamp: binData.backup_timestamp
-        });
-        
-        const backupLocation = {
-          latitude: binData.backup_latitude,
-          longitude: binData.backup_longitude,
-        };
-        
-        setUserLocation(backupLocation);
-        setIsUsingBackupLocation(true);
-        await getRoute(backupLocation, destination);
-        setLoading(false);
-        return;
-      }
-
-      // Use LocationUtils for robust location handling
+      // Always get the user's actual current location, not the bin's location
       const locationResult = await LocationUtils.getCurrentLocation();
       
       if (locationResult.success && locationResult.location) {
-        console.log('[MapRoute] Got location:', locationResult.location);
+        console.log('[MapRoute] Got user location:', locationResult.location);
         setUserLocation(locationResult.location);
         setIsUsingBackupLocation(locationResult.isUsingFallback || false);
         await getRoute(locationResult.location, destination);
@@ -120,7 +79,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
 
   const getRoute = async (start: RoutePoint, end: RoutePoint) => {
     try {
-      console.log('[MapRoute] Calculating route from:', start, 'to:', end);
+      console.log('[MapRoute] Calculating route from USER LOCATION:', start, 'to BIN LOCATION:', end);
       
       // Get route using Google Maps Directions API
       const routeResult = await routingService.getRoute(start, end, 'driving');
@@ -133,7 +92,9 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
         console.log('[MapRoute] Route calculated successfully:', {
           distance: routingService.formatDistance(routeResult.distance),
           duration: routeResult.duration,
-          coordinatesCount: routeResult.coordinates.length
+          coordinatesCount: routeResult.coordinates.length,
+          userLocation: start,
+          binLocation: end
         });
       } else {
         console.error('[MapRoute] Route calculation failed:', routeResult.error);
