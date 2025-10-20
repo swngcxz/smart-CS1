@@ -18,7 +18,7 @@ export interface ActivityOverviewCard {
   description: string;
 }
 
-export function useActivityStats(autoRefreshInterval: number = 30000) {
+export function useActivityStats(autoRefreshInterval: number = 10000) {
   const [stats, setStats] = useState<ActivityStats>({
     collections: 0,
     alerts: 0,

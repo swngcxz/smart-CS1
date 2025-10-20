@@ -51,7 +51,7 @@ const bin1Ref = realtimeDb.ref('monitoring/bin1');
 // Throttling variables to reduce Firebase reads
 let lastDataProcessTime = 0;
 let lastBin1ProcessTime = 0;
-const PROCESS_THROTTLE_MS = 30000; // Process at most every 30 seconds
+const PROCESS_THROTTLE_MS = 5000; // Process at most every 5 seconds
 const GPS_PROCESS_THROTTLE_MS = 60000; // GPS processing at most every minute
 
 
@@ -119,6 +119,25 @@ app.use("/api/waste", wasteRoutes);
 console.log('[INDEX] Mounting binRoutes at /api');
 app.use("/api", binRoutes);
 console.log('[INDEX] binRoutes mounted successfully');
+
+// Add endpoint to trigger web dashboard refresh
+app.post('/api/trigger-refresh', (req, res) => {
+  try {
+    const { source, timestamp } = req.body;
+    console.log(`[REFRESH TRIGGER] ${source} triggered refresh at ${timestamp}`);
+    
+    // You could implement WebSocket or SSE here for real-time updates
+    // For now, we'll just log it and return success
+    res.json({ 
+      success: true, 
+      message: 'Refresh triggered successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[REFRESH TRIGGER] Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 // Manual task assignment endpoint (must be before activity routes)
 app.post('/api/assign-task', async (req, res) => {
   try {
@@ -465,6 +484,7 @@ function setupRealTimeMonitoring() {
 
         // Check for automatic task creation and notifications for critical levels (separate from bin history processing)
         if (data.bin_level >= 85) {
+          console.log(`[AUTOMATIC TASK] 🔍 Bin level ${data.bin_level}% >= 85% - checking for automatic task creation`);
           try {
             // 1. Create automatic task assignment FIRST
             const taskResult = await automaticTaskService.createAutomaticTask({

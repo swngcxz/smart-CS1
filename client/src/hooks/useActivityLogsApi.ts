@@ -19,13 +19,14 @@ export interface ActivityLog {
   [key: string]: any;
 }
 
-export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_id?: string, status?: string, autoRefreshInterval: number = 30000) {
+export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_id?: string, status?: string, autoRefreshInterval: number = 10000) {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
   const fetchLogs = useCallback(async () => {
+    console.log('🔄 fetchLogs called at:', new Date().toLocaleTimeString());
     setLoading(true);
     setError(null);
     
@@ -62,15 +63,62 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
     fetchLogs();
   }, [fetchLogs]);
 
-  // Auto-refresh if interval is set
+  // Optimized refresh mechanism - single interval with smart checking
   useEffect(() => {
-    if (autoRefreshInterval > 0) {
-      const interval = setInterval(() => {
-        fetchLogs();
-      }, autoRefreshInterval);
+    let isActive = true;
+    let lastRefreshTime = 0;
+    const MIN_REFRESH_INTERVAL = 2000; // Minimum 2 seconds between refreshes
+    
+    const performRefresh = () => {
+      if (!isActive) return;
       
-      return () => clearInterval(interval);
-    }
+      const now = Date.now();
+      if (now - lastRefreshTime < MIN_REFRESH_INTERVAL) {
+        console.log('⏭️ Skipping refresh - too soon (', Math.round((now - lastRefreshTime) / 1000), 's ago)');
+        return; // Skip if too soon
+      }
+      
+      console.log('✅ Performing refresh at:', new Date().toLocaleTimeString());
+      lastRefreshTime = now;
+      fetchLogs();
+    };
+
+    const checkForUpdates = () => {
+      if (!isActive) return;
+      
+      // Check for mobile app refresh flag
+      const mobileRefreshFlag = localStorage.getItem('activityLogsNeedRefresh');
+      const lastRefresh = localStorage.getItem('activityLogsLastRefresh');
+      
+      if (mobileRefreshFlag && lastRefresh) {
+        const mobileTime = parseInt(mobileRefreshFlag);
+        const lastTime = parseInt(lastRefresh);
+        
+        if (mobileTime > lastTime) {
+          console.log('Mobile app triggered refresh - fetching immediately');
+          performRefresh();
+          localStorage.setItem('activityLogsLastRefresh', Date.now().toString());
+          localStorage.removeItem('activityLogsNeedRefresh');
+          return;
+        }
+      }
+      
+      // Regular auto-refresh if interval is set
+      if (autoRefreshInterval > 0) {
+        performRefresh();
+      }
+    };
+
+    // Check immediately on mount
+    checkForUpdates();
+    
+    // Set up single interval for all refresh logic
+    const refreshInterval = setInterval(checkForUpdates, autoRefreshInterval > 0 ? autoRefreshInterval : 5000);
+    
+    return () => {
+      isActive = false;
+      clearInterval(refreshInterval);
+    };
   }, [fetchLogs, autoRefreshInterval]);
 
   const refetch = useCallback(() => {

@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as ImagePicker from 'expo-image-picker';
 import { CLOUDINARY_CONFIG } from '@/config/cloudinary';
@@ -322,6 +323,27 @@ export default function ActivityDetailsModal({
 
       if (result.success) {
         Alert.alert('Success', result.message || 'Activity completed successfully!');
+        
+        // Set refresh flag for web dashboard
+        await AsyncStorage.setItem('activityLogsNeedRefresh', Date.now().toString());
+        
+        // Also trigger server-side refresh notification
+        try {
+          await fetch('http://192.168.254.114:8000/api/trigger-refresh', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              source: 'mobile_app',
+              timestamp: Date.now().toString(),
+              activityId: activity.id,
+              action: 'task_completed'
+            })
+          });
+        } catch (error) {
+          console.log('Failed to trigger server refresh:', error);
+        }
         
         // Notify map to clear route since activity is now completed
         if (onNavigateToMap) {

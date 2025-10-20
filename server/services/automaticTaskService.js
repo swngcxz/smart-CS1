@@ -131,7 +131,7 @@ class AutomaticTaskService {
       console.log(`[AUTOMATIC TASK] ✅ Created task ${docRefId} for ${binId} at ${binLevel}%`);
       
       // Update last creation time
-      this.lastTaskCreation.set(binId, now);
+      this.lastTaskCreation.set(binId, Date.now());
       
       // Send built-in notification
       await this.sendTaskCreatedNotification({
@@ -243,7 +243,6 @@ class AutomaticTaskService {
   }
 
   /**
-<<<<<<< HEAD
    * Get available tasks for janitor acceptance
    * @returns {Promise<Array>} Available tasks
    */
@@ -374,10 +373,10 @@ class AutomaticTaskService {
       const priorityEmoji = priority === 'high' ? '🔴' : priority === 'medium' ? '🟡' : '🟢';
       const binLevelText = binLevel ? ` (${binLevel}% full)` : '';
       const locationText = binLocation ? ` at ${binLocation}` : '';
-      const automaticFlag = isAutomaticTask ? '🚨 AUTOMATIC ' : '';
+      const automaticFlag = isAutomaticTask ? 'AUTOMATIC ' : '';
       
-      const title = isAutomaticTask ? '🚨 Automatic Task Available' : '🧹 New Task Assigned';
-      const message = `${automaticFlag}Task available for acceptance: Bin ${binId}${locationText}${binLevelText}\n📝 ${taskNote}\n\nPriority: ${priorityEmoji} ${priority}\n\n⚠️ Click to accept this task!`;
+      const title = isAutomaticTask ? 'Automatic Task Available' : '🧹 New Task Assigned';
+      const message = `${automaticFlag}Task available for acceptance: Bin ${binId}${locationText}${binLevelText}\n📝 ${taskNote}\n\nPriority: ${priorityEmoji} ${priority}\n\n`;
 
       const notificationPayload = {
         binId: binId,
