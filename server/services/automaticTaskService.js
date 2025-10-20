@@ -107,7 +107,7 @@ class AutomaticTaskService {
         bin_level: binLevel,
         assigned_janitor_id: null, // NULL = available for any janitor to accept
         assigned_janitor_name: null, // NULL = available for any janitor to accept
-        task_note: `🚨 AUTOMATIC TASK: Bin level ${binLevel}% exceeds threshold (85%). Bin needs immediate attention. Click "Assign To" to assign this task to a janitor.`,
+        task_note: `AUTOMATIC TASK: Bin level ${binLevel}% exceeds threshold (85%). Bin needs immediate attention. Click "Assign To" to assign this task to a janitor.`,
         activity_type: 'task_assignment',
         priority: priority,
         status: 'pending', // PENDING = waiting for janitor to accept

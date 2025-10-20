@@ -133,25 +133,52 @@ export function useNotifications() {
       return [];
     }
     
+    console.log('[NOTIFICATIONS] Processing', logs.length, 'activity logs for user:', user.id);
+    
     return logs
       .filter(log => {
         const isAutomatic = log.source === 'automatic_monitoring';
         const isAssignedToMe = log.assigned_janitor_id === user.id;
         const isPending = log.status === 'pending';
         const isAvailableForAcceptance = log.available_for_acceptance === true;
+        const isUnassigned = log.assigned_janitor_id === null && log.user_id === null;
         
-        // Show automatic tasks that are pending and available for acceptance
+        
+        // Show automatic tasks that are pending and available for acceptance (to ALL janitors)
         if (isAutomatic && isPending && isAvailableForAcceptance) {
+          console.log('✅ Found automatic task for notification:', {
+            id: log.id,
+            bin_id: log.bin_id,
+            bin_level: log.bin_level,
+            source: log.source,
+            status: log.status,
+            available_for_acceptance: log.available_for_acceptance
+          });
           return true;
         }
         
         // Show manual tasks that are assigned directly to the logged-in user and in progress
         if (!isAutomatic && isAssignedToMe && log.status === 'in_progress') {
+          console.log('✅ Found manual task assigned to me:', {
+            id: log.id,
+            bin_id: log.bin_id,
+            assigned_janitor_id: log.assigned_janitor_id
+          });
           return true;
         }
         
         // Also show pending tasks that look like automatic tasks (fallback for missing source field)
-        if (!isAutomatic && isPending && log.assigned_janitor_id === null && log.user_id === null) {
+        // These are tasks with no assigned janitor and no user_id, typically automatic tasks
+        if (isPending && isUnassigned) {
+          console.log('✅ Found unassigned pending task for notification:', {
+            id: log.id,
+            bin_id: log.bin_id,
+            bin_level: log.bin_level,
+            source: log.source,
+            status: log.status,
+            assigned_janitor_id: log.assigned_janitor_id,
+            user_id: log.user_id
+          });
           return true;
         }
         
