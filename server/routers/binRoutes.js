@@ -34,41 +34,67 @@ router.get("/bin1", async (req, res) => {
     
     const db = admin.database();
     const bin1Ref = db.ref('monitoring/bin1');
+    const backupRef = db.ref('monitoring/backup/bin1');
     
-    // Add timeout to prevent hanging requests
-    const snapshot = await Promise.race([
-      bin1Ref.once('value'),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Firebase timeout')), 2000)
-      )
+    // Fetch both main data and backup coordinates
+    const [binSnapshot, backupSnapshot] = await Promise.all([
+      Promise.race([
+        bin1Ref.once('value'),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Firebase timeout')), 2000)
+        )
+      ]),
+      Promise.race([
+        backupRef.once('value'),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Firebase timeout')), 2000)
+        )
+      ])
     ]);
-    const data = snapshot.val();
+    
+    const data = binSnapshot.val();
+    const backupData = backupSnapshot.val();
     
     console.log('[BIN ROUTES] Raw data from Firebase:', data);
+    console.log('[BIN ROUTES] Backup data from Firebase:', backupData);
     
     if (!data) {
       console.log('[BIN ROUTES] No data found in monitoring/bin1');
       return res.status(404).json({ success: false, message: "Bin not found" });
     }
     
-    // Ensure coordinates are properly formatted
-    const formattedData = {
-      ...data,
-      latitude: parseFloat(data?.latitude) || 0,
-      longitude: parseFloat(data?.longitude) || 0,
-      gps_valid: Boolean(data?.gps_valid),
-      satellites: parseInt(data?.satellites) || 0,
-      bin_level: parseFloat(data?.bin_level) || 0,
-      weight_percent: parseFloat(data?.weight_percent) || 0,
-      height_percent: parseFloat(data?.height_percent) || 0,
-      timestamp: data?.timestamp || Date.now()
-    };
+          // Check if GPS coordinates are in the correct region (Cebu area)
+          const latitude = parseFloat(data?.latitude) || 0;
+          const longitude = parseFloat(data?.longitude) || 0;
+          const isInCorrectRegion = latitude >= 10.0 && latitude <= 10.5 && 
+                                    longitude >= 123.5 && longitude <= 124.0;
+          
+          // GPS is only valid if it's marked as valid AND in the correct region
+          const gpsValid = Boolean(data?.gps_valid) && isInCorrectRegion;
+          
+          // Ensure coordinates are properly formatted and include backup coordinates
+          const formattedData = {
+            ...data,
+            latitude: latitude,
+            longitude: longitude,
+            gps_valid: gpsValid,
+            satellites: parseInt(data?.satellites) || 0,
+            bin_level: parseFloat(data?.bin_level) || 0,
+            weight_percent: parseFloat(data?.weight_percent) || 0,
+            height_percent: parseFloat(data?.height_percent) || 0,
+            timestamp: data?.timestamp || Date.now(),
+            // Include backup coordinates if available
+            backup_latitude: backupData ? parseFloat(backupData?.backup_latitude) : null,
+            backup_longitude: backupData ? parseFloat(backupData?.backup_longitude) : null,
+            backup_timestamp: backupData?.backup_timestamp || null
+          };
     
     // Cache the response for faster subsequent requests
     cachedBinData = formattedData;
     lastCacheTime = Date.now();
     
     console.log(`[BIN ROUTES] Serving bin1 data with coordinates: ${formattedData.latitude}, ${formattedData.longitude}`);
+    console.log(`[BIN ROUTES] Backup coordinates: ${formattedData.backup_latitude}, ${formattedData.backup_longitude}`);
     res.json(formattedData);
   } catch (err) {
     console.error('[BIN ROUTES] Error fetching bin1 data:', err);

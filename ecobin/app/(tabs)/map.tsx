@@ -296,23 +296,30 @@ export default function MapScreen() {
   const getRealTimeMarkers = (): Bin[] => {
     if (!binData) return [];
     
+    
     const level = binData.bin_level || binData.weight_percent || 0;
     const status = level >= 85 ? 'critical' : level >= 70 ? 'warning' : 'normal';
     
     // Determine coordinates source and validity
-    const isGPSOnline = binData.gps_valid && binData.latitude !== 0 && binData.longitude !== 0;
+    // Check if GPS coordinates are in the correct region (Cebu area)
+    const isInCorrectRegion = binData.latitude >= 10.0 && binData.latitude <= 10.5 && 
+                              binData.longitude >= 123.5 && binData.longitude <= 124.0;
+    
+    const isGPSOnline = binData.gps_valid && binData.latitude !== 0 && binData.longitude !== 0 && isInCorrectRegion;
     const coordinatesSource = (isGPSOnline ? 'gps_live' : 'gps_backup');
     
-    // Use backup coordinates if GPS is offline/invalid
+    
+    // Use backup coordinates if GPS is offline/invalid or in wrong region
     let latitude, longitude, locationSource;
     if (isGPSOnline) {
       latitude = binData.latitude;
       longitude = binData.longitude;
       locationSource = 'GPS Live';
     } else {
-      // Use Firebase backup coordinates when GPS is invalid
-      latitude = binData.backup_latitude || 10.243723; // Firebase backup coordinates
-      longitude = binData.backup_longitude || 123.787124;
+      // Use backup coordinates from real-time data or fallback to default
+      // Check for various possible backup coordinate field names
+      latitude = binData.backup_latitude || binData.gps_latitude || binData.lat || 10.24371; // Default to server backup coordinates
+      longitude = binData.backup_longitude || binData.gps_longitude || binData.lng || 123.786917; // Default to server backup coordinates
       locationSource = 'GPS Backup';
     }
     
