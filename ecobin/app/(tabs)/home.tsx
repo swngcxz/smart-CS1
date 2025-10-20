@@ -384,33 +384,66 @@ export default function HomeScreen() {
   // Combine all schedules for display
   const allSchedules = [...maintenanceSchedules, ...trashCollectionSchedules];
   const todaySchedules = [...getTodayMaintenanceSchedules(), ...getTodayTrashCollectionSchedules()];
+  const toAmPm = (hhmm: string) => {
+    const match = hhmm.match(/^\s*(\d{1,2}):(\d{2})\s*$/);
+    if (!match) return hhmm;
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    const period = h >= 12 ? "PM" : "AM";
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${h}:${m} ${period}`;
+  };
 
-  // Create marked dates for calendar with enhanced visual styling
-  const markedDates = allSchedules.reduce((acc, schedule) => {
-    const dateKey = schedule.date;
-    if (!acc[dateKey]) {
-      acc[dateKey] = {
-        marked: true,
-        dots: [
-          {
-            key: schedule.type,
-            color: schedule.type === "maintenance" ? "#ff9800" : "#2e7d32",
-            selectedDotColor: "#ffffff",
-          },
-        ],
-        selectedColor: "#2e7d32",
-        selectedTextColor: "#ffffff",
-      };
-    } else {
-      // Add additional dots for multiple schedules on same day
-      acc[dateKey].dots?.push({
-        key: schedule.type,
-        color: schedule.type === "maintenance" ? "#ff9800" : "#2e7d32",
-        selectedDotColor: "#ffffff",
-      });
+  const formatTimeLabel = (time?: string) => {
+    if (!time) return "TBD";
+    // If already contains AM/PM, keep as-is
+    if (/am|pm/i.test(time)) return time;
+    // Handle ranges like "08:00-17:00" or "08:00 - 17:00"
+    const range = time.split(/\s*-\s*/);
+    if (range.length === 2) {
+      return `${toAmPm(range[0])} - ${toAmPm(range[1])}`;
     }
-    return acc;
-  }, {} as Record<string, any>);
+    return toAmPm(time);
+  };
+
+  // Create marked dates: green background for any day with schedules, gray for today
+  const markedDates = (() => {
+    const result: Record<string, any> = {};
+    // Mark days that have any schedule in green
+    const scheduledDays = new Set(allSchedules.map((s) => s.date));
+    scheduledDays.forEach((dateKey) => {
+      result[dateKey] = {
+        customStyles: {
+          container: {
+            backgroundColor: "#2e7d32",
+            borderRadius: 999,
+          },
+          text: {
+            color: "#ffffff",
+            fontWeight: "700",
+          },
+        },
+      };
+    });
+
+    // Mark today's date in gray (overrides green if both)
+    const todayKey = new Date().toISOString().split("T")[0];
+    result[todayKey] = {
+      customStyles: {
+        container: {
+          backgroundColor: "#9e9e9e",
+          borderRadius: 999,
+        },
+        text: {
+          color: "#ffffff",
+          fontWeight: "700",
+        },
+      },
+    };
+
+    return result;
+  })();
 
   // Get schedules for selected date
   const selectedDateSchedules = selectedDate
@@ -541,7 +574,7 @@ export default function HomeScreen() {
               textDayHeaderFontSize: 14,
             }}
             onDayPress={handleDayPress}
-            markingType="multi-dot"
+            markingType="custom"
             hideArrows={false}
             renderArrow={(direction) =>
               direction === "left" ? (
@@ -594,53 +627,42 @@ export default function HomeScreen() {
                       : formatTrashCollectionDate(selectedDate)}
                   </Text>
                 </View>
-                <Text style={styles.scheduleCount}>
-                  {selectedDateSchedules.length} schedule{selectedDateSchedules.length > 1 ? "s" : ""} found
-                </Text>
 
-                {selectedDateSchedules.map((schedule, index) => (
-                  <View key={schedule.id} style={styles.scheduleItem}>
-                    <View style={styles.rowBetween}>
-                      <Text style={styles.label}>Type</Text>
-                      <Text
-                        style={[
-                          styles.value,
-                          {
-                            color:
-                              schedule.type === "maintenance"
-                                ? getMaintenanceTypeColor()
-                                : getTrashCollectionTypeColor(),
-                          },
-                        ]}
-                      >
-                        {schedule.type === "maintenance" ? formatMaintenanceType() : formatTrashCollectionType()}
-                      </Text>
+                {selectedDateSchedules.map((schedule, index) => {
+                  const typeLabel =
+                    schedule.type === "maintenance" ? formatMaintenanceType() : formatTrashCollectionType();
+                  const typeColor = schedule.type === "maintenance" ? "#1565C0" : getTrashCollectionTypeColor();
+                  const assignee =
+                    "staffName" in schedule
+                      ? schedule.staffName
+                      : "driverName" in schedule
+                      ? schedule.driverName
+                      : "Unassigned";
+                  return (
+                    <View key={schedule.id} style={styles.scheduleItemCard}>
+                      <View style={styles.scheduleItemHeader}>
+                        <View style={[styles.typeChip, { backgroundColor: typeColor }]}>
+                          <Text style={styles.typeChipText}>{typeLabel}</Text>
+                        </View>
+                        <View style={styles.timeRow}>
+                          <Ionicons name="time-outline" size={14} color="#555" style={{ marginRight: 4 }} />
+                          <Text style={styles.timeText}>{formatTimeLabel(schedule.time)}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.scheduleItemRow}>
+                        <Text style={styles.rowLabel}>Area</Text>
+                        <Text style={styles.rowValue}>{schedule.area}</Text>
+                      </View>
+
+                      <View style={styles.scheduleItemFooter}>
+                        <Text style={styles.assignedText}>Assigned: {assignee}</Text>
+                      </View>
+
+                      {index < selectedDateSchedules.length - 1 && <View style={styles.divider} />}
                     </View>
-                    <View style={styles.rowBetween}>
-                      <Text style={styles.label}>Area</Text>
-                      <Text style={styles.value}>{schedule.area}</Text>
-                    </View>
-                    <View style={styles.rowBetween}>
-                      <Text style={styles.label}>Time</Text>
-                      <Text style={styles.value}>{schedule.time || "TBD"}</Text>
-                    </View>
-                    <View style={styles.rowBetween}>
-                      <Text style={styles.label}>Status</Text>
-                      <Text style={styles.value}>{schedule.status}</Text>
-                    </View>
-                    <View style={styles.rowBetween}>
-                      <Text style={styles.label}>Assigned To</Text>
-                      <Text style={styles.value}>
-                        {"staffName" in schedule
-                          ? schedule.staffName
-                          : "driverName" in schedule
-                          ? schedule.driverName
-                          : "Unassigned"}
-                      </Text>
-                    </View>
-                    {index < selectedDateSchedules.length - 1 && <View style={styles.divider} />}
-                  </View>
-                ))}
+                  );
+                })}
               </>
             )}
           </Pressable>
@@ -878,23 +900,19 @@ const styles = StyleSheet.create({
   scheduleContainer: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    marginBottom: 80,
+    marginHorizontal: 0,
     borderWidth: 1,
     borderColor: "#e2e8f0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
   },
   calendarWrapper: {
     backgroundColor: "#ffffff",
     borderRadius: 12,
     overflow: "hidden",
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderWidth: 0,
   },
   calendarHeader: {
     flexDirection: "row",
@@ -902,7 +920,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 16,
     paddingHorizontal: 20,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#ffff",
     borderBottomWidth: 1,
     borderBottomColor: "#e2e8f0",
   },
@@ -981,6 +999,80 @@ const styles = StyleSheet.create({
   },
   scheduleItem: {
     marginBottom: 15,
+  },
+  scheduleItemCard: {
+    marginBottom: 15,
+  },
+  scheduleItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  typeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  typeChipText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  timeText: {
+    fontSize: 12,
+    color: "#555",
+    fontWeight: "600",
+  },
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  scheduleItemRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  rowLabel: {
+    fontWeight: "600",
+    color: "#333",
+  },
+  rowValue: {
+    color: "#111",
+    fontWeight: "600",
+  },
+  scheduleItemFooter: {
+    marginTop: 6,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  assignedText: {
+    fontSize: 12,
+    color: "#444",
+    fontWeight: "600",
+  },
+  statusChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusChipText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "capitalize",
+  },
+  statusDone: {
+    backgroundColor: "#4caf50",
+  },
+  statusInProgress: {
+    backgroundColor: "#ff9800",
+  },
+  statusPending: {
+    backgroundColor: "#9e9e9e",
   },
   divider: {
     height: 1,
