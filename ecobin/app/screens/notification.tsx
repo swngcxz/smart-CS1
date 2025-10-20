@@ -1,6 +1,6 @@
 import BackButton from "@/components/BackButton";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Alert,
   FlatList,
@@ -23,12 +23,22 @@ import { SkeletonList } from "@/components/SkeletonLoader";
 export default function NotificationScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { notifications, loading, error, refresh, markAsRead, markAllAsRead, getNotificationsByType, acceptTask } =
-    useNotifications();
+  const {
+    notifications,
+    loading,
+    error,
+    refresh,
+    markAsRead,
+    markAllAsRead,
+    getNotificationsByType,
+    acceptTask,
+    deleteNotification,
+  } = useNotifications();
 
   const [filter, setFilter] = useState<"all" | "read" | "unread">("all");
   const [selectedNotificationId, setSelectedNotificationId] = useState<string | null>(null);
   const [showActionButtons, setShowActionButtons] = useState(false);
+  const listRef = useRef<FlatList<any>>(null);
 
   // Debug logging
   console.log("NotificationScreen Debug:", {
@@ -49,6 +59,14 @@ export default function NotificationScreen() {
     ]);
   };
 
+  const handleOpenArchived = () => {
+    setFilter("read");
+    // Scroll to top to show latest archived items
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+  };
+
   const handleMarkAsRead = async (id: string) => {
     await markAsRead(id);
   };
@@ -60,8 +78,7 @@ export default function NotificationScreen() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          // Add delete functionality here
-          console.log("Deleting notification:", id);
+          await deleteNotification(id);
           setShowActionButtons(false);
           setSelectedNotificationId(null);
         },
@@ -75,7 +92,7 @@ export default function NotificationScreen() {
       {
         text: "Archive",
         onPress: async () => {
-          await markAsRead(id); // Using markAsRead as archive functionality
+          await markAsRead(id);
           setShowActionButtons(false);
           setSelectedNotificationId(null);
         },
@@ -158,7 +175,7 @@ export default function NotificationScreen() {
 
       <View style={styles.topRow}>
         <Text style={styles.header}>Notifications</Text>
-        <TouchableOpacity onPress={handleArchiveAll}>
+        <TouchableOpacity onPress={() => router.push("/screens/archived-notifications")}>
           <Ionicons name="archive-outline" size={24} color="#4CAF50" />
         </TouchableOpacity>
       </View>
@@ -201,6 +218,7 @@ export default function NotificationScreen() {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={filteredNotifications}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={loading && notifications.length === 0 ? <SkeletonList /> : null}
@@ -213,10 +231,22 @@ export default function NotificationScreen() {
               <View style={[styles.card, item.read && styles.read]}>
                 <TouchableOpacity onLongPress={() => handleLongPress(item.id)} delayLongPress={500} activeOpacity={0.7}>
                   <View style={styles.cardHeader}>
-                    <Text style={styles.title}>{item.title}</Text>
-                    <View style={styles.priorityContainer}>
-                      <Text style={styles.priorityEmoji}>{priorityEmoji}</Text>
-                      <Text style={[styles.priorityText, { color: priorityColor }]}>{item.priority.toUpperCase()}</Text>
+                    <View style={styles.titleContainer}>
+                      <Text style={styles.title}>{item.title}</Text>
+                      {item.priority === "high" && (
+                        <View style={styles.highPriorityBadge}>
+                          <Text style={styles.highPriorityText}>HIGH</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.topRightContainer}>
+                      {item.read ? (
+                        <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                      ) : (
+                        <TouchableOpacity onPress={() => handleMarkAsRead(item.id)}>
+                          <Ionicons name="checkmark-circle-outline" size={20} color="#ccc" />
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
 
@@ -234,11 +264,6 @@ export default function NotificationScreen() {
                           <Text style={styles.acceptButtonText}>Accept Task</Text>
                         </TouchableOpacity>
                       )}
-
-                      {/* Always show Mark as Read button for unread notifications */}
-                      <TouchableOpacity style={styles.markButton} onPress={() => handleMarkAsRead(item.id)}>
-                        <Text style={styles.markButtonText}>Mark as Read</Text>
-                      </TouchableOpacity>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -250,7 +275,7 @@ export default function NotificationScreen() {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-outline" size={64} color="#ccc" />
+              <Ionicons name="notifications-outline" size={45} color="#ccc" />
               <Text style={styles.emptyText}>No notifications found</Text>
               <Text style={styles.emptySubtext}>
                 {filter === "all"
@@ -402,7 +427,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderLeftWidth: StyleSheet.hairlineWidth,
     borderLeftColor: "#4CAF50",
   },
   read: {
@@ -415,11 +442,32 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 8,
   },
+  titleContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 10,
+  },
   title: {
     fontSize: 16,
     fontWeight: "600",
     flex: 1,
-    marginRight: 10,
+  },
+  highPriorityBadge: {
+    backgroundColor: "#ff3b30",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  highPriorityText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  topRightContainer: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   priorityContainer: {
     flexDirection: "row",
@@ -446,12 +494,11 @@ const styles = StyleSheet.create({
   buttonContainer: {
     marginTop: 12,
     flexDirection: "row",
-    gap: 10,
-    flexWrap: "wrap",
-    justifyContent: "flex-start",
+    justifyContent: "flex-end",
+    alignItems: "center",
   },
   acceptButton: {
-    backgroundColor: "#2196F3",
+    backgroundColor: "#4CAF50",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 6,

@@ -146,7 +146,7 @@ export function useNotifications() {
         
         // Show automatic tasks that are pending and available for acceptance (to ALL janitors)
         if (isAutomatic && isPending && isAvailableForAcceptance) {
-          console.log('✅ Found automatic task for notification:', {
+          console.log('Found automatic task for notification:', {
             id: log.id,
             bin_id: log.bin_id,
             bin_level: log.bin_level,
@@ -159,7 +159,7 @@ export function useNotifications() {
         
         // Show manual tasks that are assigned directly to the logged-in user and in progress
         if (!isAutomatic && isAssignedToMe && log.status === 'in_progress') {
-          console.log('✅ Found manual task assigned to me:', {
+          console.log('Found manual task assigned to me:', {
             id: log.id,
             bin_id: log.bin_id,
             assigned_janitor_id: log.assigned_janitor_id
@@ -170,7 +170,7 @@ export function useNotifications() {
         // Also show pending tasks that look like automatic tasks (fallback for missing source field)
         // These are tasks with no assigned janitor and no user_id, typically automatic tasks
         if (isPending && isUnassigned) {
-          console.log('✅ Found unassigned pending task for notification:', {
+          console.log('Found unassigned pending task for notification:', {
             id: log.id,
             bin_id: log.bin_id,
             bin_level: log.bin_level,
@@ -195,12 +195,12 @@ export function useNotifications() {
         let status: Notification['status'] = 'ASSIGNED';
         
         if ((isAutomatic && log.status === 'pending') || isPendingAutomatic) {
-          title = '🚨 Automatic Task Available';
-          message = `Bin ${log.bin_id} at ${log.bin_location} is ${log.bin_level}% full and needs immediate attention. Click to accept this task.`;
+          title = 'Automatic Task Available';
+          message = `Bin ${log.bin_id} at ${log.bin_location} is ${log.bin_level}% full and needs immediate attention.`;
           type = 'automatic_task_available';
           status = 'AVAILABLE_FOR_ACCEPTANCE';
         } else if (!isAutomatic && isAssignedToMe && log.status === 'in_progress') {
-          title = '📋 Task Assigned to You';
+          title = 'Task Assigned to You';
           message = `You have been assigned a task for bin ${log.bin_id} at ${log.bin_location}. Task: ${log.task_note || 'No additional notes'}`;
           type = 'task_assignment';
           status = 'ASSIGNED';
@@ -367,6 +367,19 @@ export function useNotifications() {
     }
   }, [notifications]);
 
+  // Delete a single notification (local only)
+  const deleteNotification = useCallback(async (notificationId: string) => {
+    try {
+      const updatedNotifications = notifications.filter(notif => notif.id !== notificationId);
+      setNotifications(updatedNotifications);
+
+      // Update cache
+      await AsyncStorage.setItem('notifications', JSON.stringify(updatedNotifications));
+    } catch (err: any) {
+      // Silently handle storage errors
+    }
+  }, [notifications]);
+
   // Get unread count
   const getUnreadCount = useCallback(() => {
     return notifications.filter(notif => !notif.read).length;
@@ -519,6 +532,7 @@ export function useNotifications() {
     acceptTask,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
     getUnreadCount,
     getNotificationsByType,
     getAutomaticTaskNotifications,

@@ -5,12 +5,28 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, FlatList, Modal, Pressable } from "react-native";
+import { ScrollView, StyleSheet, Text, View, ActivityIndicator, FlatList, Modal, Pressable } from "react-native";
 import apiClient from "@/utils/apiConfig";
 import { useAuth } from "@/hooks/useAuth";
 import { Calendar } from "react-native-calendars";
-import { useMaintenanceSchedules, formatMaintenanceType, getMaintenanceTypeColor, formatMaintenanceDate, getMaintenanceCalendarDotColor, formatMaintenanceTimeRange, isDateInPast as isMaintenanceDateInPast } from "@/hooks/useMaintenanceSchedules";
-import { useTrashCollectionSchedules, formatTrashCollectionType, getTrashCollectionTypeColor, formatTrashCollectionDate, getTrashCollectionCalendarDotColor, formatTrashCollectionTimeRange, isDateInPast as isTrashCollectionDateInPast } from "@/hooks/useTrashCollectionSchedules";
+import {
+  useMaintenanceSchedules,
+  formatMaintenanceType,
+  getMaintenanceTypeColor,
+  formatMaintenanceDate,
+  getMaintenanceCalendarDotColor,
+  formatMaintenanceTimeRange,
+  isDateInPast as isMaintenanceDateInPast,
+} from "@/hooks/useMaintenanceSchedules";
+import {
+  useTrashCollectionSchedules,
+  formatTrashCollectionType,
+  getTrashCollectionTypeColor,
+  formatTrashCollectionDate,
+  getTrashCollectionCalendarDotColor,
+  formatTrashCollectionTimeRange,
+  isDateInPast as isTrashCollectionDateInPast,
+} from "@/hooks/useTrashCollectionSchedules";
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, "Home">;
 
@@ -44,8 +60,18 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
 
   // Use the separate schedule hooks
-  const { schedules: maintenanceSchedules, loading: maintenanceLoading, getSchedulesByDate: getMaintenanceSchedulesByDate, getTodaySchedules: getTodayMaintenanceSchedules } = useMaintenanceSchedules();
-  const { schedules: trashCollectionSchedules, loading: trashCollectionLoading, getSchedulesByDate: getTrashCollectionSchedulesByDate, getTodaySchedules: getTodayTrashCollectionSchedules } = useTrashCollectionSchedules();
+  const {
+    schedules: maintenanceSchedules,
+    loading: maintenanceLoading,
+    getSchedulesByDate: getMaintenanceSchedulesByDate,
+    getTodaySchedules: getTodayMaintenanceSchedules,
+  } = useMaintenanceSchedules();
+  const {
+    schedules: trashCollectionSchedules,
+    loading: trashCollectionLoading,
+    getSchedulesByDate: getTrashCollectionSchedulesByDate,
+    getTodaySchedules: getTodayTrashCollectionSchedules,
+  } = useTrashCollectionSchedules();
 
   // Fetch activity logs for the logged-in user
   const fetchActivityLogs = async () => {
@@ -56,27 +82,26 @@ export default function HomeScreen() {
 
     try {
       setLoading(true);
-      const response = await apiClient.get('/api/activitylogs');
-      
+      const response = await apiClient.get("/api/activitylogs");
+
       if (response.data && response.data.activities) {
         // Filter logs assigned to the current user and only show in_progress status
-        const userLogs = response.data.activities.filter((log: ActivityLog) => 
-          log.assigned_janitor_id === user.id && 
-          log.status === 'in_progress'
+        const userLogs = response.data.activities.filter(
+          (log: ActivityLog) => log.assigned_janitor_id === user.id && log.status === "in_progress"
         );
-        
+
         // Sort by creation date (newest first)
-        const sortedLogs = userLogs.sort((a: ActivityLog, b: ActivityLog) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        const sortedLogs = userLogs.sort(
+          (a: ActivityLog, b: ActivityLog) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-        
+
         // Store all logs and show only latest 3 on home
         setAllActivityLogs(sortedLogs);
         setActivityLogs(sortedLogs.slice(0, 3));
         setError(null);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch activity logs');
+      setError(err.message || "Failed to fetch activity logs");
       setActivityLogs([]);
     } finally {
       setLoading(false);
@@ -91,11 +116,11 @@ export default function HomeScreen() {
   }, [user]);
 
   const getBadgeStyle = (status: string, activityType: string) => {
-    if (status === 'done') {
+    if (status === "done") {
       return styles.badgeEmptied; // Green for completed tasks
-    } else if (status === 'in_progress') {
+    } else if (status === "in_progress") {
       return styles.badgePickup; // Yellow for in-progress tasks
-    } else if (activityType === 'task_assignment') {
+    } else if (activityType === "task_assignment") {
       return styles.badgeLogin; // Blue for task assignments
     }
     return styles.badgeLogin; // Default
@@ -110,17 +135,17 @@ export default function HomeScreen() {
     const now = new Date();
     const logDate = new Date(createdAt);
     const diffInHours = Math.floor((now.getTime() - logDate.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) {
-      return 'Just now';
+      return "Just now";
     } else if (diffInHours < 24) {
-      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+      return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`;
     } else {
-      return logDate.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit'
+      return logDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
       });
     }
   };
@@ -135,11 +160,43 @@ export default function HomeScreen() {
       nearlyFullCount: 1, // Only Bin 3 is at 90% (nearly full)
       totalBins: 4,
       bins: [
-        { id: "Bin 1", level: 0, status: "normal", capacity: "500L", type: "Mixed", lastCollected: "55 min ago", nextCollection: "Tomorrow 9:00 AM" },
-        { id: "Bin 2", level: 60, status: "warning", capacity: "450L", type: "Organic", lastCollected: "3 hours ago", nextCollection: "Today 4:30 PM" },
-        { id: "Bin 3", level: 90, status: "critical", capacity: "600L", type: "Recyclable", lastCollected: "1 hour ago", nextCollection: "Today 5:30 PM" },
-        { id: "Bin 4", level: 50, status: "normal", capacity: "550L", type: "Mixed", lastCollected: "5 hours ago", nextCollection: "Today 6:00 PM" },
-      ]
+        {
+          id: "Bin 1",
+          level: 0,
+          status: "normal",
+          capacity: "500L",
+          type: "Mixed",
+          lastCollected: "55 min ago",
+          nextCollection: "Tomorrow 9:00 AM",
+        },
+        {
+          id: "Bin 2",
+          level: 60,
+          status: "warning",
+          capacity: "450L",
+          type: "Organic",
+          lastCollected: "3 hours ago",
+          nextCollection: "Today 4:30 PM",
+        },
+        {
+          id: "Bin 3",
+          level: 90,
+          status: "critical",
+          capacity: "600L",
+          type: "Recyclable",
+          lastCollected: "1 hour ago",
+          nextCollection: "Today 5:30 PM",
+        },
+        {
+          id: "Bin 4",
+          level: 50,
+          status: "normal",
+          capacity: "550L",
+          type: "Mixed",
+          lastCollected: "5 hours ago",
+          nextCollection: "Today 6:00 PM",
+        },
+      ],
     },
     {
       name: "Park Avenue",
@@ -149,11 +206,43 @@ export default function HomeScreen() {
       nearlyFullCount: 2, // Bin 6 at 70% and Bin 7 at 95% (nearly full)
       totalBins: 4,
       bins: [
-        { id: "Bin 5", level: 46, status: "normal", capacity: "300L", type: "Mixed", lastCollected: "1 day ago", nextCollection: "Tomorrow 10:00 AM" },
-        { id: "Bin 6", level: 20, status: "normal", capacity: "250L", type: "Paper", lastCollected: "2 days ago", nextCollection: "Tomorrow 11:00 AM" },
-        { id: "Bin 7", level: 70, status: "warning", capacity: "400L", type: "Plastic", lastCollected: "1 day ago", nextCollection: "Today 3:00 PM" },
-        { id: "Bin 8", level: 95, status: "critical", capacity: "350L", type: "Glass", lastCollected: "1 day ago", nextCollection: "Today 2:00 PM" },
-      ]
+        {
+          id: "Bin 5",
+          level: 46,
+          status: "normal",
+          capacity: "300L",
+          type: "Mixed",
+          lastCollected: "1 day ago",
+          nextCollection: "Tomorrow 10:00 AM",
+        },
+        {
+          id: "Bin 6",
+          level: 20,
+          status: "normal",
+          capacity: "250L",
+          type: "Paper",
+          lastCollected: "2 days ago",
+          nextCollection: "Tomorrow 11:00 AM",
+        },
+        {
+          id: "Bin 7",
+          level: 70,
+          status: "warning",
+          capacity: "400L",
+          type: "Plastic",
+          lastCollected: "1 day ago",
+          nextCollection: "Today 3:00 PM",
+        },
+        {
+          id: "Bin 8",
+          level: 95,
+          status: "critical",
+          capacity: "350L",
+          type: "Glass",
+          lastCollected: "1 day ago",
+          nextCollection: "Today 2:00 PM",
+        },
+      ],
     },
     {
       name: "Mall District",
@@ -163,11 +252,43 @@ export default function HomeScreen() {
       nearlyFullCount: 4, // All bins are nearly full (85%+)
       totalBins: 4,
       bins: [
-        { id: "Bin 9", level: 93, status: "critical", capacity: "700L", type: "Mixed", lastCollected: "4 hours ago", nextCollection: "Today 1:00 PM" },
-        { id: "Bin 10", level: 98, status: "critical", capacity: "650L", type: "Organic", lastCollected: "4 hours ago", nextCollection: "Today 1:00 PM" },
-        { id: "Bin 11", level: 85, status: "critical", capacity: "500L", type: "Recyclable", lastCollected: "4 hours ago", nextCollection: "Today 1:00 PM" },
-        { id: "Bin 12", level: 90, status: "critical", capacity: "550L", type: "Plastic", lastCollected: "4 hours ago", nextCollection: "Today 1:00 PM" },
-      ]
+        {
+          id: "Bin 9",
+          level: 93,
+          status: "critical",
+          capacity: "700L",
+          type: "Mixed",
+          lastCollected: "4 hours ago",
+          nextCollection: "Today 1:00 PM",
+        },
+        {
+          id: "Bin 10",
+          level: 98,
+          status: "critical",
+          capacity: "650L",
+          type: "Organic",
+          lastCollected: "4 hours ago",
+          nextCollection: "Today 1:00 PM",
+        },
+        {
+          id: "Bin 11",
+          level: 85,
+          status: "critical",
+          capacity: "500L",
+          type: "Recyclable",
+          lastCollected: "4 hours ago",
+          nextCollection: "Today 1:00 PM",
+        },
+        {
+          id: "Bin 12",
+          level: 90,
+          status: "critical",
+          capacity: "550L",
+          type: "Plastic",
+          lastCollected: "4 hours ago",
+          nextCollection: "Today 1:00 PM",
+        },
+      ],
     },
     {
       name: "Residential Area",
@@ -177,10 +298,34 @@ export default function HomeScreen() {
       nearlyFullCount: 0,
       totalBins: 3,
       bins: [
-        { id: "Bin 13", level: 20, status: "normal", capacity: "300L", type: "Mixed", lastCollected: "2 hours ago", nextCollection: "Tomorrow 8:00 AM" },
-        { id: "Bin 14", level: 45, status: "normal", capacity: "250L", type: "Organic", lastCollected: "3 hours ago", nextCollection: "Tomorrow 9:00 AM" },
-        { id: "Bin 15", level: 40, status: "normal", capacity: "400L", type: "Recyclable", lastCollected: "4 hours ago", nextCollection: "Tomorrow 10:00 AM" },
-      ]
+        {
+          id: "Bin 13",
+          level: 20,
+          status: "normal",
+          capacity: "300L",
+          type: "Mixed",
+          lastCollected: "2 hours ago",
+          nextCollection: "Tomorrow 8:00 AM",
+        },
+        {
+          id: "Bin 14",
+          level: 45,
+          status: "normal",
+          capacity: "250L",
+          type: "Organic",
+          lastCollected: "3 hours ago",
+          nextCollection: "Tomorrow 9:00 AM",
+        },
+        {
+          id: "Bin 15",
+          level: 40,
+          status: "normal",
+          capacity: "400L",
+          type: "Recyclable",
+          lastCollected: "4 hours ago",
+          nextCollection: "Tomorrow 10:00 AM",
+        },
+      ],
     },
   ];
 
@@ -192,10 +337,14 @@ export default function HomeScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "normal": return "#4caf50";
-      case "warning": return "#ff9800";
-      case "critical": return "#f44336";
-      default: return "#4caf50";
+      case "normal":
+        return "#4caf50";
+      case "warning":
+        return "#ff9800";
+      case "critical":
+        return "#f44336";
+      default:
+        return "#4caf50";
     }
   };
 
@@ -205,7 +354,7 @@ export default function HomeScreen() {
       pathname: "/location-bins",
       params: {
         locationName,
-        locationData: JSON.stringify(locationData.find(loc => loc.name === locationName))
+        locationData: JSON.stringify(locationData.find((loc) => loc.name === locationName)),
       },
     });
   };
@@ -224,11 +373,8 @@ export default function HomeScreen() {
   // Schedule functions
   const handleDayPress = (day: any) => {
     const date = day.dateString;
-    const schedulesForDate = [
-      ...getMaintenanceSchedulesByDate(date),
-      ...getTrashCollectionSchedulesByDate(date)
-    ];
-    
+    const schedulesForDate = [...getMaintenanceSchedulesByDate(date), ...getTrashCollectionSchedulesByDate(date)];
+
     if (schedulesForDate.length > 0) {
       setSelectedDate(date);
       setModalVisible(true);
@@ -243,65 +389,68 @@ export default function HomeScreen() {
   const markedDates = allSchedules.reduce((acc, schedule) => {
     const dateKey = schedule.date;
     if (!acc[dateKey]) {
-      acc[dateKey] = { 
+      acc[dateKey] = {
         marked: true,
         dots: [
           {
             key: schedule.type,
-            color: schedule.type === 'maintenance' ? '#ff9800' : '#2e7d32',
-            selectedDotColor: '#ffffff'
-          }
+            color: schedule.type === "maintenance" ? "#ff9800" : "#2e7d32",
+            selectedDotColor: "#ffffff",
+          },
         ],
-        selectedColor: '#2e7d32',
-        selectedTextColor: '#ffffff'
+        selectedColor: "#2e7d32",
+        selectedTextColor: "#ffffff",
       };
     } else {
       // Add additional dots for multiple schedules on same day
       acc[dateKey].dots?.push({
         key: schedule.type,
-        color: schedule.type === 'maintenance' ? '#ff9800' : '#2e7d32',
-        selectedDotColor: '#ffffff'
+        color: schedule.type === "maintenance" ? "#ff9800" : "#2e7d32",
+        selectedDotColor: "#ffffff",
       });
     }
     return acc;
   }, {} as Record<string, any>);
 
   // Get schedules for selected date
-  const selectedDateSchedules = selectedDate ? [
-    ...getMaintenanceSchedulesByDate(selectedDate),
-    ...getTrashCollectionSchedulesByDate(selectedDate)
-  ] : [];
+  const selectedDateSchedules = selectedDate
+    ? [...getMaintenanceSchedulesByDate(selectedDate), ...getTrashCollectionSchedulesByDate(selectedDate)]
+    : [];
 
   // Format assigned tasks for display with new structure (only upcoming schedules)
   const assignedTasks = allSchedules
-    .filter(schedule => {
+    .filter((schedule) => {
       // Use appropriate date check based on schedule type
-      const isPast = schedule.type === 'maintenance' 
-        ? isMaintenanceDateInPast(schedule.date)
-        : isTrashCollectionDateInPast(schedule.date);
+      const isPast =
+        schedule.type === "maintenance"
+          ? isMaintenanceDateInPast(schedule.date)
+          : isTrashCollectionDateInPast(schedule.date);
       return !isPast;
     })
-    .map(schedule => {
+    .map((schedule) => {
       // Type-safe property access
-      const name = 'staffName' in schedule ? schedule.staffName : 
-                   'driverName' in schedule ? schedule.driverName : 'Unassigned';
-      const startTime = 'start_time' in schedule ? schedule.start_time : 
-                        'start_collected' in schedule ? schedule.start_collected : undefined;
-      const endTime = 'end_time' in schedule ? schedule.end_time : 
-                      'end_collected' in schedule ? schedule.end_collected : undefined;
-      
+      const name =
+        "staffName" in schedule ? schedule.staffName : "driverName" in schedule ? schedule.driverName : "Unassigned";
+      const startTime =
+        "start_time" in schedule
+          ? schedule.start_time
+          : "start_collected" in schedule
+          ? schedule.start_collected
+          : undefined;
+      const endTime =
+        "end_time" in schedule ? schedule.end_time : "end_collected" in schedule ? schedule.end_collected : undefined;
+
       // Use appropriate formatting based on schedule type
-      const formattedTime = schedule.type === 'maintenance'
-        ? formatMaintenanceTimeRange(startTime, endTime)
-        : formatTrashCollectionTimeRange(startTime, endTime);
-      
-      const formattedType = schedule.type === 'maintenance'
-        ? formatMaintenanceType()
-        : formatTrashCollectionType();
-      
+      const formattedTime =
+        schedule.type === "maintenance"
+          ? formatMaintenanceTimeRange(startTime, endTime)
+          : formatTrashCollectionTimeRange(startTime, endTime);
+
+      const formattedType = schedule.type === "maintenance" ? formatMaintenanceType() : formatTrashCollectionType();
+
       return {
         id: schedule.id,
-        name: name || 'Unassigned',
+        name: name || "Unassigned",
         time: formattedTime,
         area: schedule.area,
         type: formattedType,
@@ -317,51 +466,39 @@ export default function HomeScreen() {
       </View>
 
       <Text style={styles.sectionTitle}>Location Overview</Text>
-      
+
       {/* Location Cards - Vertical Layout */}
       <View style={styles.locationContainer}>
         {locationData.map((location, index) => (
-          <TouchableOpacity 
-            key={index} 
-            onPress={() => handleLocationPress(location.name)} 
-            style={styles.locationCard}
-          >
+          <View key={index} style={styles.locationCard}>
             <View style={styles.locationHeader}>
               <Text style={styles.locationName}>{location.name}</Text>
-              <View style={styles.statusBadge}>
-                <Text style={[styles.statusLabel, { color: getStatusColor(location.status) }]}>
-                  {location.status}
-                </Text>
-              </View>
-          </View>
-            
-            <Text style={styles.locationLevel}>{location.overallLevel}%</Text>
-            
-          <View style={styles.progressBarContainer}>
-            <View
-              style={[
-                styles.progressBarFill,
-                {
+              <Text style={styles.locationLevelRight}>{location.overallLevel}%</Text>
+            </View>
+
+            <View style={styles.progressBarContainer}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  {
                     width: `${location.overallLevel}%`,
                     backgroundColor: getFillColor(location.overallLevel),
-                },
-              ]}
-            />
-          </View>
-            
+                  },
+                ]}
+              />
+            </View>
+
             <View style={styles.locationFooter}>
               <Text style={styles.lastCollectedText}>Last collected {location.lastCollected}</Text>
-              <Text style={styles.nearlyFullText}>
-                {location.nearlyFullCount} nearly full bins
-              </Text>
+              <Text style={styles.nearlyFullText}>{location.nearlyFullCount} nearly full bins</Text>
             </View>
-        </TouchableOpacity>
-      ))}
+          </View>
+        ))}
       </View>
 
       {/* Schedule Section */}
       <Text style={styles.sectionTitle}>Schedule Overview</Text>
-      
+
       {/* Loading indicator for schedules */}
       {(maintenanceLoading || trashCollectionLoading) && (
         <View style={styles.loadingHeader}>
@@ -406,13 +543,15 @@ export default function HomeScreen() {
             onDayPress={handleDayPress}
             markingType="multi-dot"
             hideArrows={false}
-            renderArrow={(direction) => (
-              direction === 'left' ? 
-                <Ionicons name="chevron-back" size={24} color="#2e7d32" /> : 
+            renderArrow={(direction) =>
+              direction === "left" ? (
+                <Ionicons name="chevron-back" size={24} color="#2e7d32" />
+              ) : (
                 <Ionicons name="chevron-forward" size={24} color="#2e7d32" />
-            )}
+              )
+            }
             renderHeader={(date) => {
-              const month = date.toString('MMMM yyyy');
+              const month = date.toString("MMMM yyyy");
               return (
                 <View style={styles.calendarHeader}>
                   <Text style={styles.calendarHeaderText}>{month}</Text>
@@ -420,9 +559,8 @@ export default function HomeScreen() {
               );
             }}
           />
-      </View>
-
         </View>
+      </View>
 
       {/* Schedule Details Modal */}
       <Modal
@@ -451,36 +589,40 @@ export default function HomeScreen() {
                 <View style={styles.rowBetween}>
                   <Text style={styles.label}>Date</Text>
                   <Text style={styles.value}>
-                    {selectedDateSchedules.some(s => s.type === 'maintenance') 
-                      ? formatMaintenanceDate(selectedDate) 
+                    {selectedDateSchedules.some((s) => s.type === "maintenance")
+                      ? formatMaintenanceDate(selectedDate)
                       : formatTrashCollectionDate(selectedDate)}
                   </Text>
-        </View>
+                </View>
                 <Text style={styles.scheduleCount}>
-                  {selectedDateSchedules.length} schedule{selectedDateSchedules.length > 1 ? 's' : ''} found
-            </Text>
-                
+                  {selectedDateSchedules.length} schedule{selectedDateSchedules.length > 1 ? "s" : ""} found
+                </Text>
+
                 {selectedDateSchedules.map((schedule, index) => (
                   <View key={schedule.id} style={styles.scheduleItem}>
                     <View style={styles.rowBetween}>
                       <Text style={styles.label}>Type</Text>
-                      <Text style={[styles.value, { 
-                        color: schedule.type === 'maintenance' 
-                          ? getMaintenanceTypeColor() 
-                          : getTrashCollectionTypeColor() 
-                      }]}>
-                        {schedule.type === 'maintenance' 
-                          ? formatMaintenanceType() 
-                          : formatTrashCollectionType()}
-              </Text>
-          </View>
+                      <Text
+                        style={[
+                          styles.value,
+                          {
+                            color:
+                              schedule.type === "maintenance"
+                                ? getMaintenanceTypeColor()
+                                : getTrashCollectionTypeColor(),
+                          },
+                        ]}
+                      >
+                        {schedule.type === "maintenance" ? formatMaintenanceType() : formatTrashCollectionType()}
+                      </Text>
+                    </View>
                     <View style={styles.rowBetween}>
                       <Text style={styles.label}>Area</Text>
                       <Text style={styles.value}>{schedule.area}</Text>
                     </View>
                     <View style={styles.rowBetween}>
                       <Text style={styles.label}>Time</Text>
-                      <Text style={styles.value}>{schedule.time || 'TBD'}</Text>
+                      <Text style={styles.value}>{schedule.time || "TBD"}</Text>
                     </View>
                     <View style={styles.rowBetween}>
                       <Text style={styles.label}>Status</Text>
@@ -489,19 +631,21 @@ export default function HomeScreen() {
                     <View style={styles.rowBetween}>
                       <Text style={styles.label}>Assigned To</Text>
                       <Text style={styles.value}>
-                        {'staffName' in schedule ? schedule.staffName : 
-                         'driverName' in schedule ? schedule.driverName : 'Unassigned'}
-                </Text>
-            </View>
+                        {"staffName" in schedule
+                          ? schedule.staffName
+                          : "driverName" in schedule
+                          ? schedule.driverName
+                          : "Unassigned"}
+                      </Text>
+                    </View>
                     {index < selectedDateSchedules.length - 1 && <View style={styles.divider} />}
-          </View>
+                  </View>
                 ))}
               </>
-      )}
+            )}
           </Pressable>
         </Pressable>
       </Modal>
-
     </ScrollView>
   );
 }
@@ -625,7 +769,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   locationCard: {
-    backgroundColor: "#f0f4f0",
+    backgroundColor: "#f8f9fa",
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
@@ -656,10 +800,17 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   },
   locationLevel: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#333",
     marginBottom: 8,
+  },
+  locationLevelRight: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "right",
+    marginLeft: 8,
   },
   locationFooter: {
     flexDirection: "row",
@@ -678,50 +829,50 @@ const styles = StyleSheet.create({
   },
   // Activity Logs Loading/Error Styles
   loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 20,
   },
   loadingText: {
     marginLeft: 10,
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   errorContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 20,
   },
   errorText: {
     fontSize: 14,
-    color: '#f44336',
+    color: "#f44336",
     marginBottom: 10,
   },
   retryButton: {
-    backgroundColor: '#2e7d32',
+    backgroundColor: "#2e7d32",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
   },
   retryButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   emptyContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 20,
   },
   emptyText: {
     fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
   },
   emptySubtext: {
     fontSize: 12,
-    color: '#999',
+    color: "#999",
     marginTop: 4,
-    textAlign: 'center',
+    textAlign: "center",
   },
   // Schedule Styles
   scheduleContainer: {
@@ -762,9 +913,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   loadingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 10,
     backgroundColor: "#f8f9fa",
     marginBottom: 10,

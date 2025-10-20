@@ -23,7 +23,7 @@ export default function BackButton({
   return (
     <View style={[styles.container, style]}>
       <TouchableOpacity onPress={router.back} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color={iconColor} />
+        <Ionicons name="arrow-back" size={20} color={iconColor} />
       </TouchableOpacity>
       <Text style={[styles.screenTitle, { color: textColor }, textStyle]}>{title}</Text>
     </View>
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   screenTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
   },
 });
