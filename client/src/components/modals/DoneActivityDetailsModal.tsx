@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Clock, MapPin, Trash2, AlertTriangle } from "lucide-react";
+import { CheckCircle, Clock, MapPin, Trash2, AlertTriangle, Expand, X } from "lucide-react";
 
 interface DoneActivityDetailsModalProps {
   open: boolean;
@@ -27,7 +27,16 @@ export function DoneActivityDetailsModal({
   formatDisplayTime,
   formatActivityDescription,
 }: DoneActivityDetailsModalProps) {
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string>("");
+
   if (!activity) return null;
+
+  const handleImageClick = (imageUrl: string) => {
+    setSelectedImage(imageUrl);
+    setImageModalOpen(true);
+    onOpenChange(false); // Close the main modal when opening full-size image
+  };
 
   // Debug logging for image data
   console.log("DoneActivityDetailsModal - Activity data:", {
@@ -39,35 +48,56 @@ export function DoneActivityDetailsModal({
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[95vh] overflow-y-auto">
-        <DialogHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
-          <DialogTitle className="flex items-center gap-3 text-xl font-bold text-gray-900 dark:text-white">
-            Completed Activity Details
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] max-h-[95vh] overflow-y-auto">
+          <DialogHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
+            <DialogTitle className="flex items-center gap-3 text-lg font-bold text-gray-900 dark:text-white">
+              Completed Activity Details
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-8 py-6">
-          {/* Proof Picture Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Proof of Completion</h3>
-            </div>
+          <div className="space-y-6 py-4">
+            {/* Combined Picture and Details Layout */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-blue-600 rounded-full"></div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Activity Details</h3>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-regular text-gray-900 dark:text-white">
+                    {(() => {
+                      const date = new Date(activity.timestamp);
+                      if (isNaN(date.getTime())) return "N/A";
+                      const dateStr = date.toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      });
+                      const timeStr = date.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                      });
+                      return `${dateStr} ${timeStr}`;
+                    })()}
+                  </div>
+                </div>
+              </div>
 
-            <div className="bg-white dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6">
-              {(activity.photos && activity.photos.length > 0) || activity.proof_image ? (
-                <div className="space-y-6">
-                  {/* Main Image and Additional Photos Layout */}
-                  {activity.photos && activity.photos.length > 1 ? (
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      {/* Main Image - Left Side */}
-                      <div className="lg:w-2/3">
-                        <div className="relative">
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+                <div className="flex gap-4">
+                  {/* Picture Section - Left Side */}
+                  <div className="flex-shrink-0">
+                    {(activity.photos && activity.photos.length > 0) || activity.proof_image ? (
+                      <div className="space-y-3">
+                        {/* Main Image - Compact with Zoom Button */}
+                        <div className="relative group">
                           <img
                             src={activity.photos?.[0] || activity.proof_image}
                             alt="Proof of completion"
-                            className="w-full h-auto max-h-80 mx-auto rounded-xl shadow-lg object-cover"
+                            className="w-60 h-60 object-cover rounded-lg shadow-sm"
                             onError={(e) => {
                               const target = e.currentTarget as HTMLImageElement;
                               target.style.display = "none";
@@ -75,136 +105,80 @@ export function DoneActivityDetailsModal({
                               if (nextElement) nextElement.style.display = "block";
                             }}
                           />
-                          <div style={{ display: "none" }} className="text-center py-12">
-                            <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                            <p className="text-gray-500 text-lg">Image failed to load</p>
+                          <div style={{ display: "none" }} className="text-center py-8">
+                            <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                            <p className="text-gray-500 text-sm">Image failed to load</p>
                           </div>
+                          <button
+                            className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-70"
+                            onClick={() => handleImageClick(activity.photos?.[0] || activity.proof_image)}
+                          >
+                            <Expand className="w-4 h-4" />
+                          </button>
                         </div>
-                      </div>
 
-                      {/* Additional Photos - Right Side */}
-                      <div className="lg:w-1/3">
-                        <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                          Additional Photos ({activity.photos.length - 1} more)
-                        </h4>
-                        <div className="space-y-3">
-                          {activity.photos.slice(1).map((photo: string, index: number) => (
-                            <div key={index} className="relative group">
-                              <img
-                                src={photo}
-                                alt={`Additional proof ${index + 2}`}
-                                className="w-full h-24 object-cover rounded-lg shadow-md group-hover:shadow-lg transition-shadow duration-200"
-                                onError={(e) => {
-                                  const target = e.currentTarget as HTMLImageElement;
-                                  target.style.display = "none";
-                                }}
-                              />
-                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all duration-200 flex items-center justify-center">
-                                <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium">
-                                  Photo {index + 2}
-                                </span>
-                              </div>
+                        {/* Additional Photos - Vertical Stack */}
+                        {activity.photos && activity.photos.length > 1 && (
+                          <div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                              +{activity.photos.length - 1} more
+                            </p>
+                            <div className="space-y-1">
+                              {activity.photos.slice(1, 3).map((photo: string, index: number) => (
+                                <div key={index} className="relative group">
+                                  <img
+                                    src={photo}
+                                    alt={`Additional proof ${index + 2}`}
+                                    className="w-16 h-16 object-cover rounded"
+                                    onError={(e) => {
+                                      const target = e.currentTarget as HTMLImageElement;
+                                      target.style.display = "none";
+                                    }}
+                                  />
+                                  <button
+                                    className="absolute bottom-1 left-1 bg-black bg-opacity-50 text-white p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-opacity-70"
+                                    onClick={() => handleImageClick(photo)}
+                                  >
+                                    <Expand className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-60 h-60 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <div className="text-center">
+                          <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                          <p className="text-gray-500 text-xs">No image</p>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    /* Single Image - Full Width */
-                    <div className="relative">
-                      <img
-                        src={activity.photos?.[0] || activity.proof_image}
-                        alt="Proof of completion"
-                        className="w-full h-auto max-h-80 mx-auto rounded-xl shadow-lg object-cover"
-                        onError={(e) => {
-                          const target = e.currentTarget as HTMLImageElement;
-                          target.style.display = "none";
-                          const nextElement = target.nextElementSibling as HTMLElement;
-                          if (nextElement) nextElement.style.display = "block";
-                        }}
-                      />
-                      <div style={{ display: "none" }} className="text-center py-12">
-                        <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                        <p className="text-gray-500 text-lg">Image failed to load</p>
+                    )}
+                  </div>
+
+                  {/* Details Section - Right Side */}
+                  <div className="flex-1 min-w-0">
+                    <div className="space-y-4 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 dark:text-gray-400 font-medium">Bin ID:</span>
+                        <span className="font-regular text-gray-900 dark:text-white">{activity.bin_id || "N/A"}</span>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                  <p className="text-gray-500 text-lg">No proof image available</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Activity Information Grid */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-6 bg-blue-600 rounded-full"></div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Activity Information</h3>
-              <div className="text-sm font-regular text-gray-900 dark:text-white mb-1">
-                {activity.formatted_date || formatDisplayDate(activity.timestamp)}
-              </div>
-              <div className="text-sm font-regular text-gray-900 dark:text-white mb-1">
-                {activity.formatted_time || formatDisplayTime(activity.timestamp)}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="space-y-6">
-                {/* Completion Details Card */}
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Completion Details</h4>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Bin ID:</span>
-                      <span className="font-semibold text-gray-900 dark:text-white">{activity.bin_id || "N/A"}</span>
-                    </div>
-                    <div className="py-2">
-                      <span className="text-gray-600 dark:text-gray-400 font-medium block mb-2">Location:</span>
-                      <p className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-sm">
-                        {activity.bin_location || "N/A"}
-                      </p>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Completed By:</span>
-                      <span className="font-semibold text-gray-900 dark:text-white text-right">
-                        {activity.assigned_janitor_name || "Unknown"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Priority:</span>
-                      <Badge className={`${getPriorityColor(activity.priority)} text-sm px-3 py-1`}>
-                        {activity.display_priority || activity.priority || "Low"}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-6">
-                {/* Bin Status Card */}
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Bin Status</h4>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="py-2">
-                      <div className="flex justify-between items-center mb-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 dark:text-gray-400 font-medium">Completed By:</span>
+                        <span className="font-regular text-gray-900 dark:text-white text-right">
+                          {activity.assigned_janitor_name || "Unknown"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
                         <span className="text-gray-600 dark:text-gray-400 font-medium">Fill Level:</span>
-                        <span className="font-bold text-lg text-gray-900 dark:text-white">
+                        <span className="font-bold text-gray-900 dark:text-white">
                           {activity.bin_level?.toFixed(1) || 0}%
                         </span>
                       </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div
-                          className={`h-3 rounded-full transition-all duration-300 ${
+                          className={`h-2 rounded-full transition-all duration-300 ${
                             activity.bin_level >= 85
                               ? "bg-gradient-to-r from-red-500 to-red-600"
                               : activity.bin_level >= 70
@@ -215,28 +189,33 @@ export function DoneActivityDetailsModal({
                         />
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Additional Information Card */}
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
-                  <div className="flex items-center gap-3 mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Additional Information</h4>
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <span className="text-gray-600 dark:text-gray-400 font-medium block mb-2">Task Notes:</span>
-                      <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <p className="text-gray-900 dark:text-white text-sm leading-relaxed">
-                          {activity.task_note || "No additional notes provided"}
-                        </p>
-                      </div>
+                    {/* Location - Full Width */}
+                    <div className="mt-3 pt-3  border-gray-100 dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-400 font-medium text-xs block mb-1">Location:</span>
+                      <p className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 p-2 rounded text-xs">
+                        {activity.bin_location || "N/A"}
+                      </p>
                     </div>
+
+                    {/* Task Notes - Full Width */}
+                    <div className="mt-3 pt-3 border-gray-100 dark:border-gray-700">
+                      <span className="text-gray-600 dark:text-gray-400 font-medium text-xs block mb-1">
+                        Task Notes:
+                      </span>
+                      <p className="text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 p-2 rounded text-xs">
+                        {activity.task_note || "No additional notes provided"}
+                      </p>
+                    </div>
+
+                    {/* Status Notes - Full Width */}
                     {activity.status_notes && (
-                      <div>
-                        <span className="text-gray-600 dark:text-gray-400 font-medium block mb-2">Status Notes:</span>
-                        <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
-                          <p className="text-gray-900 dark:text-white text-sm leading-relaxed">
+                      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <span className="text-gray-600 dark:text-gray-400 font-medium text-xs block mb-1">
+                          Status Notes:
+                        </span>
+                        <div className="bg-gray-50 dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600">
+                          <p className="text-gray-900 dark:text-white text-xs leading-relaxed">
                             {activity.status_notes}
                           </p>
                         </div>
@@ -247,8 +226,51 @@ export function DoneActivityDetailsModal({
               </div>
             </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full Screen Image Modal */}
+      <Dialog
+        open={imageModalOpen}
+        onOpenChange={(open) => {
+          setImageModalOpen(open);
+          if (!open) {
+            // Reopen the main modal when full-size image closes
+            onOpenChange(true);
+          }
+        }}
+      >
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-transparent border-none shadow-none">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white hover:bg-opacity-70"
+              onClick={() => {
+                setImageModalOpen(false);
+                onOpenChange(true); // Reopen the main modal
+              }}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+            <img
+              src={selectedImage}
+              alt="Full view"
+              className="w-full h-auto max-h-[95vh] object-contain"
+              onError={(e) => {
+                const target = e.currentTarget as HTMLImageElement;
+                target.style.display = "none";
+                const nextElement = target.nextElementSibling as HTMLElement;
+                if (nextElement) nextElement.style.display = "block";
+              }}
+            />
+            <div style={{ display: "none" }} className="text-center py-12">
+              <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-500 text-lg">Image failed to load</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

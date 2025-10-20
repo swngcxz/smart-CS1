@@ -35,10 +35,13 @@ export function RoleBasedActivityLogs({ onRefresh }: RoleBasedActivityLogsProps)
 
   // Helper function to handle cell clicks for all activities
   const handleCellClick = (e: React.MouseEvent, activity: any) => {
-    // Show modal for all activities, regardless of status
+    // Only show modal for activities with "done" status
     e.preventDefault();
     e.stopPropagation();
-    handleViewActivity(activity);
+
+    if (activity.status?.toLowerCase() === "done") {
+      handleViewActivity(activity);
+    }
   };
 
   // Utility functions for formatting
