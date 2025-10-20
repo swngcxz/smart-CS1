@@ -24,8 +24,15 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [lastDataFetch, setLastDataFetch] = useState<number>(0);
 
   const fetchLogs = useCallback(async (forceRefresh = false) => {
+    // Skip if we have data and it's not a forced refresh
+    if (!forceRefresh && logs.length > 0 && !loading) {
+      console.log('⏭️ Skipping fetch - data already loaded and not forced');
+      return;
+    }
+
     console.log('🔄 fetchLogs called at:', new Date().toLocaleTimeString(), forceRefresh ? '(forced)' : '');
     setLoading(true);
     setError(null);
@@ -50,6 +57,7 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
       
       setLogs(response.data.activities || []);
       setTotalCount(response.data.totalCount || 0);
+      setLastDataFetch(Date.now());
     } catch (err: any) {
       setError(err?.response?.data?.message || err.message || "Failed to fetch activity logs");
       setLogs([]);
@@ -57,40 +65,55 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
     } finally {
       setLoading(false);
     }
-  }, [limit, offset, type, user_id, status]);
+  }, [limit, offset, type, user_id, status, logs.length, loading]);
 
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
 
-  // Listen for visibility changes and tab changes to refresh data
+  // Listen for tab changes to refresh data (only when switching to Activity Logs tab)
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log('📱 Tab became visible - refreshing activity logs');
-        fetchLogs(true); // Force refresh when tab becomes visible
+    let lastRefreshTime = 0;
+    let lastTabSwitch = 0;
+    const MIN_REFRESH_INTERVAL = 10000; // Minimum 10 seconds between refreshes
+    const MIN_TAB_SWITCH_INTERVAL = 2000; // Minimum 2 seconds between tab switches
+
+    const handleTabChange = (event: CustomEvent) => {
+      const { activeTab } = event.detail || {};
+      const now = Date.now();
+      
+      // Only refresh if switching to activity tab and enough time has passed
+      if (activeTab === 'activity') {
+        const timeSinceLastRefresh = now - lastRefreshTime;
+        const timeSinceLastTabSwitch = now - lastTabSwitch;
+        
+        // Only refresh if:
+        // 1. We don't have data yet (first load)
+        // 2. Data is older than 30 seconds AND enough time has passed since last refresh
+        // 3. Enough time has passed since last tab switch
+        const dataAge = now - lastDataFetch;
+        const shouldRefresh = logs.length === 0 || 
+          (dataAge > 30000 && timeSinceLastRefresh > MIN_REFRESH_INTERVAL && timeSinceLastTabSwitch > MIN_TAB_SWITCH_INTERVAL);
+        
+        if (shouldRefresh) {
+          console.log('🔄 Switching to Activity Logs tab - refreshing data (data age:', Math.round(dataAge / 1000), 's)');
+          fetchLogs(true);
+          lastRefreshTime = now;
+        } else if (timeSinceLastRefresh <= MIN_REFRESH_INTERVAL) {
+          console.log('⏭️ Skipping refresh - too soon since last refresh (', Math.round(timeSinceLastRefresh / 1000), 's ago)');
+        } else if (timeSinceLastTabSwitch <= MIN_TAB_SWITCH_INTERVAL) {
+          console.log('⏭️ Skipping refresh - too soon since last tab switch (', Math.round(timeSinceLastTabSwitch / 1000), 's ago)');
+        } else if (dataAge <= 30000) {
+          console.log('⏭️ Skipping refresh - data is fresh (', Math.round(dataAge / 1000), 's old)');
+        }
+        
+        lastTabSwitch = now;
       }
     };
 
-    const handleFocus = () => {
-      console.log('🎯 Window focused - refreshing activity logs');
-      fetchLogs(true); // Force refresh when window gains focus
-    };
-
-    // Listen for custom tab change events
-    const handleTabChange = (event: CustomEvent) => {
-      const { activeTab } = event.detail || {};
-      console.log('🔄 Tab changed to:', activeTab, '- refreshing activity logs');
-      fetchLogs(true); // Force refresh when tab changes
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
     window.addEventListener('tabChanged', handleTabChange);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
       window.removeEventListener('tabChanged', handleTabChange);
     };
   }, [fetchLogs]);
