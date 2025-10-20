@@ -229,6 +229,65 @@ const updateProfileFields = async (req, res) => {
   }
 };
 
+// Update profile image URL (for Cloudinary URLs)
+const updateProfileImageUrl = async (req, res) => {
+  try {
+    console.log('[USER INFO] Update profile image URL request:', {
+      body: req.body,
+      headers: req.headers,
+      cookies: req.cookies
+    });
+    
+    const userEmail = getUserIdFromToken(req);
+    console.log('[USER INFO] User email from token:', userEmail);
+    
+    // Find user by email to get user ID
+    const snapshot = await withRetry(() => 
+      db.collection('users').where('email', '==', userEmail).get()
+    );
+    
+    if (snapshot.empty) {
+      console.log('[USER INFO] User not found in database');
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userDoc = snapshot.docs[0];
+    const userId = userDoc.id;
+    console.log('[USER INFO] User ID:', userId);
+    
+    // Validate that profileImageUrl is provided
+    if (!req.body.profileImageUrl) {
+      return res.status(400).json({ error: 'profileImageUrl is required' });
+    }
+    
+    // Update data with the Cloudinary URL
+    const updateData = {
+      profileImageUrl: req.body.profileImageUrl,
+      updatedAt: new Date().toISOString()
+    };
+    
+    console.log('[USER INFO] Update profile image URL data:', updateData);
+    
+    // Upsert user info
+    await UserInfoModel.upsertUserInfo(userId, updateData);
+    console.log('[USER INFO] Profile image URL updated successfully');
+    
+    // Get updated user info
+    const updatedUserInfo = await UserInfoModel.getUserInfo(userId);
+    console.log('[USER INFO] Updated user info:', updatedUserInfo);
+    
+    res.json({
+      success: true,
+      message: 'Profile image URL updated successfully',
+      userInfo: updatedUserInfo
+    });
+    
+  } catch (error) {
+    console.error('[USER INFO] Error updating profile image URL:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Delete profile image
 const deleteProfileImage = async (req, res) => {
   try {
@@ -306,6 +365,7 @@ module.exports = {
   getUserInfo,
   updateUserInfo,
   updateProfileFields,
+  updateProfileImageUrl,
   deleteProfileImage,
   serveProfileImage
 };

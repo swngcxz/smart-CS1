@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera } from "lucide-react";
+import { CLOUDINARY_CONFIG } from "../../../../../config/cloudinary";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserInfo } from "@/hooks/useUserInfo";
 
 export const ProfileSection = () => {
   const { user } = useCurrentUser();
-  const { userInfo, updateProfileFields, updateUserInfo, getProfileImageUrl } = useUserInfo();
+  const { userInfo, updateProfileFields, updateUserInfo, getProfileImageUrl, updateProfileImageUrl } = useUserInfo();
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -76,31 +77,48 @@ export const ProfileSection = () => {
   };
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Show preview immediately
-      const reader = new FileReader();
-      reader.onloadend = () => setImageUrl(reader.result as string);
-      reader.readAsDataURL(file);
-      
-      // Upload to server
-      try {
-        setSaving('profileImage');
-        const formData = new FormData();
-        formData.append('profileImage', file);
-        
-        const result = await updateUserInfo(formData);
-        if (result.success) {
-          console.log('Profile image uploaded successfully');
-        } else {
-          console.error('Failed to upload image:', result.error);
-          alert('Failed to upload image. Please try again.');
-        }
-      } catch (error) {
-        console.error('Image upload error:', error);
-        alert('Failed to upload image. Please try again.');
-      } finally {
-        setSaving(null);
+    if (!file) return;
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => setImageUrl(reader.result as string);
+    reader.readAsDataURL(file);
+
+    try {
+      setSaving('profileImage');
+
+      // 1) Upload the actual image to Cloudinary
+      const form = new FormData();
+      form.append('file', file);
+      form.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
+
+      const res = await fetch(CLOUDINARY_CONFIG.uploadUrl, {
+        method: 'POST',
+        body: form,
+      });
+
+      if (!res.ok) {
+        throw new Error('Cloudinary upload failed');
       }
+
+      const data = await res.json();
+      const secureUrl: string = data.secure_url;
+
+      // 2) Save only the URL in your database (userinfo table)
+      const result = await updateProfileImageUrl(secureUrl);
+      if (!result.success) {
+        console.error('Failed to save image URL:', result.error);
+        alert('Failed to save image URL. Please try again.');
+        return;
+      }
+
+      // Update current state to the Cloudinary URL (not the local preview)
+      setImageUrl(secureUrl);
+    } catch (error) {
+      console.error('Image upload error:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setSaving(null);
     }
   };
   const triggerFileSelect = () => fileInputRef.current?.click();
@@ -126,12 +144,18 @@ export const ProfileSection = () => {
     console.log('ProfileSection - Website from userInfo:', userInfo?.website);
     setProfile(profileData);
     
-    // Set image URL from userInfo or user avatar
-    if (userInfo?.profileImagePath) {
-      const profileImageUrl = getProfileImageUrl();
-      setImageUrl(profileImageUrl || "");
+    // Set image URL from userInfo (Cloudinary URL or stored path) or user avatar
+    if (userInfo?.profileImageUrl) {
+      // Prioritize Cloudinary URL if available
+      setImageUrl(userInfo.profileImageUrl);
     } else {
-      setImageUrl(user.avatarUrl || "");
+      // Fallback to getProfileImageUrl for backward compatibility
+      const resolvedUrl = getProfileImageUrl();
+      if (resolvedUrl) {
+        setImageUrl(resolvedUrl);
+      } else {
+        setImageUrl(user.avatarUrl || "");
+      }
     }
   }, [user, userInfo, getProfileImageUrl]);
 
