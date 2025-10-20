@@ -9,11 +9,12 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useUserInfo } from "@/hooks/useUserInfo";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/api";
+import { CLOUDINARY_CONFIG } from "../../../../../config/cloudinary";
 
 export const ProfileSection = () => {
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const { user, refreshUser } = useCurrentUser();
-  const { userInfo, updateProfileFields, updateUserInfo, getProfileImageUrl } = useUserInfo();
+  const { userInfo, updateProfileFields, updateUserInfo, getProfileImageUrl, updateProfileImageUrl } = useUserInfo();
   const [profile, setProfile] = useState({
     name: "",
     email: "",
@@ -119,14 +120,21 @@ export const ProfileSection = () => {
       reader.onloadend = () => setImageUrl(reader.result as string);
       reader.readAsDataURL(file);
 
-      // Upload to server using userInfo API
+      // Upload to Cloudinary, then save only the URL to DB
       try {
         setSaving("profileImage");
-        const formData = new FormData();
-        formData.append("profileImage", file);
+        const form = new FormData();
+        form.append('file', file);
+        form.append('upload_preset', CLOUDINARY_CONFIG.uploadPreset);
 
-        const result = await updateUserInfo(formData);
+        const uploadRes = await fetch(CLOUDINARY_CONFIG.uploadUrl, { method: 'POST', body: form });
+        if (!uploadRes.ok) throw new Error('Cloudinary upload failed');
+        const uploadData = await uploadRes.json();
+        const secureUrl: string = uploadData.secure_url;
+
+        const result = await updateProfileImageUrl(secureUrl);
         if (result.success) {
+          setImageUrl(secureUrl);
           toast({
             title: "Success",
             description: "Profile picture updated successfully!",
@@ -213,12 +221,12 @@ export const ProfileSection = () => {
       website: userInfo?.website || user.website || "",
     });
 
-    // Set image URL from userInfo or user avatar
-    if (userInfo?.profileImagePath) {
-      const profileImageUrl = getProfileImageUrl();
-      setImageUrl(profileImageUrl || "");
+    // Set image URL from userInfo (prioritize Cloudinary URL), fallback to existing path or user avatar
+    if (userInfo?.profileImageUrl) {
+      setImageUrl(userInfo.profileImageUrl);
     } else {
-      setImageUrl(user.avatarUrl || "");
+      const resolved = getProfileImageUrl();
+      setImageUrl(resolved || user.avatarUrl || "");
     }
   }, [user, userInfo]);
 
