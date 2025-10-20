@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./admin/nav/AdminSidebar";
 import { DashboardHeader } from "./admin/nav/DashboardHeader";
@@ -20,35 +20,55 @@ const AdminDashboard = () => {
   // Enable real-time notifications
   useRealtimeNotifications();
 
-  const renderContent = () => {
-    switch (activePage) {
-      case "overview":
-        return <AnalyticsTab />;
-      case "map":
-        return <MapTab />;
-      case "staff":
-        return <StaffTab />;
-      case "performance":
-        return <PerformanceTab />;
-      case "schedule":
-        return <ScheduleCollectionTabs />;
-      case "activity":
-        return <ActivityTab />;
-      case "history":
-        return <HistoryLogsTab />;
-      case "bin-history":
-        return <BinHistory />;
-      case "settings":
-        return <SettingsTab />;
-      default:
-        return <AnalyticsTab />;
-    }
-  };
+  // Create all tab components once and keep them mounted
+  const tabComponents = useMemo(() => ({
+    overview: <AnalyticsTab />,
+    map: <MapTab />,
+    staff: <StaffTab />,
+    performance: <PerformanceTab />,
+    schedule: <ScheduleCollectionTabs />,
+    activity: <ActivityTab />,
+    history: <HistoryLogsTab />,
+    "bin-history": <BinHistory />,
+    settings: <SettingsTab />,
+  }), []);
+
+  const renderContent = useCallback(() => {
+    // Render all tabs but only show the active one
+    return (
+      <div className="relative">
+        {Object.entries(tabComponents).map(([tabName, component]) => (
+          <div
+            key={tabName}
+            className={`${tabName === activePage ? 'block' : 'hidden'}`}
+            style={{ 
+              display: tabName === activePage ? 'block' : 'none',
+              position: tabName === activePage ? 'relative' : 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: tabName === activePage ? 1 : -1
+            }}
+          >
+            {component}
+          </div>
+        ))}
+      </div>
+    );
+  }, [activePage, tabComponents]);
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActivePage(tab);
+    // Dispatch custom event for components to listen to (if needed)
+    window.dispatchEvent(new CustomEvent('tabChanged', { 
+      detail: { activeTab: tab, scope: 'admin', timestamp: Date.now() }
+    }));
+  }, []);
 
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background dark:bg-gray-900 text-gray-900 dark:text-white">
-        <AdminSidebar currentTab={activePage} onTabChange={setActivePage} />
+        <AdminSidebar currentTab={activePage} onTabChange={handleTabChange} />
         <div className="flex-1 flex flex-col">
           <DashboardHeader />
           <main className="flex-1 p-6 overflow-auto">{renderContent()}</main>

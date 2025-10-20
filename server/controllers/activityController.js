@@ -21,12 +21,38 @@ const notificationModel = require('../models/notificationModel');
 const { admin } = require("../models/firebase");
 const realtimeDb = admin.database();
 
+// Circuit breaker for Realtime Database
+let rtdbFailureCount = 0;
+let rtdbLastFailure = 0;
+const RTDB_FAILURE_THRESHOLD = 3;
+const RTDB_RECOVERY_TIME = 30000; // 30 seconds
+
+const isRtdbHealthy = () => {
+  const now = Date.now();
+  if (rtdbFailureCount >= RTDB_FAILURE_THRESHOLD) {
+    if (now - rtdbLastFailure < RTDB_RECOVERY_TIME) {
+      return false; // Still in recovery period
+    } else {
+      // Reset failure count after recovery period
+      rtdbFailureCount = 0;
+      console.log('[REALTIME NOTIFICATION] Circuit breaker reset - attempting Realtime Database again');
+    }
+  }
+  return true;
+};
+
 // Helper function to create notifications with fallback to Firestore
 const createRealtimeNotification = async (userId, notificationData) => {
   try {
     // Check if Firebase is properly initialized
     if (!realtimeDb) {
       console.warn('[REALTIME NOTIFICATION] Realtime Database not available, trying Firestore fallback');
+      return await createFirestoreNotification(userId, notificationData);
+    }
+
+    // Check circuit breaker
+    if (!isRtdbHealthy()) {
+      console.warn('[REALTIME NOTIFICATION] Circuit breaker open - skipping Realtime Database, using Firestore fallback');
       return await createFirestoreNotification(userId, notificationData);
     }
 
@@ -37,18 +63,25 @@ const createRealtimeNotification = async (userId, notificationData) => {
       createdAt: new Date().toISOString()
     };
     
-    // Add timeout to prevent hanging (increased to 5 seconds)
+    // Add timeout to prevent hanging (reduced to 2 seconds for faster fallback)
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Realtime Database timeout')), 5000)
+      setTimeout(() => reject(new Error('Realtime Database timeout')), 2000)
     );
     
     const notificationPromise = realtimeDb.ref(`notifications/${userId}`).push(notification);
     
     await Promise.race([notificationPromise, timeoutPromise]);
     console.log(`[REALTIME NOTIFICATION] Created notification for user ${userId}: ${notification.title}`);
+    
+    // Reset circuit breaker on success
+    rtdbFailureCount = 0;
     return true;
   } catch (error) {
     console.error('[REALTIME NOTIFICATION] Error creating notification:', error.message);
+    
+    // Update circuit breaker
+    rtdbFailureCount++;
+    rtdbLastFailure = Date.now();
     
     // Try Firestore fallback
     console.log('[REALTIME NOTIFICATION] Attempting Firestore fallback...');
@@ -71,6 +104,7 @@ const createRealtimeNotification = async (userId, notificationData) => {
       console.warn('[REALTIME NOTIFICATION] Network error - Firebase may be unreachable');
     }
     
+    console.warn('[REALTIME NOTIFICATION] Notification creation failed, but continuing with other operations');
     return false; // Return false instead of throwing
   }
 };
