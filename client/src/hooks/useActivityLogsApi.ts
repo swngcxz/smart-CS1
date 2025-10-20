@@ -25,8 +25,8 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
-  const fetchLogs = useCallback(async () => {
-    console.log('🔄 fetchLogs called at:', new Date().toLocaleTimeString());
+  const fetchLogs = useCallback(async (forceRefresh = false) => {
+    console.log('🔄 fetchLogs called at:', new Date().toLocaleTimeString(), forceRefresh ? '(forced)' : '');
     setLoading(true);
     setError(null);
     
@@ -63,6 +63,38 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
     fetchLogs();
   }, [fetchLogs]);
 
+  // Listen for visibility changes and tab changes to refresh data
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('📱 Tab became visible - refreshing activity logs');
+        fetchLogs(true); // Force refresh when tab becomes visible
+      }
+    };
+
+    const handleFocus = () => {
+      console.log('🎯 Window focused - refreshing activity logs');
+      fetchLogs(true); // Force refresh when window gains focus
+    };
+
+    // Listen for custom tab change events
+    const handleTabChange = (event: CustomEvent) => {
+      const { activeTab } = event.detail || {};
+      console.log('🔄 Tab changed to:', activeTab, '- refreshing activity logs');
+      fetchLogs(true); // Force refresh when tab changes
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('tabChanged', handleTabChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('tabChanged', handleTabChange);
+    };
+  }, [fetchLogs]);
+
   // Optimized refresh mechanism - single interval with smart checking
   useEffect(() => {
     let isActive = true;
@@ -80,7 +112,7 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
       
       console.log('✅ Performing refresh at:', new Date().toLocaleTimeString());
       lastRefreshTime = now;
-      fetchLogs();
+      fetchLogs(false); // Regular refresh
     };
 
     const checkForUpdates = () => {
@@ -96,7 +128,7 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
         
         if (mobileTime > lastTime) {
           console.log('Mobile app triggered refresh - fetching immediately');
-          performRefresh();
+          fetchLogs(true); // Force refresh
           localStorage.setItem('activityLogsLastRefresh', Date.now().toString());
           localStorage.removeItem('activityLogsNeedRefresh');
           return;
@@ -122,7 +154,7 @@ export function useActivityLogsApi(limit = 100, offset = 0, type?: string, user_
   }, [fetchLogs, autoRefreshInterval]);
 
   const refetch = useCallback(() => {
-    fetchLogs();
+    fetchLogs(true); // Force refresh when manually triggered
   }, [fetchLogs]);
 
   return { logs, loading, error, totalCount, refetch };
