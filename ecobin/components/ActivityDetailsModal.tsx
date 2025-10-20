@@ -18,6 +18,7 @@ import { CLOUDINARY_CONFIG } from '@/config/cloudinary';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
 import MapRoute from './MapRoute';
+import VoiceSettingsModal from './VoiceSettingsModal';
 
 interface ActivityLog {
   id: string;
@@ -66,6 +67,7 @@ export default function ActivityDetailsModal({
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showMapRoute, setShowMapRoute] = useState(false);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -570,6 +572,14 @@ export default function ActivityDetailsModal({
                   <Text style={styles.mapActionIcon}>📍</Text>
                   <Text style={styles.mapActionText}>Share Location</Text>
                 </TouchableOpacity>
+                <View style={styles.mapActionDivider} />
+                <TouchableOpacity 
+                  style={styles.mapActionButton}
+                  onPress={() => setShowVoiceSettings(true)}
+                >
+                  <Text style={styles.mapActionIcon}>🔊</Text>
+                  <Text style={styles.mapActionText}>Voice Settings</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -879,6 +889,12 @@ export default function ActivityDetailsModal({
           />
         </Modal>
       )}
+
+      {/* Voice Settings Modal */}
+      <VoiceSettingsModal
+        visible={showVoiceSettings}
+        onClose={() => setShowVoiceSettings(false)}
+      />
     </>
   );
 }

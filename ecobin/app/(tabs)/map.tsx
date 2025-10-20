@@ -7,6 +7,7 @@ import { ProgressBar } from "react-native-paper";
 import * as Location from 'expo-location';
 import { useRealTimeData, getFillColor, getStatusColor } from "@/hooks/useRealTimeData";
 import { LocationUtils, LocationPoint } from "@/utils/locationUtils";
+import { voiceNavigation } from "@/utils/voiceNavigation";
 
 type Bin = {
   id: string;
@@ -50,6 +51,7 @@ export default function MapScreen() {
   const [isLocationTracking, setIsLocationTracking] = useState(false);
   const [arrivalDetected, setArrivalDetected] = useState(false);
   const [proximityThreshold] = useState(50); // 50 meters proximity threshold
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -162,6 +164,15 @@ export default function MapScreen() {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
           };
+          
+          // Store previous distance for comparison
+          const previousDistance = currentUserLocation ? calculateDistance(
+            currentUserLocation.latitude,
+            currentUserLocation.longitude,
+            targetBin.latitude,
+            targetBin.longitude
+          ) : 0;
+          
           setCurrentUserLocation(newLocation);
           
           // Check proximity to target bin
@@ -175,8 +186,17 @@ export default function MapScreen() {
             
             console.log(`Distance to bin: ${distance.toFixed(2)} meters`);
             
+            // Announce distance updates with voice navigation
+            if (previousDistance > 0) {
+              const distanceDiff = Math.abs(previousDistance - distance);
+              if (distanceDiff > 10) { // Only announce if significant distance change
+                voiceNavigation.announceDistanceUpdate(distance, targetBin.location);
+              }
+            }
+            
             if (distance <= proximityThreshold) {
               setArrivalDetected(true);
+              voiceNavigation.announceArrival(targetBin.location);
               handleArrivalAtBin();
             }
           }
@@ -223,6 +243,19 @@ export default function MapScreen() {
     );
   };
 
+  // Initialize voice navigation settings
+  useEffect(() => {
+    const initializeVoiceNavigation = async () => {
+      const settings = voiceNavigation.getSettings();
+      setVoiceEnabled(settings.enabled);
+      
+      // Preload common phrases for better performance
+      await voiceNavigation.preloadCommonPhrases();
+    };
+    
+    initializeVoiceNavigation();
+  }, []);
+
   // Start location tracking when target bin is set
   useEffect(() => {
     if (targetBin && !isLocationTracking) {
@@ -232,6 +265,32 @@ export default function MapScreen() {
       setArrivalDetected(false);
     }
   }, [targetBin]);
+
+  // Voice control functions
+  const toggleVoiceNavigation = async () => {
+    const newVoiceEnabled = !voiceEnabled;
+    setVoiceEnabled(newVoiceEnabled);
+    await voiceNavigation.saveSettings({ enabled: newVoiceEnabled });
+    
+    if (newVoiceEnabled) {
+      await voiceNavigation.speak('Voice navigation enabled');
+    } else {
+      await voiceNavigation.stopSpeaking();
+      await voiceNavigation.speak('Voice navigation disabled');
+    }
+  };
+
+  const repeatLastInstruction = async () => {
+    if (targetBin && currentUserLocation) {
+      const distance = calculateDistance(
+        currentUserLocation.latitude,
+        currentUserLocation.longitude,
+        targetBin.latitude,
+        targetBin.longitude
+      );
+      await voiceNavigation.announceDistanceUpdate(distance, targetBin.location);
+    }
+  };
 
   // Convert real-time data to map markers with GPS fallback logic
   const getRealTimeMarkers = (): Bin[] => {
@@ -328,8 +387,12 @@ export default function MapScreen() {
         // Close modal
         setModalVisible(false);
         setSelectedBin(null);
+
+        // Announce route start with voice navigation
+        await voiceNavigation.announceRouteStart(bin.location, distance);
         
         if (locationResult.isUsingFallback) {
+          await voiceNavigation.announceOfflineMode();
           Alert.alert(
             'Using Approximate Location',
             'Unable to get your exact location. Using approximate location for route calculation.',
@@ -485,6 +548,27 @@ export default function MapScreen() {
                 travelMode === 'walking' && styles.travelModeTextActive
               ]}>
                 🚶 Walking
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Voice Controls */}
+          <View style={styles.voiceControlsContainer}>
+            <TouchableOpacity
+              style={[styles.voiceControlButton, voiceEnabled && styles.voiceControlButtonActive]}
+              onPress={toggleVoiceNavigation}
+            >
+              <Text style={[styles.voiceControlText, voiceEnabled && styles.voiceControlTextActive]}>
+                {voiceEnabled ? '🔊 Voice On' : '🔇 Voice Off'}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.voiceControlButton}
+              onPress={repeatLastInstruction}
+            >
+              <Text style={styles.voiceControlText}>
+                🔁 Repeat
               </Text>
             </TouchableOpacity>
           </View>
@@ -1263,5 +1347,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
+  },
+
+  // Voice Controls
+  voiceControlsContainer: {
+    flexDirection: "row",
+    marginTop: 12,
+    gap: 8,
+  },
+  voiceControlButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    alignItems: "center",
+  },
+  voiceControlButtonActive: {
+    backgroundColor: "#2e7d32",
+    borderColor: "#2e7d32",
+  },
+  voiceControlText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#666",
+  },
+  voiceControlTextActive: {
+    color: "#ffffff",
   },
 });
