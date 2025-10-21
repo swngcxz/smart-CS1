@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiClient from '@/utils/apiConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { firebaseBackupService, GPSBackupData } from '@/utils/firebaseConfig';
 
 export interface BinData {
   weight_kg: number;
@@ -54,6 +55,15 @@ export function useRealTimeData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
+  
+  // Last known GPS locations for backup (from Firebase)
+  const [lastKnownGPS, setLastKnownGPS] = useState<{
+    bin1: GPSBackupData | null;
+    bin2: GPSBackupData | null;
+  }>({
+    bin1: null,
+    bin2: null
+  });
 
   // Helper function to get time ago
   const getTimeAgo = useCallback((timestamp: number): string => {
@@ -84,6 +94,112 @@ export function useRealTimeData() {
     return 'Tomorrow 9:00 AM';
   }, []);
 
+  // Helper function to check if GPS coordinates are valid and in correct region
+  const isGPSValid = useCallback((data: BinData): boolean => {
+    return firebaseBackupService.isGPSValid(data);
+  }, []);
+
+  // Helper function to update last known GPS location
+  const updateLastKnownGPS = useCallback(async (binId: 'bin1' | 'bin2', data: BinData) => {
+    if (isGPSValid(data)) {
+      const backupData = firebaseBackupService.createBackupData(binId, data);
+      
+      // Save to Firebase
+      const success = await firebaseBackupService.saveLastKnownGPS(binId, backupData);
+      
+      if (success) {
+        setLastKnownGPS(prev => ({
+          ...prev,
+          [binId]: backupData
+        }));
+        
+        // Also save to AsyncStorage as local backup
+        await AsyncStorage.setItem(`lastKnownGPS_${binId}`, JSON.stringify(backupData));
+      }
+    }
+  }, [isGPSValid]);
+
+  // Helper function to get backup coordinates for a bin
+  const getBackupCoordinates = useCallback((binId: 'bin1' | 'bin2', data: BinData) => {
+    // First try API backup coordinates
+    if (data.backup_latitude && data.backup_longitude) {
+      return {
+        latitude: data.backup_latitude,
+        longitude: data.backup_longitude,
+        source: 'API Backup'
+      };
+    }
+    
+    // Then try last known GPS location from Firebase
+    const lastKnown = lastKnownGPS[binId];
+    if (lastKnown) {
+      return {
+        latitude: lastKnown.latitude,
+        longitude: lastKnown.longitude,
+        source: 'Firebase Backup'
+      };
+    }
+    
+    // Finally fall back to hardcoded defaults
+    const defaults = {
+      bin1: { latitude: 10.24371, longitude: 123.786917 },
+      bin2: { latitude: 10.25000, longitude: 123.79000 }
+    };
+    
+    return {
+      latitude: defaults[binId].latitude,
+      longitude: defaults[binId].longitude,
+      source: 'Default Location'
+    };
+  }, [lastKnownGPS]);
+
+  // Load last known GPS locations on startup
+  useEffect(() => {
+    const loadLastKnownGPS = async () => {
+      try {
+        // First try to load from Firebase
+        const firebaseBackups = await firebaseBackupService.getAllBackupGPS();
+        
+        if (firebaseBackups.bin1 || firebaseBackups.bin2) {
+          setLastKnownGPS({
+            bin1: firebaseBackups.bin1 || null,
+            bin2: firebaseBackups.bin2 || null
+          });
+        } else {
+          // Fallback to AsyncStorage if Firebase is not available
+          const [bin1GPS, bin2GPS] = await Promise.all([
+            AsyncStorage.getItem('lastKnownGPS_bin1'),
+            AsyncStorage.getItem('lastKnownGPS_bin2')
+          ]);
+          
+          setLastKnownGPS({
+            bin1: bin1GPS ? JSON.parse(bin1GPS) : null,
+            bin2: bin2GPS ? JSON.parse(bin2GPS) : null
+          });
+        }
+      } catch (error) {
+        console.error('Error loading last known GPS locations:', error);
+        
+        // Fallback to AsyncStorage on error
+        try {
+          const [bin1GPS, bin2GPS] = await Promise.all([
+            AsyncStorage.getItem('lastKnownGPS_bin1'),
+            AsyncStorage.getItem('lastKnownGPS_bin2')
+          ]);
+          
+          setLastKnownGPS({
+            bin1: bin1GPS ? JSON.parse(bin1GPS) : null,
+            bin2: bin2GPS ? JSON.parse(bin2GPS) : null
+          });
+        } catch (fallbackError) {
+          console.error('Error loading from AsyncStorage fallback:', fallbackError);
+        }
+      }
+    };
+    
+    loadLastKnownGPS();
+  }, []);
+
   // Fetch initial data
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -111,13 +227,19 @@ export function useRealTimeData() {
         ]);
         
         if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
-          setBinData(bin1Response.value.data);
-          await AsyncStorage.setItem('binData', JSON.stringify(bin1Response.value.data));
+          const data = bin1Response.value.data;
+          setBinData(data);
+          await AsyncStorage.setItem('binData', JSON.stringify(data));
+          // Update last known GPS if current data has valid GPS
+          await updateLastKnownGPS('bin1', data);
         }
         
         if (bin2Response.status === 'fulfilled' && bin2Response.value.data) {
-          setBin2Data(bin2Response.value.data);
-          await AsyncStorage.setItem('bin2Data', JSON.stringify(bin2Response.value.data));
+          const data = bin2Response.value.data;
+          setBin2Data(data);
+          await AsyncStorage.setItem('bin2Data', JSON.stringify(data));
+          // Update last known GPS if current data has valid GPS
+          await updateLastKnownGPS('bin2', data);
         }
         
         setLastUpdate(Date.now());
@@ -131,7 +253,7 @@ export function useRealTimeData() {
     };
 
     fetchInitialData();
-  }, []);
+  }, [updateLastKnownGPS]);
 
   // Set up real-time updates using polling
   useEffect(() => {
@@ -144,13 +266,19 @@ export function useRealTimeData() {
         ]);
         
         if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
-          setBinData(bin1Response.value.data);
-          await AsyncStorage.setItem('binData', JSON.stringify(bin1Response.value.data));
+          const data = bin1Response.value.data;
+          setBinData(data);
+          await AsyncStorage.setItem('binData', JSON.stringify(data));
+          // Update last known GPS if current data has valid GPS
+          await updateLastKnownGPS('bin1', data);
         }
         
         if (bin2Response.status === 'fulfilled' && bin2Response.value.data) {
-          setBin2Data(bin2Response.value.data);
-          await AsyncStorage.setItem('bin2Data', JSON.stringify(bin2Response.value.data));
+          const data = bin2Response.value.data;
+          setBin2Data(data);
+          await AsyncStorage.setItem('bin2Data', JSON.stringify(data));
+          // Update last known GPS if current data has valid GPS
+          await updateLastKnownGPS('bin2', data);
         }
         
         setLastUpdate(Date.now());
@@ -162,7 +290,7 @@ export function useRealTimeData() {
     }, 3000); // Poll every 3 seconds for mobile optimization
 
     return () => clearInterval(interval);
-  }, []);
+  }, [updateLastKnownGPS]);
 
   // Convert Firebase data to waste bin format
   const getWasteBins = useCallback((): WasteBin[] => {
@@ -249,13 +377,19 @@ export function useRealTimeData() {
       ]);
       
       if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
-        setBinData(bin1Response.value.data);
-        await AsyncStorage.setItem('binData', JSON.stringify(bin1Response.value.data));
+        const data = bin1Response.value.data;
+        setBinData(data);
+        await AsyncStorage.setItem('binData', JSON.stringify(data));
+        // Update last known GPS if current data has valid GPS
+        await updateLastKnownGPS('bin1', data);
       }
       
       if (bin2Response.status === 'fulfilled' && bin2Response.value.data) {
-        setBin2Data(bin2Response.value.data);
-        await AsyncStorage.setItem('bin2Data', JSON.stringify(bin2Response.value.data));
+        const data = bin2Response.value.data;
+        setBin2Data(data);
+        await AsyncStorage.setItem('bin2Data', JSON.stringify(data));
+        // Update last known GPS if current data has valid GPS
+        await updateLastKnownGPS('bin2', data);
       }
       
       setLastUpdate(Date.now());
@@ -266,7 +400,7 @@ export function useRealTimeData() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [updateLastKnownGPS]);
 
   return {
     binData,
@@ -282,7 +416,11 @@ export function useRealTimeData() {
     },
     getCurrentGPSLocation: () => {
       return binData?.gps_valid ? binData : null;
-    }
+    },
+    // New helper functions for GPS backup
+    isGPSValidForBin: isGPSValid,
+    getBackupCoordinates,
+    lastKnownGPS
   };
 }
 

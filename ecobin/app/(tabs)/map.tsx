@@ -65,6 +65,9 @@ export default function MapScreen() {
     lastUpdate: realTimeLastUpdate,
     isGPSValid,
     getCurrentGPSLocation,
+    isGPSValidForBin,
+    getBackupCoordinates,
+    lastKnownGPS,
   } = useRealTimeData();
 
   // Update region when real-time data is available (GPS live or backup)
@@ -187,14 +190,15 @@ export default function MapScreen() {
           };
 
           // Store previous distance for comparison
-          const previousDistance = currentUserLocation
-            ? calculateDistance(
-                currentUserLocation.latitude,
-                currentUserLocation.longitude,
-                targetBin.latitude,
-                targetBin.longitude
-              )
-            : 0;
+          const previousDistance =
+            currentUserLocation && targetBin
+              ? calculateDistance(
+                  currentUserLocation.latitude,
+                  currentUserLocation.longitude,
+                  targetBin.latitude,
+                  targetBin.longitude
+                )
+              : 0;
 
           setCurrentUserLocation(newLocation);
 
@@ -209,8 +213,8 @@ export default function MapScreen() {
 
             console.log(`Distance to bin: ${distance.toFixed(2)} meters`);
 
-            // Announce distance updates with voice navigation
-            if (previousDistance > 0) {
+            // Announce distance updates with voice navigation only if voice is enabled and there's an active route
+            if (previousDistance > 0 && voiceEnabled && isNavigating) {
               const distanceDiff = Math.abs(previousDistance - distance);
               if (distanceDiff > 10) {
                 // Only announce if significant distance change
@@ -220,7 +224,10 @@ export default function MapScreen() {
 
             if (distance <= proximityThreshold) {
               setArrivalDetected(true);
-              voiceNavigation.announceArrival(targetBin.location);
+              // Only announce arrival if voice is enabled and there's an active route
+              if (voiceEnabled && isNavigating) {
+                voiceNavigation.announceArrival(targetBin.location);
+              }
               handleArrivalAtBin();
             }
           }
@@ -273,8 +280,10 @@ export default function MapScreen() {
       const settings = voiceNavigation.getSettings();
       setVoiceEnabled(settings.enabled);
 
-      // Preload common phrases for better performance
-      await voiceNavigation.preloadCommonPhrases();
+      // Only preload common phrases if voice is enabled
+      if (settings.enabled) {
+        await voiceNavigation.preloadCommonPhrases();
+      }
     };
 
     initializeVoiceNavigation();
@@ -296,16 +305,20 @@ export default function MapScreen() {
     setVoiceEnabled(newVoiceEnabled);
     await voiceNavigation.saveSettings({ enabled: newVoiceEnabled });
 
-    if (newVoiceEnabled) {
-      await voiceNavigation.speak("Voice navigation enabled");
-    } else {
-      await voiceNavigation.stopSpeaking();
-      await voiceNavigation.speak("Voice navigation disabled");
+    // Only speak if there's an active route
+    if (isNavigating && targetBin) {
+      if (newVoiceEnabled) {
+        await voiceNavigation.speak("Voice navigation enabled");
+      } else {
+        await voiceNavigation.stopSpeaking();
+        await voiceNavigation.speak("Voice navigation disabled");
+      }
     }
   };
 
   const repeatLastInstruction = async () => {
-    if (targetBin && currentUserLocation) {
+    // Only repeat if there's an active route and navigation
+    if (isNavigating && targetBin && currentUserLocation) {
       const distance = calculateDistance(
         currentUserLocation.latitude,
         currentUserLocation.longitude,
@@ -313,6 +326,13 @@ export default function MapScreen() {
         targetBin.longitude
       );
       await voiceNavigation.announceDistanceUpdate(distance, targetBin.location);
+    } else {
+      // If no active route, just show a message
+      Alert.alert(
+        "No Active Route",
+        "There is no active navigation route. Please select a bin and get directions first.",
+        [{ text: "OK" }]
+      );
     }
   };
 
@@ -321,32 +341,28 @@ export default function MapScreen() {
     const markers: Bin[] = [];
 
     // Helper function to process bin data with GPS fallback
-    const processBinData = (data: any, binId: string, defaultLocation: string) => {
+    const processBinData = (data: any, binId: "bin1" | "bin2", defaultLocation: string) => {
       if (!data) return null;
 
       const level = data.bin_level || data.weight_percent || 0;
       const status = level >= 85 ? "critical" : level >= 70 ? "warning" : "normal";
 
-      // Determine coordinates source and validity
-      // Check if GPS coordinates are in the correct region (Cebu area)
-      const isInCorrectRegion =
-        data.latitude >= 10.0 && data.latitude <= 10.5 && data.longitude >= 123.5 && data.longitude <= 124.0;
-
-      const isGPSOnline = data.gps_valid && data.latitude !== 0 && data.longitude !== 0 && isInCorrectRegion;
+      // Check if GPS is currently valid using the new helper function
+      const isGPSOnline = isGPSValidForBin(data);
       const coordinatesSource = isGPSOnline ? "gps_live" : "gps_backup";
 
-      // Use backup coordinates if GPS is offline/invalid or in wrong region
+      // Use backup coordinates if GPS is offline/invalid
       let latitude, longitude, locationSource;
       if (isGPSOnline) {
         latitude = data.latitude;
         longitude = data.longitude;
         locationSource = "GPS Live";
       } else {
-        // Use backup coordinates from real-time data or fallback to default
-        // Check for various possible backup coordinate field names
-        latitude = data.backup_latitude || data.gps_latitude || data.lat || (binId === "bin1" ? 10.24371 : 10.25); // Different default coordinates for each bin
-        longitude = data.backup_longitude || data.gps_longitude || data.lng || (binId === "bin1" ? 123.786917 : 123.79); // Different default coordinates for each bin
-        locationSource = "GPS Backup";
+        // Get backup coordinates using the new system
+        const backupCoords = getBackupCoordinates(binId, data);
+        latitude = backupCoords.latitude;
+        longitude = backupCoords.longitude;
+        locationSource = backupCoords.source;
       }
 
       return {
@@ -471,11 +487,16 @@ export default function MapScreen() {
         setModalVisible(false);
         setSelectedBin(null);
 
-        // Announce route start with voice navigation
-        await voiceNavigation.announceRouteStart(bin.location, routeResult.distance);
+        // Announce route start with voice navigation only if voice is enabled
+        if (voiceEnabled) {
+          await voiceNavigation.announceRouteStart(bin.location, routeResult.distance);
+        }
 
         if (locationResult.isUsingFallback) {
-          await voiceNavigation.announceOfflineMode();
+          // Only announce offline mode if voice is enabled
+          if (voiceEnabled) {
+            await voiceNavigation.announceOfflineMode();
+          }
           Alert.alert(
             "Using Approximate Location",
             "Unable to get your exact location. Using approximate location for route calculation.",
@@ -643,21 +664,23 @@ export default function MapScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Voice Controls */}
-          <View style={styles.voiceControlsContainer}>
-            <TouchableOpacity
-              style={[styles.voiceControlButton, voiceEnabled && styles.voiceControlButtonActive]}
-              onPress={toggleVoiceNavigation}
-            >
-              <Text style={[styles.voiceControlText, voiceEnabled && styles.voiceControlTextActive]}>
-                {voiceEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
-              </Text>
-            </TouchableOpacity>
+          {/* Voice Controls - Only show when navigating */}
+          {isNavigating && (
+            <View style={styles.voiceControlsContainer}>
+              <TouchableOpacity
+                style={[styles.voiceControlButton, voiceEnabled && styles.voiceControlButtonActive]}
+                onPress={toggleVoiceNavigation}
+              >
+                <Text style={[styles.voiceControlText, voiceEnabled && styles.voiceControlTextActive]}>
+                  {voiceEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.voiceControlButton} onPress={repeatLastInstruction}>
-              <Text style={styles.voiceControlText}>🔁 Repeat</Text>
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity style={styles.voiceControlButton} onPress={repeatLastInstruction}>
+                <Text style={styles.voiceControlText}>🔁 Repeat</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
 
