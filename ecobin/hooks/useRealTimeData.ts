@@ -50,6 +50,7 @@ export interface LocationData {
 
 export function useRealTimeData() {
   const [binData, setBinData] = useState<BinData | null>(null);
+  const [bin2Data, setBin2Data] = useState<BinData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
@@ -90,24 +91,37 @@ export function useRealTimeData() {
         setLoading(true);
         
         // Try to get cached data first
-        const cachedData = await AsyncStorage.getItem('binData');
-        if (cachedData) {
-          const parsedData = JSON.parse(cachedData);
+        const cachedBin1Data = await AsyncStorage.getItem('binData');
+        const cachedBin2Data = await AsyncStorage.getItem('bin2Data');
+        
+        if (cachedBin1Data) {
+          const parsedData = JSON.parse(cachedBin1Data);
           setBinData(parsedData);
-          setLastUpdate(parsedData.timestamp);
+        }
+        
+        if (cachedBin2Data) {
+          const parsedData = JSON.parse(cachedBin2Data);
+          setBin2Data(parsedData);
         }
 
-        // Fetch fresh data from API
-        const response = await apiClient.get('/api/bin1');
+        // Fetch fresh data from API for both bins
+        const [bin1Response, bin2Response] = await Promise.allSettled([
+          apiClient.get('/api/bin1'),
+          apiClient.get('/api/bin2')
+        ]);
         
-        if (response.data) {
-          setBinData(response.data);
-          setLastUpdate(Date.now());
-          
-          // Cache the data
-          await AsyncStorage.setItem('binData', JSON.stringify(response.data));
-          setError(null);
+        if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
+          setBinData(bin1Response.value.data);
+          await AsyncStorage.setItem('binData', JSON.stringify(bin1Response.value.data));
         }
+        
+        if (bin2Response.status === 'fulfilled' && bin2Response.value.data) {
+          setBin2Data(bin2Response.value.data);
+          await AsyncStorage.setItem('bin2Data', JSON.stringify(bin2Response.value.data));
+        }
+        
+        setLastUpdate(Date.now());
+        setError(null);
       } catch (err: any) {
         // Silently handle network errors to prevent LogBox display
         setError(err.message || 'Failed to fetch data');
@@ -123,16 +137,24 @@ export function useRealTimeData() {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-        const response = await apiClient.get('/api/bin1');
+        // Fetch data for both bins
+        const [bin1Response, bin2Response] = await Promise.allSettled([
+          apiClient.get('/api/bin1'),
+          apiClient.get('/api/bin2')
+        ]);
         
-        if (response.data) {
-          setBinData(response.data);
-          setLastUpdate(Date.now());
-          
-          // Cache the data
-          await AsyncStorage.setItem('binData', JSON.stringify(response.data));
-          setError(null);
+        if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
+          setBinData(bin1Response.value.data);
+          await AsyncStorage.setItem('binData', JSON.stringify(bin1Response.value.data));
         }
+        
+        if (bin2Response.status === 'fulfilled' && bin2Response.value.data) {
+          setBin2Data(bin2Response.value.data);
+          await AsyncStorage.setItem('bin2Data', JSON.stringify(bin2Response.value.data));
+        }
+        
+        setLastUpdate(Date.now());
+        setError(null);
       } catch (err: any) {
         // Silently handle network errors to prevent LogBox display
         setError(err.message || 'Failed to fetch real-time data');
@@ -146,6 +168,7 @@ export function useRealTimeData() {
   const getWasteBins = useCallback((): WasteBin[] => {
     const bins: WasteBin[] = [];
     
+    // Add bin1 data
     if (binData) {
       const calculatedLevel = (binData.bin_level && binData.bin_level > 0) ? binData.bin_level : (binData.weight_percent || 0);
       
@@ -162,28 +185,45 @@ export function useRealTimeData() {
       });
     }
     
+    // Add bin2 data
+    if (bin2Data) {
+      const calculatedLevel = (bin2Data.bin_level && bin2Data.bin_level > 0) ? bin2Data.bin_level : (bin2Data.weight_percent || 0);
+      
+      bins.push({
+        id: 'bin2',
+        location: bin2Data.name || 'Secondary Location',
+        level: calculatedLevel,
+        status: getStatusFromLevel(calculatedLevel),
+        lastCollected: getTimeAgo(bin2Data.timestamp),
+        capacity: '500L',
+        wasteType: bin2Data.type || 'Mixed',
+        nextCollection: getNextCollectionTime(calculatedLevel),
+        binData: bin2Data
+      });
+    }
+    
     return bins;
-  }, [binData, getStatusFromLevel, getTimeAgo, getNextCollectionTime]);
+  }, [binData, bin2Data, getStatusFromLevel, getTimeAgo, getNextCollectionTime]);
 
   // Get real-time location data for mobile
   const getRealTimeLocationData = useCallback((): LocationData => {
     const bins = getWasteBins();
-    const realTimeBin = bins[0]; // Get the real-time bin
     
-    if (realTimeBin) {
-      // Calculate overall level and status for the location
-      const overallLevel = realTimeBin.level;
+    if (bins.length > 0) {
+      // Calculate overall level and status for all bins
+      const totalLevel = bins.reduce((sum, bin) => sum + bin.level, 0);
+      const overallLevel = totalLevel / bins.length;
       const status = getStatusFromLevel(overallLevel);
-      const nearlyFullCount = overallLevel >= 70 ? 1 : 0;
+      const nearlyFullCount = bins.filter(bin => bin.level >= 70).length;
       
       return {
-        name: realTimeBin.location,
+        name: bins.length > 1 ? 'Multiple Locations' : bins[0].location,
         overallLevel: overallLevel,
         status: status,
-        lastCollected: realTimeBin.lastCollected,
+        lastCollected: bins[0].lastCollected,
         nearlyFullCount: nearlyFullCount,
-        totalBins: 1,
-        bins: [realTimeBin]
+        totalBins: bins.length,
+        bins: bins
       };
     }
     
@@ -194,7 +234,7 @@ export function useRealTimeData() {
       status: 'normal',
       lastCollected: 'Unknown',
       nearlyFullCount: 0,
-      totalBins: 1,
+      totalBins: 0,
       bins: []
     };
   }, [getWasteBins, getStatusFromLevel]);
@@ -203,12 +243,22 @@ export function useRealTimeData() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get('/api/bin1');
-      if (response.data) {
-        setBinData(response.data);
-        setLastUpdate(Date.now());
-        await AsyncStorage.setItem('binData', JSON.stringify(response.data));
+      const [bin1Response, bin2Response] = await Promise.allSettled([
+        apiClient.get('/api/bin1'),
+        apiClient.get('/api/bin2')
+      ]);
+      
+      if (bin1Response.status === 'fulfilled' && bin1Response.value.data) {
+        setBinData(bin1Response.value.data);
+        await AsyncStorage.setItem('binData', JSON.stringify(bin1Response.value.data));
       }
+      
+      if (bin2Response.status === 'fulfilled' && bin2Response.value.data) {
+        setBin2Data(bin2Response.value.data);
+        await AsyncStorage.setItem('bin2Data', JSON.stringify(bin2Response.value.data));
+      }
+      
+      setLastUpdate(Date.now());
       setError(null);
     } catch (err: any) {
       // Silently handle network errors to prevent LogBox display
@@ -220,6 +270,7 @@ export function useRealTimeData() {
 
   return {
     binData,
+    bin2Data,
     wasteBins: getWasteBins(),
     realTimeLocationData: getRealTimeLocationData(),
     loading,

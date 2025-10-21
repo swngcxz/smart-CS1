@@ -4,7 +4,7 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View, StatusBar, Modal, 
 import { useRouter, useLocalSearchParams } from "expo-router";
 import MapView, { Callout, Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { ProgressBar } from "react-native-paper";
-import * as Location from 'expo-location';
+import * as Location from "expo-location";
 import { useRealTimeData, getFillColor, getStatusColor } from "@/hooks/useRealTimeData";
 import { LocationUtils, LocationPoint } from "@/utils/locationUtils";
 import { voiceNavigation } from "@/utils/voiceNavigation";
@@ -47,7 +47,7 @@ export default function MapScreen() {
   const [routeDuration, setRouteDuration] = useState<string | null>(null);
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [targetBin, setTargetBin] = useState<Bin | null>(null);
-  const [travelMode, setTravelMode] = useState<'walking' | 'driving'>('driving');
+  const [travelMode, setTravelMode] = useState<"walking" | "driving">("driving");
   const [currentUserLocation, setCurrentUserLocation] = useState<LocationPoint | null>(null);
   const [isLocationTracking, setIsLocationTracking] = useState(false);
   const [arrivalDetected, setArrivalDetected] = useState(false);
@@ -57,30 +57,52 @@ export default function MapScreen() {
   const params = useLocalSearchParams();
 
   // Real-time data hook
-  const { 
-    binData, 
-    loading: realTimeLoading, 
-    error: realTimeError, 
+  const {
+    binData,
+    bin2Data,
+    loading: realTimeLoading,
+    error: realTimeError,
     lastUpdate: realTimeLastUpdate,
     isGPSValid,
-    getCurrentGPSLocation
+    getCurrentGPSLocation,
   } = useRealTimeData();
 
   // Update region when real-time data is available (GPS live or backup)
   useEffect(() => {
-    if (binData) {
+    if (binData || bin2Data) {
       const realTimeMarkers = getRealTimeMarkers();
       if (realTimeMarkers.length > 0) {
-        const marker = realTimeMarkers[0];
-        setRegion({
-          latitude: marker.latitude,
-          longitude: marker.longitude,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        });
+        // If we have multiple markers, center the map to show all of them
+        if (realTimeMarkers.length > 1) {
+          const latitudes = realTimeMarkers.map((m) => m.latitude);
+          const longitudes = realTimeMarkers.map((m) => m.longitude);
+          const minLat = Math.min(...latitudes);
+          const maxLat = Math.max(...latitudes);
+          const minLng = Math.min(...longitudes);
+          const maxLng = Math.max(...longitudes);
+
+          const midLat = (minLat + maxLat) / 2;
+          const midLng = (minLng + maxLng) / 2;
+
+          setRegion({
+            latitude: midLat,
+            longitude: midLng,
+            latitudeDelta: Math.abs(maxLat - minLat) * 1.2,
+            longitudeDelta: Math.abs(maxLng - minLng) * 1.2,
+          });
+        } else {
+          // Single marker - center on it
+          const marker = realTimeMarkers[0];
+          setRegion({
+            latitude: marker.latitude,
+            longitude: marker.longitude,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          });
+        }
       }
     }
-  }, [binData]);
+  }, [binData, bin2Data]);
 
   // Update last update time
   useEffect(() => {
@@ -91,53 +113,51 @@ export default function MapScreen() {
 
   // Handle navigation from activity logs
   useEffect(() => {
-    if (params.navigateToBin === 'true' && params.binId && params.latitude && params.longitude) {
+    if (params.navigateToBin === "true" && params.binId && params.latitude && params.longitude) {
       const bin: Bin = {
         id: params.binId as string,
         name: `Bin ${params.binId}`,
         latitude: parseFloat(params.latitude as string),
         longitude: parseFloat(params.longitude as string),
         percentage: 0, // Will be updated from real-time data
-        location: params.binLocation as string || 'Unknown Location',
-        lastCollectedBy: 'System',
-        lastCollectedDate: new Date().toISOString().split('T')[0],
+        location: (params.binLocation as string) || "Unknown Location",
+        lastCollectedBy: "System",
+        lastCollectedDate: new Date().toISOString().split("T")[0],
       };
-      
+
       setTargetBin(bin);
       handleGetDirections(bin);
-      
+
       // Clear the params to prevent re-triggering
-      router.replace('/(tabs)/map');
+      router.replace("/(tabs)/map");
     }
   }, [params]);
 
   // Clear route when activity status changes to completed
   useEffect(() => {
-    if (params.activityStatus === 'done' && params.binId) {
+    if (params.activityStatus === "done" && params.binId) {
       // Clear the current route if the activity is completed
       setTargetBin(null);
       setRouteCoordinates([]);
       setRouteDistance(null);
       setRouteDuration(null);
       setIsNavigating(false);
-      
+
       // Clear the params
-      router.replace('/(tabs)/map');
+      router.replace("/(tabs)/map");
     }
   }, [params.activityStatus, params.binId]);
 
   // Function to calculate distance between two points
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371e3; // Earth's radius in meters
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return R * c; // Distance in meters
   };
@@ -146,13 +166,13 @@ export default function MapScreen() {
   const startLocationTracking = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Location permission is required for arrival detection.');
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Location permission is required for arrival detection.");
         return;
       }
 
       setIsLocationTracking(true);
-      
+
       // Start watching position
       const locationSubscription = await Location.watchPositionAsync(
         {
@@ -165,17 +185,19 @@ export default function MapScreen() {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
           };
-          
+
           // Store previous distance for comparison
-          const previousDistance = currentUserLocation ? calculateDistance(
-            currentUserLocation.latitude,
-            currentUserLocation.longitude,
-            targetBin.latitude,
-            targetBin.longitude
-          ) : 0;
-          
+          const previousDistance = currentUserLocation
+            ? calculateDistance(
+                currentUserLocation.latitude,
+                currentUserLocation.longitude,
+                targetBin.latitude,
+                targetBin.longitude
+              )
+            : 0;
+
           setCurrentUserLocation(newLocation);
-          
+
           // Check proximity to target bin
           if (targetBin && !arrivalDetected) {
             const distance = calculateDistance(
@@ -184,17 +206,18 @@ export default function MapScreen() {
               targetBin.latitude,
               targetBin.longitude
             );
-            
+
             console.log(`Distance to bin: ${distance.toFixed(2)} meters`);
-            
+
             // Announce distance updates with voice navigation
             if (previousDistance > 0) {
               const distanceDiff = Math.abs(previousDistance - distance);
-              if (distanceDiff > 10) { // Only announce if significant distance change
+              if (distanceDiff > 10) {
+                // Only announce if significant distance change
                 voiceNavigation.announceDistanceUpdate(distance, targetBin.location);
               }
             }
-            
+
             if (distance <= proximityThreshold) {
               setArrivalDetected(true);
               voiceNavigation.announceArrival(targetBin.location);
@@ -206,7 +229,7 @@ export default function MapScreen() {
 
       return locationSubscription;
     } catch (error) {
-      console.error('Error starting location tracking:', error);
+      console.error("Error starting location tracking:", error);
       setIsLocationTracking(false);
     }
   };
@@ -216,30 +239,30 @@ export default function MapScreen() {
     if (!targetBin) return;
 
     Alert.alert(
-      'Arrived at Destination! 🎉',
+      "Arrived at Destination! 🎉",
       `You have arrived at ${targetBin.location} (Bin ${targetBin.id}). Would you like to open the activity details?`,
       [
         {
-          text: 'Not Now',
-          style: 'cancel',
+          text: "Not Now",
+          style: "cancel",
           onPress: () => {
             setArrivalDetected(false);
-          }
+          },
         },
         {
-          text: 'Open Activity',
+          text: "Open Activity",
           onPress: () => {
             // Navigate back to activity logs with the specific activity
             router.push({
-              pathname: '/(tabs)/activitylogs',
+              pathname: "/(tabs)/activitylogs",
               params: {
                 openActivityId: targetBin.id,
-                binLocation: targetBin.location
-              }
+                binLocation: targetBin.location,
+              },
             });
             setArrivalDetected(false);
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -249,11 +272,11 @@ export default function MapScreen() {
     const initializeVoiceNavigation = async () => {
       const settings = voiceNavigation.getSettings();
       setVoiceEnabled(settings.enabled);
-      
+
       // Preload common phrases for better performance
       await voiceNavigation.preloadCommonPhrases();
     };
-    
+
     initializeVoiceNavigation();
   }, []);
 
@@ -272,12 +295,12 @@ export default function MapScreen() {
     const newVoiceEnabled = !voiceEnabled;
     setVoiceEnabled(newVoiceEnabled);
     await voiceNavigation.saveSettings({ enabled: newVoiceEnabled });
-    
+
     if (newVoiceEnabled) {
-      await voiceNavigation.speak('Voice navigation enabled');
+      await voiceNavigation.speak("Voice navigation enabled");
     } else {
       await voiceNavigation.stopSpeaking();
-      await voiceNavigation.speak('Voice navigation disabled');
+      await voiceNavigation.speak("Voice navigation disabled");
     }
   };
 
@@ -295,49 +318,66 @@ export default function MapScreen() {
 
   // Convert real-time data to map markers with GPS fallback logic
   const getRealTimeMarkers = (): Bin[] => {
-    if (!binData) return [];
-    
-    
-    const level = binData.bin_level || binData.weight_percent || 0;
-    const status = level >= 85 ? 'critical' : level >= 70 ? 'warning' : 'normal';
-    
-    // Determine coordinates source and validity
-    // Check if GPS coordinates are in the correct region (Cebu area)
-    const isInCorrectRegion = binData.latitude >= 10.0 && binData.latitude <= 10.5 && 
-                              binData.longitude >= 123.5 && binData.longitude <= 124.0;
-    
-    const isGPSOnline = binData.gps_valid && binData.latitude !== 0 && binData.longitude !== 0 && isInCorrectRegion;
-    const coordinatesSource = (isGPSOnline ? 'gps_live' : 'gps_backup');
-    
-    
-    // Use backup coordinates if GPS is offline/invalid or in wrong region
-    let latitude, longitude, locationSource;
-    if (isGPSOnline) {
-      latitude = binData.latitude;
-      longitude = binData.longitude;
-      locationSource = 'GPS Live';
-    } else {
-      // Use backup coordinates from real-time data or fallback to default
-      // Check for various possible backup coordinate field names
-      latitude = binData.backup_latitude || binData.gps_latitude || binData.lat || 10.24371; // Default to server backup coordinates
-      longitude = binData.backup_longitude || binData.gps_longitude || binData.lng || 123.786917; // Default to server backup coordinates
-      locationSource = 'GPS Backup';
+    const markers: Bin[] = [];
+
+    // Helper function to process bin data with GPS fallback
+    const processBinData = (data: any, binId: string, defaultLocation: string) => {
+      if (!data) return null;
+
+      const level = data.bin_level || data.weight_percent || 0;
+      const status = level >= 85 ? "critical" : level >= 70 ? "warning" : "normal";
+
+      // Determine coordinates source and validity
+      // Check if GPS coordinates are in the correct region (Cebu area)
+      const isInCorrectRegion =
+        data.latitude >= 10.0 && data.latitude <= 10.5 && data.longitude >= 123.5 && data.longitude <= 124.0;
+
+      const isGPSOnline = data.gps_valid && data.latitude !== 0 && data.longitude !== 0 && isInCorrectRegion;
+      const coordinatesSource = isGPSOnline ? "gps_live" : "gps_backup";
+
+      // Use backup coordinates if GPS is offline/invalid or in wrong region
+      let latitude, longitude, locationSource;
+      if (isGPSOnline) {
+        latitude = data.latitude;
+        longitude = data.longitude;
+        locationSource = "GPS Live";
+      } else {
+        // Use backup coordinates from real-time data or fallback to default
+        // Check for various possible backup coordinate field names
+        latitude = data.backup_latitude || data.gps_latitude || data.lat || (binId === "bin1" ? 10.24371 : 10.25); // Different default coordinates for each bin
+        longitude = data.backup_longitude || data.gps_longitude || data.lng || (binId === "bin1" ? 123.786917 : 123.79); // Different default coordinates for each bin
+        locationSource = "GPS Backup";
+      }
+
+      return {
+        id: data.bin_id || binId,
+        name: data.name || `Smart Bin ${binId === "bin1" ? "1" : "2"}`,
+        latitude: latitude,
+        longitude: longitude,
+        percentage: level,
+        location: data.mainLocation || defaultLocation,
+        lastCollectedBy: "System",
+        lastCollectedDate: new Date(data.timestamp).toISOString().split("T")[0],
+        // Add metadata for display
+        gpsValid: isGPSOnline,
+        coordinatesSource: coordinatesSource,
+        locationSource: locationSource,
+      };
+    };
+
+    // Process bin1 data
+    const bin1Marker = processBinData(binData, "bin1", "Central Plaza");
+    if (bin1Marker) {
+      markers.push(bin1Marker);
     }
-    
-    return [{
-      id: binData.bin_id || 'bin1',
-      name: binData.name || 'Smart Bin',
-      latitude: latitude,
-      longitude: longitude,
-      percentage: level,
-      location: binData.mainLocation || 'Central Plaza',
-      lastCollectedBy: 'System',
-      lastCollectedDate: new Date(binData.timestamp).toISOString().split('T')[0],
-      // Add metadata for display
-      gpsValid: isGPSOnline,
-      coordinatesSource: coordinatesSource,
-      locationSource: locationSource,
-    }];
+
+    // Process bin2 data
+    const bin2Marker = processBinData(bin2Data, "bin2", "Secondary Location");
+    if (bin2Marker) {
+      markers.push(bin2Marker);
+    }
+
+    return markers;
   };
 
   const handleMarkerPress = (bin: Bin) => {
@@ -362,60 +402,63 @@ export default function MapScreen() {
     try {
       setIsCalculatingRoute(true);
       setIsNavigating(true);
-      
+
       // Get user's current location
       const locationResult = await LocationUtils.getCurrentLocation();
-      
+
       if (locationResult.success && locationResult.location) {
         setUserLocation(locationResult.location);
-        
+
         // Get route using Google Maps Directions API
-        console.log('[Map] Getting route from USER LOCATION:', locationResult.location, 'to BIN LOCATION:', { latitude: bin.latitude, longitude: bin.longitude });
-        
+        console.log("[Map] Getting route from USER LOCATION:", locationResult.location, "to BIN LOCATION:", {
+          latitude: bin.latitude,
+          longitude: bin.longitude,
+        });
+
         const routeResult = await routingService.getRoute(
           locationResult.location,
           { latitude: bin.latitude, longitude: bin.longitude },
           travelMode
         );
-        
+
         if (routeResult.success) {
           setRouteDistance(routeResult.distance);
           setRouteDuration(routeResult.duration);
           setRouteCoordinates(routeResult.coordinates);
-          
-          console.log('[Map] Route calculated:', {
+
+          console.log("[Map] Route calculated:", {
             distance: routingService.formatDistance(routeResult.distance),
             duration: routeResult.duration,
-            coordinatesCount: routeResult.coordinates.length
+            coordinatesCount: routeResult.coordinates.length,
           });
         } else {
           // Fallback to straight line if routing fails
-          const distance = LocationUtils.calculateDistance(
-            locationResult.location,
-            { latitude: bin.latitude, longitude: bin.longitude }
-          );
+          const distance = LocationUtils.calculateDistance(locationResult.location, {
+            latitude: bin.latitude,
+            longitude: bin.longitude,
+          });
           setRouteDistance(distance);
           setRouteDuration(LocationUtils.estimateDuration(distance, travelMode));
           setRouteCoordinates([locationResult.location, { latitude: bin.latitude, longitude: bin.longitude }]);
-          
+
           Alert.alert(
-            'Using Straight Line Route',
-            'Unable to calculate road-based route. Using straight line distance.',
-            [{ text: 'OK' }]
+            "Using Straight Line Route",
+            "Unable to calculate road-based route. Using straight line distance.",
+            [{ text: "OK" }]
           );
         }
-        
+
         // Update map region to show the entire route
         if (routeResult.coordinates.length > 0) {
           const coordinates = routeResult.coordinates;
-          const minLat = Math.min(...coordinates.map(c => c.latitude));
-          const maxLat = Math.max(...coordinates.map(c => c.latitude));
-          const minLng = Math.min(...coordinates.map(c => c.longitude));
-          const maxLng = Math.max(...coordinates.map(c => c.longitude));
-          
+          const minLat = Math.min(...coordinates.map((c) => c.latitude));
+          const maxLat = Math.max(...coordinates.map((c) => c.latitude));
+          const minLng = Math.min(...coordinates.map((c) => c.longitude));
+          const maxLng = Math.max(...coordinates.map((c) => c.longitude));
+
           const midLat = (minLat + maxLat) / 2;
           const midLng = (minLng + maxLng) / 2;
-          
+
           setRegion({
             latitude: midLat,
             longitude: midLng,
@@ -423,36 +466,30 @@ export default function MapScreen() {
             longitudeDelta: Math.abs(maxLng - minLng) * 1.2,
           });
         }
-        
+
         // Close modal
         setModalVisible(false);
         setSelectedBin(null);
 
         // Announce route start with voice navigation
         await voiceNavigation.announceRouteStart(bin.location, routeResult.distance);
-        
+
         if (locationResult.isUsingFallback) {
           await voiceNavigation.announceOfflineMode();
           Alert.alert(
-            'Using Approximate Location',
-            'Unable to get your exact location. Using approximate location for route calculation.',
-            [{ text: 'OK' }]
+            "Using Approximate Location",
+            "Unable to get your exact location. Using approximate location for route calculation.",
+            [{ text: "OK" }]
           );
         }
       } else {
-        Alert.alert(
-          'Location Unavailable',
-          'Unable to get your current location. Please enable location services.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert("Location Unavailable", "Unable to get your current location. Please enable location services.", [
+          { text: "OK" },
+        ]);
       }
     } catch (error) {
-      console.error('Error getting directions:', error);
-      Alert.alert(
-        'Error',
-        'Failed to get directions. Please try again.',
-        [{ text: 'OK' }]
-      );
+      console.error("Error getting directions:", error);
+      Alert.alert("Error", "Failed to get directions. Please try again.", [{ text: "OK" }]);
     } finally {
       setIsCalculatingRoute(false);
     }
@@ -469,27 +506,23 @@ export default function MapScreen() {
   };
 
   // Handle travel mode change
-  const handleTravelModeChange = async (mode: 'walking' | 'driving') => {
+  const handleTravelModeChange = async (mode: "walking" | "driving") => {
     setTravelMode(mode);
     // Recalculate route with new mode if currently navigating
     if (isNavigating && targetBin && userLocation) {
       try {
         setIsCalculatingRoute(true);
-        const routeResult = await routingService.getRoute(
-          userLocation,
-          targetBin,
-          mode
-        );
-        
+        const routeResult = await routingService.getRoute(userLocation, targetBin, mode);
+
         if (routeResult.success) {
           setRouteDistance(routeResult.distance);
           setRouteDuration(routeResult.duration);
           setRouteCoordinates(routeResult.coordinates);
-          
-          console.log('[Map] Route recalculated for mode:', mode, {
+
+          console.log("[Map] Route recalculated for mode:", mode, {
             distance: routingService.formatDistance(routeResult.distance),
             duration: routeResult.duration,
-            coordinatesCount: routeResult.coordinates.length
+            coordinatesCount: routeResult.coordinates.length,
           });
         } else {
           // Fallback to straight line calculation
@@ -499,7 +532,7 @@ export default function MapScreen() {
           setRouteCoordinates([userLocation, targetBin]);
         }
       } catch (error) {
-        console.error('Error recalculating route:', error);
+        console.error("Error recalculating route:", error);
         // Fallback to straight line calculation
         const distance = LocationUtils.calculateDistance(userLocation, targetBin);
         setRouteDistance(distance);
@@ -548,22 +581,22 @@ export default function MapScreen() {
   });
 
   // Calculate status counts from real-time data
-  const normalCount = allBins.filter(bin => bin.percentage < 50).length;
-  const warningCount = allBins.filter(bin => bin.percentage >= 50 && bin.percentage <= 75).length;
-  const criticalCount = allBins.filter(bin => bin.percentage > 75).length;
+  const normalCount = allBins.filter((bin) => bin.percentage < 50).length;
+  const warningCount = allBins.filter((bin) => bin.percentage >= 50 && bin.percentage <= 75).length;
+  const criticalCount = allBins.filter((bin) => bin.percentage > 75).length;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+
       {/* Google-style Search Bar */}
       <View style={styles.searchBarContainer}>
         <View style={styles.searchBar}>
-      <TextInput
+          <TextInput
             style={styles.searchInput}
-        placeholder="Search bins or locations..."
-        value={search}
-        onChangeText={setSearch}
+            placeholder="Search bins or locations..."
+            value={search}
+            onChangeText={setSearch}
             placeholderTextColor="#666"
           />
         </View>
@@ -582,43 +615,29 @@ export default function MapScreen() {
             <View style={styles.routeInfoItem}>
               <Text style={styles.routeInfoLabel}>Distance:</Text>
               <Text style={styles.routeInfoValue}>
-                {routeDistance ? LocationUtils.formatDistance(routeDistance) : 'Calculating...'}
+                {routeDistance ? LocationUtils.formatDistance(routeDistance) : "Calculating..."}
               </Text>
             </View>
             <View style={styles.routeInfoItem}>
               <Text style={styles.routeInfoLabel}>Duration:</Text>
-              <Text style={styles.routeInfoValue}>
-                {routeDuration || 'Calculating...'}
-              </Text>
+              <Text style={styles.routeInfoValue}>{routeDuration || "Calculating..."}</Text>
             </View>
           </View>
           {/* Travel Mode Selector */}
           <View style={styles.travelModeContainer}>
             <TouchableOpacity
-              style={[
-                styles.travelModeButton,
-                travelMode === 'driving' && styles.travelModeButtonActive
-              ]}
-              onPress={() => handleTravelModeChange('driving')}
+              style={[styles.travelModeButton, travelMode === "driving" && styles.travelModeButtonActive]}
+              onPress={() => handleTravelModeChange("driving")}
             >
-              <Text style={[
-                styles.travelModeText,
-                travelMode === 'driving' && styles.travelModeTextActive
-              ]}>
+              <Text style={[styles.travelModeText, travelMode === "driving" && styles.travelModeTextActive]}>
                 🚗 Driving
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.travelModeButton,
-                travelMode === 'walking' && styles.travelModeButtonActive
-              ]}
-              onPress={() => handleTravelModeChange('walking')}
+              style={[styles.travelModeButton, travelMode === "walking" && styles.travelModeButtonActive]}
+              onPress={() => handleTravelModeChange("walking")}
             >
-              <Text style={[
-                styles.travelModeText,
-                travelMode === 'walking' && styles.travelModeTextActive
-              ]}>
+              <Text style={[styles.travelModeText, travelMode === "walking" && styles.travelModeTextActive]}>
                 🚶 Walking
               </Text>
             </TouchableOpacity>
@@ -631,17 +650,12 @@ export default function MapScreen() {
               onPress={toggleVoiceNavigation}
             >
               <Text style={[styles.voiceControlText, voiceEnabled && styles.voiceControlTextActive]}>
-                {voiceEnabled ? '🔊 Voice On' : '🔇 Voice Off'}
+                {voiceEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
               </Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.voiceControlButton}
-              onPress={repeatLastInstruction}
-            >
-              <Text style={styles.voiceControlText}>
-                🔁 Repeat
-              </Text>
+
+            <TouchableOpacity style={styles.voiceControlButton} onPress={repeatLastInstruction}>
+              <Text style={styles.voiceControlText}>🔁 Repeat</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -650,9 +664,7 @@ export default function MapScreen() {
       {/* Arrival Notification - Small overlay */}
       {arrivalDetected && (
         <View style={styles.arrivalNotification}>
-          <Text style={styles.arrivalNotificationText}>
-            🎉 Arrived at destination!
-          </Text>
+          <Text style={styles.arrivalNotificationText}>🎉 Arrived at destination!</Text>
         </View>
       )}
 
@@ -660,24 +672,23 @@ export default function MapScreen() {
       {!isNavigating && (
         <View style={styles.categoryContainer}>
           <TouchableOpacity style={styles.categoryButton}>
-            <View style={[styles.statusBullet, { backgroundColor: '#4caf50' }]} />
+            <View style={[styles.statusBullet, { backgroundColor: "#4caf50" }]} />
             <Text style={styles.categoryText}>Normal ({normalCount})</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.categoryButton}>
-            <View style={[styles.statusBullet, { backgroundColor: '#ff9800' }]} />
+            <View style={[styles.statusBullet, { backgroundColor: "#ff9800" }]} />
             <Text style={styles.categoryText}>Warning ({warningCount})</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.categoryButton}>
-            <View style={[styles.statusBullet, { backgroundColor: '#f44336' }]} />
+            <View style={[styles.statusBullet, { backgroundColor: "#f44336" }]} />
             <Text style={styles.categoryText}>Critical ({criticalCount})</Text>
-            </TouchableOpacity>
+          </TouchableOpacity>
         </View>
       )}
-      
 
       {/* Map */}
-      <MapView 
-        style={StyleSheet.absoluteFillObject} 
+      <MapView
+        style={StyleSheet.absoluteFillObject}
         region={region}
         mapType="satellite"
         showsUserLocation={false}
@@ -691,12 +702,7 @@ export default function MapScreen() {
       >
         {/* Route Polyline */}
         {isNavigating && routeCoordinates.length > 0 && (
-          <Polyline
-            coordinates={routeCoordinates}
-            strokeColor="#2e7d32"
-            strokeWidth={4}
-            lineDashPattern={[5, 5]}
-          />
+          <Polyline coordinates={routeCoordinates} strokeColor="#2e7d32" strokeWidth={4} lineDashPattern={[5, 5]} />
         )}
 
         {/* Distance Marker on Route */}
@@ -715,7 +721,8 @@ export default function MapScreen() {
                   currentUserLocation.longitude,
                   targetBin.latitude,
                   targetBin.longitude
-                ).toFixed(0)}m
+                ).toFixed(0)}
+                m
               </Text>
             </View>
           </Marker>
@@ -723,11 +730,7 @@ export default function MapScreen() {
 
         {/* User Location Marker */}
         {isNavigating && userLocation && (
-          <Marker
-            coordinate={userLocation}
-            title="Your Location"
-            description="Current position"
-          >
+          <Marker coordinate={userLocation} title="Your Location" description="Current position">
             <View style={styles.userLocationMarker}>
               <View style={styles.userLocationCircle}>
                 <Text style={styles.userLocationText}>📍</Text>
@@ -738,18 +741,20 @@ export default function MapScreen() {
 
         {/* Bin Markers */}
         {filteredBins.map((bin) => (
-          <Marker 
-            key={bin.id} 
+          <Marker
+            key={bin.id}
             coordinate={{ latitude: bin.latitude, longitude: bin.longitude }}
             onPress={() => handleMarkerPress(bin)}
           >
-            <View style={[
-              styles.locationMarker, 
-              { 
-                backgroundColor: getFillColor(bin.percentage),
-                borderColor: isNavigating ? '#2e7d32' : 'white'
-              }
-            ]}>
+            <View
+              style={[
+                styles.locationMarker,
+                {
+                  backgroundColor: getFillColor(bin.percentage),
+                  borderColor: isNavigating ? "#2e7d32" : "white",
+                },
+              ]}
+            >
               <Text style={styles.markerText}>{bin.percentage}%</Text>
             </View>
           </Marker>
@@ -757,12 +762,7 @@ export default function MapScreen() {
       </MapView>
 
       {/* Location Details Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={closeModal}
-      >
+      <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={closeModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             {selectedBin && (
@@ -771,13 +771,13 @@ export default function MapScreen() {
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>{selectedBin.name}</Text>
                   <View style={styles.modalHeaderButtons}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.directionsButton}
                       onPress={() => handleGetDirections(selectedBin)}
                       disabled={isCalculatingRoute}
                     >
                       <Text style={styles.directionsButtonText}>
-                        {isCalculatingRoute ? 'Calculating...' : '🧭 Get Directions'}
+                        {isCalculatingRoute ? "Calculating..." : "🧭 Get Directions"}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.editButton}>
@@ -794,7 +794,7 @@ export default function MapScreen() {
                   <Text style={styles.fillLevelLabel}>Fill Level</Text>
                   <View style={styles.fillLevelContainer}>
                     <Text style={styles.fillLevelPercentage}>{selectedBin.percentage}%</Text>
-                <ProgressBar
+                    <ProgressBar
                       progress={selectedBin.percentage / 100}
                       style={styles.modalProgressBar}
                       color={getFillColor(selectedBin.percentage)}
@@ -811,9 +811,11 @@ export default function MapScreen() {
                   <View style={styles.statusRow}>
                     <Text style={styles.statusLabel}>GPS:</Text>
                     <View style={styles.gpsStatusContainer}>
-                      <View style={[styles.gpsStatusDot, { backgroundColor: selectedBin.gpsValid ? '#4caf50' : '#f44336' }]} />
-                      <Text style={[styles.gpsStatusText, { color: selectedBin.gpsValid ? '#4caf50' : '#f44336' }]}>
-                        {selectedBin.gpsValid ? 'Valid' : 'Invalid'}
+                      <View
+                        style={[styles.gpsStatusDot, { backgroundColor: selectedBin.gpsValid ? "#4caf50" : "#f44336" }]}
+                      />
+                      <Text style={[styles.gpsStatusText, { color: selectedBin.gpsValid ? "#4caf50" : "#f44336" }]}>
+                        {selectedBin.gpsValid ? "Valid" : "Invalid"}
                       </Text>
                     </View>
                   </View>
@@ -829,15 +831,15 @@ export default function MapScreen() {
                     </View>
                     <View style={styles.timeLogRow}>
                       <Text style={styles.timeLogLabel}>GPS Status:</Text>
-                      <Text style={[styles.timeLogValue, { color: selectedBin.gpsValid ? '#4caf50' : '#f44336' }]}>
-                        {selectedBin.gpsValid ? 'GPS Live' : 'No GPS'}
+                      <Text style={[styles.timeLogValue, { color: selectedBin.gpsValid ? "#4caf50" : "#f44336" }]}>
+                        {selectedBin.gpsValid ? "GPS Live" : "No GPS"}
                       </Text>
                     </View>
                     <View style={styles.timeLogRow}>
                       <Text style={styles.timeLogLabel}>Bin Active:</Text>
                       <Text style={styles.timeLogValue}>2025-10-08 01:00:00</Text>
                     </View>
-                    {realTimeMarkers.some(rtBin => rtBin.id === selectedBin.id) && (
+                    {realTimeMarkers.some((rtBin) => rtBin.id === selectedBin.id) && (
                       <>
                         <View style={styles.timeLogRow}>
                           <Text style={styles.timeLogLabel}>Coordinates Source:</Text>
@@ -853,8 +855,8 @@ export default function MapScreen() {
                 </View>
               </>
             )}
-                </View>
-              </View>
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -864,7 +866,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  
+
   // Google-style Search Bar
   searchBarContainer: {
     position: "absolute",
@@ -932,7 +934,6 @@ const styles = StyleSheet.create({
     color: "#333",
     fontWeight: "500",
   },
-
 
   // Callout Styles
   customCallout: {
@@ -1022,7 +1023,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
-  
+
   // Location Marker Styles
   locationMarker: {
     width: 50,
