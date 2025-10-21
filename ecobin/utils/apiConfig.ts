@@ -9,10 +9,12 @@ const CANDIDATE_BASE_URLS: string[] = __DEV__
   ? [
       'http://192.168.254.114:8000',
       'http://192.168.254.102:8000',
+      'http://192.168.8.43:8000',
       'http://localhost:8000',
     ]
   : [
       'http://192.168.254.102:8000',
+      'http://192.168.8.43:8000',
       // You can add your production domain here as the first item when available
       // 'https://api.your-domain.com'
     ];
