@@ -8,6 +8,7 @@ import * as Location from 'expo-location';
 import { useRealTimeData, getFillColor, getStatusColor } from "@/hooks/useRealTimeData";
 import { LocationUtils, LocationPoint } from "@/utils/locationUtils";
 import { voiceNavigation } from "@/utils/voiceNavigation";
+import { routingService } from "@/utils/routingService";
 
 type Bin = {
   id: string;
@@ -368,35 +369,67 @@ export default function MapScreen() {
       if (locationResult.success && locationResult.location) {
         setUserLocation(locationResult.location);
         
-        // Calculate route
-        const distance = LocationUtils.calculateDistance(
+        // Get route using Google Maps Directions API
+        console.log('[Map] Getting route from USER LOCATION:', locationResult.location, 'to BIN LOCATION:', { latitude: bin.latitude, longitude: bin.longitude });
+        
+        const routeResult = await routingService.getRoute(
           locationResult.location,
-          { latitude: bin.latitude, longitude: bin.longitude }
+          { latitude: bin.latitude, longitude: bin.longitude },
+          travelMode
         );
         
-        setRouteDistance(distance);
-        setRouteDuration(LocationUtils.estimateDuration(distance, travelMode));
+        if (routeResult.success) {
+          setRouteDistance(routeResult.distance);
+          setRouteDuration(routeResult.duration);
+          setRouteCoordinates(routeResult.coordinates);
+          
+          console.log('[Map] Route calculated:', {
+            distance: routingService.formatDistance(routeResult.distance),
+            duration: routeResult.duration,
+            coordinatesCount: routeResult.coordinates.length
+          });
+        } else {
+          // Fallback to straight line if routing fails
+          const distance = LocationUtils.calculateDistance(
+            locationResult.location,
+            { latitude: bin.latitude, longitude: bin.longitude }
+          );
+          setRouteDistance(distance);
+          setRouteDuration(LocationUtils.estimateDuration(distance, travelMode));
+          setRouteCoordinates([locationResult.location, { latitude: bin.latitude, longitude: bin.longitude }]);
+          
+          Alert.alert(
+            'Using Straight Line Route',
+            'Unable to calculate road-based route. Using straight line distance.',
+            [{ text: 'OK' }]
+          );
+        }
         
-        // Create route coordinates (straight line for now)
-        setRouteCoordinates([locationResult.location, { latitude: bin.latitude, longitude: bin.longitude }]);
-        
-        // Update map region to show both locations
-        const midLat = (locationResult.location.latitude + bin.latitude) / 2;
-        const midLng = (locationResult.location.longitude + bin.longitude) / 2;
-        
-        setRegion({
-          latitude: midLat,
-          longitude: midLng,
-          latitudeDelta: Math.abs(locationResult.location.latitude - bin.latitude) * 1.5,
-          longitudeDelta: Math.abs(locationResult.location.longitude - bin.longitude) * 1.5,
-        });
+        // Update map region to show the entire route
+        if (routeResult.coordinates.length > 0) {
+          const coordinates = routeResult.coordinates;
+          const minLat = Math.min(...coordinates.map(c => c.latitude));
+          const maxLat = Math.max(...coordinates.map(c => c.latitude));
+          const minLng = Math.min(...coordinates.map(c => c.longitude));
+          const maxLng = Math.max(...coordinates.map(c => c.longitude));
+          
+          const midLat = (minLat + maxLat) / 2;
+          const midLng = (minLng + maxLng) / 2;
+          
+          setRegion({
+            latitude: midLat,
+            longitude: midLng,
+            latitudeDelta: Math.abs(maxLat - minLat) * 1.2,
+            longitudeDelta: Math.abs(maxLng - minLng) * 1.2,
+          });
+        }
         
         // Close modal
         setModalVisible(false);
         setSelectedBin(null);
 
         // Announce route start with voice navigation
-        await voiceNavigation.announceRouteStart(bin.location, distance);
+        await voiceNavigation.announceRouteStart(bin.location, routeResult.distance);
         
         if (locationResult.isUsingFallback) {
           await voiceNavigation.announceOfflineMode();
@@ -436,13 +469,45 @@ export default function MapScreen() {
   };
 
   // Handle travel mode change
-  const handleTravelModeChange = (mode: 'walking' | 'driving') => {
+  const handleTravelModeChange = async (mode: 'walking' | 'driving') => {
     setTravelMode(mode);
     // Recalculate route with new mode if currently navigating
     if (isNavigating && targetBin && userLocation) {
-      const distance = LocationUtils.calculateDistance(userLocation, targetBin);
-      setRouteDistance(distance);
-      setRouteDuration(LocationUtils.estimateDuration(distance, mode));
+      try {
+        setIsCalculatingRoute(true);
+        const routeResult = await routingService.getRoute(
+          userLocation,
+          targetBin,
+          mode
+        );
+        
+        if (routeResult.success) {
+          setRouteDistance(routeResult.distance);
+          setRouteDuration(routeResult.duration);
+          setRouteCoordinates(routeResult.coordinates);
+          
+          console.log('[Map] Route recalculated for mode:', mode, {
+            distance: routingService.formatDistance(routeResult.distance),
+            duration: routeResult.duration,
+            coordinatesCount: routeResult.coordinates.length
+          });
+        } else {
+          // Fallback to straight line calculation
+          const distance = LocationUtils.calculateDistance(userLocation, targetBin);
+          setRouteDistance(distance);
+          setRouteDuration(LocationUtils.estimateDuration(distance, mode));
+          setRouteCoordinates([userLocation, targetBin]);
+        }
+      } catch (error) {
+        console.error('Error recalculating route:', error);
+        // Fallback to straight line calculation
+        const distance = LocationUtils.calculateDistance(userLocation, targetBin);
+        setRouteDistance(distance);
+        setRouteDuration(LocationUtils.estimateDuration(distance, mode));
+        setRouteCoordinates([userLocation, targetBin]);
+      } finally {
+        setIsCalculatingRoute(false);
+      }
     }
   };
 

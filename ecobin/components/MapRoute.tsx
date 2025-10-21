@@ -12,6 +12,7 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRealTimeData } from '@/hooks/useRealTimeData';
 import { LocationUtils, LocationPoint } from '@/utils/locationUtils';
+import { routingService } from '@/utils/routingService';
 
 interface MapRouteProps {
   destination: {
@@ -51,52 +52,11 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
       setIsUsingBackupLocation(false);
       console.log('[MapRoute] Starting location request...');
 
-      // First, try to use real-time bin data if available and GPS is valid
-      if (binData && isGPSValid() && binData.latitude && binData.longitude) {
-        console.log('[MapRoute] Using real-time bin data:', {
-          latitude: binData.latitude,
-          longitude: binData.longitude,
-          gps_valid: binData.gps_valid,
-          satellites: binData.satellites
-        });
-        
-        const realTimeLocation = {
-          latitude: binData.latitude,
-          longitude: binData.longitude,
-        };
-        
-        setUserLocation(realTimeLocation);
-        await getRoute(realTimeLocation, destination);
-        setLoading(false);
-        return;
-      }
-
-      // If real-time data not available, try backup GPS coordinates
-      if (binData && binData.backup_latitude && binData.backup_longitude) {
-        console.log('[MapRoute] Using backup GPS coordinates:', {
-          latitude: binData.backup_latitude,
-          longitude: binData.backup_longitude,
-          backup_source: binData.backup_source,
-          backup_timestamp: binData.backup_timestamp
-        });
-        
-        const backupLocation = {
-          latitude: binData.backup_latitude,
-          longitude: binData.backup_longitude,
-        };
-        
-        setUserLocation(backupLocation);
-        setIsUsingBackupLocation(true);
-        await getRoute(backupLocation, destination);
-        setLoading(false);
-        return;
-      }
-
-      // Use LocationUtils for robust location handling
+      // Always get the user's actual current location, not the bin's location
       const locationResult = await LocationUtils.getCurrentLocation();
       
       if (locationResult.success && locationResult.location) {
-        console.log('[MapRoute] Got location:', locationResult.location);
+        console.log('[MapRoute] Got user location:', locationResult.location);
         setUserLocation(locationResult.location);
         setIsUsingBackupLocation(locationResult.isUsingFallback || false);
         await getRoute(locationResult.location, destination);
@@ -119,53 +79,30 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
 
   const getRoute = async (start: RoutePoint, end: RoutePoint) => {
     try {
-      console.log('[MapRoute] Calculating route from:', start, 'to:', end);
+      console.log('[MapRoute] Calculating route from USER LOCATION:', start, 'to BIN LOCATION:', end);
       
-      // Try to get route from backend API first
-      try {
-        const response = await fetch('http://localhost:3000/api/routes/calculate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${await AsyncStorage.getItem('authToken')}`,
-          },
-          body: JSON.stringify({
-            startLat: start.latitude,
-            startLng: start.longitude,
-            endLat: end.latitude,
-            endLng: end.longitude,
-            mode: 'driving'
-          })
+      // Get route using Google Maps Directions API
+      const routeResult = await routingService.getRoute(start, end, 'driving');
+      
+      if (routeResult.success) {
+        setDistance(routeResult.distance);
+        setDuration(routeResult.duration);
+        setRouteCoordinates(routeResult.coordinates);
+        
+        console.log('[MapRoute] Route calculated successfully:', {
+          distance: routingService.formatDistance(routeResult.distance),
+          duration: routeResult.duration,
+          coordinatesCount: routeResult.coordinates.length,
+          userLocation: start,
+          binLocation: end
         });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            console.log('[MapRoute] Route calculated from backend:', data.data);
-            setDistance(data.data.distance);
-            setDuration(data.data.duration);
-            setRouteCoordinates(data.data.coordinates);
-            return;
-          }
-        }
-      } catch (apiError) {
-        console.log('[MapRoute] Backend API failed, using local calculation:', apiError);
+      } else {
+        console.error('[MapRoute] Route calculation failed:', routeResult.error);
+        setError(routeResult.error || 'Failed to calculate route');
       }
-      
-      // Fallback to local calculation
-      const distance = LocationUtils.calculateDistance(start, end);
-      setDistance(distance);
-      setDuration(LocationUtils.estimateDuration(distance, 'driving'));
-      setRouteCoordinates([start, end]);
-      
-      console.log(`[MapRoute] Route calculated locally: ${LocationUtils.formatDistance(distance)}, estimated ${LocationUtils.estimateDuration(distance, 'driving')}`);
     } catch (err) {
       console.error('[MapRoute] Error getting route:', err);
-      // Final fallback: create a simple straight line route
-      const distance = LocationUtils.calculateDistance(start, end);
-      setDistance(distance);
-      setDuration(LocationUtils.estimateDuration(distance, 'driving'));
-      setRouteCoordinates([start, end]);
+      setError('Failed to calculate route');
     }
   };
 
