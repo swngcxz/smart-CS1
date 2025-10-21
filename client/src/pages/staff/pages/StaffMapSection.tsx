@@ -8,21 +8,20 @@ import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 import { MapTypeIndicator } from "@/components/MapTypeIndicator";
 import { GPSStatusIndicator } from "@/components/GPSStatusIndicator";
 import { MAP_CONFIG, MAP_OPTIONS, getSafeZoomLevel } from "@/components/MapConfig";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import "leaflet/dist/leaflet.css";
 import "@/styles/map-transitions.css";
-import { Viewer } from "mapillary-js";
-import "mapillary-js/dist/mapillary.css";
 import { useRealTimeData } from "@/hooks/useRealTimeData";
-import { MapPin, Wifi, WifiOff, ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { MapPin, Wifi, WifiOff, ChevronDown, ChevronUp, Plus, Search, Filter } from "lucide-react";
 import { getActiveTimeAgo } from "@/utils/timeUtils";
 import { getDistanceFromMap } from "@/utils/distanceUtils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { AddBinModal } from "@/components/modals/AddBinModal";
 
-// Add custom styles for user location marker
+// Optimized styles - only inject once
 const userLocationStyles = `
   .user-location-marker {
     background: transparent !important;
@@ -37,24 +36,78 @@ const userLocationStyles = `
       opacity: 0;
     }
   }
+  .map-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background: #f8fafc;
+  }
+  .map-loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #10b981;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .leaflet-container {
+    border-radius: 0 0 12px 12px;
+  }
+  .leaflet-control-zoom {
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+  }
+  .leaflet-control-zoom a {
+    background: white !important;
+    border: none !important;
+    color: #374151 !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+  }
+  .leaflet-control-zoom a:hover {
+    background: #f3f4f6 !important;
+    color: #10b981 !important;
+  }
+  .leaflet-tile-container {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  .leaflet-tile {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  .leaflet-container {
+    background: #f8f9fa !important;
+  }
+  .leaflet-tile-pane {
+    opacity: 1 !important;
+  }
 `;
 
-// Inject styles
-if (typeof document !== "undefined") {
+// Inject styles only once
+if (typeof document !== "undefined" && !document.getElementById("map-styles")) {
   const styleSheet = document.createElement("style");
+  styleSheet.id = "map-styles";
   styleSheet.type = "text/css";
   styleSheet.innerText = userLocationStyles;
   document.head.appendChild(styleSheet);
 }
 
-// Fix default marker icons
+// Optimized marker icon configuration - only set once
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Create custom icon for user location
+// User location icon creation function
 const createUserLocationIcon = () => {
   return L.divIcon({
     className: "user-location-marker",
@@ -95,35 +148,29 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
   const [isLocationDropdownOpen, setIsLocationDropdownOpen] = useState<boolean>(false);
   const [selectedRoute, setSelectedRoute] = useState<string>("");
   const [isAddBinModalOpen, setIsAddBinModalOpen] = useState(false);
+  
 
-  const handleBinClick = (binId: string) => {
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleBinClick = useCallback((binId: string) => {
     if (onBinClick) onBinClick(binId);
-  };
+  }, [onBinClick]);
 
-  // Handle route selection
-  const handleRouteSelect = (route: string) => {
+  const handleRouteSelect = useCallback((route: string) => {
     setSelectedRoute(route);
     toast.success(`${route.charAt(0).toUpperCase() + route.slice(1).replace("-", " ")} route selected`);
-  };
+  }, []);
 
-  // Toggle location dropdown
-  const toggleLocationDropdown = () => {
+  const toggleLocationDropdown = useCallback(() => {
     setIsLocationDropdownOpen(!isLocationDropdownOpen);
-  };
+  }, [isLocationDropdownOpen]);
 
-  // Handle when a new bin is registered
-  const handleBinRegistered = (binId: string) => {
+  const handleBinRegistered = useCallback((binId: string) => {
     console.log(`Bin ${binId} registered successfully for monitoring!`);
-    // The real-time data hook will automatically pick up the registered bin
-    // You can add additional logic here if needed
     toast.success(`Bin ${binId} is now being monitored!`);
-
-    // Refresh the registered bins data after a short delay
     setTimeout(() => {
-      // Trigger a refresh of the waste levels tab by dispatching a custom event
       window.dispatchEvent(new CustomEvent("binRegistered", { detail: { binId } }));
     }, 1000);
-  };
+  }, []);
   const [userLocation, setUserLocation] = useState<LatLngTuple | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -131,53 +178,53 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
   // New state that indicates the Leaflet map instance is ready
   const [mapLoaded, setMapLoaded] = useState(false);
 
-  // Debug logging for real-time data
+  // Memoized bin locations processing for better performance
+  const updatedBinLocations = useMemo(() => {
+    if (dynamicBinLocations.length === 0) return [];
+    
+    return dynamicBinLocations.map((bin) => ({
+      id: bin.id,
+      name: bin.name,
+      position: [bin.position[0], bin.position[1]] as [number, number],
+      level: bin.level,
+      status: bin.status as "normal" | "warning" | "critical",
+      lastCollection: bin.lastCollection,
+      route: bin.route,
+      gps_valid: bin.gps_valid,
+      satellites: bin.satellites,
+      timestamp: bin.timestamp,
+      weight_kg: bin.weight_kg,
+      distance_cm: bin.distance_cm,
+      last_active: bin.last_active,
+      gps_timestamp: bin.gps_timestamp,
+      backup_timestamp: bin.backup_timestamp,
+      coordinates_source: bin.coordinates_source,
+    }));
+  }, [dynamicBinLocations]);
+
+  // Memoized map center calculation
+  const mapCenter = useMemo(() => {
+    // Priority: bin1 GPS > first bin location > default
+    if (bin1Data?.gps_valid && bin1Data.latitude && bin1Data.longitude) {
+      return [bin1Data.latitude, bin1Data.longitude] as LatLngTuple;
+    }
+    if (updatedBinLocations.length > 0) {
+      return updatedBinLocations[0].position;
+    }
+    return defaultCenter;
+  }, [bin1Data, updatedBinLocations]);
+
+  // Debug logging for real-time data (only in development)
   useEffect(() => {
-    if (bin1Data) {
-      console.log("🗺️ Staff Map - Real-time bin1 data received:", bin1Data);
-      console.log("GPS Valid:", bin1Data.gps_valid, "Coordinates:", bin1Data.latitude, bin1Data.longitude);
+    if (process.env.NODE_ENV === 'development') {
+      if (bin1Data) {
+        console.log("🗺️ Staff Map - Real-time bin1 data received:", bin1Data);
+      }
+      if (updatedBinLocations.length > 0) {
+        console.log("🗺️ Staff Map - Updated bin locations:", updatedBinLocations.length);
+      }
     }
-    if (dynamicBinLocations.length > 0) {
-      console.log("🗺️ Staff Map - Dynamic bin locations:", dynamicBinLocations.map(bin => ({
-        id: bin.id,
-        name: bin.name,
-        level: bin.level,
-        timestamp: bin.timestamp
-      })));
-    }
-  }, [bin1Data, dynamicBinLocations]);
-
-  // Use ONLY real-time bin locations from database - no hardcoded coordinates
-  const updatedBinLocations =
-    dynamicBinLocations.length > 0
-      ? dynamicBinLocations.map((bin) => ({
-          id: bin.id,
-          name: bin.name,
-          position: [bin.position[0], bin.position[1]] as [number, number],
-          level: bin.level,
-          status: bin.status as "normal" | "warning" | "critical",
-          lastCollection: bin.lastCollection,
-          route: bin.route,
-          gps_valid: bin.gps_valid,
-          satellites: bin.satellites,
-          timestamp: bin.timestamp,
-          weight_kg: bin.weight_kg,
-          distance_cm: bin.distance_cm,
-          // Add timestamp fields for getActiveTimeAgo function
-          last_active: bin.last_active,
-          gps_timestamp: bin.gps_timestamp,
-          backup_timestamp: bin.backup_timestamp,
-          coordinates_source: bin.coordinates_source,
-        }))
-      : []; // No fallback to hardcoded coordinates - only show real-time data
-
-  // Determine map center based on live GPS data from real-time database
-  const mapCenter =
-    bin1Data && bin1Data.gps_valid && bin1Data.latitude && bin1Data.longitude
-      ? ([bin1Data.latitude, bin1Data.longitude] as LatLngTuple)
-      : dynamicBinLocations.length > 0
-      ? (dynamicBinLocations[0]?.position as LatLngTuple)
-      : defaultCenter; // Only use default as last resort
+  }, [bin1Data, updatedBinLocations]);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -186,17 +233,51 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
   const baseLayerRef = useRef<any>(null);
   const satLayerRef = useRef<any>(null);
 
-  // --- Satellite / high-zoom configuration ---
-  // Esri World Imagery (works without an API key and is commonly used for satellite basemaps)
-  // If you prefer Mapbox or Google Maps tiles, swap the URL and add an API key as needed.
+  // Enhanced tile layer configuration for consistent detail at all zoom levels
   const OSM_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const ESRI_SAT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+  const CARTODB_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+  const SAT_TRANSITION_ZOOM = 15; // Switch to satellite at zoom 15
 
-  // Zoom threshold where we switch from the regular raster basemap to satellite imagery
-  const SAT_TRANSITION_ZOOM = 18; // you can tweak this (e.g., 16/17/18) depending on preference
+  // Memoized tile layer options for better performance and coverage
+  const tileLayerOptions = useMemo(() => ({
+    base: {
+      url: OSM_URL,
+      maxZoom: 20,
+      minZoom: 1,
+      detectRetina: true,
+      attribution: "&copy; OpenStreetMap contributors",
+      subdomains: ['a', 'b', 'c'],
+      tileSize: 256,
+      zoomOffset: 0
+    },
+    satellite: {
+      url: ESRI_SAT_URL,
+      maxNativeZoom: 20,
+      maxZoom: 22,
+      minZoom: 1,
+      opacity: 0,
+      zIndex: 15,
+      detectRetina: true,
+      attribution: "Tiles &copy; Esri",
+      subdomains: ['server'],
+      tileSize: 256,
+      zoomOffset: 0
+    },
+    fallback: {
+      url: CARTODB_URL,
+      maxZoom: 20,
+      minZoom: 1,
+      detectRetina: true,
+      attribution: "&copy; CARTO",
+      subdomains: ['a', 'b', 'c', 'd'],
+      tileSize: 256,
+      zoomOffset: 0
+    }
+  }), []);
 
-  // Function to get user's current location
-  const findMyLocation = () => {
+  // Optimized location finding function
+  const findMyLocation = useCallback(() => {
     if (!navigator.geolocation) {
       setLocationError("Geolocation is not supported by this browser.");
       return;
@@ -241,260 +322,111 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
         maximumAge: 300000, // 5 minutes
       }
     );
-  };
+  }, []);
 
-  // Toggle satellite/base layer based on current zoom
+  // Enhanced layer switching with better zoom handling
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
     const map = mapRef.current;
 
     const updateLayers = () => {
-      const z = Math.round(map.getZoom() * 100) / 100; // keep small decimal precision
+      const z = Math.round(map.getZoom() * 100) / 100;
       const useSat = z >= SAT_TRANSITION_ZOOM;
 
       try {
+        // Smooth transition between layers
         if (satLayerRef.current && typeof satLayerRef.current.setOpacity === "function") {
           satLayerRef.current.setOpacity(useSat ? 1 : 0);
         }
         if (baseLayerRef.current && typeof baseLayerRef.current.setOpacity === "function") {
           baseLayerRef.current.setOpacity(useSat ? 0 : 1);
         }
+        
+        // Force tile refresh if needed
+        if (useSat && satLayerRef.current) {
+          satLayerRef.current.redraw();
+        } else if (!useSat && baseLayerRef.current) {
+          baseLayerRef.current.redraw();
+        }
       } catch (e) {
-        // Some Leaflet layer refs may be null during hot reloads — ignore silently
         console.warn("Layer toggle warning:", e);
       }
     };
 
+    // Listen to zoom events
     map.on("zoomend", updateLayers);
+    map.on("zoomstart", updateLayers);
+    
+    // Also listen to move events to ensure tiles load
+    map.on("moveend", () => {
+      if (map.getZoom() >= SAT_TRANSITION_ZOOM && satLayerRef.current) {
+        satLayerRef.current.redraw();
+      } else if (map.getZoom() < SAT_TRANSITION_ZOOM && baseLayerRef.current) {
+        baseLayerRef.current.redraw();
+      }
+    });
 
     // Ensure initial state
     updateLayers();
 
     return () => {
       map.off("zoomend", updateLayers);
+      map.off("zoomstart", updateLayers);
+      map.off("moveend", updateLayers);
     };
   }, [mapLoaded]);
 
-  // When the map initializes, we set mapRef and mark mapLoaded true via MapInitializer (see below)
-
+  // Optimized map initialization - removed heavy Mapillary dependency
   useEffect(() => {
-    const pegman = document.getElementById("pegman");
-    const streetViewDiv = document.getElementById("mapillary-viewer");
-    const closeBtn = document.getElementById("close-street");
+    // Set map loaded state when component mounts
+    const timer = setTimeout(() => {
+      setMapLoaded(true);
+    }, 100); // Small delay to ensure map is ready
 
-    if (!pegman || !streetViewDiv || !mapContainerRef.current) return;
-
-    const mapArea = mapContainerRef.current.querySelector(".leaflet-container");
-    if (!mapArea) return;
-
-    mapArea.addEventListener("dragover", (e) => e.preventDefault());
-
-    mapArea.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      pegman.classList.remove("drag-anim");
-
-      const leafletMap = (mapContainerRef as any).current._leaflet_map;
-      if (!leafletMap) return;
-
-      const containerPoint = leafletMap.mouseEventToContainerPoint(e);
-      const latlng = leafletMap.containerPointToLatLng(containerPoint);
-
-      streetViewDiv.classList.remove("hidden");
-      streetViewDiv.innerHTML = "";
-
-      try {
-        const response = await fetch(
-          `https://graph.mapillary.com/images?fields=id&closeto=${latlng.lat},${latlng.lng}&radius=50`,
-          {
-            headers: {
-              Authorization: "OAuth MLY|24007871562201571|74ae29b189e037740ce91b0c91021115",
-            },
-          }
-        );
-        const data = await response.json();
-        console.log("Mapillary API response:", data); // optional: debug
-
-        const imageId = data.data?.[0]?.id;
-
-        if (!imageId) {
-          streetViewDiv.innerHTML = "<p class='text-center pt-4'>No imagery found here.</p>";
-          return;
-        }
-
-        new Viewer({
-          accessToken: "MLY|24007871562201571|74ae29b189e037740ce91b0c91021115",
-          container: "mapillary-viewer",
-          imageId,
-        });
-      } catch (error) {
-        console.error("Failed to load Mapillary image", error);
-        streetViewDiv.innerHTML = "<p class='text-center pt-4 text-red-500'>Failed to load imagery.</p>";
-      }
-    });
-
-    pegman.addEventListener("dragstart", () => {
-      pegman.classList.add("drag-anim");
-    });
-
-    pegman.addEventListener("dragend", () => {
-      pegman.classList.remove("drag-anim");
-    });
-
-    closeBtn?.addEventListener("click", () => {
-      streetViewDiv.classList.add("hidden");
-      streetViewDiv.innerHTML = "";
-    });
+    return () => clearTimeout(timer);
   }, []);
 
   return (
     <>
-      {/* Map Section */}
-      <Card
+      {/* Clean Map Section - Mobile Style */}
+      <div
         ref={mapContainerRef}
-        className="h-[530px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-4"
+        className="h-[600px] bg-white dark:bg-gray-900 rounded-xl shadow-lg relative mb-4 overflow-hidden"
       >
-        <CardHeader className="pb-2 pt-3">
-          <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
-            <div className="flex items-center gap-1">
-              <h3 className="text-base font-semibold">Naga City, Cebu</h3>
+        {/* Minimal Header */}
+        <div className="absolute top-0 left-0 right-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Map View</h3>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Naga City, Cebu</span>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              {/* Location Dropdown */}
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                  onClick={toggleLocationDropdown}
-                >
-                  <span>Locations</span>
-                  {isLocationDropdownOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </Button>
-
-                {/* Dropdown Content */}
-                {isLocationDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
-                    <div className="p-4 space-y-3">
-                      {/* Central Plaza Route */}
-                      <Button
-                        className={`w-full justify-start text-left h-auto p-3 border-1 transition-all duration-200 hover:bg-transparent ${
-                          selectedRoute === "central-plaza"
-                            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-                            : "bg-white text-black border-gray-300 hover:bg-gray-50"
-                        }`}
-                        onClick={() => handleRouteSelect("central-plaza")}
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <div className="flex-1 font-semibold text-sm">Central Plaza</div>
-                          <Badge
-                            className={`text-xs ${
-                              selectedRoute === "central-plaza" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
-                            }`}
-                          >
-                            Active
-                          </Badge>
-                        </div>
-                      </Button>
-
-                      {/* Park Avenue Route */}
-                      <Button
-                        className={`w-full justify-start text-left h-auto p-3 border-1 transition-all duration-200 hover:bg-transparent ${
-                          selectedRoute === "park-avenue"
-                            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-                            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-                        }`}
-                        onClick={() => handleRouteSelect("park-avenue")}
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <div className="flex-1 font-semibold text-sm">Park Avenue</div>
-                          <Badge
-                            className={`text-xs ${
-                              selectedRoute === "park-avenue" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
-                            }`}
-                          >
-                            Active
-                          </Badge>
-                        </div>
-                      </Button>
-
-                      {/* Mall District Route */}
-                      <Button
-                        className={`w-full justify-start text-left h-auto p-3 border-1 transition-all duration-200 hover:bg-transparent ${
-                          selectedRoute === "mall-district"
-                            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-                            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-                        }`}
-                        onClick={() => handleRouteSelect("mall-district")}
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <div className="flex-1 font-semibold text-sm">Mall District</div>
-                          <Badge
-                            className={`text-xs ${
-                              selectedRoute === "mall-district" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
-                            }`}
-                          >
-                            Active
-                          </Badge>
-                        </div>
-                      </Button>
-
-                      {/* Residential Route */}
-                      <Button
-                        className={`w-full justify-start text-left h-auto p-3 border-1 transition-all duration-200 hover:bg-transparent ${
-                          selectedRoute === "residential"
-                            ? "bg-gray-100 border-green-700 text-black hover:bg-gray-100"
-                            : "bg-gray-50 text-black border-gray-300 hover:bg-gray-50"
-                        }`}
-                        onClick={() => handleRouteSelect("residential")}
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <div className="flex-1 font-semibold text-sm">Residential Area</div>
-                          <Badge
-                            className={`text-xs ${
-                              selectedRoute === "residential" ? "bg-green-700 text-white" : "bg-gray-300 text-black"
-                            }`}
-                          >
-                            Active
-                          </Badge>
-                        </div>
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+            <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                className="flex items-center gap-1 text-xs bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
                 onClick={() => setIsAddBinModalOpen(true)}
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-4 h-4" />
                 <span>Add Bin</span>
               </Button>
-
-              {/* GPS Tracking Toggle */}
-              {gpsHistory.length > 1 && (
-                <button
-                  onClick={() => setShowGPSTracking(!showGPSTracking)}
-                  className={`px-2 py-1 text-xs rounded-md transition-colors ${
-                    showGPSTracking ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                  title="Toggle GPS tracking path"
-                >
-                  {showGPSTracking ? "Hide" : "Show"} Path
-                </button>
-              )}
             </div>
-          </CardTitle>
-        </CardHeader>
+          </div>
+        </div>
 
-        <CardContent className="p-0 h-full rounded-b-lg overflow-hidden relative z-0">
+        {/* Map Content */}
+        <div className="h-full w-full relative" style={{ paddingTop: '60px' }}>
+          {loading && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 dark:bg-gray-900/80">
+              <div className="map-loading-spinner"></div>
+            </div>
+          )}
           <MapErrorBoundary>
             <MapContainer
               center={mapCenter}
-              zoom={getSafeZoomLevel(18)}
+              zoom={getSafeZoomLevel(15)}
               minZoom={MAP_CONFIG.zoom.min}
-              maxZoom={22} // allow very close zoom levels
+              maxZoom={22}
               className="h-full w-full z-0"
-              // keep existing map options but override some zoom behavior for smoother/finer zooming
               {...MAP_OPTIONS}
               maxBounds={
                 [
@@ -505,6 +437,9 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
               zoomSnap={0.25}
               zoomDelta={0.5}
               wheelPxPerZoomLevel={60}
+              whenReady={() => setMapLoaded(true)}
+              preferCanvas={false}
+              renderer={undefined}
             >
               <MapInitializer
                 setMapRef={(map) => {
@@ -514,32 +449,58 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
                 }}
               />
 
-              {/* Base raster tile (OpenStreetMap) */}
+              {/* Enhanced base tile layer with better coverage */}
               <TileLayer
-                url={OSM_URL}
+                url={tileLayerOptions.base.url}
                 ref={(layer) => (baseLayerRef.current = layer)}
-                maxZoom={19}
-                detectRetina={true}
-                attribution="&copy; OpenStreetMap contributors"
+                maxZoom={tileLayerOptions.base.maxZoom}
+                minZoom={tileLayerOptions.base.minZoom}
+                detectRetina={tileLayerOptions.base.detectRetina}
+                attribution={tileLayerOptions.base.attribution}
+                subdomains={tileLayerOptions.base.subdomains}
+                tileSize={tileLayerOptions.base.tileSize}
+                zoomOffset={tileLayerOptions.base.zoomOffset}
+                updateWhenZooming={false}
+                keepBuffer={2}
+                maxNativeZoom={18}
               />
 
-              {/* Satellite tile overlay (Esri World Imagery). Initially invisible (opacity 0) and shown when zoom >= SAT_TRANSITION_ZOOM */}
+              {/* Enhanced satellite tile layer for zoom 15+ */}
               <TileLayer
-                url={ESRI_SAT_URL}
+                url={tileLayerOptions.satellite.url}
                 ref={(layer) => (satLayerRef.current = layer)}
-                maxNativeZoom={19}
-                maxZoom={22}
-                opacity={0}
-                zIndex={15}
-                detectRetina={true}
-                attribution="Tiles &copy; Esri"
+                maxNativeZoom={tileLayerOptions.satellite.maxNativeZoom}
+                maxZoom={tileLayerOptions.satellite.maxZoom}
+                minZoom={tileLayerOptions.satellite.minZoom}
+                opacity={tileLayerOptions.satellite.opacity}
+                zIndex={tileLayerOptions.satellite.zIndex}
+                detectRetina={tileLayerOptions.satellite.detectRetina}
+                attribution={tileLayerOptions.satellite.attribution}
+                subdomains={tileLayerOptions.satellite.subdomains}
+                tileSize={tileLayerOptions.satellite.tileSize}
+                zoomOffset={tileLayerOptions.satellite.zoomOffset}
+                updateWhenZooming={false}
+                keepBuffer={2}
               />
 
-              {/* Keep DirectTileLayer (if you rely on it for custom tile switching) */}
-              <DirectTileLayer maxZoom={22} minZoom={1} transitionZoomLevel={18} />
+              {/* Fallback tile layer to prevent white areas */}
+              <TileLayer
+                url={tileLayerOptions.fallback.url}
+                maxZoom={tileLayerOptions.fallback.maxZoom}
+                minZoom={tileLayerOptions.fallback.minZoom}
+                detectRetina={tileLayerOptions.fallback.detectRetina}
+                attribution={tileLayerOptions.fallback.attribution}
+                subdomains={tileLayerOptions.fallback.subdomains}
+                tileSize={tileLayerOptions.fallback.tileSize}
+                zoomOffset={tileLayerOptions.fallback.zoomOffset}
+                opacity={0.3}
+                zIndex={1}
+                updateWhenZooming={false}
+                keepBuffer={2}
+              />
 
               {/* Map Type Indicator */}
-              <MapTypeIndicator transitionZoomLevel={18} />
+              <MapTypeIndicator transitionZoomLevel={15} />
 
               {updatedBinLocations.map((bin) => (
                 <DynamicBinMarker 
@@ -578,12 +539,12 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
             </MapContainer>
           </MapErrorBoundary>
 
-          {/* Auto Find Location Button (Triangular Arrow) */}
+          {/* Modern Location Button */}
           <button
             onClick={findMyLocation}
             disabled={isLocating}
-            className={`absolute bottom-4 right-4 z-[999] bg-white hover:bg-gray-50 disabled:bg-gray-200 p-3 rounded-full shadow-lg border transition-all duration-300 ${
-              isLocating ? "animate-pulse" : "hover:shadow-xl"
+            className={`absolute bottom-6 right-6 z-[999] bg-white hover:bg-gray-50 disabled:bg-gray-200 p-4 rounded-full shadow-xl border border-gray-200 transition-all duration-300 ${
+              isLocating ? "animate-pulse" : "hover:shadow-2xl hover:scale-105"
             }`}
             title={isLocating ? "Finding your location..." : "Find my location"}
           >
@@ -593,49 +554,32 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
               viewBox="0 0 24 24"
             >
               {isLocating ? (
-                // Spinning loading icon
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
               ) : (
-                // Location finder icon (crosshair with dot)
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
               )}
             </svg>
           </button>
 
-          {/* Location Success Toast */}
+          {/* Clean Location Success Toast */}
           {userLocation && !isLocating && (
-            <div className="absolute top-4 right-4 z-[1000] bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg max-w-sm">
+            <div className="absolute top-20 right-4 z-[1000] bg-green-500 text-white px-4 py-3 rounded-xl shadow-lg max-w-sm backdrop-blur-sm">
               <div className="flex items-center justify-between">
-                <span className="text-sm">
-                  Location found: {userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}
-                </span>
-                <button onClick={() => setUserLocation(null)} className="ml-2 text-white hover:text-gray-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium">Location found</span>
+                </div>
+                <button 
+                  onClick={() => setUserLocation(null)} 
+                  className="ml-3 text-white hover:text-gray-200 transition-colors"
+                >
                   ×
                 </button>
               </div>
             </div>
           )}
 
-          {/* Pegman Icon */}
-          {/* <div
-            id="pegman"
-            draggable
-            className="absolute bottom-4 right-16 z-[999] cursor-grab bg-white p-1 rounded-full shadow-lg border transition-transform duration-300"
-            title="Drag to Street View"
-          >
-            <img
-              src="https://brandlogos.net/wp-content/uploads/2013/12/google-street-view-vector-logo.png"
-              alt="Street View"
-              className="w-10 h-10"
-            />
-          </div> */}
-
-          {/* Street View Viewer */}
-          <div id="mapillary-viewer" className="absolute top-0 left-0 w-full h-full z-[998] hidden bg-white"></div>
-
-          <button id="close-street" className="absolute top-2 right-2 text-black px-3 py-1 rounded z-[999]">
-            x
-          </button>
+          {/* Removed heavy Mapillary components for better performance */}
 
           {/* Right Panel - Positioned within the map */}
           {showRightPanel && rightPanel && (
@@ -643,8 +587,8 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
               {rightPanel}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Add Bin Modal */}
       <AddBinModal
