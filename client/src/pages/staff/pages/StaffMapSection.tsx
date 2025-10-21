@@ -397,8 +397,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
         <div className="absolute top-0 left-0 right-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Map View</h3>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Naga City, Cebu</span>
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Naga City, Cebu</h3>
             </div>
             <div className="flex items-center gap-2">
               <Button
