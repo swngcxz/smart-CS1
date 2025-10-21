@@ -52,25 +52,23 @@ export default function ActivityLogsScreen() {
       } else {
         setLoading(true);
       }
-      
-      const response = await apiClient.get('/api/activitylogs');
-      
+
+      const response = await apiClient.get("/api/activitylogs");
+
       if (response.data && response.data.activities) {
         // Show all activity logs for the current user, regardless of status
-        const userLogs = response.data.activities.filter((log: ActivityLog) => 
-          log.assigned_janitor_id === user.id
-        );
-        
+        const userLogs = response.data.activities.filter((log: ActivityLog) => log.assigned_janitor_id === user.id);
+
         // Sort by creation date (newest first)
-        const sortedLogs = userLogs.sort((a: ActivityLog, b: ActivityLog) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        const sortedLogs = userLogs.sort(
+          (a: ActivityLog, b: ActivityLog) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
-        
+
         setActivityLogs(sortedLogs);
         setError(null);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch activity logs');
+      setError(err.message || "Failed to fetch activity logs");
       setActivityLogs([]);
     } finally {
       setLoading(false);
@@ -110,119 +108,115 @@ export default function ActivityLogsScreen() {
         return;
       }
 
-      console.log('[ActivityLogsScreen] Looking for activity:', {
+      console.log("[ActivityLogsScreen] Looking for activity:", {
         binId: params.openActivityId,
-        location: params.binLocation
+        location: params.binLocation,
       });
-      
+
       // Find the activity that matches the bin ID and location
-      const targetActivity = activityLogs.find(log => 
-        log.bin_id === params.openActivityId && 
-        log.bin_location === params.binLocation
+      const targetActivity = activityLogs.find(
+        (log) => log.bin_id === params.openActivityId && log.bin_location === params.binLocation
       );
-      
+
       if (targetActivity) {
-        console.log('[ActivityLogsScreen] Found target activity:', targetActivity.id);
+        console.log("[ActivityLogsScreen] Found target activity:", targetActivity.id);
         setSelectedActivity(targetActivity);
         setModalVisible(true);
-        
+
         // Clear the params to prevent re-triggering
-        router.replace('/(tabs)/activitylogs');
+        router.replace("/(tabs)/activitylogs");
       } else {
-        console.log('[ActivityLogsScreen] No matching activity found');
+        console.log("[ActivityLogsScreen] No matching activity found");
       }
     } catch (error) {
-      console.error('[ActivityLogsScreen] Error handling params:', error);
+      console.error("[ActivityLogsScreen] Error handling params:", error);
     }
   }, [params, activityLogs]);
 
   // Handle navigation to map with route
-  const handleNavigateToMap = (binId: string, binLocation: string, coordinates: { latitude: number; longitude: number }, activityStatus?: string) => {
+  const handleNavigateToMap = (
+    binId: string,
+    binLocation: string,
+    coordinates: { latitude: number; longitude: number },
+    activityStatus?: string
+  ) => {
     // Navigate to map tab with route parameters
     router.push({
       pathname: "/(tabs)/map",
-      params: { 
-        navigateToBin: 'true',
+      params: {
+        navigateToBin: "true",
         binId: binId,
         binLocation: binLocation,
         latitude: coordinates.latitude.toString(),
         longitude: coordinates.longitude.toString(),
-        activityStatus: activityStatus || 'pending'
-      }
+        activityStatus: activityStatus || "pending",
+      },
     });
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'done': return '#4caf50'; // Green for completed
-      case 'in_progress': return '#ffd54f'; // Yellow for in progress
-      case 'pending': return '#2196f3';
-      default: return '#ffd54f'; // Default to yellow
+      case "done":
+        return "#4caf50"; // Green for completed
+      case "in_progress":
+        return "#ffd54f"; // Yellow for in progress
+      case "pending":
+        return "#2196f3";
+      default:
+        return "#ffd54f"; // Default to yellow
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'high': return '#ff9800'; // Orange for high
-      case 'medium': return '#ff9800'; // Orange for medium
-      case 'low': return '#4caf50'; // Green for low
-      default: return '#ff9800'; // Default to orange
+      case "high":
+        return "#f44336"; // Red for high
+      case "medium":
+        return "#ff9800"; // Orange for medium
+      case "low":
+        return "#4caf50"; // Green for low
+      default:
+        return "#ff9800"; // Default to orange
     }
   };
 
   const formatActivityMessage = (log: ActivityLog) => {
-    return `${log.activity_type.replace('_', ' ').toUpperCase()} - ${log.bin_id}`;
+    return `${log.activity_type.replace("_", " ").toUpperCase()} - ${
+      log.bin_id.charAt(0).toUpperCase() + log.bin_id.slice(1).toLowerCase()
+    }`;
   };
 
   const formatActivityTime = (createdAt: string) => {
     const logDate = new Date(createdAt);
-    return logDate.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+    return logDate.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
   const renderActivityLog = ({ item }: { item: ActivityLog }) => (
-    <TouchableOpacity 
-      style={styles.logCard}
-      onPress={() => handleOpenModal(item)}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity style={styles.logCard} onPress={() => handleOpenModal(item)} activeOpacity={0.7}>
       <View style={styles.logHeader}>
         <Text style={styles.logTitle}>
-          {item.status === 'done' ? `Completed task for ${item.bin_id}` : `Working on ${item.bin_id}`}
+          {item.status === "done"
+            ? `Completed task for ${item.bin_id.charAt(0).toUpperCase() + item.bin_id.slice(1).toLowerCase()}`
+            : `Working on ${item.bin_id.charAt(0).toUpperCase() + item.bin_id.slice(1).toLowerCase()}`}
         </Text>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-          <Text style={styles.badgeText}>
-            {item.status === 'done' ? 'COMPLETED' : 'IN PROGRESS'}
-          </Text>
+          <Text style={styles.badgeText}>{item.status === "done" ? "Completed" : "In progress"}</Text>
         </View>
       </View>
-      
-      <Text style={styles.logTime}>{formatActivityTime(item.created_at)}</Text>
-      
+
       <View style={styles.logLocationRow}>
-        <Ionicons name="location" size={16} color="#f44336" />
-        <Text style={styles.logLocation}>{item.bin_id} - {item.bin_location}</Text>
-      </View>
-      
-      {item.task_note && (
-        <View style={styles.noteContainer}>
-          <Text style={styles.logNote}>{item.task_note}</Text>
-        </View>
-      )}
-      
-      <View style={styles.logFooter}>
-        <Text style={styles.fillLevelText}>Fill Level: {item.bin_level}%</Text>
-        <Text style={[styles.priorityText, { color: getPriorityColor(item.priority) }]}>
-          {item.priority.toUpperCase()}
+        <Text style={styles.logLocation}>
+          {item.bin_id.charAt(0).toUpperCase() + item.bin_id.slice(1).toLowerCase()} - {item.bin_location}
         </Text>
+        <Text style={styles.logTime}>{formatActivityTime(item.created_at)}</Text>
       </View>
-      
-      <Text style={styles.tapToViewText}>Tap to view details</Text>
     </TouchableOpacity>
   );
 
@@ -245,7 +239,7 @@ export default function ActivityLogsScreen() {
         <Text style={styles.title}>Activity Logs</Text>
         <Text style={styles.logCount}>{activityLogs.length} logs</Text>
       </View>
-      
+
       {error ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
@@ -259,11 +253,7 @@ export default function ActivityLogsScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderActivityLog}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => fetchActivityLogs(true)}
-              tintColor="#2e7d32"
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchActivityLogs(true)} tintColor="#2e7d32" />
           }
           ListEmptyComponent={() => (
             <View style={styles.emptyContainer}>
@@ -307,7 +297,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   logCount: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: "500",
     color: "#666",
   },
@@ -344,7 +334,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   listContainer: {
+    paddingTop: 10,
     paddingBottom: 20,
+    paddingHorizontal: 4,
   },
   logCard: {
     backgroundColor: "#ffffff",
@@ -353,11 +345,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: "#e9ecef",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   logHeader: {
     flexDirection: "row",
@@ -373,19 +360,20 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   logTime: {
-    fontSize: 14,
+    fontSize: 11,
     color: "#666",
-    marginBottom: 8,
   },
   logLocationRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+    marginTop: 10,
   },
   logLocation: {
     fontSize: 14,
     color: "#666",
-    marginLeft: 4,
+    flex: 1,
   },
   noteContainer: {
     backgroundColor: "#f8f9fa",
@@ -409,11 +397,27 @@ const styles = StyleSheet.create({
   fillLevelText: {
     fontSize: 14,
     color: "#333",
-    fontWeight: "500",
+    fontWeight: "400",
   },
   priorityText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+  },
+  priorityBadgeText: {
+    fontSize: 8,
+    fontWeight: "600",
+    color: "white",
+    textAlign: "center",
   },
   tapToViewText: {
     fontSize: 12,

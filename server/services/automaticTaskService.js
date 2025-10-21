@@ -107,7 +107,7 @@ class AutomaticTaskService {
         bin_level: binLevel,
         assigned_janitor_id: null, // NULL = available for any janitor to accept
         assigned_janitor_name: null, // NULL = available for any janitor to accept
-        task_note: `AUTOMATIC TASK: Bin level ${binLevel}% exceeds threshold (85%). Bin needs immediate attention. Click "Assign To" to assign this task to a janitor.`,
+        task_note: `AUTOMATIC TASK: Bin level ${binLevel}% exceeds threshold (85%).`,
         activity_type: 'task_assignment',
         priority: priority,
         status: 'pending', // PENDING = waiting for janitor to accept
@@ -128,7 +128,7 @@ class AutomaticTaskService {
       
       console.log(`[AUTOMATIC TASK] Task saved with ID: ${docRefId}`);
 
-      console.log(`[AUTOMATIC TASK] ✅ Created task ${docRefId} for ${binId} at ${binLevel}%`);
+      console.log(`[AUTOMATIC TASK] Created task ${docRefId} for ${binId} at ${binLevel}%`);
       
       // Update last creation time
       this.lastTaskCreation.set(binId, Date.now());
@@ -301,7 +301,7 @@ class AutomaticTaskService {
         return;
       }
 
-      console.log(`[AUTOMATIC TASK] 📢 Sending task acceptance notifications to ${janitorUsers.length} janitors`);
+      console.log(`[AUTOMATIC TASK]  Sending task acceptance notifications to ${janitorUsers.length} janitors`);
       
       // Send notifications to ALL janitors using your existing system
       const notificationPromises = janitorUsers.map(janitor => {
@@ -327,8 +327,8 @@ class AutomaticTaskService {
 
       await Promise.all(notificationPromises);
       
-      console.log(`[AUTOMATIC TASK] ✅ Sent task acceptance notifications to ${janitorUsers.length} janitors`);
-      console.log(`🔔 AUTOMATIC TASK ACCEPTANCE NOTIFICATIONS:`);
+      console.log(`[AUTOMATIC TASK] Sent task acceptance notifications to ${janitorUsers.length} janitors`);
+      console.log(`AUTOMATIC TASK ACCEPTANCE NOTIFICATIONS:`);
       console.log(`   Task ID: ${taskId}`);
       console.log(`   Bin: ${binId} at ${binLocation}`);
       console.log(`   Level: ${binLevel}% (Priority: ${priority})`);
@@ -375,8 +375,8 @@ class AutomaticTaskService {
       const locationText = binLocation ? ` at ${binLocation}` : '';
       const automaticFlag = isAutomaticTask ? 'AUTOMATIC ' : '';
       
-      const title = isAutomaticTask ? 'Automatic Task Available' : '🧹 New Task Assigned';
-      const message = `${automaticFlag}Task available for acceptance: Bin ${binId}${locationText}${binLevelText}\n📝 ${taskNote}\n\nPriority: ${priorityEmoji} ${priority}\n\n`;
+      const title = isAutomaticTask ? 'Automatic Task Available' : ' New Task Assigned';
+      const message = `${automaticFlag}Task available for acceptance: Bin ${binId}${locationText}${binLevelText}\n ${taskNote}\n\nPriority: ${priorityEmoji} ${priority}\n\n`;
 
       const notificationPayload = {
         binId: binId,
