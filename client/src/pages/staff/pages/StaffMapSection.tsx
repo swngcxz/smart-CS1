@@ -89,6 +89,19 @@ const userLocationStyles = `
   .leaflet-tile-pane {
     opacity: 1 !important;
   }
+  .leaflet-tile {
+    filter: none !important;
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+  }
+  .leaflet-tile-container {
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+  }
+  .leaflet-zoom-animated {
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+  }
 `;
 
 // Inject styles only once
@@ -233,27 +246,30 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
   const baseLayerRef = useRef<any>(null);
   const satLayerRef = useRef<any>(null);
 
-  // Enhanced tile layer configuration for consistent detail at all zoom levels
+  // Enhanced tile layer configuration for high zoom levels (16-21)
   const OSM_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
   const ESRI_SAT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
   const CARTODB_URL = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+  const STAMEN_TERRAIN_URL = "https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png";
+  const MAPBOX_URL = "https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw";
   const SAT_TRANSITION_ZOOM = 15; // Switch to satellite at zoom 15
 
   // Memoized tile layer options for better performance and coverage
   const tileLayerOptions = useMemo(() => ({
     base: {
       url: OSM_URL,
-      maxZoom: 20,
+      maxZoom: 22,
       minZoom: 1,
       detectRetina: true,
       attribution: "&copy; OpenStreetMap contributors",
       subdomains: ['a', 'b', 'c'],
       tileSize: 256,
-      zoomOffset: 0
+      zoomOffset: 0,
+      maxNativeZoom: 19
     },
     satellite: {
       url: ESRI_SAT_URL,
-      maxNativeZoom: 20,
+      maxNativeZoom: 22,
       maxZoom: 22,
       minZoom: 1,
       opacity: 0,
@@ -266,13 +282,25 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
     },
     fallback: {
       url: CARTODB_URL,
-      maxZoom: 20,
+      maxZoom: 22,
       minZoom: 1,
       detectRetina: true,
       attribution: "&copy; CARTO",
       subdomains: ['a', 'b', 'c', 'd'],
       tileSize: 256,
-      zoomOffset: 0
+      zoomOffset: 0,
+      maxNativeZoom: 20
+    },
+    terrain: {
+      url: STAMEN_TERRAIN_URL,
+      maxZoom: 22,
+      minZoom: 1,
+      detectRetina: true,
+      attribution: "&copy; Stamen Design",
+      subdomains: ['a', 'b', 'c', 'd'],
+      tileSize: 256,
+      zoomOffset: 0,
+      maxNativeZoom: 18
     }
   }), []);
 
@@ -324,7 +352,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
     );
   }, []);
 
-  // Enhanced layer switching with better zoom handling
+  // Enhanced layer switching with better zoom handling for high zoom levels
   useEffect(() => {
     if (!mapLoaded || !mapRef.current) return;
     const map = mapRef.current;
@@ -342,8 +370,16 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
           baseLayerRef.current.setOpacity(useSat ? 0 : 1);
         }
         
-        // Force tile refresh if needed
-        if (useSat && satLayerRef.current) {
+        // Force tile refresh for high zoom levels
+        if (z >= 16) {
+          // For very high zoom levels, force refresh all layers
+          if (satLayerRef.current) {
+            satLayerRef.current.redraw();
+          }
+          if (baseLayerRef.current) {
+            baseLayerRef.current.redraw();
+          }
+        } else if (useSat && satLayerRef.current) {
           satLayerRef.current.redraw();
         } else if (!useSat && baseLayerRef.current) {
           baseLayerRef.current.redraw();
@@ -357,11 +393,18 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
     map.on("zoomend", updateLayers);
     map.on("zoomstart", updateLayers);
     
-    // Also listen to move events to ensure tiles load
+    // Enhanced move event handling for high zoom levels
     map.on("moveend", () => {
-      if (map.getZoom() >= SAT_TRANSITION_ZOOM && satLayerRef.current) {
+      const currentZoom = map.getZoom();
+      if (currentZoom >= 16) {
+        // Force refresh all layers at high zoom levels
+        setTimeout(() => {
+          if (satLayerRef.current) satLayerRef.current.redraw();
+          if (baseLayerRef.current) baseLayerRef.current.redraw();
+        }, 100);
+      } else if (currentZoom >= SAT_TRANSITION_ZOOM && satLayerRef.current) {
         satLayerRef.current.redraw();
-      } else if (map.getZoom() < SAT_TRANSITION_ZOOM && baseLayerRef.current) {
+      } else if (currentZoom < SAT_TRANSITION_ZOOM && baseLayerRef.current) {
         baseLayerRef.current.redraw();
       }
     });
@@ -439,6 +482,11 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
               whenReady={() => setMapLoaded(true)}
               preferCanvas={false}
               renderer={undefined}
+              zoomControl={true}
+              attributionControl={true}
+              zoomAnimation={true}
+              fadeAnimation={true}
+              markerZoomAnimation={true}
             >
               <MapInitializer
                 setMapRef={(map) => {
@@ -448,7 +496,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
                 }}
               />
 
-              {/* Enhanced base tile layer with better coverage */}
+              {/* Primary base tile layer */}
               <TileLayer
                 url={tileLayerOptions.base.url}
                 ref={(layer) => (baseLayerRef.current = layer)}
@@ -460,8 +508,8 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
                 tileSize={tileLayerOptions.base.tileSize}
                 zoomOffset={tileLayerOptions.base.zoomOffset}
                 updateWhenZooming={false}
-                keepBuffer={2}
-                maxNativeZoom={18}
+                keepBuffer={3}
+                maxNativeZoom={tileLayerOptions.base.maxNativeZoom}
               />
 
               {/* Enhanced satellite tile layer for zoom 15+ */}
@@ -479,10 +527,10 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
                 tileSize={tileLayerOptions.satellite.tileSize}
                 zoomOffset={tileLayerOptions.satellite.zoomOffset}
                 updateWhenZooming={false}
-                keepBuffer={2}
+                keepBuffer={3}
               />
 
-              {/* Fallback tile layer to prevent white areas */}
+              {/* High zoom fallback layer (CartoDB) */}
               <TileLayer
                 url={tileLayerOptions.fallback.url}
                 maxZoom={tileLayerOptions.fallback.maxZoom}
@@ -492,10 +540,28 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
                 subdomains={tileLayerOptions.fallback.subdomains}
                 tileSize={tileLayerOptions.fallback.tileSize}
                 zoomOffset={tileLayerOptions.fallback.zoomOffset}
-                opacity={0.3}
+                opacity={0.2}
                 zIndex={1}
                 updateWhenZooming={false}
-                keepBuffer={2}
+                keepBuffer={3}
+                maxNativeZoom={tileLayerOptions.fallback.maxNativeZoom}
+              />
+
+              {/* Terrain fallback for very high zoom levels */}
+              <TileLayer
+                url={tileLayerOptions.terrain.url}
+                maxZoom={tileLayerOptions.terrain.maxZoom}
+                minZoom={tileLayerOptions.terrain.minZoom}
+                detectRetina={tileLayerOptions.terrain.detectRetina}
+                attribution={tileLayerOptions.terrain.attribution}
+                subdomains={tileLayerOptions.terrain.subdomains}
+                tileSize={tileLayerOptions.terrain.tileSize}
+                zoomOffset={tileLayerOptions.terrain.zoomOffset}
+                opacity={0.1}
+                zIndex={0}
+                updateWhenZooming={false}
+                keepBuffer={3}
+                maxNativeZoom={tileLayerOptions.terrain.maxNativeZoom}
               />
 
               {/* Map Type Indicator */}
