@@ -52,7 +52,6 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
 
-
   const handleLogin = async () => {
     // Clear any previous errors
     clearError();
@@ -81,7 +80,7 @@ export default function LoginScreen() {
 
     // Attempt login
     const result = await login({ email: email.trim(), password });
-    
+
     // If login fails, highlight both fields
     if (!result.success) {
       setEmailError(true);
@@ -147,15 +146,10 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.forgotPasswordContainer}>
-            {(validationError || error) && (
-              <Text style={styles.errorText}>{validationError || error}</Text>
-            )}
-          <TouchableOpacity
-              style={styles.forgotPasswordLink}
-            onPress={() => router.push("/forgot-password")}
-          >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
+            {(validationError || error) && <Text style={styles.errorText}>{validationError || error}</Text>}
+            <TouchableOpacity style={styles.forgotPasswordLink} onPress={() => router.push("/forgot-password")}>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -192,7 +186,6 @@ export default function LoginScreen() {
           </Text>
         </Text>
       </ScrollView>
-
     </KeyboardAvoidingView>
   );
 }
@@ -243,7 +236,7 @@ const styles = StyleSheet.create<{
 
   logoText: {
     fontSize: 26,
-    fontFamily: poppins.bold, 
+    fontFamily: poppins.bold,
     color: "#2e7d32",
     letterSpacing: 2,
   },
@@ -276,7 +269,7 @@ const styles = StyleSheet.create<{
     borderRadius: 8,
     fontSize: 13,
     color: "#000",
-    fontFamily: poppins.regular, 
+    fontFamily: poppins.regular,
   },
   inputError: {
     borderColor: "#f44336",
@@ -361,7 +354,7 @@ const styles = StyleSheet.create<{
     fontSize: 13,
     color: "#2e7d32",
     fontFamily: poppins.regular,
-    textDecorationLine: "underline", 
+    textDecorationLine: "underline",
   },
   errorContainer: {
     backgroundColor: "#ffebee",

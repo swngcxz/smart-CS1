@@ -129,10 +129,20 @@ export default function MapScreen() {
       };
 
       setTargetBin(bin);
+      // Automatically start navigation when coming from activity log
       handleGetDirections(bin);
 
       // Clear the params to prevent re-triggering
-      router.replace("/(tabs)/map");
+      // Use setTimeout to avoid navigation conflicts
+      setTimeout(() => {
+        router.setParams({
+          navigateToBin: undefined,
+          binId: undefined,
+          latitude: undefined,
+          longitude: undefined,
+          binLocation: undefined,
+        });
+      }, 100);
     }
   }, [params]);
 
@@ -281,6 +291,7 @@ export default function MapScreen() {
       setVoiceEnabled(settings.enabled);
 
       // Only preload common phrases if voice is enabled
+      // Note: We don't speak anything during initialization
       if (settings.enabled) {
         await voiceNavigation.preloadCommonPhrases();
       }
@@ -301,18 +312,24 @@ export default function MapScreen() {
 
   // Voice control functions
   const toggleVoiceNavigation = async () => {
+    // Only allow voice toggle when there's an active route
+    if (!isNavigating || !targetBin) {
+      Alert.alert("No Active Route", "Please start navigation first by selecting a bin and getting directions.", [
+        { text: "OK" },
+      ]);
+      return;
+    }
+
     const newVoiceEnabled = !voiceEnabled;
     setVoiceEnabled(newVoiceEnabled);
     await voiceNavigation.saveSettings({ enabled: newVoiceEnabled });
 
-    // Only speak if there's an active route
-    if (isNavigating && targetBin) {
-      if (newVoiceEnabled) {
-        await voiceNavigation.speak("Voice navigation enabled");
-      } else {
-        await voiceNavigation.stopSpeaking();
-        await voiceNavigation.speak("Voice navigation disabled");
-      }
+    // Speak confirmation since we know there's an active route
+    if (newVoiceEnabled) {
+      await voiceNavigation.speak("Voice navigation enabled");
+    } else {
+      await voiceNavigation.stopSpeaking();
+      await voiceNavigation.speak("Voice navigation disabled");
     }
   };
 
@@ -665,22 +682,46 @@ export default function MapScreen() {
           </View>
 
           {/* Voice Controls - Only show when navigating */}
-          {isNavigating && (
+          {isNavigating && targetBin && (
             <View style={styles.voiceControlsContainer}>
               <TouchableOpacity
-                style={[styles.voiceControlButton, voiceEnabled && styles.voiceControlButtonActive]}
+                style={[
+                  styles.voiceControlButton,
+                  voiceEnabled ? styles.voiceControlButtonActive : styles.voiceControlButtonDisabled,
+                ]}
                 onPress={toggleVoiceNavigation}
               >
-                <Text style={[styles.voiceControlText, voiceEnabled && styles.voiceControlTextActive]}>
+                <Text
+                  style={[
+                    styles.voiceControlText,
+                    voiceEnabled ? styles.voiceControlTextActive : styles.voiceControlTextDisabled,
+                  ]}
+                >
                   {voiceEnabled ? "🔊 Voice On" : "🔇 Voice Off"}
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.voiceControlButton} onPress={repeatLastInstruction}>
-                <Text style={styles.voiceControlText}>🔁 Repeat</Text>
+              <TouchableOpacity
+                style={[styles.voiceControlButton, !voiceEnabled && styles.voiceControlButtonDisabled]}
+                onPress={repeatLastInstruction}
+                disabled={!voiceEnabled}
+              >
+                <Text style={[styles.voiceControlText, !voiceEnabled && styles.voiceControlTextDisabled]}>
+                  🔁 Repeat
+                </Text>
               </TouchableOpacity>
             </View>
           )}
+        </View>
+      )}
+
+      {/* Voice Enable Button - Show when target bin is set but not navigating */}
+      {targetBin && !isNavigating && (
+        <View style={styles.voiceEnableContainer}>
+          <TouchableOpacity style={styles.voiceEnableButton} onPress={() => handleGetDirections(targetBin)}>
+            <Text style={styles.voiceEnableIcon}>🔊</Text>
+            <Text style={styles.voiceEnableText}>Enable Voice Navigation</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -1465,6 +1506,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#2e7d32",
     borderColor: "#2e7d32",
   },
+  voiceControlButtonDisabled: {
+    backgroundColor: "#f5f5f5",
+    borderColor: "#e0e0e0",
+    opacity: 0.6,
+  },
   voiceControlText: {
     fontSize: 12,
     fontWeight: "600",
@@ -1472,5 +1518,40 @@ const styles = StyleSheet.create({
   },
   voiceControlTextActive: {
     color: "#ffffff",
+  },
+  voiceControlTextDisabled: {
+    color: "#999",
+  },
+
+  // Voice Enable Button
+  voiceEnableContainer: {
+    position: "absolute",
+    top: 100,
+    left: 20,
+    right: 20,
+    alignItems: "center",
+    zIndex: 4,
+  },
+  voiceEnableButton: {
+    backgroundColor: "#2e7d32",
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 25,
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  voiceEnableIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  voiceEnableText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

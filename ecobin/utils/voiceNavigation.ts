@@ -16,7 +16,7 @@ export class VoiceNavigationService {
   private isPlaying: boolean = false;
   private currentSound: Audio.Sound | null = null;
   private settings: VoiceSettings = {
-    enabled: true,
+    enabled: false, // Voice navigation disabled by default
     volume: 0.8,
     rate: 1.0,
     pitch: 1.0,
@@ -40,9 +40,15 @@ export class VoiceNavigationService {
       const savedSettings = await AsyncStorage.getItem('voiceSettings');
       if (savedSettings) {
         this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
+      } else {
+        // If no saved settings, ensure voice is disabled by default
+        this.settings.enabled = false;
+        await this.saveSettings({ enabled: false });
       }
     } catch (error) {
       console.error('Error loading voice settings:', error);
+      // On error, ensure voice is disabled
+      this.settings.enabled = false;
     }
   }
 
@@ -50,9 +56,25 @@ export class VoiceNavigationService {
     this.settings = { ...this.settings, ...settings };
     try {
       await AsyncStorage.setItem('voiceSettings', JSON.stringify(this.settings));
+      
+      // If voice is being disabled, stop any current speech
+      if (settings.enabled === false) {
+        await this.stopSpeaking();
+      }
     } catch (error) {
       console.error('Error saving voice settings:', error);
     }
+  }
+
+  // Method to completely disable voice navigation
+  public async disableVoice(): Promise<void> {
+    await this.stopSpeaking();
+    await this.saveSettings({ enabled: false });
+  }
+
+  // Method to enable voice navigation
+  public async enableVoice(): Promise<void> {
+    await this.saveSettings({ enabled: true });
   }
 
   public getSettings(): VoiceSettings {
@@ -190,6 +212,11 @@ export class VoiceNavigationService {
 
   // Method to preload common phrases for better performance
   public async preloadCommonPhrases(): Promise<void> {
+    // Only preload if voice is enabled
+    if (!this.settings.enabled) {
+      return;
+    }
+
     const commonPhrases = [
       'Navigation started',
       'You have arrived',

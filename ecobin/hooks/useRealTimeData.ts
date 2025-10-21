@@ -242,8 +242,8 @@ export function useRealTimeData() {
           await updateLastKnownGPS('bin2', data);
         }
         
-        setLastUpdate(Date.now());
-        setError(null);
+          setLastUpdate(Date.now());
+          setError(null);
       } catch (err: any) {
         // Silently handle network errors to prevent LogBox display
         setError(err.message || 'Failed to fetch data');
@@ -281,8 +281,8 @@ export function useRealTimeData() {
           await updateLastKnownGPS('bin2', data);
         }
         
-        setLastUpdate(Date.now());
-        setError(null);
+          setLastUpdate(Date.now());
+          setError(null);
       } catch (err: any) {
         // Silently handle network errors to prevent LogBox display
         setError(err.message || 'Failed to fetch real-time data');
@@ -392,7 +392,7 @@ export function useRealTimeData() {
         await updateLastKnownGPS('bin2', data);
       }
       
-      setLastUpdate(Date.now());
+        setLastUpdate(Date.now());
       setError(null);
     } catch (err: any) {
       // Silently handle network errors to prevent LogBox display
