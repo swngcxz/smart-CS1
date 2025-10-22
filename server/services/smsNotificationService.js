@@ -232,34 +232,48 @@ class SMSNotificationService {
     } = taskData;
 
     const status = this.formatBinStatus(binLevel);
-    const coordinatesStr = this.formatCoordinates(coordinates);
-    const timestamp = new Date().toLocaleString();
+    const time = new Date().toLocaleString('en-US', { 
+      month: '2-digit', 
+      day: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
 
-    // Different message based on assignment type
+    // SINGLE-LINE FORMAT - Newlines cause multi-part SMS which fails with Error 325
+    // MUST stay under 160 characters
     const isManualAssignment = assignmentType === 'manual';
-    const assignmentHeader = isManualAssignment ? 
-      `MANUAL TASK ASSIGNMENT` : 
-      `TASK ASSIGNMENT`;
+    const taskType = isManualAssignment ? 'MANUAL' : 'AUTO';
     
-    const assignmentNote = isManualAssignment ? 
-      `\n Staff selected you manually for this task\n` : 
-      ``;
-
-    let message = `${assignmentHeader}\n\n`;
-    message += `Bin: ${binName}\n`;
-    message += `Location: ${binLocation}\n`;
-    message += `Fill Level: ${binLevel}% (${status})\n`;
-    message += `Weight: ${weight} kg\n`;
-    message += `Height: ${height}%\n`;
-    message += `${coordinatesStr}\n\n`;
+    // Build message with separators instead of newlines
+    let message = `${taskType} TASK: ${binName} @ ${binLocation}. `;
+    message += `Level:${binLevel}% (${status}). `;
+    message += `W:${weight}kg H:${height}%. `;
     
+    // Add task notes if they fit
     if (taskNotes && taskNotes.trim()) {
-      message += `Task Notes: ${taskNotes.trim()}\n\n`;
+      const notes = taskNotes.trim().replace(/\n/g, ' '); // Remove any newlines from notes
+      const availableSpace = 150 - message.length - 20; // Reserve for ending
+      
+      if (notes.length <= availableSpace) {
+        message += `Note: ${notes}. `;
+      } else if (availableSpace > 10) {
+        message += `Note: ${notes.substring(0, availableSpace - 4)}... `;
+      }
     }
     
-    message += `Assigned by: ${assignedBy || 'Staff'}\n`;
-    message += `Time: ${timestamp}${assignmentNote}\n\n`;
-    message += `Please proceed to empty the bin immediately.`;
+    message += `By ${assignedBy || 'Staff'} ${time}. Empty now`;
+
+    // Safety check - if over 160, rebuild without notes
+    if (message.length > 160) {
+      message = `${taskType} TASK: ${binName} @ ${binLocation}. Level:${binLevel}% (${status}). W:${weight}kg H:${height}%. By ${assignedBy || 'Staff'} ${time}. Empty now`;
+    }
+
+    // Final safety - truncate if still over 160
+    if (message.length > 160) {
+      message = message.substring(0, 157) + '...';
+    }
 
     return message;
   }

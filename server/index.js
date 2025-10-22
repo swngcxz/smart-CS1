@@ -47,10 +47,12 @@ const gsmService = require('./services/gsmService');
 const realtimeDb = admin.database();
 const dataRef = realtimeDb.ref('monitoring/data');
 const bin1Ref = realtimeDb.ref('monitoring/bin1');
+const bin2Ref = realtimeDb.ref('monitoring/bin2');
 
 // Throttling variables to reduce Firebase reads
 let lastDataProcessTime = 0;
 let lastBin1ProcessTime = 0;
+let lastBin2ProcessTime = 0;
 const PROCESS_THROTTLE_MS = 5000; // Process at most every 5 seconds
 const GPS_PROCESS_THROTTLE_MS = 60000; // GPS processing at most every minute
 
@@ -554,8 +556,134 @@ function setupRealTimeMonitoring() {
       }
     }
   });
+
+  // Monitor monitoring/bin2 (Park Avenue) - WITH AUTOMATIC TASK CREATION
+  let criticalNotificationSentBin2 = false;
+  let warningNotificationSentBin2 = false;
   
-  console.log('✅ Real-time monitoring active for both data paths');
+  bin2Ref.on('value', async (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      const now = Date.now();
+      
+      // Throttle processing
+      if (now - lastBin2ProcessTime < PROCESS_THROTTLE_MS) {
+        console.log(`[THROTTLE] Skipping bin2 processing - too frequent (${Math.round((now - lastBin2ProcessTime) / 1000)}s ago)`);
+        return;
+      }
+      
+      lastBin2ProcessTime = now;
+      
+      console.log('\n === REAL-TIME DATA UPDATE (monitoring/bin2) ===');
+      console.log(` Timestamp: ${new Date().toLocaleString()}`);
+      console.log(` Weight: ${data.weight_kg || 0} kg (${data.weight_percent || 0}%)`);
+      console.log(` Distance: ${data.distance_cm || 0} cm (Height: ${data.height_percent || 0}%)`);
+      console.log(` Bin Level: ${data.bin_level || 0}%`);
+      console.log(` GPS: ${data.latitude || 'N/A'}, ${data.longitude || 'N/A'}`);
+      console.log(` Satellites: ${data.satellites || 0}`);
+      console.log(` Last Active: ${data.last_active || 'Unknown'}`);
+      console.log(` GPS Time: ${data.gps_timestamp || 'Unknown'}`);
+      console.log('==========================================\n');
+
+      // Process GPS data for bin2
+      let processedGPSData = null;
+      try {
+        const gpsCacheKey = `gps_bin2_${data.latitude}_${data.longitude}`;
+        const cachedGPS = CacheManager.get(gpsCacheKey);
+        
+        if (!cachedGPS) {
+          if (rateLimiter.isAllowed('gps_processing', 5, GPS_PROCESS_THROTTLE_MS)) {
+            processedGPSData = await gpsFallbackService.processGPSData('bin2', {
+              latitude: data.latitude,
+              longitude: data.longitude,
+              satellites: data.satellites || 0,
+              last_active: data.last_active,
+              gps_timestamp: data.gps_timestamp,
+              timestamp: Date.now()
+            });
+            
+            CacheManager.set(gpsCacheKey, processedGPSData, 120);
+            console.log(`[GPS FALLBACK] Bin2 data source: ${processedGPSData.coordinates_source}`);
+          }
+        }
+      } catch (gpsError) {
+        console.error('[GPS FALLBACK] Error processing bin2 GPS data:', gpsError);
+      }
+
+      // Save bin history using BinHistoryProcessor
+      try {
+        // Process bin history for significant levels
+        if (data.bin_level >= 70 || data.bin_level <= 10) {
+          const historyResult = await BinHistoryProcessor.processExistingMonitoringData({
+            weight: data.weight_percent || 0,
+            distance: data.height_percent || 0,
+            binLevel: data.bin_level || 0,
+            gps: {
+              lat: data.latitude || 0,
+              lng: data.longitude || 0
+            },
+            gpsValid: data.gps_valid || false,
+            satellites: data.satellites || 0,
+            errorMessage: null,
+            coordinatesSource: processedGPSData?.coordinates_source || 'unknown',
+            binId: 'bin2' // Specify bin2 for history tracking
+          });
+          
+          if (historyResult.success) {
+            console.log(`[BIN HISTORY] Recorded monitoring data for bin2: Status=${historyResult.status}`);
+          } else {
+            console.error('[BIN HISTORY] Failed to record bin2 monitoring data:', historyResult.error);
+          }
+        } else {
+          console.log(`[BIN HISTORY] Skipping database write for normal bin2 level: ${data.bin_level}%`);
+        }
+      } catch (historyErr) {
+        console.error('[BIN HISTORY] Error saving bin2 history:', historyErr);
+      }
+
+      // AUTOMATIC TASK CREATION FOR BIN2
+      if (data.bin_level >= 85) {
+        console.log(`[AUTOMATIC TASK] 🔍 Bin2 level ${data.bin_level}% >= 85% - checking for automatic task creation`);
+        try {
+          const taskResult = await automaticTaskService.createAutomaticTask({
+            binId: 'bin2',
+            binLevel: data.bin_level || 0,
+            binLocation: 'Park Avenue',
+            timestamp: new Date()
+          });
+
+          if (taskResult.success) {
+            console.log(`[AUTOMATIC TASK] ✅ ${taskResult.message}`);
+          } else {
+            console.log(`[AUTOMATIC TASK] ❌ ${taskResult.message} - ${taskResult.reason || taskResult.error}`);
+          }
+        } catch (taskErr) {
+          console.error('[AUTOMATIC TASK] Error creating task for bin2:', taskErr);
+        }
+      }
+
+      // Notification logic for bin2
+      try {
+        if (data.bin_level >= 85 && !criticalNotificationSentBin2) {
+          console.log('🚨 Sending critical bin2 notification...');
+          await sendCriticalBinNotification('Bin2', data.bin_level, 'Park Avenue');
+          criticalNotificationSentBin2 = true;
+          warningNotificationSentBin2 = false;
+        } else if (data.bin_level >= 70 && data.bin_level < 85 && !warningNotificationSentBin2) {
+          console.log('⚠️ Sending warning bin2 notification...');
+          await sendWarningBinNotification('Bin2', data.bin_level, 'Park Avenue');
+          warningNotificationSentBin2 = true;
+        } else if (data.bin_level < 70) {
+          criticalNotificationSentBin2 = false;
+          warningNotificationSentBin2 = false;
+        }
+      } catch (notifyErr) {
+        console.error('Failed to send bin notification for bin2:', notifyErr);
+      }
+    }
+  });
+  
+  console.log('✅ Real-time monitoring active for monitoring/data, monitoring/bin1, and monitoring/bin2');
 }
 
 app.get('/api/bin', async (req, res) => {

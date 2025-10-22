@@ -85,34 +85,53 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
     try {
       const selectedJanitorData = janitors.find((j) => j.id === selectedJanitor);
 
+      // First, create the activity log
       const taskData = {
         user_id: currentUser?.id,
         bin_id: bin.id,
         bin_location: bin.location,
         bin_status: bin.status,
         bin_level: bin.level,
-        assigned_janitor_id: selectedJanitor,
-        assigned_janitor_name: selectedJanitorData?.fullName || "Unknown",
+        assigned_janitor_id: null, // Initially null - will be assigned next
+        assigned_janitor_name: null,
         task_note: taskNotes || "Clean the bin",
         activity_type: "task_assignment",
         description: `Task assigned for ${bin.location} bin ${bin.id} - ${bin.wasteType} waste`,
         source: "web_dashboard",
+        status: "pending",
       };
 
-      console.log("Sending task data:", taskData);
-      const response = await api.post("/api/activitylogs", taskData);
-      console.log("Task assignment response:", response.data);
+      console.log("[BinInfoModal] Creating activity log:", taskData);
+      const activityResponse = await api.post("/api/activitylogs", taskData);
+      const activityId = activityResponse.data.activity_id || activityResponse.data.id;
+      console.log("[BinInfoModal] Activity log created with ID:", activityId);
+      
+      if (!activityId) {
+        throw new Error("Failed to get activity ID from response");
+      }
+
+      // Now assign the janitor using the assign-task endpoint (triggers SMS)
+      console.log("[BinInfoModal] Assigning janitor with SMS notification...");
+      const assignmentData = {
+        activityId: activityId,
+        janitorId: selectedJanitor,
+        janitorName: selectedJanitorData?.fullName || "Unknown",
+        taskNote: taskNotes || "Clean the bin",
+      };
+
+      const assignResponse = await api.post("/api/assign-task", assignmentData);
+      console.log("[BinInfoModal] Janitor assigned successfully:", assignResponse.data);
 
       toast({
         title: "Success",
-        description: "Task assigned successfully",
+        description: "Task assigned successfully with SMS notification sent to janitor",
       });
 
       onClose();
     } catch (error: any) {
-      console.error("Failed to assign task:", error);
-      console.error("Error response:", error.response?.data);
-      console.error("Error status:", error.response?.status);
+      console.error("[BinInfoModal] Failed to assign task:", error);
+      console.error("[BinInfoModal] Error response:", error.response?.data);
+      console.error("[BinInfoModal] Error status:", error.response?.status);
 
       const errorMessage =
         error.response?.data?.error || error.response?.data?.message || error.message || "Failed to assign task";

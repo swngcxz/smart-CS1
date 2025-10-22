@@ -197,6 +197,10 @@ export function StaffActivityLogs() {
       // Update the assigned janitor name based on selected ID
       const selectedStaff = staffList.find((staff) => staff.id === editFormData.assigned_janitor_id);
 
+      // Check if janitor is being newly assigned (SMS should be sent)
+      const isNewAssignment = editFormData.assigned_janitor_id && 
+        (editingActivity.status === "pending" || !editingActivity.assigned_janitor_id);
+
       // Determine the final status based on assignment logic
       let newStatus = editFormData.status;
 
@@ -226,17 +230,30 @@ export function StaffActivityLogs() {
         priority: editFormData.priority,
       };
 
-      // Call API to update the activity
-      await api.put(`/api/activitylogs/${editingActivity.id}`, updatedData);
+      // If this is a new janitor assignment, use the assign-task endpoint (triggers SMS)
+      if (isNewAssignment && editFormData.assigned_janitor_id) {
+        console.log("[StaffActivityLogs] New janitor assignment detected - sending SMS notification");
+        
+        // Use assign-task endpoint to trigger SMS
+        await api.post("/api/assign-task", {
+          activityId: editingActivity.id,
+          janitorId: editFormData.assigned_janitor_id,
+          janitorName: selectedStaff?.name || editFormData.assigned_janitor_name || "Staff",
+          taskNote: editFormData.task_note || "",
+        });
+      } else {
+        // Regular update without SMS
+        await api.put(`/api/activitylogs/${editingActivity.id}`, updatedData);
+      }
 
       // Close the modal and refresh
       setEditModalOpen(false);
       setEditingActivity(null);
       refetch(); // Refresh the data
 
-      alert("Activity updated successfully!");
+      alert(isNewAssignment ? "Activity updated and SMS notification sent to janitor!" : "Activity updated successfully!");
     } catch (error) {
-      console.error("Error updating activity:", error);
+      console.error("[StaffActivityLogs] Error updating activity:", error);
       alert("Error updating activity. Please try again.");
     }
   };
@@ -254,14 +271,15 @@ export function StaffActivityLogs() {
     try {
       const selectedStaff = staffList.find((staff) => staff.id === selectedJanitorId);
 
-      const updatedData = {
-        assigned_janitor_id: selectedJanitorId,
-        assigned_janitor_name: selectedStaff?.name || "",
-        status: "in_progress", // Automatically change to in_progress when assigned
-      };
+      console.log("[StaffActivityLogs] Assigning janitor with SMS notification");
 
-      // Call API to assign the task
-      await api.put(`/api/activity-logs/${assigningActivity.id}/assign`, updatedData);
+      // Use assign-task endpoint to trigger SMS notification
+      await api.post("/api/assign-task", {
+        activityId: assigningActivity.id,
+        janitorId: selectedJanitorId,
+        janitorName: selectedStaff?.name || "Staff",
+        taskNote: assigningActivity.task_note || "",
+      });
 
       // Close the modal and refresh
       setAssignModalOpen(false);
@@ -269,9 +287,9 @@ export function StaffActivityLogs() {
       setSelectedJanitorId("");
       refetch(); // Refresh the data
 
-      alert("Janitor assigned successfully!");
+      alert("Janitor assigned successfully with SMS notification sent!");
     } catch (error) {
-      console.error("Error assigning janitor:", error);
+      console.error("[StaffActivityLogs] Error assigning janitor:", error);
       alert("Error assigning janitor. Please try again.");
     }
   };
