@@ -19,7 +19,7 @@ import { getActiveTimeAgo } from "@/utils/timeUtils";
 import { getDistanceFromMap } from "@/utils/distanceUtils";
 import { Badge } from "@/components/ui/badge";
 
-// Add custom styles for user location marker
+// Optimized styles - only inject once
 const userLocationStyles = `
   .user-location-marker {
     background: transparent !important;
@@ -34,11 +34,78 @@ const userLocationStyles = `
       opacity: 0;
     }
   }
+  .map-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background: #f8fafc;
+  }
+  .map-loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #10b981;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .leaflet-container {
+    border-radius: 0 0 12px 12px;
+  }
+  .leaflet-control-zoom {
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+  }
+  .leaflet-control-zoom a {
+    background: white !important;
+    border: none !important;
+    color: #374151 !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+  }
+  .leaflet-control-zoom a:hover {
+    background: #f3f4f6 !important;
+    color: #10b981 !important;
+  }
+  .leaflet-tile-container {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  .leaflet-tile {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  .leaflet-container {
+    background: #f8f9fa !important;
+  }
+  .leaflet-tile-pane {
+    opacity: 1 !important;
+  }
+  .leaflet-tile {
+    filter: none !important;
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+  }
+  .leaflet-tile-container {
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+  }
+  .leaflet-zoom-animated {
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+  }
 `;
 
-// Inject styles
-if (typeof document !== "undefined") {
+// Inject styles only once
+if (typeof document !== "undefined" && !document.getElementById("admin-map-styles")) {
   const styleSheet = document.createElement("style");
+  styleSheet.id = "admin-map-styles";
   styleSheet.type = "text/css";
   styleSheet.innerText = userLocationStyles;
   document.head.appendChild(styleSheet);
@@ -68,8 +135,8 @@ const createUserLocationIcon = () => {
   });
 };
 
-// Default center coordinates (fallback)
-const defaultCenter: LatLngTuple = [10.2105, 123.7583];
+// Default center coordinates for Naga City, Cebu - will be overridden by real-time data
+const defaultCenter: LatLngTuple = [10.24371, 123.786917];
 
 function MapInitializer({ setMapRef }: { setMapRef: (map: any) => void }) {
   const map = useMap();
@@ -93,10 +160,10 @@ export function MapSection() {
       // Merge with bin1Data to ensure we have all timestamp fields
       const enrichedBin = {
         ...bin,
-        // Use bin1Data timestamp fields for consistency
-        last_active: bin1Data?.last_active,
-        gps_timestamp: bin1Data?.gps_timestamp,
-        backup_timestamp: bin1Data?.backup_timestamp,
+        // Use bin1Data timestamp fields for consistency (with safe fallbacks)
+        last_active: bin1Data?.last_active || bin.last_active,
+        gps_timestamp: bin1Data?.gps_timestamp || bin.gps_timestamp,
+        backup_timestamp: (bin1Data as any)?.backup_timestamp || bin.backup_timestamp,
         coordinates_source: bin1Data?.coordinates_source || bin.coordinates_source,
       };
       setSelectedBin(enrichedBin);
@@ -264,7 +331,7 @@ export function MapSection() {
       {/* Map Section */}
       <Card
         ref={mapContainerRef}
-        className="h-[530px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-4"
+        className="h-[500px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 relative mb-4"
       >
       <CardHeader className="pb-3 pt-4">
         <CardTitle className="flex items-center justify-between text-gray-800 dark:text-white">
@@ -289,14 +356,24 @@ export function MapSection() {
       </CardHeader>
 
       <CardContent className="p-0 h-full rounded-b-lg overflow-hidden relative z-0">
+        {loading && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 dark:bg-gray-900/80">
+            <div className="map-loading-spinner"></div>
+          </div>
+        )}
         <MapErrorBoundary>
           <MapContainer
             center={mapCenter}
-            zoom={getSafeZoomLevel(18)}
-            minZoom={MAP_CONFIG.zoom.min}
-            maxZoom={MAP_CONFIG.zoom.max}
+            zoom={getSafeZoomLevel(12)}
+            minZoom={1}
+            maxZoom={22}
             className="h-full w-full z-0"
-            {...MAP_OPTIONS}
+            zoomControl={true}
+            attributionControl={true}
+            preferCanvas={true}
+            zoomSnap={1}
+            zoomDelta={1}
+            wheelPxPerZoomLevel={120}
           >
           <MapInitializer
             setMapRef={(map) => {
@@ -304,11 +381,11 @@ export function MapSection() {
               mapRef.current = map;
             }}
           />
-          {/* Direct Tile Layer - Simple zoom-based switching */}
-              <DirectTileLayer maxZoom={22} minZoom={1} transitionZoomLevel={18} />
+          {/* Direct Tile Layer - Optimized for performance */}
+              <DirectTileLayer maxZoom={22} minZoom={1} transitionZoomLevel={15} />
           
           {/* Map Type Indicator */}
-          <MapTypeIndicator transitionZoomLevel={18} />
+          <MapTypeIndicator transitionZoomLevel={15} />
           {updatedBinLocations.map((bin) => (
             <DynamicBinMarker key={bin.id} bin={bin} onBinClick={handleBinClick} />
           ))}
