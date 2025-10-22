@@ -60,7 +60,7 @@ export function WasteLevelsTab() {
   const [selectedBin, setSelectedBin] = useState<WasteBin | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { wasteBins, loading, error, bin1Data } = useRealTimeData();
+  const { wasteBins, loading, error, bin1Data, bin2Data } = useRealTimeData();
   const { registeredBins, fetchRegisteredBins, isLoading: loadingRegisteredBins } = useRegisteredBins();
 
   // Fetch registered bins when component mounts - only once
@@ -79,12 +79,25 @@ export function WasteLevelsTab() {
     return () => window.removeEventListener('binRegistered', handleBinRegistered);
   }, []);
 
-  // Debug logging
+  // Get real-time bin1 data - try multiple search strategies
+  const realTimeBin1 = wasteBins.find((wb) => 
+    (wb.location === "Central Plaza" && wb.id === "bin1") ||
+    (wb.id === "bin1") // Fallback: just find bin1 regardless of location
+  );
+
+  // Get real-time bin2 data - try multiple search strategies
+  const realTimeBin2 = wasteBins.find((wb) => 
+    (wb.location === "Park Avenue" && wb.id === "bin2") ||
+    (wb.id === "bin2") // Fallback: just find bin2 regardless of location
+  );
+
+  // Enhanced Debug logging for bin2
   console.log("🔍 WasteLevelsTab Debug:", {
     wasteBins,
     loading,
     error,
     bin1Data,
+    bin2Data,
     registeredBins,
     wasteBinsLength: wasteBins.length,
     registeredBinsLength: registeredBins.length,
@@ -100,20 +113,38 @@ export function WasteLevelsTab() {
           satellites: bin1Data.satellites,
         }
       : null,
+    bin2DataDetails: bin2Data
+      ? {
+          bin_level: bin2Data.bin_level,
+          weight_percent: bin2Data.weight_percent,
+          height_percent: bin2Data.height_percent,
+          timestamp: bin2Data.timestamp,
+          gps_valid: bin2Data.gps_valid,
+          latitude: bin2Data.latitude,
+          longitude: bin2Data.longitude,
+          satellites: bin2Data.satellites,
+        }
+      : null,
   });
 
-  // Get real-time bin1 data - try multiple search strategies
-  const realTimeBin1 = wasteBins.find((wb) => 
-    (wb.location === "Central Plaza" && wb.id === "bin1") ||
-    (wb.id === "bin1") // Fallback: just find bin1 regardless of location
-  );
+  // Specific bin2 debugging
+  console.log("🔍 BIN2 SPECIFIC DEBUG:", {
+    bin2DataExists: !!bin2Data,
+    bin2Data: bin2Data,
+    bin2InWasteBins: wasteBins.find(wb => wb.id === "bin2"),
+    allWasteBinIds: wasteBins.map(wb => wb.id),
+    realTimeBin2: realTimeBin2,
+  });
 
   // Debug logging for real-time bin detection
   console.log("🔍 Real-time bin detection:", {
     wasteBinsCount: wasteBins.length,
-    wasteBins: wasteBins.map((wb) => ({ id: wb.id, location: wb.location, level: wb.level, name: wb.binData?.name })),
+    wasteBins: wasteBins.map((wb) => ({ id: wb.id, location: wb.location, level: wb.level, name: wb.binData?.bin_id || wb.id })),
     realTimeBin1: realTimeBin1
-      ? { id: realTimeBin1.id, location: realTimeBin1.location, level: realTimeBin1.level, name: realTimeBin1.binData?.name }
+      ? { id: realTimeBin1.id, location: realTimeBin1.location, level: realTimeBin1.level, name: realTimeBin1.binData?.bin_id || realTimeBin1.id }
+      : null,
+    realTimeBin2: realTimeBin2
+      ? { id: realTimeBin2.id, location: realTimeBin2.location, level: realTimeBin2.level, name: realTimeBin2.binData?.bin_id || realTimeBin2.id }
       : null,
   });
 
@@ -182,8 +213,25 @@ export function WasteLevelsTab() {
       nextCollection: "Today 6:00 PM",
     },
 
-    // Park Avenue - Add registered bins + 4 static bins
-    ...registeredBins
+    // Park Avenue - Add real-time bin2 data + registered bins + 3 static bins
+    ...(realTimeBin2
+      ? [
+          {
+            id: realTimeBin2.id,
+            location: "Park Avenue", // Force location to Park Avenue for consistency
+            level: realTimeBin2.level,
+            status: realTimeBin2.status,
+            lastCollected: realTimeBin2.lastCollected,
+            capacity: realTimeBin2.capacity,
+            wasteType: realTimeBin2.wasteType || "Mixed",
+            nextCollection: realTimeBin2.nextCollection || "Today 3:00 PM",
+            binData: realTimeBin2.binData, // Include binData for live indicator
+          },
+        ]
+      : []),
+
+    // Add registered bins for Park Avenue (only if no real-time bin2 data)
+    ...(realTimeBin2 ? [] : registeredBins
       .filter(rb => rb.assignedLocation === "Park Avenue")
       .map(rb => ({
         id: rb.binId,
@@ -194,21 +242,11 @@ export function WasteLevelsTab() {
         capacity: "500L",
         wasteType: rb.type || "Mixed",
         nextCollection: "Today 3:00 PM"
-      })),
+      }))),
 
-    // Park Avenue - 4 bins (critical status)
+    // Park Avenue - 3 static bins (critical status)
     {
       id: "5",
-      location: "Park Avenue",
-      level: 85,
-      status: "critical" as "critical" | "warning" | "normal",
-      lastCollected: "1 day ago",
-      capacity: "300L",
-      wasteType: "Organic",
-      nextCollection: "Tomorrow 9:00 AM",
-    },
-    {
-      id: "6",
       location: "Park Avenue",
       level: 95,
       status: "critical" as "critical" | "warning" | "normal",
@@ -218,7 +256,7 @@ export function WasteLevelsTab() {
       nextCollection: "Today 7:00 PM",
     },
     {
-      id: "7",
+      id: "6",
       location: "Park Avenue",
       level: 90,
       status: "critical" as "critical" | "warning" | "normal",
@@ -228,7 +266,7 @@ export function WasteLevelsTab() {
       nextCollection: "Today 8:00 PM",
     },
     {
-      id: "8",
+      id: "7",
       location: "Park Avenue",
       level: 88,
       status: "critical" as "critical" | "warning" | "normal",
@@ -438,7 +476,7 @@ export function WasteLevelsTab() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{bin.location}</h3>
-                        {(bin.id === "bin1" && bin1Data) || bin.binData ? (
+                        {((bin.id === "bin1" && bin1Data) || (bin.id === "bin2" && bin2Data) || bin.binData) ? (
                           <div className="flex items-center gap-1">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                             <span className="text-xs text-green-600 dark:text-green-400 font-medium">Live</span>
@@ -493,7 +531,7 @@ export function WasteLevelsTab() {
         isOpen={isModalOpen}
         onClose={handleModalClose}
         bin={selectedBin}
-        binData={selectedBin?.id === "bin1" ? bin1Data : selectedBin?.binData || null}
+        binData={selectedBin?.id === "bin1" ? bin1Data : selectedBin?.id === "bin2" ? bin2Data : selectedBin?.binData || null}
       />
     </>
   );
