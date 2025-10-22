@@ -26,7 +26,7 @@ export const SettingsTab = () => {
     <div className="space-y-6">
       <div className="w-full">
         <div className="mb-5">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Settings</h1>
+          <h1 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Settings</h1>
         </div>
 
         <Tabs defaultValue="profile" className="space-y-4">
