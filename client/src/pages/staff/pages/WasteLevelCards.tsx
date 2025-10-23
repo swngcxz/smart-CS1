@@ -46,15 +46,15 @@ export function WasteLevelCards({
   allBins?: any[]; // Pass all bins from parent component
 }) {
   const { wasteBins } = useRealTimeData();
-  
+
   // Use allBins if provided, otherwise fall back to wasteBins from hook
   const binsToUse = allBins || wasteBins;
 
   // Calculate average levels for each location from all bins
   const calculateAverageLevel = (location: string) => {
-    const locationBins = binsToUse.filter(bin => bin.location === location);
+    const locationBins = binsToUse.filter((bin) => bin.location === location);
     if (locationBins.length === 0) return 0;
-    
+
     const totalLevel = locationBins.reduce((sum, bin) => sum + bin.level, 0);
     return Math.round(totalLevel / locationBins.length);
   };
@@ -68,18 +68,18 @@ export function WasteLevelCards({
 
   // Calculate average status for each location based on level
   const calculateAverageStatus = (location: string) => {
-    const locationBins = binsToUse.filter(bin => bin.location === location);
+    const locationBins = binsToUse.filter((bin) => bin.location === location);
     if (locationBins.length === 0) return "normal";
-    
+
     const averageLevel = calculateAverageLevel(location);
     return calculateStatusFromLevel(averageLevel);
   };
 
   // Get most recent last collected time for each location
   const getMostRecentLastCollected = (location: string) => {
-    const locationBins = binsToUse.filter(bin => bin.location === location);
+    const locationBins = binsToUse.filter((bin) => bin.location === location);
     if (locationBins.length === 0) return "Unknown";
-    
+
     // For simplicity, return the first one's lastCollected
     // In a real app, you'd parse timestamps and find the most recent
     return locationBins[0].lastCollected;
@@ -103,20 +103,23 @@ export function WasteLevelCards({
     const averageLevel = calculateAverageLevel(bin.location);
     const averageStatus = calculateAverageStatus(bin.location);
     const mostRecentLastCollected = getMostRecentLastCollected(bin.location);
-    
+
     // Check if we have real-time data for this location
-    const hasRealTimeData = binsToUse.some(wb => wb.location === bin.location);
-    
+    const hasRealTimeData = binsToUse.some((wb) => wb.location === bin.location);
+
     // Debug logging for Central Plaza
     if (bin.location === "Central Plaza") {
-      console.log("Central Plaza bins:", binsToUse.filter(wb => wb.location === bin.location));
+      console.log(
+        "Central Plaza bins:",
+        binsToUse.filter((wb) => wb.location === bin.location)
+      );
       console.log("Has real-time data:", hasRealTimeData);
     }
-    
+
     // For Park Avenue and Mall District, maintain their intended status
     // Central Plaza uses real-time data, others use static data
     let finalLevel, finalStatus;
-    
+
     if (bin.location === "Central Plaza" && hasRealTimeData) {
       // Use real-time data for Central Plaza
       finalLevel = averageLevel;
@@ -134,7 +137,7 @@ export function WasteLevelCards({
       finalLevel = hasRealTimeData ? averageLevel : bin.level;
       finalStatus = calculateStatusFromLevel(finalLevel);
     }
-    
+
     return {
       ...bin,
       level: finalLevel,
@@ -157,21 +160,33 @@ export function WasteLevelCards({
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                    {bin.location}
-                  </CardTitle>
-                  {binsToUse.some(wb => wb.location === bin.location && (wb.timestamp || wb.lastUpdated || wb.level !== undefined || wb.weight_percent !== undefined)) && (
+                  <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">{bin.location}</CardTitle>
+                  {binsToUse.some(
+                    (wb) =>
+                      wb.location === bin.location &&
+                      (wb.timestamp || wb.lastUpdated || wb.level !== undefined || wb.weight_percent !== undefined)
+                  ) && (
                     <div className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full animate-pulse ${
-                        bin.status === "critical" ? "bg-red-500" :
-                        bin.status === "warning" ? "bg-yellow-500" :
-                        "bg-green-500"
-                      }`}></div>
-                      <span className={`text-xs ${
-                        bin.status === "critical" ? "text-red-600 dark:text-red-400" :
-                        bin.status === "warning" ? "text-yellow-600 dark:text-yellow-400" :
-                        "text-green-600 dark:text-green-400"
-                      }`}>Live</span>
+                      <div
+                        className={`w-2 h-2 rounded-full animate-pulse ${
+                          bin.status === "critical"
+                            ? "bg-red-500"
+                            : bin.status === "warning"
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
+                        }`}
+                      ></div>
+                      <span
+                        className={`text-xs ${
+                          bin.status === "critical"
+                            ? "text-red-600 dark:text-red-400"
+                            : bin.status === "warning"
+                            ? "text-yellow-600 dark:text-yellow-400"
+                            : "text-green-600 dark:text-green-400"
+                        }`}
+                      >
+                        Live
+                      </span>
                     </div>
                   )}
                 </div>
@@ -199,9 +214,7 @@ export function WasteLevelCards({
             <CardContent>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {bin.level}%
-                  </span>
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white">{bin.level}%</span>
                   <span
                     className={`text-xs font-medium px-2 py-1 rounded-full ${
                       bin.status === "critical"

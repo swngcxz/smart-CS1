@@ -268,15 +268,13 @@ export const HistoryLogsTab = () => {
     <div className="space-y-6 p-4 sm:p-2">
       {/* Section Title with Inline Stats */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">History Logs</h2>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white">History Logs</h2>
 
-
-          {/* Total History Logs */}
-          <div className="flex items-center gap-2">
-
-            <span className="text-gray-600 text-xs dark:text-gray-300">Total Logs:</span>
-            <span className="font-regular text-xs text-gray-600 dark:text-gray-400">{nonAdminLogs.length}</span>
-          </div>
+        {/* Total History Logs */}
+        <div className="flex items-center gap-2">
+          <span className="text-gray-600 text-xs dark:text-gray-300">Total Logs:</span>
+          <span className="font-regular text-xs text-gray-600 dark:text-gray-400">{nonAdminLogs.length}</span>
+        </div>
       </div>
 
       {/* Filters and Search - Responsive Layout */}

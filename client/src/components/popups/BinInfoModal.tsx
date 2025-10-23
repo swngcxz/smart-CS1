@@ -179,12 +179,12 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg w-full max-h-[90vh] overflow-hidden pb-3 px-3">
+      <DialogContent className="max-w-lg w-full max-h-[94vh] overflow-hidden pb-3 px-3">
         <DialogHeader className="pb-3 px-3">
           <DialogTitle className="text-lg">Bin Information - {bin.location}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-120px)] px-4 pb-4">
+        <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-120px)] px-4 pb-8">
           {/* Bin ID and GPS Status */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -305,7 +305,7 @@ export function BinInfoModal({ isOpen, onClose, bin, binData }: BinInfoModalProp
                 isLoading ||
                 janitorsLoading
               }
-              className="w-full mt-4"
+              className="mb-10 w-full mt-6"
             >
               {isLoading ? "Assigning..." : "Assign Task"}
             </Button>

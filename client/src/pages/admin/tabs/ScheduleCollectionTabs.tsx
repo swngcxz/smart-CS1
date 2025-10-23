@@ -258,7 +258,7 @@ export function ScheduleCollectionTabs() {
         <CardHeader className="pb-4 pt-0">
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-2xl">Schedules</CardTitle>
+              <CardTitle className="text-lg font-bold">Schedules</CardTitle>
             </div>
           </div>
         </CardHeader>
