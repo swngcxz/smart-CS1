@@ -8,12 +8,11 @@ import { Card } from "@/components/ui/card";
 import { User, Settings } from "lucide-react";
 
 export const SettingsTab = () => {
-
   return (
     <div className="space-y-6">
       <div className="w-full">
         <div className="mb-8">
-          <h1 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Settings</h1>
+          <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Settings</h4>
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">

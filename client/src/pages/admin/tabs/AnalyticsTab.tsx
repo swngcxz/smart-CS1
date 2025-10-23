@@ -26,30 +26,28 @@ interface BinData {
 
 // Mock data removed - using real data from APIs and real-time monitoring
 
-
 export function AnalyticsTab() {
   const [timeFilter, setTimeFilter] = useState<"week" | "month" | "year">("week");
   const [routeFilter, setRouteFilter] = useState<string>("all");
   const { wasteBins } = useRealTimeData();
 
   // Convert timeFilter to the format expected by useAnalytics
-  const analyticsTimeFilter = timeFilter === "week" ? "This Week" : 
-                             timeFilter === "month" ? "This Month" : "This Year";
-  
+  const analyticsTimeFilter = timeFilter === "week" ? "This Week" : timeFilter === "month" ? "This Month" : "This Year";
+
   // Use the analytics hook (keeping for fallback)
-  const { 
-    analyticsData, 
-    isLoading: isLoadingAnalytics, 
+  const {
+    analyticsData,
+    isLoading: isLoadingAnalytics,
     error: analyticsError,
-    criticalBins: criticalBinsData 
+    criticalBins: criticalBinsData,
   } = useAnalytics(analyticsTimeFilter);
 
   // Use the new dashboard metrics hook for real data
-  const { 
-    metrics: dashboardMetrics, 
-    loading: isLoadingDashboard, 
+  const {
+    metrics: dashboardMetrics,
+    loading: isLoadingDashboard,
     error: dashboardError,
-    refetch: refetchDashboard 
+    refetch: refetchDashboard,
   } = useDashboardMetrics(timeFilter);
 
   // Helper function to safely cast status
@@ -70,7 +68,7 @@ export function AnalyticsTab() {
 
   // Create bin data from real-time monitoring and critical bins
   const realBinData: BinData[] = [];
-  
+
   // Add real-time bins
   wasteBins.forEach((bin) => {
     realBinData.push({
@@ -92,7 +90,7 @@ export function AnalyticsTab() {
   // Add critical bins from bin history
   criticalBinsData?.forEach((criticalBin) => {
     // Check if this bin is already in real-time data
-    const existingBin = realBinData.find(bin => bin.id === criticalBin.id);
+    const existingBin = realBinData.find((bin) => bin.id === criticalBin.id);
     if (existingBin) {
       // Update existing bin with critical data
       existingBin.fillLevel = criticalBin.bin_level;
@@ -116,9 +114,7 @@ export function AnalyticsTab() {
     }
   });
 
-  const filteredData = realBinData.filter(
-    (bin) => routeFilter === "all" || bin.route.includes(routeFilter)
-  );
+  const filteredData = realBinData.filter((bin) => routeFilter === "all" || bin.route.includes(routeFilter));
 
   // Use dynamic collections data based on time filter
   const totalCollections = displayData.collections;
@@ -152,29 +148,29 @@ export function AnalyticsTab() {
   // Helper function to format timestamps in a readable way
   const formatTimestamp = (timestamp: string | number | undefined): string => {
     if (!timestamp) return "N/A";
-    
+
     try {
       let date: Date;
-      
+
       // Handle different timestamp formats
-      if (typeof timestamp === 'number') {
+      if (typeof timestamp === "number") {
         // Unix timestamp (seconds or milliseconds)
         date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
-      } else if (typeof timestamp === 'string') {
+      } else if (typeof timestamp === "string") {
         date = new Date(timestamp);
       } else {
         return "N/A";
       }
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return "Invalid Date";
       }
-      
+
       // Format as readable date and time
       const now = new Date();
       const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-      
+
       // If less than 24 hours, show relative time
       if (diffInHours < 24) {
         if (diffInHours < 1) {
@@ -185,14 +181,14 @@ export function AnalyticsTab() {
           return `${hours}h ago`;
         }
       }
-      
+
       // If more than 24 hours, show date and time
-      return date.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
+      return date.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
       });
     } catch (error) {
       return "Invalid Date";
@@ -202,31 +198,31 @@ export function AnalyticsTab() {
   // Helper function to get full timestamp for tooltip
   const getFullTimestamp = (timestamp: string | number | undefined): string => {
     if (!timestamp) return "N/A";
-    
+
     try {
       let date: Date;
-      
-      if (typeof timestamp === 'number') {
+
+      if (typeof timestamp === "number") {
         date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000);
-      } else if (typeof timestamp === 'string') {
+      } else if (typeof timestamp === "string") {
         date = new Date(timestamp);
       } else {
         return "N/A";
       }
-      
+
       if (isNaN(date.getTime())) {
         return "Invalid Date";
       }
-      
-      return date.toLocaleString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
+
+      return date.toLocaleString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
       });
     } catch (error) {
       return "Invalid Date";
@@ -237,18 +233,16 @@ export function AnalyticsTab() {
   const TimestampDisplay = ({ timestamp }: { timestamp: string | number | undefined }) => {
     const formatted = formatTimestamp(timestamp);
     const fullTimestamp = getFullTimestamp(timestamp);
-    
+
     if (formatted === "N/A" || formatted === "Invalid Date") {
       return <span className="text-gray-500">{formatted}</span>;
     }
-    
+
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="cursor-help text-blue-600 hover:text-blue-800">
-              {formatted}
-            </span>
+            <span className="cursor-help text-blue-600 hover:text-blue-800">{formatted}</span>
           </TooltipTrigger>
           <TooltipContent>
             <p>{fullTimestamp}</p>
@@ -264,7 +258,9 @@ export function AnalyticsTab() {
       <div className="flex items-center space-x-2 text-red-600">
         <AlertCircle className="h-4 w-4" />
         <span className="text-sm">
-          {dashboardError ? 'Dashboard metrics unavailable - using fallback data' : 'Using fallback data - Analytics API unavailable'}
+          {dashboardError
+            ? "Dashboard metrics unavailable - using fallback data"
+            : "Using fallback data - Analytics API unavailable"}
         </span>
       </div>
     </div>
@@ -274,33 +270,24 @@ export function AnalyticsTab() {
     <div className="space-y-6">
       {/* Error notification */}
       {showErrorNotification}
-      
+
       <div className="flex items-center justify-between mb-6">
-      <div className="flex items-center space-x-3">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-        Waste Analytics & Reports
-      </h2>
-        {(isLoadingAnalytics || isLoadingDashboard) && (
-          <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-        )}
+        <div className="flex items-center space-x-3">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Waste Analytics & Reports</h2>
+        </div>
+
+        {/* Time Filter */}
+        <Select value={timeFilter} onValueChange={(v: "week" | "month" | "year") => setTimeFilter(v)}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Select period" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="week">This Week</SelectItem>
+            <SelectItem value="month">This Month</SelectItem>
+            <SelectItem value="year">This Year</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-
-      {/* Time Filter */}
-      <Select
-        value={timeFilter}
-        onValueChange={(v: "week" | "month" | "year") => setTimeFilter(v)}
-      >
-        <SelectTrigger className="w-40">
-          <SelectValue placeholder="Select period" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="week">This Week</SelectItem>
-          <SelectItem value="month">This Month</SelectItem>
-          <SelectItem value="year">This Year</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-
 
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -358,10 +345,12 @@ export function AnalyticsTab() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Routes</SelectItem>
-                {Array.from(new Set(realBinData.map(bin => bin.route.split(' - ')[0])))
-                  .filter(route => route && route !== 'Route')
-                  .map(route => (
-                    <SelectItem key={route} value={route}>{route}</SelectItem>
+                {Array.from(new Set(realBinData.map((bin) => bin.route.split(" - ")[0])))
+                  .filter((route) => route && route !== "Route")
+                  .map((route) => (
+                    <SelectItem key={route} value={route}>
+                      {route}
+                    </SelectItem>
                   ))}
               </SelectContent>
             </Select>
@@ -384,34 +373,33 @@ export function AnalyticsTab() {
               <TableBody>
                 {filteredData.length > 0 ? (
                   filteredData.map((bin) => (
-                  <TableRow key={bin.id}>
-                   <TableCell className="text-center font-medium">
-                      {bin.id.charAt(0).toUpperCase() + bin.id.slice(1)}
-                    </TableCell>
+                    <TableRow key={bin.id}>
+                      <TableCell className="text-center font-medium">
+                        {bin.id.charAt(0).toUpperCase() + bin.id.slice(1)}
+                      </TableCell>
 
-                    <TableCell className="text-center">{bin.route}</TableCell>
+                      <TableCell className="text-center">{bin.route}</TableCell>
                       {/* <TableCell className="text-center text-sm">
                         <TimestampDisplay timestamp={bin.timestamp} />
                       </TableCell> */}
                       <TableCell className="text-center">{bin.weight ?? 0} kg</TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center gap-2 justify-center">
-                        <div className="w-24 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                          <div
-                            className={`h-2.5 rounded-full ${getStatusColor(bin.status)}`}
-                            style={{ width: `${bin.fillLevel}%` }}
-                          ></div>
+                      <TableCell className="text-center">
+                        <div className="flex items-center gap-2 justify-center">
+                          <div className="w-24 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                            <div
+                              className={`h-2.5 rounded-full ${getStatusColor(bin.status)}`}
+                              style={{ width: `${bin.fillLevel}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm">{bin.fillLevel}%</span>
                         </div>
-                        <span className="text-sm">{bin.fillLevel}%</span>
-                      </div>
-                    </TableCell>
+                      </TableCell>
                       <TableCell className="text-center text-sm">{bin.location ?? "N/A"}</TableCell>
-                   <TableCell className="text-center">
-                      <Badge className="text-green-600 font-medium bg-transparent shadow-none px-2">
-                        {bin.status.charAt(0).toUpperCase() + bin.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-
+                      <TableCell className="text-center">
+                        <Badge className="text-green-600 font-medium bg-transparent shadow-none px-2">
+                          {bin.status.charAt(0).toUpperCase() + bin.status.slice(1)}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (

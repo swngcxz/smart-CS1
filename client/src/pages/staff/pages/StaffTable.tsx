@@ -137,13 +137,14 @@ export function StaffTable({ onStaffUpdate, totalStaff }: StaffTableProps) {
       // Filter by route
       const matchesRoute = selectedRoute === "all" || (s.location || "") === selectedRoute;
       // Filter by search term (name, email, contact number)
-      const matchesSearch = searchTerm === "" || 
+      const matchesSearch =
+        searchTerm === "" ||
         s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (s.contactNumber || "").toLowerCase().includes(searchTerm.toLowerCase());
       // Filter by status
       const matchesStatus = statusFilter === "all" || (s.status || "active") === statusFilter;
-      
+
       return isNotCurrentUser && matchesRole && matchesRoute && matchesSearch && matchesStatus;
     });
 
@@ -161,15 +162,15 @@ export function StaffTable({ onStaffUpdate, totalStaff }: StaffTableProps) {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-7 h-7 w-72 text-xs"
+              className="pl-7 h-10 w-72 text-xs"
             />
           </div>
-          
+
           {/* Filters */}
           <div className="flex items-center gap-1">
             <p className="text-xs text-gray-500 dark:text-gray-400">Role:</p>
             <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="h-7 w-32 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
+              <SelectTrigger className="h-10 w-32 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent className="text-xs">
@@ -180,11 +181,11 @@ export function StaffTable({ onStaffUpdate, totalStaff }: StaffTableProps) {
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="flex items-center gap-1">
             <p className="text-xs text-gray-500 dark:text-gray-400">Route:</p>
             <Select value={selectedRoute} onValueChange={setSelectedRoute}>
-              <SelectTrigger className="h-7 w-36 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
+              <SelectTrigger className="h-10 w-36 text-xs border-gray-300 dark:border-gray-700 rounded-md px-2">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent className="text-xs">
@@ -217,17 +218,17 @@ export function StaffTable({ onStaffUpdate, totalStaff }: StaffTableProps) {
       <Card>
         <CardContent className="pt-2">
           <Table>
-             <TableHeader>
-               <TableRow>
-                 <TableHead>Name</TableHead>
-                 <TableHead>Email</TableHead>
-                 <TableHead>Contact Number</TableHead>
-                 <TableHead className="text-center">Role</TableHead>
-                 <TableHead>Route</TableHead>
-                 <TableHead>Status</TableHead>
-                 <TableHead className="text-center">Action</TableHead>
-               </TableRow>
-             </TableHeader>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Contact Number</TableHead>
+                <TableHead className="text-center">Role</TableHead>
+                <TableHead>Route</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-center">Action</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {loading && <StaffTableSkeleton />}
               {error && (
@@ -244,26 +245,26 @@ export function StaffTable({ onStaffUpdate, totalStaff }: StaffTableProps) {
                     <TableCell className="font-medium text-sm">{staff.fullName}</TableCell>
                     <TableCell className="text-sm">{staff.email}</TableCell>
                     <TableCell className="text-sm">{staff.contactNumber || "N/A"}</TableCell>
-                     <TableCell>
-                       <div className="flex justify-center">
-                         <Badge
-                           variant="outline"
-                           className={
-                             staff.role === "staff"
-                               ? "bg-blue-100 text-blue-800 text-xs font-regular"
-                               : staff.role === "janitor"
-                               ? "bg-green-100 text-green-800 text-xs font-regular"
-                               : staff.role === "driver"
-                               ? "bg-blue-100 text-blue-800 text-xs font-regular"
-                               : staff.role === "maintenance"
-                               ? "bg-orange-100 text-orange-800 text-xs font-regular"
-                               : "bg-gray-100 text-gray-800 text-xs font-regular"
-                           }
-                         >
-                           {staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}
-                         </Badge>
-                       </div>
-                     </TableCell>
+                    <TableCell>
+                      <div className="flex justify-center">
+                        <Badge
+                          variant="outline"
+                          className={
+                            staff.role === "staff"
+                              ? "bg-blue-100 text-blue-800 text-xs font-regular"
+                              : staff.role === "janitor"
+                              ? "bg-green-100 text-green-800 text-xs font-regular"
+                              : staff.role === "driver"
+                              ? "bg-blue-100 text-blue-800 text-xs font-regular"
+                              : staff.role === "maintenance"
+                              ? "bg-orange-100 text-orange-800 text-xs font-regular"
+                              : "bg-gray-100 text-gray-800 text-xs font-regular"
+                          }
+                        >
+                          {staff.role.charAt(0).toUpperCase() + staff.role.slice(1)}
+                        </Badge>
+                      </div>
+                    </TableCell>
 
                     <TableCell className="text-sm">{staff.location || ""}</TableCell>
                     <TableCell>

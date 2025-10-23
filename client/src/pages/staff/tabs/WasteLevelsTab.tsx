@@ -71,24 +71,22 @@ export function WasteLevelsTab() {
   // Listen for bin registration events
   useEffect(() => {
     const handleBinRegistered = () => {
-      console.log('Bin registered event received, refreshing registered bins...');
+      console.log("Bin registered event received, refreshing registered bins...");
       fetchRegisteredBins(true); // Force refresh
     };
 
-    window.addEventListener('binRegistered', handleBinRegistered);
-    return () => window.removeEventListener('binRegistered', handleBinRegistered);
+    window.addEventListener("binRegistered", handleBinRegistered);
+    return () => window.removeEventListener("binRegistered", handleBinRegistered);
   }, []);
 
   // Get real-time bin1 data - try multiple search strategies
-  const realTimeBin1 = wasteBins.find((wb) => 
-    (wb.location === "Central Plaza" && wb.id === "bin1") ||
-    (wb.id === "bin1") // Fallback: just find bin1 regardless of location
+  const realTimeBin1 = wasteBins.find(
+    (wb) => (wb.location === "Central Plaza" && wb.id === "bin1") || wb.id === "bin1" // Fallback: just find bin1 regardless of location
   );
 
   // Get real-time bin2 data - try multiple search strategies
-  const realTimeBin2 = wasteBins.find((wb) => 
-    (wb.location === "Park Avenue" && wb.id === "bin2") ||
-    (wb.id === "bin2") // Fallback: just find bin2 regardless of location
+  const realTimeBin2 = wasteBins.find(
+    (wb) => (wb.location === "Park Avenue" && wb.id === "bin2") || wb.id === "bin2" // Fallback: just find bin2 regardless of location
   );
 
   // Enhanced Debug logging for bin2
@@ -131,20 +129,35 @@ export function WasteLevelsTab() {
   console.log("🔍 BIN2 SPECIFIC DEBUG:", {
     bin2DataExists: !!bin2Data,
     bin2Data: bin2Data,
-    bin2InWasteBins: wasteBins.find(wb => wb.id === "bin2"),
-    allWasteBinIds: wasteBins.map(wb => wb.id),
+    bin2InWasteBins: wasteBins.find((wb) => wb.id === "bin2"),
+    allWasteBinIds: wasteBins.map((wb) => wb.id),
     realTimeBin2: realTimeBin2,
   });
 
   // Debug logging for real-time bin detection
   console.log("🔍 Real-time bin detection:", {
     wasteBinsCount: wasteBins.length,
-    wasteBins: wasteBins.map((wb) => ({ id: wb.id, location: wb.location, level: wb.level, name: wb.binData?.bin_id || wb.id })),
+    wasteBins: wasteBins.map((wb) => ({
+      id: wb.id,
+      location: wb.location,
+      level: wb.level,
+      name: wb.binData?.bin_id || wb.id,
+    })),
     realTimeBin1: realTimeBin1
-      ? { id: realTimeBin1.id, location: realTimeBin1.location, level: realTimeBin1.level, name: realTimeBin1.binData?.bin_id || realTimeBin1.id }
+      ? {
+          id: realTimeBin1.id,
+          location: realTimeBin1.location,
+          level: realTimeBin1.level,
+          name: realTimeBin1.binData?.bin_id || realTimeBin1.id,
+        }
       : null,
     realTimeBin2: realTimeBin2
-      ? { id: realTimeBin2.id, location: realTimeBin2.location, level: realTimeBin2.level, name: realTimeBin2.binData?.bin_id || realTimeBin2.id }
+      ? {
+          id: realTimeBin2.id,
+          location: realTimeBin2.location,
+          level: realTimeBin2.level,
+          name: realTimeBin2.binData?.bin_id || realTimeBin2.id,
+        }
       : null,
   });
 
@@ -169,16 +182,19 @@ export function WasteLevelsTab() {
 
     // Add registered bins for Central Plaza
     ...registeredBins
-      .filter(rb => rb.assignedLocation === "Central Plaza")
-      .map(rb => ({
+      .filter((rb) => rb.assignedLocation === "Central Plaza")
+      .map((rb) => ({
         id: rb.binId,
         location: "Central Plaza",
         level: rb.bin_level,
-        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as "critical" | "warning" | "normal",
+        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
+          | "critical"
+          | "warning"
+          | "normal",
         lastCollected: "Real-time",
         capacity: "500L",
         wasteType: rb.type || "Mixed",
-        nextCollection: "Today 3:00 PM"
+        nextCollection: "Today 3:00 PM",
       })),
 
     // Always include the 3 static bins for Central Plaza
@@ -231,18 +247,23 @@ export function WasteLevelsTab() {
       : []),
 
     // Add registered bins for Park Avenue (only if no real-time bin2 data)
-    ...(realTimeBin2 ? [] : registeredBins
-      .filter(rb => rb.assignedLocation === "Park Avenue")
-      .map(rb => ({
-        id: rb.binId,
-        location: "Park Avenue",
-        level: rb.bin_level,
-        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as "critical" | "warning" | "normal",
-        lastCollected: "Real-time",
-        capacity: "500L",
-        wasteType: rb.type || "Mixed",
-        nextCollection: "Today 3:00 PM"
-      }))),
+    ...(realTimeBin2
+      ? []
+      : registeredBins
+          .filter((rb) => rb.assignedLocation === "Park Avenue")
+          .map((rb) => ({
+            id: rb.binId,
+            location: "Park Avenue",
+            level: rb.bin_level,
+            status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
+              | "critical"
+              | "warning"
+              | "normal",
+            lastCollected: "Real-time",
+            capacity: "500L",
+            wasteType: rb.type || "Mixed",
+            nextCollection: "Today 3:00 PM",
+          }))),
 
     // Park Avenue - 3 static bins (critical status)
     {
@@ -278,16 +299,19 @@ export function WasteLevelsTab() {
 
     // Mall District - Add registered bins + 4 static bins
     ...registeredBins
-      .filter(rb => rb.assignedLocation === "Mall District")
-      .map(rb => ({
+      .filter((rb) => rb.assignedLocation === "Mall District")
+      .map((rb) => ({
         id: rb.binId,
         location: "Mall District",
         level: rb.bin_level,
-        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as "critical" | "warning" | "normal",
+        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
+          | "critical"
+          | "warning"
+          | "normal",
         lastCollected: "Real-time",
         capacity: "500L",
         wasteType: rb.type || "Mixed",
-        nextCollection: "Today 3:00 PM"
+        nextCollection: "Today 3:00 PM",
       })),
 
     // Mall District - 4 bins (warning status)
@@ -334,16 +358,19 @@ export function WasteLevelsTab() {
 
     // Residential Area - Add registered bins + 4 static bins
     ...registeredBins
-      .filter(rb => rb.assignedLocation === "Residential Area")
-      .map(rb => ({
+      .filter((rb) => rb.assignedLocation === "Residential Area")
+      .map((rb) => ({
         id: rb.binId,
         location: "Residential Area",
         level: rb.bin_level,
-        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as "critical" | "warning" | "normal",
+        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
+          | "critical"
+          | "warning"
+          | "normal",
         lastCollected: "Real-time",
         capacity: "500L",
         wasteType: rb.type || "Mixed",
-        nextCollection: "Today 3:00 PM"
+        nextCollection: "Today 3:00 PM",
       })),
 
     // Residential Area - 4 bins
@@ -411,7 +438,7 @@ export function WasteLevelsTab() {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Waste Level</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Waste Level</h2>
 
           {/* Status Indicators */}
           <div className="flex items-center gap-4 text-sm">
@@ -476,7 +503,7 @@ export function WasteLevelsTab() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{bin.location}</h3>
-                        {((bin.id === "bin1" && bin1Data) || (bin.id === "bin2" && bin2Data) || bin.binData) ? (
+                        {(bin.id === "bin1" && bin1Data) || (bin.id === "bin2" && bin2Data) || bin.binData ? (
                           <div className="flex items-center gap-1">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                             <span className="text-xs text-green-600 dark:text-green-400 font-medium">Live</span>
@@ -531,7 +558,9 @@ export function WasteLevelsTab() {
         isOpen={isModalOpen}
         onClose={handleModalClose}
         bin={selectedBin}
-        binData={selectedBin?.id === "bin1" ? bin1Data : selectedBin?.id === "bin2" ? bin2Data : selectedBin?.binData || null}
+        binData={
+          selectedBin?.id === "bin1" ? bin1Data : selectedBin?.id === "bin2" ? bin2Data : selectedBin?.binData || null
+        }
       />
     </>
   );

@@ -15,7 +15,7 @@ export interface FirebaseBackupResponse {
 }
 
 class FirebaseBackupService {
-  private baseUrl = 'https://smartwaste-b3f0f-default-rtdb.firebaseio.com';
+  private baseUrl = ' https://smartbins-c724c-default-rtdb.firebaseio.com/';
   
   // Save last known GPS location for a bin
   async saveLastKnownGPS(binId: 'bin1' | 'bin2', data: GPSBackupData): Promise<boolean> {

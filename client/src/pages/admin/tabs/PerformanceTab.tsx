@@ -165,7 +165,7 @@ export function PerformanceTab() {
     const sortedCounts = [...allCounts].sort((a, b) => b - a);
     const maxCount = sortedCounts[0];
     const minCount = sortedCounts[sortedCounts.length - 1];
-    
+
     // If all counts are the same, everyone is average
     if (maxCount === minCount) {
       return { label: "Average", color: "text-yellow-600 bg-yellow-100" };
@@ -173,7 +173,7 @@ export function PerformanceTab() {
 
     // Calculate percentile position
     const percentile = (sortedCounts.indexOf(count) / (sortedCounts.length - 1)) * 100;
-    
+
     // Determine performance level based on percentile
     if (percentile <= 20) {
       return { label: "Excellent", color: "text-green-600 bg-green-100" };
@@ -192,7 +192,7 @@ export function PerformanceTab() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Employee Performance</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Employee Performance</h2>
         </div>
         <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
           <CardContent className="pt-6">
@@ -217,7 +217,7 @@ export function PerformanceTab() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Employee Performance</h2>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Employee Performance</h2>
         </div>
       </div>
 
@@ -226,7 +226,7 @@ export function PerformanceTab() {
         {/* Header */}
         <div className="flex items-center gap-3">
           <div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Top Performer</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Top Performer</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">Best performing employee this period</p>
           </div>
         </div>
@@ -318,7 +318,6 @@ export function PerformanceTab() {
                     )}
                   </span>
                 </div>
-
               </div>
 
               {/* Date Filters */}
@@ -372,7 +371,7 @@ export function PerformanceTab() {
                 <>
                   {performanceData.janitors.map((janitor, index) => {
                     const rank = index + 1;
-                    const allCounts = performanceData.janitors.map(j => j.activityCount);
+                    const allCounts = performanceData.janitors.map((j) => j.activityCount);
                     const activityLevel = getActivityLevel(janitor.activityCount, allCounts);
 
                     return (
@@ -414,7 +413,7 @@ export function PerformanceTab() {
               ) : (
                 performanceData?.janitors?.map((janitor, index) => {
                   const rank = index + 1;
-                  const allCounts = performanceData.janitors.map(j => j.activityCount);
+                  const allCounts = performanceData.janitors.map((j) => j.activityCount);
                   const activityLevel = getActivityLevel(janitor.activityCount, allCounts);
 
                   return (
