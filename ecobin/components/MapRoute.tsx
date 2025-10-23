@@ -1,18 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  TouchableOpacity,
-} from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import * as Location from 'expo-location';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRealTimeData } from '@/hooks/useRealTimeData';
-import { LocationUtils, LocationPoint } from '@/utils/locationUtils';
-import { routingService } from '@/utils/routingService';
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import * as Location from "expo-location";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRealTimeData } from "@/hooks/useRealTimeData";
+import { LocationUtils, LocationPoint } from "@/utils/locationUtils";
+import { routingService } from "@/utils/routingService";
 
 interface MapRouteProps {
   destination: {
@@ -50,59 +43,58 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
       setLoading(true);
       setError(null);
       setIsUsingBackupLocation(false);
-      console.log('[MapRoute] Starting location request...');
+      console.log("[MapRoute] Starting location request...");
 
       // Always get the user's actual current location, not the bin's location
       const locationResult = await LocationUtils.getCurrentLocation();
-      
+
       if (locationResult.success && locationResult.location) {
-        console.log('[MapRoute] Got user location:', locationResult.location);
+        console.log("[MapRoute] Got user location:", locationResult.location);
         setUserLocation(locationResult.location);
         setIsUsingBackupLocation(locationResult.isUsingFallback || false);
         await getRoute(locationResult.location, destination);
-        
+
         if (locationResult.isUsingFallback) {
           LocationUtils.showLocationUnavailableAlert();
         }
       } else {
-        setError(locationResult.error || 'Failed to get location');
+        setError(locationResult.error || "Failed to get location");
         LocationUtils.showLocationPermissionAlert();
       }
     } catch (err) {
-      console.error('[MapRoute] Error getting location:', err);
-      setError(`Failed to get your current location: ${err.message || 'Unknown error'}`);
+      console.error("[MapRoute] Error getting location:", err);
+      setError(`Failed to get your current location: ${err.message || "Unknown error"}`);
     } finally {
       setLoading(false);
     }
   };
 
-
   const getRoute = async (start: RoutePoint, end: RoutePoint) => {
     try {
-      console.log('[MapRoute] Calculating route from USER LOCATION:', start, 'to BIN LOCATION:', end);
-      
+      console.log("[MapRoute] Calculating route from USER LOCATION:", start, "to BIN LOCATION:", end);
+
       // Get route using Google Maps Directions API
-      const routeResult = await routingService.getRoute(start, end, 'driving');
-      
+      const routeResult = await routingService.getRoute(start, end, "driving");
+
       if (routeResult.success) {
         setDistance(routeResult.distance);
         setDuration(routeResult.duration);
         setRouteCoordinates(routeResult.coordinates);
-        
-        console.log('[MapRoute] Route calculated successfully:', {
+
+        console.log("[MapRoute] Route calculated successfully:", {
           distance: routingService.formatDistance(routeResult.distance),
           duration: routeResult.duration,
           coordinatesCount: routeResult.coordinates.length,
           userLocation: start,
-          binLocation: end
+          binLocation: end,
         });
       } else {
-        console.error('[MapRoute] Route calculation failed:', routeResult.error);
-        setError(routeResult.error || 'Failed to calculate route');
+        console.error("[MapRoute] Route calculation failed:", routeResult.error);
+        setError(routeResult.error || "Failed to calculate route");
       }
     } catch (err) {
-      console.error('[MapRoute] Error getting route:', err);
-      setError('Failed to calculate route');
+      console.error("[MapRoute] Error getting route:", err);
+      setError("Failed to calculate route");
     }
   };
 
@@ -123,7 +115,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
         result |= (b & 0x1f) << shift;
         shift += 5;
       } while (b >= 0x20);
-      const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+      const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
       lat += dlat;
 
       shift = 0;
@@ -133,7 +125,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
         result |= (b & 0x1f) << shift;
         shift += 5;
       } while (b >= 0x20);
-      const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+      const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
       lng += dlng;
 
       points.push({
@@ -145,28 +137,23 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
     return points;
   };
 
-
   const openInMaps = () => {
     if (userLocation) {
       // Create a URL that opens in the device's default maps app
       const url = `https://www.google.com/maps/dir/${userLocation.latitude},${userLocation.longitude}/${destination.latitude},${destination.longitude}`;
-      
-      Alert.alert(
-        'Open in Maps',
-        `Navigate to ${destination.title} at ${destination.address}`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Open Maps', 
-            onPress: () => {
-              // In a real app, you would use Linking.openURL(url)
-              // For now, we'll just show the URL in console
-              console.log('Opening maps with URL:', url);
-              Alert.alert('Navigation', 'This would open your default maps app with the route.');
-            }
-          }
-        ]
-      );
+
+      Alert.alert("Open in Maps", `Navigate to ${destination.title} at ${destination.address}`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Open Maps",
+          onPress: () => {
+            // In a real app, you would use Linking.openURL(url)
+            // For now, we'll just show the URL in console
+            console.log("Opening maps with URL:", url);
+            Alert.alert("Navigation", "This would open your default maps app with the route.");
+          },
+        },
+      ]);
     }
   };
 
@@ -197,7 +184,6 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
           </TouchableOpacity>
         </View>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>⚠️</Text>
           <Text style={styles.errorTitle}>Location Error</Text>
           <Text style={styles.errorMessage}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={getCurrentLocation}>
@@ -218,7 +204,6 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
           </TouchableOpacity>
         </View>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>📍</Text>
           <Text style={styles.errorTitle}>Location Not Available</Text>
           <Text style={styles.errorMessage}>Unable to get your current location.</Text>
         </View>
@@ -240,14 +225,12 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
         <View style={styles.routeInfoItem}>
           <Text style={styles.routeInfoLabel}>Distance:</Text>
           <Text style={styles.routeInfoValue}>
-            {distance ? LocationUtils.formatDistance(distance) : 'Calculating...'}
+            {distance ? LocationUtils.formatDistance(distance) : "Calculating..."}
           </Text>
         </View>
         <View style={styles.routeInfoItem}>
           <Text style={styles.routeInfoLabel}>Duration:</Text>
-          <Text style={styles.routeInfoValue}>
-            {duration || 'Calculating...'}
-          </Text>
+          <Text style={styles.routeInfoValue}>{duration || "Calculating..."}</Text>
         </View>
         <TouchableOpacity style={styles.openMapsButton} onPress={openInMaps}>
           <Text style={styles.openMapsButtonText}>Open in Maps</Text>
@@ -257,9 +240,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
       {/* Location Status Indicator */}
       {isUsingBackupLocation && (
         <View style={styles.backupLocationWarning}>
-          <Text style={styles.backupLocationText}>
-            ⚠️ Using backup location data
-          </Text>
+          <Text style={styles.backupLocationText}>Using backup location data</Text>
         </View>
       )}
 
@@ -279,29 +260,14 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
         showsScale={true}
       >
         {/* User Location Marker */}
-        <Marker
-          coordinate={userLocation}
-          title="Your Location"
-          description="Current position"
-          pinColor="blue"
-        />
+        <Marker coordinate={userLocation} title="Your Location" description="Current position" pinColor="blue" />
 
         {/* Destination Marker */}
-        <Marker
-          coordinate={destination}
-          title={destination.title}
-          description={destination.address}
-          pinColor="red"
-        />
+        <Marker coordinate={destination} title={destination.title} description={destination.address} pinColor="red" />
 
         {/* Route Polyline */}
         {routeCoordinates.length > 0 && (
-          <Polyline
-            coordinates={routeCoordinates}
-            strokeColor="#2e7d32"
-            strokeWidth={4}
-            lineDashPattern={[5, 5]}
-          />
+          <Polyline coordinates={routeCoordinates} strokeColor="#2e7d32" strokeWidth={4} lineDashPattern={[5, 5]} />
         )}
       </MapView>
     </View>
@@ -311,84 +277,84 @@ const MapRoute: React.FC<MapRouteProps> = ({ destination, onClose }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: "#f8f8f8",
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   closeButton: {
     padding: 5,
   },
   closeButtonText: {
     fontSize: 18,
-    color: '#666',
+    color: "#666",
   },
   routeInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   routeInfoItem: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   routeInfoLabel: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginBottom: 4,
   },
   routeInfoValue: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2e7d32',
+    fontWeight: "600",
+    color: "#2e7d32",
   },
   openMapsButton: {
-    backgroundColor: '#2e7d32',
+    backgroundColor: "#2e7d32",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
   },
   openMapsButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   map: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8f8f8",
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 20,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: "#f8f8f8",
   },
   errorText: {
     fontSize: 48,
@@ -396,30 +362,30 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 8,
   },
   errorMessage: {
     fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#2e7d32',
+    backgroundColor: "#2e7d32",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
   },
   retryButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   backupLocationWarning: {
-    backgroundColor: '#fff3cd',
-    borderColor: '#ffeaa7',
+    backgroundColor: "#fff3cd",
+    borderColor: "#ffeaa7",
     borderWidth: 1,
     paddingHorizontal: 15,
     paddingVertical: 8,
@@ -427,10 +393,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   backupLocationText: {
-    color: '#856404',
+    color: "#856404",
     fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
+    fontWeight: "500",
+    textAlign: "center",
   },
 });
 

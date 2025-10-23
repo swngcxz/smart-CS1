@@ -3,7 +3,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { WasteLevelsTab } from "./staff/tabs/WasteLevelsTab";
 import { MapTab } from "./staff/tabs/StaffMapTab";
 import { StaffTab } from "./staff/tabs/StaffTabb";
-import { SettingsTab } from "./staff/tabs/SettingsTab";
+import { SettingsTab } from "../pages/admin/tabs/SettingsTab";
 import { StaffSidebar } from "./staff/nav/StaffSidebar";
 import { StaffDashboardHeader } from "./staff/nav/StaffDashboardHeader";
 import { StaffActivityTab } from "./staff/tabs/StaffActivityTab";
