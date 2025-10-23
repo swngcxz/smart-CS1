@@ -225,13 +225,13 @@ exports.getNotifications = async (req, res) => {
       return res.status(400).json({ error: 'userId is required' });
     }
     
-    console.log(`[GET NOTIFICATIONS] Fetching notifications for user: ${userId}`);
+    // console.log(`[GET NOTIFICATIONS] Fetching notifications for user: ${userId}`); // Reduced logging - polls frequently
     
     // Get staff notifications from Realtime Database
     const snapshot = await db.ref(`notifications/${userId}`).once('value');
     const notifications = snapshot.val() || {};
     
-    console.log(`[GET NOTIFICATIONS] Raw notifications for ${userId}:`, Object.keys(notifications).length);
+    // console.log(`[GET NOTIFICATIONS] Raw notifications for ${userId}:`, Object.keys(notifications).length); // Reduced logging - polls frequently
     
     // Filter out admin login notifications for staff users
     const filteredNotifications = {};
@@ -248,7 +248,7 @@ exports.getNotifications = async (req, res) => {
       }
     });
     
-    console.log(`[GET NOTIFICATIONS] Filtered notifications for ${userId}:`, Object.keys(filteredNotifications).length);
+    // console.log(`[GET NOTIFICATIONS] Filtered notifications for ${userId}:`, Object.keys(filteredNotifications).length); // Reduced logging - polls frequently
     
     res.status(200).json({ notifications: filteredNotifications });
   } catch (error) {

@@ -111,7 +111,7 @@ router.get("/bin1", async (req, res) => {
 
 // Add endpoint to get all bins from monitoring
 router.get("/all", async (req, res) => {
-  console.log('[BIN ROUTES] /all endpoint called');
+  // console.log('[BIN ROUTES] /all endpoint called'); // Reduced logging - polls frequently
   try {
     const db = admin.database();
     const monitoringRef = db.ref('monitoring');
@@ -125,7 +125,7 @@ router.get("/all", async (req, res) => {
     ]);
     
     const allData = snapshot.val();
-    console.log('[BIN ROUTES] All monitoring data:', allData);
+    // console.log('[BIN ROUTES] All monitoring data:', allData); // Reduced logging - polls frequently
     
     if (!allData) {
       console.log('[BIN ROUTES] No data found in monitoring');
@@ -153,7 +153,7 @@ router.get("/all", async (req, res) => {
       }
     });
     
-    console.log(`[BIN ROUTES] Found ${bins.length} bins:`, bins.map(b => b.binId));
+    // console.log(`[BIN ROUTES] Found ${bins.length} bins:`, bins.map(b => b.binId)); // Reduced logging - polls frequently
     res.json({ success: true, bins });
     
   } catch (err) {

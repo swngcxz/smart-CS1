@@ -225,56 +225,39 @@ class SMSNotificationService {
       binLevel,
       weight,
       height,
-      coordinates,
       taskNotes,
       assignedBy,
       assignmentType
     } = taskData;
 
     const status = this.formatBinStatus(binLevel);
-    const time = new Date().toLocaleString('en-US', { 
-      month: '2-digit', 
-      day: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
-
-    // SINGLE-LINE FORMAT - Newlines cause multi-part SMS which fails with Error 325
-    // MUST stay under 160 characters
     const isManualAssignment = assignmentType === 'manual';
-    const taskType = isManualAssignment ? 'MANUAL' : 'AUTO';
     
-    // Build message with separators instead of newlines
-    let message = `${taskType} TASK: ${binName} @ ${binLocation}. `;
-    message += `Level:${binLevel}% (${status}). `;
-    message += `W:${weight}kg H:${height}%. `;
+    // Ultra-short time format
+    const now = new Date();
+    const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    // Single line format to avoid multi-part SMS issues - use pipe separator
+    let message = isManualAssignment ? 'MANUAL TASK: ' : 'TASK: ';
     
-    // Add task notes if they fit
-    if (taskNotes && taskNotes.trim()) {
-      const notes = taskNotes.trim().replace(/\n/g, ' '); // Remove any newlines from notes
-      const availableSpace = 150 - message.length - 20; // Reserve for ending
-      
-      if (notes.length <= availableSpace) {
-        message += `Note: ${notes}. `;
-      } else if (availableSpace > 10) {
-        message += `Note: ${notes.substring(0, availableSpace - 4)}... `;
+    // Essential info separated by pipes
+    message += `${binName} at ${binLocation} | `;
+    message += `${binLevel}% ${status} W:${weight}kg H:${height}% | `;
+    message += `By ${assignedBy} ${timeStr}`;
+    
+    // Add notes only if there's space and keep total under 155 chars
+    if (taskNotes && taskNotes.trim() && message.length < 110) {
+      const cleanNotes = taskNotes.trim()
+        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+        .substring(0, 25);
+      if (cleanNotes) {
+        message += ` | ${cleanNotes}`;
       }
     }
     
-    message += `By ${assignedBy || 'Staff'} ${time}. Empty now`;
+    message += ' | Empty now!';
 
-    // Safety check - if over 160, rebuild without notes
-    if (message.length > 160) {
-      message = `${taskType} TASK: ${binName} @ ${binLocation}. Level:${binLevel}% (${status}). W:${weight}kg H:${height}%. By ${assignedBy || 'Staff'} ${time}. Empty now`;
-    }
-
-    // Final safety - truncate if still over 160
-    if (message.length > 160) {
-      message = message.substring(0, 157) + '...';
-    }
-
+    console.log(`[SMS FORMAT] Final message (${message.length} chars): ${message}`);
     return message;
   }
 

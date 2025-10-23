@@ -41,6 +41,8 @@ const binHealthMonitor = require('./services/binHealthMonitor');
 const gpsBackupService = require('./services/gpsBackupService');
 const smsNotificationService = require('./services/smsNotificationService');
 const gsmService = require('./services/gsmService');
+const CacheManager = require('./utils/cacheManager');
+const rateLimiter = require('./utils/rateLimiter');
 
 
 
@@ -356,7 +358,7 @@ function setupRealTimeMonitoring() {
         if (!processedGPSData) {
           // Rate limit GPS processing
           if (rateLimiter.isAllowed('gps_processing', 5, GPS_PROCESS_THROTTLE_MS)) {
-            processedGPSData = await gpsFallbackService.processGPSData('data', {
+            processedGPSData = await gpsBackupService.processGPSData('data', {
               latitude: data.latitude,
               longitude: data.longitude,
               satellites: data.satellites || 0,
@@ -593,7 +595,7 @@ function setupRealTimeMonitoring() {
         
         if (!cachedGPS) {
           if (rateLimiter.isAllowed('gps_processing', 5, GPS_PROCESS_THROTTLE_MS)) {
-            processedGPSData = await gpsFallbackService.processGPSData('bin2', {
+            processedGPSData = await gpsBackupService.processGPSData('bin2', {
               latitude: data.latitude,
               longitude: data.longitude,
               satellites: data.satellites || 0,

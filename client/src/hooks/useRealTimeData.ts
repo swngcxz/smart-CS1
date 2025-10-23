@@ -50,13 +50,13 @@ export function useRealTimeData() {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
-        console.log('Fetching all bins data from Firebase...');
+        // console.log('Fetching all bins data from Firebase...'); // Reduced logging
         
         // Fetch all bins data and backup coordinates with better error handling
       const [allBinsResponse, backupResponse] = await Promise.allSettled([
         api.get('/api/all'),
           api.get('/api/gps-backup/display/bin1').catch(err => {
-            console.warn('Backup coordinates not available:', err.message);
+            // console.warn('Backup coordinates not available:', err.message); // Reduced logging
             return { data: null };
           })
         ]);
@@ -64,27 +64,27 @@ export function useRealTimeData() {
         // Handle all bins response
         if (allBinsResponse.status === 'fulfilled' && allBinsResponse.value.data?.success) {
           const bins = allBinsResponse.value.data.bins;
-          console.log('All bins data received:', bins);
-          console.log('🔍 BINS DEBUG - Available bin IDs:', bins.map((b: any) => b.binId));
-          console.log('🔍 BINS DEBUG - Bin2 in response:', bins.find((b: any) => b.binId === 'bin2'));
+          console.log('All bins data received:', bins.length, 'bins'); // Keep but simplified
+          // console.log('🔍 BINS DEBUG - Available bin IDs:', bins.map((b: any) => b.binId)); // Reduced logging
+          // console.log('🔍 BINS DEBUG - Bin2 in response:', bins.find((b: any) => b.binId === 'bin2')); // Reduced logging
           
           // Set individual bin data (exclude backup data)
           bins.forEach((bin: any) => {
             if (bin.binId === 'bin1') {
               setBin1Data(bin);
-              console.log('Bin1 data set:', bin);
+              // console.log('Bin1 data set:', bin); // Reduced logging
             } else if (bin.binId === 'bin2') {
               setBin2Data(bin);
-              console.log('🔄 INITIAL BIN2 DATA SET:', {
-                bin_level: bin.bin_level,
-                weight_percent: bin.weight_percent,
-                timestamp: bin.timestamp,
-                status: getStatusFromLevel(bin.bin_level),
-                fullData: bin
-              });
+              // console.log('🔄 INITIAL BIN2 DATA SET:', { // Reduced logging
+              //   bin_level: bin.bin_level,
+              //   weight_percent: bin.weight_percent,
+              //   timestamp: bin.timestamp,
+              //   status: getStatusFromLevel(bin.bin_level),
+              //   fullData: bin
+              // });
             } else if (bin.binId === 'data') {
               setMonitoringData(bin);
-              console.log('Monitoring data set:', bin);
+              // console.log('Monitoring data set:', bin); // Reduced logging
             }
             // Skip backup data - it's not a bin
           });
@@ -103,7 +103,7 @@ export function useRealTimeData() {
             }
           });
         } else {
-          console.log('No bins data received from API');
+          // console.log('No bins data received from API'); // Reduced logging
           setBin1Data(null);
           setBin2Data(null);
           setAllBinsData([]);
@@ -111,7 +111,7 @@ export function useRealTimeData() {
         
         // Handle backup response
         if (backupResponse.status === 'fulfilled' && backupResponse.value.data) {
-          console.log('Backup coordinates received:', backupResponse.value.data);
+          // console.log('Backup coordinates received:', backupResponse.value.data); // Reduced logging
           // Transform backup data to match expected structure
           const backupData = backupResponse.value.data;
           if (backupData.coordinates) {
@@ -146,12 +146,12 @@ export function useRealTimeData() {
   // Set up real-time updates using polling - get all bins data
   useEffect(() => {
     const interval = setInterval(async () => {
-      console.log("⏰ useRealTimeData - Polling for updates...");
+      // console.log("⏰ useRealTimeData - Polling for updates..."); // Reduced logging
       try {
         const [allBinsResponse, backupResponse] = await Promise.allSettled([
           api.get('/api/all'),
           api.get('/api/gps-backup/display/bin1').catch(err => {
-            console.warn('Backup coordinates not available in polling:', err.message);
+            // console.warn('Backup coordinates not available in polling:', err.message); // Reduced logging
             return { data: null };
           })
         ]);
@@ -159,32 +159,32 @@ export function useRealTimeData() {
         // Handle all bins response
         if (allBinsResponse.status === 'fulfilled' && allBinsResponse.value.data?.success) {
           const bins = allBinsResponse.value.data.bins;
-          console.log('Polling update - all bins data:', bins);
-          console.log('Polling update - bin1 name:', bins.find(b => b.binId === 'bin1')?.name);
-          console.log('🔍 POLLING DEBUG - Available bin IDs:', bins.map((b: any) => b.binId));
-          console.log('🔍 POLLING DEBUG - Bin2 in response:', bins.find((b: any) => b.binId === 'bin2'));
+          // console.log('Polling update - all bins data:', bins); // Reduced logging
+          // console.log('Polling update - bin1 name:', bins.find(b => b.binId === 'bin1')?.name); // Reduced logging
+          // console.log('🔍 POLLING DEBUG - Available bin IDs:', bins.map((b: any) => b.binId)); // Reduced logging
+          // console.log('🔍 POLLING DEBUG - Bin2 in response:', bins.find((b: any) => b.binId === 'bin2')); // Reduced logging
           
           // Update state with new data
           setAllBinsData(bins);
-          console.log('✅ Polling update - State updated with new bin data');
+          // console.log('✅ Polling update - State updated with new bin data'); // Reduced logging
           
           // Update individual bin data (exclude backup data)
           bins.forEach((bin: any) => {
             if (bin.binId === 'bin1') {
               setBin1Data(bin);
-              console.log('Bin1 updated:', bin.bin_level, 'Status:', getStatusFromLevel(bin.bin_level));
+              // console.log('Bin1 updated:', bin.bin_level, 'Status:', getStatusFromLevel(bin.bin_level)); // Reduced logging
             } else if (bin.binId === 'bin2') {
               setBin2Data(bin);
-              console.log('🔄 BIN2 UPDATED:', {
-                bin_level: bin.bin_level,
-                weight_percent: bin.weight_percent,
-                timestamp: bin.timestamp,
-                status: getStatusFromLevel(bin.bin_level),
-                fullData: bin
-              });
+              // console.log('🔄 BIN2 UPDATED:', { // Reduced logging
+              //   bin_level: bin.bin_level,
+              //   weight_percent: bin.weight_percent,
+              //   timestamp: bin.timestamp,
+              //   status: getStatusFromLevel(bin.bin_level),
+              //   fullData: bin
+              // });
             } else if (bin.binId === 'data') {
               setMonitoringData(bin);
-              console.log('Monitoring data updated:', bin.bin_level, 'Status:', getStatusFromLevel(bin.bin_level));
+              // console.log('Monitoring data updated:', bin.bin_level, 'Status:', getStatusFromLevel(bin.bin_level)); // Reduced logging
             }
             // Skip backup data - it's not a bin
           });
@@ -204,12 +204,12 @@ export function useRealTimeData() {
           });
         } else {
           // If polling fails, keep existing data and don't spam errors
-          console.log('Polling failed, keeping existing data');
+          // console.log('Polling failed, keeping existing data'); // Reduced logging
         }
         
         // Handle backup response
         if (backupResponse.status === 'fulfilled' && backupResponse.value.data) {
-          console.log('Polling update - backup coordinates:', backupResponse.value.data);
+          // console.log('Polling update - backup coordinates:', backupResponse.value.data); // Reduced logging
           // Transform backup data to match expected structure
           const backupData = backupResponse.value.data;
           if (backupData.coordinates) {
