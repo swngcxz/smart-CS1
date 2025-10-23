@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, StatusBar, Modal, ScrollView, Alert } from "react-native";
 
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -53,6 +53,7 @@ export default function MapScreen() {
   const [arrivalDetected, setArrivalDetected] = useState(false);
   const [proximityThreshold] = useState(50); // 50 meters proximity threshold
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -69,6 +70,66 @@ export default function MapScreen() {
     getBackupCoordinates,
     lastKnownGPS,
   } = useRealTimeData();
+
+  // Convert real-time data to map markers with GPS fallback logic
+  const getRealTimeMarkers = useCallback((): Bin[] => {
+    const markers: Bin[] = [];
+
+    // Helper function to process bin data with GPS fallback
+    const processBinData = (data: any, binId: "bin1" | "bin2", defaultLocation: string) => {
+      if (!data) return null;
+
+      const level = data.bin_level || data.weight_percent || 0;
+      const status = level >= 85 ? "critical" : level >= 70 ? "warning" : "normal";
+
+      // Check if GPS is currently valid using the new helper function
+      const isGPSOnline = isGPSValidForBin(data);
+      const coordinatesSource = isGPSOnline ? "gps_live" : "gps_backup";
+
+      // Use backup coordinates if GPS is offline/invalid
+      let latitude, longitude, locationSource;
+      if (isGPSOnline) {
+        latitude = data.latitude;
+        longitude = data.longitude;
+        locationSource = "GPS Live";
+      } else {
+        // Get backup coordinates using the new system
+        const backupCoords = getBackupCoordinates(binId, data);
+        latitude = backupCoords.latitude;
+        longitude = backupCoords.longitude;
+        locationSource = backupCoords.source;
+      }
+
+      return {
+        id: data.bin_id || binId,
+        name: data.name || `Smart Bin ${binId === "bin1" ? "1" : "2"}`,
+        latitude: latitude,
+        longitude: longitude,
+        percentage: level,
+        location: data.mainLocation || defaultLocation,
+        lastCollectedBy: "System",
+        lastCollectedDate: new Date(data.timestamp).toISOString().split("T")[0],
+        // Add metadata for display
+        gpsValid: isGPSOnline,
+        coordinatesSource: coordinatesSource,
+        locationSource: locationSource,
+      };
+    };
+
+    // Process bin1 data
+    const bin1Marker = processBinData(binData, "bin1", "Central Plaza");
+    if (bin1Marker) {
+      markers.push(bin1Marker);
+    }
+
+    // Process bin2 data
+    const bin2Marker = processBinData(bin2Data, "bin2", "Secondary Location");
+    if (bin2Marker) {
+      markers.push(bin2Marker);
+    }
+
+    return markers;
+  }, [binData, bin2Data, isGPSValidForBin, getBackupCoordinates]);
 
   // Update region when real-time data is available (GPS live or backup)
   useEffect(() => {
@@ -105,7 +166,7 @@ export default function MapScreen() {
         }
       }
     }
-  }, [binData, bin2Data]);
+  }, [binData, bin2Data, getRealTimeMarkers]);
 
   // Update last update time
   useEffect(() => {
@@ -144,7 +205,7 @@ export default function MapScreen() {
         });
       }, 100);
     }
-  }, [params]);
+  }, [params.navigateToBin, params.binId, params.latitude, params.longitude, params.binLocation]);
 
   // Clear route when activity status changes to completed
   useEffect(() => {
@@ -177,7 +238,13 @@ export default function MapScreen() {
 
   // Function to start location tracking
   const startLocationTracking = async () => {
+    // Prevent multiple simultaneous permission requests
+    if (isRequestingPermission || isLocationTracking) {
+      return;
+    }
+
     try {
+      setIsRequestingPermission(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permission needed", "Location permission is required for arrival detection.");
@@ -248,6 +315,8 @@ export default function MapScreen() {
     } catch (error) {
       console.error("Error starting location tracking:", error);
       setIsLocationTracking(false);
+    } finally {
+      setIsRequestingPermission(false);
     }
   };
 
@@ -255,33 +324,7 @@ export default function MapScreen() {
   const handleArrivalAtBin = () => {
     if (!targetBin) return;
 
-    Alert.alert(
-      "Arrived at Destination! 🎉",
-      `You have arrived at ${targetBin.location} (Bin ${targetBin.id}). Would you like to open the activity details?`,
-      [
-        {
-          text: "Not Now",
-          style: "cancel",
-          onPress: () => {
-            setArrivalDetected(false);
-          },
-        },
-        {
-          text: "Open Activity",
-          onPress: () => {
-            // Navigate back to activity logs with the specific activity
-            router.push({
-              pathname: "/(tabs)/activitylogs",
-              params: {
-                openActivityId: targetBin.id,
-                binLocation: targetBin.location,
-              },
-            });
-            setArrivalDetected(false);
-          },
-        },
-      ]
-    );
+    Alert.alert("Arrived at Destination!", `You have arrived at ${targetBin.location} (Bin ${targetBin.id}).`);
   };
 
   // Initialize voice navigation settings
@@ -302,13 +345,13 @@ export default function MapScreen() {
 
   // Start location tracking when target bin is set
   useEffect(() => {
-    if (targetBin && !isLocationTracking) {
+    if (targetBin && !isLocationTracking && !isRequestingPermission) {
       startLocationTracking();
     } else if (!targetBin && isLocationTracking) {
       setIsLocationTracking(false);
       setArrivalDetected(false);
     }
-  }, [targetBin]);
+  }, [targetBin, isLocationTracking, isRequestingPermission]);
 
   // Voice control functions
   const toggleVoiceNavigation = async () => {
@@ -351,66 +394,6 @@ export default function MapScreen() {
         [{ text: "OK" }]
       );
     }
-  };
-
-  // Convert real-time data to map markers with GPS fallback logic
-  const getRealTimeMarkers = (): Bin[] => {
-    const markers: Bin[] = [];
-
-    // Helper function to process bin data with GPS fallback
-    const processBinData = (data: any, binId: "bin1" | "bin2", defaultLocation: string) => {
-      if (!data) return null;
-
-      const level = data.bin_level || data.weight_percent || 0;
-      const status = level >= 85 ? "critical" : level >= 70 ? "warning" : "normal";
-
-      // Check if GPS is currently valid using the new helper function
-      const isGPSOnline = isGPSValidForBin(data);
-      const coordinatesSource = isGPSOnline ? "gps_live" : "gps_backup";
-
-      // Use backup coordinates if GPS is offline/invalid
-      let latitude, longitude, locationSource;
-      if (isGPSOnline) {
-        latitude = data.latitude;
-        longitude = data.longitude;
-        locationSource = "GPS Live";
-      } else {
-        // Get backup coordinates using the new system
-        const backupCoords = getBackupCoordinates(binId, data);
-        latitude = backupCoords.latitude;
-        longitude = backupCoords.longitude;
-        locationSource = backupCoords.source;
-      }
-
-      return {
-        id: data.bin_id || binId,
-        name: data.name || `Smart Bin ${binId === "bin1" ? "1" : "2"}`,
-        latitude: latitude,
-        longitude: longitude,
-        percentage: level,
-        location: data.mainLocation || defaultLocation,
-        lastCollectedBy: "System",
-        lastCollectedDate: new Date(data.timestamp).toISOString().split("T")[0],
-        // Add metadata for display
-        gpsValid: isGPSOnline,
-        coordinatesSource: coordinatesSource,
-        locationSource: locationSource,
-      };
-    };
-
-    // Process bin1 data
-    const bin1Marker = processBinData(binData, "bin1", "Central Plaza");
-    if (bin1Marker) {
-      markers.push(bin1Marker);
-    }
-
-    // Process bin2 data
-    const bin2Marker = processBinData(bin2Data, "bin2", "Secondary Location");
-    if (bin2Marker) {
-      markers.push(bin2Marker);
-    }
-
-    return markers;
   };
 
   const handleMarkerPress = (bin: Bin) => {
@@ -786,7 +769,6 @@ export default function MapScreen() {
                   targetBin.latitude,
                   targetBin.longitude
                 ).toFixed(0)}
-                m
               </Text>
             </View>
           </Marker>
@@ -841,11 +823,8 @@ export default function MapScreen() {
                       disabled={isCalculatingRoute}
                     >
                       <Text style={styles.directionsButtonText}>
-                        {isCalculatingRoute ? "Calculating..." : "🧭 Get Directions"}
+                        {isCalculatingRoute ? "Calculating..." : "Get Directions"}
                       </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.editButton}>
-                      <Text style={styles.editButtonText}>Edit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={closeModal} style={styles.closeButton}>
                       <Text style={styles.closeButtonText}>✕</Text>
@@ -909,10 +888,6 @@ export default function MapScreen() {
                           <Text style={styles.timeLogLabel}>Coordinates Source:</Text>
                           <Text style={styles.timeLogValue}>{selectedBin.coordinatesSource}</Text>
                         </View>
-                        <View style={styles.timeLogRow}>
-                          <Text style={styles.timeLogLabel}>Location Source:</Text>
-                          <Text style={styles.timeLogValue}>{selectedBin.locationSource}</Text>
-                        </View>
                       </>
                     )}
                   </ScrollView>
@@ -934,7 +909,7 @@ const styles = StyleSheet.create({
   // Google-style Search Bar
   searchBarContainer: {
     position: "absolute",
-    top: 50,
+    top: 65,
     left: 20,
     right: 20,
     zIndex: 3,
@@ -944,7 +919,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "white",
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 13,
     borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -956,7 +931,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 12,
     color: "#333",
   },
 
@@ -974,6 +949,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "white",
     paddingHorizontal: 8,
     paddingVertical: 8,
@@ -1249,8 +1225,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   timeLogLabel: {
     fontSize: 14,
