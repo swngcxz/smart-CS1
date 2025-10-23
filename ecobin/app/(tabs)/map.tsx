@@ -708,12 +708,6 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Arrival Notification - Small overlay */}
-      {arrivalDetected && (
-        <View style={styles.arrivalNotification}>
-          <Text style={styles.arrivalNotificationText}>🎉 Arrived at destination!</Text>
-        </View>
-      )}
 
       {/* Category Buttons */}
       {!isNavigating && (
