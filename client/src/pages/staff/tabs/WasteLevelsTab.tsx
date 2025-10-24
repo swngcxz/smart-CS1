@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useRealTimeData, WasteBin } from "@/hooks/useRealTimeData";
 import { useRegisteredBins } from "@/hooks/useBinApi";
+import { useBinCollectionData } from "@/hooks/useBinCollectionData";
 import { Smartphone, Wifi, WifiOff } from "lucide-react";
 import { BinInfoModal } from "@/components/popups/BinInfoModal";
 import { WasteLevelsSkeleton } from "@/components/skeletons/WasteLevelsSkeleton";
@@ -62,6 +63,17 @@ export function WasteLevelsTab() {
 
   const { wasteBins, loading, error, bin1Data, bin2Data } = useRealTimeData();
   const { registeredBins, fetchRegisteredBins, isLoading: loadingRegisteredBins } = useRegisteredBins();
+  
+  // Get collection data for bin1 and bin2
+  const { collectionData: bin1CollectionData, loading: bin1CollectionLoading } = useBinCollectionData("bin1");
+  const { collectionData: bin2CollectionData, loading: bin2CollectionLoading } = useBinCollectionData("bin2");
+
+  // Helper function to get collection data for any bin
+  const getCollectionDataForBin = (binId: string) => {
+    if (binId === "bin1") return bin1CollectionData;
+    if (binId === "bin2") return bin2CollectionData;
+    return null;
+  };
 
   // Fetch registered bins when component mounts - only once
   useEffect(() => {
@@ -171,10 +183,10 @@ export function WasteLevelsTab() {
             location: "Central Plaza", // Force location to Central Plaza for consistency
             level: realTimeBin1.level,
             status: realTimeBin1.status,
-            lastCollected: realTimeBin1.lastCollected,
-            capacity: realTimeBin1.capacity,
-            wasteType: realTimeBin1.wasteType || "Mixed",
-            nextCollection: realTimeBin1.nextCollection || "Today 3:00 PM",
+            lastCollected: bin1CollectionData?.lastCollected || "Never collected",
+            capacity: bin1CollectionData?.capacity || "3KG",
+            wasteType: bin1CollectionData?.wasteType || "Mixed",
+            nextCollection: bin1CollectionData?.nextCollection || "None",
             binData: realTimeBin1.binData, // Include binData for live indicator
           },
         ]
@@ -183,19 +195,22 @@ export function WasteLevelsTab() {
     // Add registered bins for Central Plaza
     ...registeredBins
       .filter((rb) => rb.assignedLocation === "Central Plaza")
-      .map((rb) => ({
-        id: rb.binId,
-        location: "Central Plaza",
-        level: rb.bin_level,
-        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
-          | "critical"
-          | "warning"
-          | "normal",
-        lastCollected: "Real-time",
-        capacity: "500L",
-        wasteType: rb.type || "Mixed",
-        nextCollection: "Today 3:00 PM",
-      })),
+      .map((rb) => {
+        const collectionData = getCollectionDataForBin(rb.binId);
+        return {
+          id: rb.binId,
+          location: "Central Plaza",
+          level: rb.bin_level,
+          status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
+            | "critical"
+            | "warning"
+            | "normal",
+          lastCollected: collectionData?.lastCollected || "Never collected",
+          capacity: collectionData?.capacity || "3KG",
+          wasteType: collectionData?.wasteType || rb.type || "Mixed",
+          nextCollection: collectionData?.nextCollection || "None",
+        };
+      }),
 
     // Always include the 3 static bins for Central Plaza
     {
@@ -237,10 +252,10 @@ export function WasteLevelsTab() {
             location: "Park Avenue", // Force location to Park Avenue for consistency
             level: realTimeBin2.level,
             status: realTimeBin2.status,
-            lastCollected: realTimeBin2.lastCollected,
-            capacity: realTimeBin2.capacity,
-            wasteType: realTimeBin2.wasteType || "Mixed",
-            nextCollection: realTimeBin2.nextCollection || "Today 3:00 PM",
+            lastCollected: bin2CollectionData?.lastCollected || "Never collected",
+            capacity: bin2CollectionData?.capacity || "3KG",
+            wasteType: bin2CollectionData?.wasteType || "Mixed",
+            nextCollection: bin2CollectionData?.nextCollection || "None",
             binData: realTimeBin2.binData, // Include binData for live indicator
           },
         ]
@@ -251,19 +266,22 @@ export function WasteLevelsTab() {
       ? []
       : registeredBins
           .filter((rb) => rb.assignedLocation === "Park Avenue")
-          .map((rb) => ({
-            id: rb.binId,
-            location: "Park Avenue",
-            level: rb.bin_level,
-            status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
-              | "critical"
-              | "warning"
-              | "normal",
-            lastCollected: "Real-time",
-            capacity: "500L",
-            wasteType: rb.type || "Mixed",
-            nextCollection: "Today 3:00 PM",
-          }))),
+          .map((rb) => {
+            const collectionData = getCollectionDataForBin(rb.binId);
+            return {
+              id: rb.binId,
+              location: "Park Avenue",
+              level: rb.bin_level,
+              status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
+                | "critical"
+                | "warning"
+                | "normal",
+              lastCollected: collectionData?.lastCollected || "Never collected",
+              capacity: collectionData?.capacity || "3KG",
+              wasteType: collectionData?.wasteType || rb.type || "Mixed",
+              nextCollection: collectionData?.nextCollection || "None",
+            };
+          })),
 
     // Park Avenue - 3 static bins (critical status)
     {
@@ -300,19 +318,22 @@ export function WasteLevelsTab() {
     // Mall District - Add registered bins + 4 static bins
     ...registeredBins
       .filter((rb) => rb.assignedLocation === "Mall District")
-      .map((rb) => ({
-        id: rb.binId,
-        location: "Mall District",
-        level: rb.bin_level,
-        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
-          | "critical"
-          | "warning"
-          | "normal",
-        lastCollected: "Real-time",
-        capacity: "500L",
-        wasteType: rb.type || "Mixed",
-        nextCollection: "Today 3:00 PM",
-      })),
+      .map((rb) => {
+        const collectionData = getCollectionDataForBin(rb.binId);
+        return {
+          id: rb.binId,
+          location: "Mall District",
+          level: rb.bin_level,
+          status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
+            | "critical"
+            | "warning"
+            | "normal",
+          lastCollected: collectionData?.lastCollected || "Never collected",
+          capacity: collectionData?.capacity || "3KG",
+          wasteType: collectionData?.wasteType || rb.type || "Mixed",
+          nextCollection: collectionData?.nextCollection || "None",
+        };
+      }),
 
     // Mall District - 4 bins (warning status)
     {
@@ -359,19 +380,22 @@ export function WasteLevelsTab() {
     // Residential Area - Add registered bins + 4 static bins
     ...registeredBins
       .filter((rb) => rb.assignedLocation === "Residential Area")
-      .map((rb) => ({
-        id: rb.binId,
-        location: "Residential Area",
-        level: rb.bin_level,
-        status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
-          | "critical"
-          | "warning"
-          | "normal",
-        lastCollected: "Real-time",
-        capacity: "500L",
-        wasteType: rb.type || "Mixed",
-        nextCollection: "Today 3:00 PM",
-      })),
+      .map((rb) => {
+        const collectionData = getCollectionDataForBin(rb.binId);
+        return {
+          id: rb.binId,
+          location: "Residential Area",
+          level: rb.bin_level,
+          status: (rb.bin_level > 80 ? "critical" : rb.bin_level > 60 ? "warning" : "normal") as
+            | "critical"
+            | "warning"
+            | "normal",
+          lastCollected: collectionData?.lastCollected || "Never collected",
+          capacity: collectionData?.capacity || "3KG",
+          wasteType: collectionData?.wasteType || rb.type || "Mixed",
+          nextCollection: collectionData?.nextCollection || "None",
+        };
+      }),
 
     // Residential Area - 4 bins
     {

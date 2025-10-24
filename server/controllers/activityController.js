@@ -1075,6 +1075,46 @@ const getActivityLogsByUserId = async (req, res, next) => {
   }
 };
 
+// Get activity logs by bin ID
+const getActivityLogsByBinId = async (req, res, next) => {
+  try {
+    const { binId } = req.params;
+    
+    console.log(`[ACTIVITY CONTROLLER] Fetching activity logs for bin: ${binId}`);
+    
+    const snapshot = await db.collection("activitylogs")
+      .where("bin_id", "==", binId)
+      .get();
+    
+    const logs = [];
+    snapshot.forEach(doc => {
+      logs.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    // Sort by created_at descending manually to avoid index requirement
+    logs.sort((a, b) => {
+      const dateA = new Date(a.created_at || a.timestamp || 0);
+      const dateB = new Date(b.created_at || b.timestamp || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
+    
+    console.log(`[ACTIVITY CONTROLLER] Found ${logs.length} activity logs for bin ${binId}`);
+    
+    res.status(200).json({ 
+      success: true,
+      logs,
+      binId,
+      count: logs.length
+    });
+  } catch (err) {
+    console.error(`[ACTIVITY CONTROLLER] Error fetching activity logs for bin ${req.params.binId}:`, err);
+    next(err);
+  }
+};
+
 // Get login history logs
 const getLoginHistory = async (req, res, next) => {
   try {
@@ -1884,6 +1924,7 @@ module.exports = {
   getDailyActivitySummary,
   getAllActivityLogs,
   getActivityLogsByUserId,
+  getActivityLogsByBinId,
   getAssignedActivityLogs,
   updateActivityStatus,
   updateActivityLog,

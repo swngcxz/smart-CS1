@@ -1,7 +1,7 @@
 
 const express = require("express");
 const router = express.Router();
-const { saveActivityLog, saveTaskAssignment, getUserActivityLogs, getDailyActivitySummary, getAllActivityLogs, getActivityLogsByUserId, getAssignedActivityLogs, updateActivityStatus, updateActivityLog, deleteActivityLog, clearAllActivityLogs, assignTaskAtomically, getActivityStatsSimple, getLoginHistory, testJanitorNotification, testNotification } = require("../controllers/activityController");
+const { saveActivityLog, saveTaskAssignment, getUserActivityLogs, getDailyActivitySummary, getAllActivityLogs, getActivityLogsByUserId, getActivityLogsByBinId, getAssignedActivityLogs, updateActivityStatus, updateActivityLog, deleteActivityLog, clearAllActivityLogs, assignTaskAtomically, getActivityStatsSimple, getLoginHistory, testJanitorNotification, testNotification } = require("../controllers/activityController");
 
 // Get all activity logs assigned to a janitor
 router.get("/activitylogs/assigned/:janitorId", getAssignedActivityLogs);
@@ -20,6 +20,9 @@ router.get("/activitylogs/:userId", getUserActivityLogs);
 
 // Get all activity logs for any user (for testing/debugging)
 router.get("/activitylogs/user/:userId", getActivityLogsByUserId);
+
+// Get activity logs by bin ID
+router.get("/activity-logs/bin/:binId", getActivityLogsByBinId);
 
 router.get("/activity/daily-summary", getDailyActivitySummary);
 
