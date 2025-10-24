@@ -6,12 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Recycle } from "lucide-react";
 import { Eye, EyeOff } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
+import { getTermsAgreement, setTermsAgreement, clearTermsAgreement } from "@/utils/termsAgreement";
 
 type LoginProps = {
   onOpenRegister?: () => void;
@@ -23,6 +24,24 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+
+  // Load terms agreement state from localStorage on component mount
+  useEffect(() => {
+    const savedTermsAgreement = getTermsAgreement();
+    setAgreeToTerms(savedTermsAgreement);
+  }, []);
+
+  // Save terms agreement state to localStorage when it changes
+  const handleTermsChange = (checked: boolean) => {
+    setAgreeToTerms(checked);
+    setTermsAgreement(checked);
+  };
+
+  // Function to clear saved terms agreement (useful for testing or if user wants to reset)
+  const clearSavedTerms = () => {
+    clearTermsAgreement();
+    setAgreeToTerms(false);
+  };
 
   const { login, loading } = useAuth();
   const handleGoogleSignIn = () => {
@@ -146,7 +165,7 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
             <Checkbox
               id="agree-terms"
               checked={agreeToTerms}
-              onCheckedChange={(checked) => setAgreeToTerms(checked as boolean)}
+              onCheckedChange={(checked) => handleTermsChange(checked as boolean)}
               className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 data-[state=checked]:text-white h-4 w-4"
             />
             <label
