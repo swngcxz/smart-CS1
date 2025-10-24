@@ -100,6 +100,71 @@ class GPSBackupService {
     }
   }
 
+  // Process GPS data with fallback logic
+  async processGPSData(binId, gpsData) {
+    try {
+      const { latitude, longitude, satellites, last_active, gps_timestamp, timestamp } = gpsData;
+      
+      // Check if current coordinates are valid
+      if (this.isValidCoordinates(latitude, longitude)) {
+        console.log(`[GPS PROCESSING] Valid coordinates for ${binId}: ${latitude}, ${longitude}`);
+        
+        // Update cache with valid coordinates
+        this.validCoordinatesCache.set(binId, {
+          latitude: latitude,
+          longitude: longitude,
+          timestamp: timestamp || Date.now(),
+          satellites: satellites || 0,
+          gps_valid: true
+        });
+        
+        // Backup valid coordinates
+        await this.backupValidCoordinates(binId, latitude, longitude);
+        
+        return {
+          latitude: latitude,
+          longitude: longitude,
+          coordinates_source: 'gps_live',
+          satellites: satellites || 0,
+          timestamp: timestamp || Date.now()
+        };
+      } else {
+        console.log(`[GPS PROCESSING] Invalid coordinates for ${binId}, checking backup...`);
+        
+        // Try to get backup coordinates
+        const backupCoords = await this.getBackupCoordinates(binId);
+        if (backupCoords) {
+          console.log(`[GPS PROCESSING] Using backup coordinates for ${binId}: ${backupCoords.latitude}, ${backupCoords.longitude}`);
+          return {
+            latitude: backupCoords.latitude,
+            longitude: backupCoords.longitude,
+            coordinates_source: 'gps_fallback',
+            satellites: 0,
+            timestamp: backupCoords.timestamp || Date.now()
+          };
+        } else {
+          console.log(`[GPS PROCESSING] No backup coordinates available for ${binId}`);
+          return {
+            latitude: latitude,
+            longitude: longitude,
+            coordinates_source: 'gps_invalid',
+            satellites: satellites || 0,
+            timestamp: timestamp || Date.now()
+          };
+        }
+      }
+    } catch (error) {
+      console.error(`[GPS PROCESSING] Error processing GPS data for ${binId}:`, error);
+      return {
+        latitude: gpsData.latitude,
+        longitude: gpsData.longitude,
+        coordinates_source: 'gps_error',
+        satellites: gpsData.satellites || 0,
+        timestamp: gpsData.timestamp || Date.now()
+      };
+    }
+  }
+
   // Check if coordinates are valid
   isValidCoordinates(latitude, longitude) {
     return (
@@ -173,10 +238,11 @@ class GPSBackupService {
   // Get backup coordinates for a specific bin
   async getBackupCoordinates(binId) {
     try {
-      const snapshot = await db.collection('monitoring').doc(binId).get();
+      const rtdb = admin.database();
+      const snapshot = await rtdb.ref(`monitoring/backup/${binId}`).once('value');
       
-      if (snapshot.exists) {
-        const data = snapshot.data();
+      if (snapshot.exists()) {
+        const data = snapshot.val();
         if (data.backup_latitude && data.backup_longitude) {
           return {
             latitude: data.backup_latitude,
