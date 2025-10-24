@@ -64,7 +64,7 @@ export function NotificationToast({ notification, onClose }: NotificationToastPr
 
   return (
     <div
-      className={`fixed top-4 right-4 z-50 max-w-sm w-full transition-all duration-300 ease-in-out ${
+      className={`fixed bottom-4 right-4 z-50 max-w-sm w-full transition-all duration-300 ease-in-out ${
         isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'
       }`}
     >

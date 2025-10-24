@@ -81,6 +81,11 @@ class AutomaticTaskService {
       return { success: false, reason: 'Task already created', message: 'Duplicate suppressed (memory)' };
     }
 
+    // **FIX: Add taskKey to Set IMMEDIATELY to prevent race conditions**
+    // This prevents duplicate task creation if Firebase listener fires twice in quick succession
+    this.createdTasks.add(taskKey);
+    console.log(`[AUTOMATIC TASK] Reserved taskKey in memory: ${taskKey}`);
+
     // Database check already performed above - no need to duplicate
 
     // Time-based duplicate prevention removed - only check for existing pending/in-progress tasks
@@ -133,6 +138,8 @@ class AutomaticTaskService {
       // Update last creation time
       this.lastTaskCreation.set(binId, Date.now());
       
+      // Note: taskKey was already added to Set before database write to prevent race conditions
+      
       // Send built-in notification
       await this.sendTaskCreatedNotification({
         taskId: docRefId,
@@ -151,6 +158,12 @@ class AutomaticTaskService {
 
     } catch (error) {
       console.error('[AUTOMATIC TASK] Error creating automatic task:', error);
+      
+      // **FIX: Remove taskKey from Set if task creation failed**
+      // This allows retry in case of temporary failures
+      this.createdTasks.delete(taskKey);
+      console.log(`[AUTOMATIC TASK] Removed failed taskKey from Set: ${taskKey}`);
+      
       return {
         success: false,
         error: error.message,

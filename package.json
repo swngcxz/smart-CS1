@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "axios": "^1.11.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "serialport-gsm": "^4.0.1"
+  },
+  "scripts": {
+    "start": "node gsm-test-server.js",
+    "test-gsm": "node test-gsm-sms.js",
+    "dev": "nodemon gsm-test-server.js"
+  }
+}

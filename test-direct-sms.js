@@ -135,7 +135,7 @@ async function testDirectSMS() {
 console.log('⚠️  IMPORTANT: Edit this file to set your phone number!');
 console.log('Change TEST_PHONE_NUMBER on line 8 to your actual number\n');
 
-if (TEST_PHONE_NUMBER === '+639123456789') {
+if (TEST_PHONE_NUMBER === '+639606388228') {
     console.log('❌ ERROR: You must change the TEST_PHONE_NUMBER!');
     console.log('Edit test-direct-sms.js and set your actual phone number.\n');
     process.exit(1);
