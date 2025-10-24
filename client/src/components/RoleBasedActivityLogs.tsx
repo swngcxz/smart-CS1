@@ -2,6 +2,7 @@ import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAllActivityLogs, useAdminActivityLogs } from "@/hooks/useActivityLogsApi";
 import { ActivityLogsTable } from "./ActivityLogsTable";
+import { OptimizedActivityLogsTable } from "./OptimizedActivityLogsTable";
 import { DoneActivityDetailsModal } from "@/components/modals/DoneActivityDetailsModal";
 import { useState } from "react";
 
@@ -144,12 +145,8 @@ export function RoleBasedActivityLogs({ onRefresh }: RoleBasedActivityLogsProps)
 
   return (
     <div className="space-y-4">
-      {/* Activity logs table with modal functionality */}
-      <ActivityLogsTable
-        logs={logs.logs}
-        loading={logs.loading}
-        error={logs.error}
-        onRefresh={onRefresh || logs.refetch}
+      {/* Use optimized activity logs table for better performance */}
+      <OptimizedActivityLogsTable
         userRole={user?.role}
         onCellClick={handleCellClick}
       />

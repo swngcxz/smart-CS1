@@ -10,19 +10,29 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, RefreshCw, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ActivityLog } from "@/hooks/useActivityLogsApi";
+import { useOptimizedActivityLogs } from "@/hooks/useOptimizedActivityLogs";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import ActivityLogsSkeleton from "@/components/skeletons/ActivityLogsSkeleton";
 interface ActivityLogsTableProps {
-  logs: ActivityLog[];
-  loading: boolean;
-  error: string | null;
-  onRefresh: () => void;
+  logs?: ActivityLog[];
+  loading?: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
   userRole?: string;
   onCellClick?: (e: React.MouseEvent, activity: ActivityLog) => void;
+  useOptimized?: boolean;
 }
 
-export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole, onCellClick }: ActivityLogsTableProps) {
+export function ActivityLogsTable({ 
+  logs: propLogs, 
+  loading: propLoading, 
+  error: propError, 
+  onRefresh: propOnRefresh, 
+  userRole, 
+  onCellClick,
+  useOptimized = false 
+}: ActivityLogsTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -34,6 +44,15 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole, o
   const [janitorsLoading, setJanitorsLoading] = useState(false);
   const [taskNotes, setTaskNotes] = useState("");
   const [clearAllModalOpen, setClearAllModalOpen] = useState(false);
+  
+  // Use optimized hook if enabled
+  const optimizedHook = useOptimizedActivityLogs(100, 0, undefined, undefined, undefined, 10000);
+  
+  // Use props or optimized hook data
+  const logs = useOptimized ? optimizedHook.logs : (propLogs || []);
+  const loading = useOptimized ? optimizedHook.loading : (propLoading || false);
+  const error = useOptimized ? optimizedHook.error : (propError || null);
+  const onRefresh = useOptimized ? optimizedHook.refetch : (propOnRefresh || (() => {}));
 
   const fetchJanitors = async () => {
     setJanitorsLoading(true);
@@ -97,14 +116,26 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole, o
       const selectedJanitorData = janitors.find((j) => j.id === selectedJanitor);
       const janitorName = selectedJanitorData ? `${selectedJanitorData.fullName}` : "Unknown Janitor";
 
-      const response = await api.post("/api/assign-task", {
-        activityId: selectedActivity.id,
-        janitorId: selectedJanitor,
-        janitorName: janitorName,
-        taskNote: taskNotes || "", // Use user-entered task notes
-      });
+      // Use optimized hook for instant updates if available
+      if (useOptimized && optimizedHook.handleTaskAssignment) {
+        console.log("⚡ Using optimized task assignment with instant update");
+        await optimizedHook.handleTaskAssignment(
+          selectedActivity.id,
+          selectedJanitor,
+          janitorName,
+          taskNotes || ""
+        );
+      } else {
+        // Fallback to regular API call
+        const response = await api.post("/api/assign-task", {
+          activityId: selectedActivity.id,
+          janitorId: selectedJanitor,
+          janitorName: janitorName,
+          taskNote: taskNotes || "",
+        });
+        console.log("Assignment successful:", response.data);
+      }
 
-      console.log("Assignment successful:", response.data);
       toast({
         title: "Task Assigned",
         description: `Task assigned to ${janitorName} successfully.`,
@@ -112,8 +143,12 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole, o
       setAssignModalOpen(false);
       setSelectedActivity(null);
       setSelectedJanitor("");
-      setTaskNotes(""); // Clear task notes
-      onRefresh();
+      setTaskNotes("");
+      
+      // Only refresh if not using optimized hook
+      if (!useOptimized) {
+        onRefresh();
+      }
     } catch (err: any) {
       console.error("Error assigning task:", err);
 
@@ -127,7 +162,9 @@ export function ActivityLogsTable({ logs, loading, error, onRefresh, userRole, o
         setAssignModalOpen(false);
         setSelectedActivity(null);
         setSelectedJanitor("");
-        onRefresh();
+        if (!useOptimized) {
+          onRefresh();
+        }
       }
     }
   };
