@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import api from "@/lib/api";
+import { useAutomaticTaskListener } from "./useAutomaticTaskListener";
 
 export interface ActivityLog {
   id: string;
@@ -251,19 +252,85 @@ export function useOptimizedActivityLogs(
       throw err;
     }
   }, [updateLogInstantly, refetch]);
+
+  // Handle clear all with instant UI update
+  const handleClearAll = useCallback(async () => {
+    console.log('🗑️ Handling clear all with instant update');
+    
+    // Store current logs for potential rollback
+    const currentLogs = [...logs];
+    
+    // Update UI instantly - clear all logs
+    setLogs([]);
+    setTotalCount(0);
+    
+    // Clear cache
+    const cacheKey = getCacheKey();
+    cacheRef.current.delete(cacheKey);
+    
+    try {
+      // Make API call in background
+      const response = await api.delete("/api/activity-logs/clear-all");
+      
+      console.log('✅ Clear all successful:', response.data);
+      
+      // Update cache with empty data
+      setCachedData([], 0);
+      
+    } catch (err: any) {
+      console.error('❌ Clear all failed:', err);
+      
+      // Revert the instant update on error
+      setLogs(currentLogs);
+      setTotalCount(currentLogs.length);
+      setCachedData(currentLogs, currentLogs.length);
+      
+      throw err;
+    }
+  }, [logs, getCacheKey, setCachedData]);
+
+  // Add new automatic task instantly
+  const addAutomaticTask = useCallback((newTask: ActivityLog) => {
+    console.log('⚡ Adding automatic task instantly:', newTask);
+    
+    // Add to beginning of logs array
+    const updatedLogs = [newTask, ...logs];
+    
+    // Update state instantly
+    setLogs(updatedLogs);
+    setTotalCount(prev => prev + 1);
+    
+    // Update cache
+    setCachedData(updatedLogs, totalCount + 1);
+    
+    console.log('✅ Automatic task added instantly');
+  }, [logs, totalCount, setCachedData]);
+
+  // Listen for automatic task events
+  useAutomaticTaskListener({
+    onNewAutomaticTask: addAutomaticTask,
+    onTaskUpdate: updateLogInstantly,
+    onTaskDeleted: (taskId: string) => {
+      console.log('🗑️ Removing task instantly:', taskId);
+      const updatedLogs = logs.filter(log => log.id !== taskId);
+      setLogs(updatedLogs);
+      setTotalCount(updatedLogs.length);
+      setCachedData(updatedLogs, updatedLogs.length);
+    }
+  });
   
   // Initial fetch
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
   
-  // Smart auto-refresh with cache checking
+  // Smart auto-refresh with cache checking and automatic task polling
   useEffect(() => {
     if (autoRefreshInterval <= 0) return;
     
     let isActive = true;
     let lastRefreshTime = 0;
-    const MIN_REFRESH_INTERVAL = 5000; // Minimum 5 seconds between refreshes
+    const MIN_REFRESH_INTERVAL = 2000; // Minimum 2 seconds between refreshes
     
     const performRefresh = () => {
       if (!isActive) return;
@@ -302,20 +369,49 @@ export function useOptimizedActivityLogs(
         }
       }
       
+      // Check for new automatic tasks more frequently
+      checkForNewAutomaticTasks();
+      
       performRefresh();
+    };
+    
+    // Check for new automatic tasks specifically
+    const checkForNewAutomaticTasks = async () => {
+      try {
+        // Get the latest activity log timestamp
+        const latestLog = logs[0];
+        if (!latestLog) return;
+        
+        const latestTimestamp = new Date(latestLog.created_at || latestLog.timestamp || 0).getTime();
+        
+        // Check for new automatic tasks since last update
+        const response = await api.get(`/api/activitylogs/automatic?since=${latestTimestamp}&limit=10`);
+        
+        if (response.data.activities && response.data.activities.length > 0) {
+          console.log('🎯 Found new automatic tasks:', response.data.activities.length);
+          
+          // Add new tasks instantly
+          response.data.activities.forEach((task: ActivityLog) => {
+            addAutomaticTask(task);
+          });
+        }
+      } catch (error) {
+        // Silently fail for automatic task checking
+        console.log('Automatic task check failed:', error.message);
+      }
     };
     
     // Check immediately on mount
     checkForUpdates();
     
-    // Set up interval
-    const refreshInterval = setInterval(checkForUpdates, autoRefreshInterval);
+    // Set up interval for faster automatic task checking
+    const refreshInterval = setInterval(checkForUpdates, Math.min(autoRefreshInterval, 3000)); // Max 3 seconds
     
     return () => {
       isActive = false;
       clearInterval(refreshInterval);
     };
-  }, [fetchLogs, autoRefreshInterval, lastDataFetch, CACHE_DURATION]);
+  }, [fetchLogs, autoRefreshInterval, lastDataFetch, CACHE_DURATION, logs, addAutomaticTask]);
   
   return { 
     logs, 
@@ -325,6 +421,8 @@ export function useOptimizedActivityLogs(
     refetch,
     handleTaskAssignment,
     handleStatusUpdate,
+    handleClearAll,
+    addAutomaticTask,
     updateLogInstantly,
     lastDataFetch,
     isStale: (Date.now() - lastDataFetch) > CACHE_DURATION

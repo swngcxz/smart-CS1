@@ -32,6 +32,7 @@ const binHealthRoutes = require('./routers/binHealthRoutes');
 const gpsBackupRoutes = require('./routers/gpsBackupRoutes');
 const backupRoutes = require('./routers/backupRouter');
 const userInfoRoutes = require('./routers/userInfoRoutes');
+const automaticTaskRoutes = require('./routers/automaticTaskRoutes');
 const cacheRoutes = require('./routers/cacheRoutes');
 const routeRoutes = require('./routers/routeRoutes');
 const { sendCriticalBinNotification, sendWarningBinNotification } = require('./controllers/notificationController');
@@ -291,6 +292,7 @@ app.use('/api/bin-health', binHealthRoutes);
 app.use('/api/gps-backup', gpsBackupRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api', userInfoRoutes);
+app.use('/api/activitylogs', automaticTaskRoutes);
 app.use('/api/cache', cacheRoutes);
 app.use('/api/routes', routeRoutes);
 

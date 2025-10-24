@@ -286,6 +286,26 @@ class AutomaticTaskService {
   }
 
   /**
+   * Emit automatic task event for real-time updates
+   * @param {string} eventType - Type of event
+   * @param {Object} data - Event data
+   */
+  emitAutomaticTaskEvent(eventType, data) {
+    try {
+      // This would typically use WebSocket or Server-Sent Events
+      // For now, we'll use a simple approach with a global event emitter
+      if (global.automaticTaskEmitter) {
+        global.automaticTaskEmitter.emit(eventType, data);
+        console.log(`[AUTOMATIC TASK] Event emitted: ${eventType}`, data);
+      } else {
+        console.log(`[AUTOMATIC TASK] Event emitter not available, event: ${eventType}`, data);
+      }
+    } catch (error) {
+      console.error('[AUTOMATIC TASK] Error emitting event:', error);
+    }
+  }
+
+  /**
    * Send built-in notification when task is created - NOW USES YOUR EXISTING SYSTEM
    * @param {Object} taskInfo - Task information
    */
@@ -335,6 +355,25 @@ class AutomaticTaskService {
       console.log(`   Time: ${new Date().toLocaleString()}`);
       console.log(`   Recipients: ${janitorUsers.length} janitors`);
       console.log(`   Action: Janitors can accept this task using assignTaskAtomically endpoint`);
+      
+      // Emit real-time event for automatic task creation
+      this.emitAutomaticTaskEvent('AUTOMATIC_TASK_CREATED', {
+        id: taskId,
+        bin_id: binId,
+        bin_location: binLocation,
+        bin_level: binLevel,
+        activity_type: 'task_assignment',
+        priority: priority,
+        status: 'pending',
+        assigned_janitor_id: null,
+        assigned_janitor_name: null,
+        task_note: `AUTOMATIC TASK: Bin level ${binLevel}% exceeds threshold (85%).`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        source: 'automatic_monitoring',
+        available_for_acceptance: true,
+        acceptance_deadline: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+      });
       
     } catch (error) {
       console.error('[AUTOMATIC TASK] Error sending janitor acceptance notifications:', error);

@@ -88,12 +88,20 @@ export function ActivityLogsTable({
 
   const handleClearAll = async () => {
     try {
-      await api.delete("/api/activity-logs/clear-all");
+      // Use optimized hook for instant updates if available
+      if (useOptimized && optimizedHook.handleClearAll) {
+        console.log("⚡ Using optimized clear all with instant update");
+        await optimizedHook.handleClearAll();
+      } else {
+        // Fallback to regular API call
+        await api.delete("/api/activity-logs/clear-all");
+        onRefresh();
+      }
+      
       toast({
         title: "Success",
         description: "All activity logs have been cleared.",
       });
-      onRefresh();
       setClearAllModalOpen(false);
     } catch (error) {
       console.error("Error clearing activity logs:", error);
