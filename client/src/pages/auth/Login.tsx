@@ -12,6 +12,7 @@ import { Eye, EyeOff } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import api from "@/lib/api";
+import TermsDialog from "@/components/auth/TermsDialog";
 
 type LoginProps = {
   onOpenRegister?: () => void;
@@ -23,6 +24,7 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
 
   const { login, loading } = useAuth();
   const handleGoogleSignIn = () => {
@@ -154,14 +156,13 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
               className="text-xs font-regukar leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-gray-300 cursor-pointer"
             >
               I agree to the{" "}
-              <Link
-                to="/terms"
+              <button
+                type="button"
+                onClick={() => setShowTermsDialog(true)}
                 className="text-green-600 hover:underline dark:text-green-400"
-                target="_blank"
-                rel="noopener noreferrer"
               >
                 Terms and Conditions
-              </Link>
+              </button>
             </label>
           </div>
 
@@ -181,12 +182,15 @@ const Login = ({ onOpenRegister, onClose }: LoginProps) => {
         </div>
 
         {/* <div className="text-center text-sm">
-          Don’t have an account?{" "}
+          Don't have an account?{" "}
           <button onClick={onOpenRegister} className="text-green-600 hover:underline dark:text-green-400">
             Sign up
           </button>
         </div> */}
       </CardContent>
+
+      {/* Terms and Conditions Dialog */}
+      <TermsDialog open={showTermsDialog} onOpenChange={setShowTermsDialog} />
     </Card>
   );
 };
