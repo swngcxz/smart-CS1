@@ -294,14 +294,14 @@ class AutomaticTaskService {
     
     try {
       // Get all janitor users to notify them about the automatic task
-      const janitorUsers = await notificationModel.getUsersByRoles(['janitor', 'staff']);
+      const janitorUsers = await notificationModel.getUsersByRoles(['janitor']);
       
       if (janitorUsers.length === 0) {
         console.log('[AUTOMATIC TASK] No janitor users found to notify');
         return;
       }
 
-      console.log(`[AUTOMATIC TASK]  Sending task acceptance notifications to ${janitorUsers.length} janitors`);
+      console.log(`[AUTOMATIC TASK] Sending task acceptance notifications to ${janitorUsers.length} janitors`);
       
       // Send notifications to ALL janitors using your existing system
       const notificationPromises = janitorUsers.map(janitor => {
@@ -370,13 +370,13 @@ class AutomaticTaskService {
       }
 
       // Create acceptance-specific notification content
-      const priorityEmoji = priority === 'high' ? '🔴' : priority === 'medium' ? '🟡' : '🟢';
+      const priorityEmoji = priority === 'urgent' ? '🔴' : priority === 'high' ? '🟠' : priority === 'medium' ? '🟡' : '🟢';
       const binLevelText = binLevel ? ` (${binLevel}% full)` : '';
       const locationText = binLocation ? ` at ${binLocation}` : '';
       const automaticFlag = isAutomaticTask ? 'AUTOMATIC ' : '';
       
-      const title = isAutomaticTask ? 'Automatic Task Available' : ' New Task Assigned';
-      const message = `${automaticFlag}Task available for acceptance: Bin ${binId}${locationText}${binLevelText}\n ${taskNote}\n\nPriority: ${priorityEmoji} ${priority}\n\n`;
+      const title = isAutomaticTask ? '🚨 Automatic Task Available' : '📋 New Task Assigned';
+      const message = `${automaticFlag}Task available for acceptance: Bin ${binId}${locationText}${binLevelText}\n${taskNote}\n\nPriority: ${priorityEmoji} ${priority.toUpperCase()}\n\n⏰ Accept within 30 minutes to claim this task.`;
 
       const notificationPayload = {
         binId: binId,
@@ -391,7 +391,9 @@ class AutomaticTaskService {
         priority: priority,
         isAutomaticTask: isAutomaticTask,
         availableForAcceptance: availableForAcceptance,
-        acceptanceDeadline: isAutomaticTask ? new Date(Date.now() + 30 * 60 * 1000).toISOString() : null
+        acceptanceDeadline: isAutomaticTask ? new Date(Date.now() + 30 * 60 * 1000).toISOString() : null,
+        read: false,
+        createdAt: new Date().toISOString()
       };
 
       // Send push notification if FCM token exists
@@ -413,6 +415,13 @@ class AutomaticTaskService {
       });
 
       console.log(`[AUTOMATIC TASK] In-app notification created for janitor ${janitorId}`);
+      console.log(`[AUTOMATIC TASK] Notification details:`, {
+        janitorId,
+        binId,
+        priority,
+        isAutomaticTask,
+        availableForAcceptance
+      });
 
     } catch (error) {
       console.error('[AUTOMATIC TASK] Error sending janitor acceptance notification:', error);
