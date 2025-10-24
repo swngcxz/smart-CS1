@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { QrCode, Star, Send, MessageSquare, User, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,6 +14,8 @@ const Feedback = () => {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [userName, setUserName] = useState("");
+  const [email, setEmail] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [binId, setBinId] = useState("TB001");
   const [submitted, setSubmitted] = useState(false);
 
@@ -63,7 +66,17 @@ const Feedback = () => {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h2>
               <p className="text-gray-600">Your feedback has been submitted successfully.</p>
             </div>
-            <Button onClick={() => setSubmitted(false)} className="bg-green-600 hover:bg-green-700 text-white">
+            <Button 
+              onClick={() => {
+                setSubmitted(false);
+                setRating(0);
+                setFeedback("");
+                setUserName("");
+                setEmail("");
+                setIsAnonymous(false);
+              }} 
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
               Submit Another Feedback
             </Button>
           </CardContent>
@@ -77,44 +90,71 @@ const Feedback = () => {
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center mb-8 mt-10">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">User Feedback</h1>
-          <p className="text-gray-600">Help us improve our smart waste management system</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Visitor Feedback</h1>
+          <p className="text-gray-600">Help us improve our Smart Waste Monitoring System</p>
         </div>
 
-        {/* QR Code Info */}
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-4">
-              <QrCode className="h-12 w-12 text-green-600" />
-              <div>
-                <h3 className="font-semibold text-gray-900">QR Code Scanned</h3>
-                <p className="text-sm text-gray-600">Location: Main Street & 5th Ave</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Feedback Form */}
         <Card className="border-green-200 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <User className="h-5 w-5 text-green-600" />
-              <span>Share Your Experience</span>
+              <span>Share Your Thoughts</span>
             </CardTitle>
-            <CardDescription>Your feedback helps us maintain and improve our waste collection services</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* User Name */}
-            <div className="space-y-2">
-              <Label htmlFor="userName">Name (Optional)</Label>
-              <Input
-                id="userName"
-                placeholder="Enter your name"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                className="border-green-200 focus:border-green-500"
+            {/* Anonymous Choice */}
+            <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <Checkbox
+                id="anonymous"
+                checked={isAnonymous}
+                onCheckedChange={(checked) => {
+                  setIsAnonymous(checked as boolean);
+                  if (checked) {
+                    setUserName("");
+                    setEmail("");
+                  }
+                }}
               />
+              <Label 
+                htmlFor="anonymous" 
+                className="text-sm font-medium cursor-pointer"
+              >
+                Submit as Anonymous
+              </Label>
             </div>
+
+            {/* User Name and Email - Only show if not anonymous */}
+            {!isAnonymous && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="userName" className="text-sm font-medium text-gray-700">
+                    Name 
+                  </Label>
+                  <Input
+                    id="userName"
+                    type="text"
+                    placeholder="Your name"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    className="border-green-200 focus:border-green-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="border-green-200 focus:border-green-500"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Rating */}
             <div className="space-y-3">
@@ -135,7 +175,7 @@ const Feedback = () => {
               <Label htmlFor="feedback">Your Feedback</Label>
               <Textarea
                 id="feedback"
-                placeholder="Please share your thoughts about the waste bin condition, accessibility, or any issues you encountered..."
+                placeholder="Please share your thoughts about..."
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 rows={4}

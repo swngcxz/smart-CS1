@@ -229,7 +229,6 @@ export function WasteLevelCards({
                 </div>
                 <Progress value={bin.level} className="h-2" />
                 <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span>Last collected: {bin.lastCollected}</span>
                 </div>
               </div>
             </CardContent>

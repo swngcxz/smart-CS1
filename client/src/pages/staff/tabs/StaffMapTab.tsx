@@ -188,7 +188,7 @@ export function MapTab() {
             showRightPanel={isBinDetailsOpen}
             isPanelOpen={isBinDetailsOpen}
             rightPanel={
-              <div className="w-[420px] h-full bg-black/20 border-l border-white/20 shadow-2xl rounded-l-xl backdrop-blur-lg transform transition-transform duration-300 ease-out">
+              <div className="w-[420px] h-[520px] bg-black/20 border-l border-white/20 shadow-2xl rounded-l-xl backdrop-blur-lg transform transition-transform duration-300 ease-out">
                 <div className="p-6 h-full flex flex-col">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-semibold text-white">Bin Details</h3>
@@ -219,18 +219,26 @@ export function MapTab() {
                         />
                       </div>
 
-                      {/* <div className="space-y-2">
-          <Label htmlFor="assignedJanitor" className="text-sm font-medium text-white">
-            Assigned Janitor
-          </Label>
-          <Input
-            id="assignedJanitor"
-            type="text"
-            value={binForm.assignedJanitor || "Unassigned"}
-            readOnly
-            className="w-full bg-white/10 border-white/30 text-white placeholder:text-white/70 cursor-not-allowed"
-          />
-        </div> */}
+                      {/* Waste Type */}
+                      <div className="space-y-2">
+                        <Label htmlFor="binType" className="text-sm font-medium text-white">
+                          Waste Type
+                        </Label>
+                        <Select
+                          value={binForm.binType}
+                          onValueChange={(value) => handleInputChange("binType", value)}
+                        >
+                          <SelectTrigger className="bg-white/10 border-white/30 text-white focus:border-blue-400 transition-colors duration-200">
+                            <SelectValue placeholder="Select waste type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">General Waste</SelectItem>
+                            <SelectItem value="recyclable">Recyclable</SelectItem>
+                            <SelectItem value="biodegradable">Biodegradable</SelectItem>
+                            <SelectItem value="non-biodegradable">Non-Biodegradable</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
                       {/* Main Location */}
                       <div className="space-y-2">

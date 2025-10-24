@@ -102,7 +102,7 @@ export function WasteLevelsTab() {
   );
 
   // Enhanced Debug logging for bin2
-  console.log("🔍 WasteLevelsTab Debug:", {
+  console.log(" WasteLevelsTab Debug:", {
     wasteBins,
     loading,
     error,
@@ -138,7 +138,7 @@ export function WasteLevelsTab() {
   });
 
   // Specific bin2 debugging
-  console.log("🔍 BIN2 SPECIFIC DEBUG:", {
+  console.log("BIN2 SPECIFIC DEBUG:", {
     bin2DataExists: !!bin2Data,
     bin2Data: bin2Data,
     bin2InWasteBins: wasteBins.find((wb) => wb.id === "bin2"),
@@ -147,7 +147,7 @@ export function WasteLevelsTab() {
   });
 
   // Debug logging for real-time bin detection
-  console.log("🔍 Real-time bin detection:", {
+  console.log("Real-time bin detection:", {
     wasteBinsCount: wasteBins.length,
     wasteBins: wasteBins.map((wb) => ({
       id: wb.id,

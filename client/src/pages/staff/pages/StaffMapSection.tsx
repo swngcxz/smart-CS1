@@ -378,7 +378,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
       {/* Clean Map Section - Mobile Style */}
       <div
         ref={mapContainerRef}
-        className="h-[500px] bg-white dark:bg-gray-900 rounded-xl shadow-lg relative mb-4 overflow-hidden"
+        className="h-[580px] bg-white dark:bg-gray-900 rounded-xl shadow-lg relative mb-4 overflow-hidden"
       >
         {/* Minimal Header */}
         <div className="absolute top-0 left-0 right-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
@@ -548,7 +548,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
 
           {/* Right Panel - Positioned within the map */}
           {showRightPanel && rightPanel && (
-            <div className="absolute top-0 right-0 h-full z-[1000] transform transition-transform duration-300 ease-out translate-x-0">
+            <div className="absolute top-[60px] right-0 h-[calc(100%-60px)] z-[1000] transform transition-transform duration-300 ease-out translate-x-0">
               {rightPanel}
             </div>
           )}
