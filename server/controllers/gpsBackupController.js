@@ -72,32 +72,6 @@ class GPSBackupController {
     }
   }
 
-  // Get display coordinates (backup if live GPS is invalid)
-  static async getDisplayCoordinates(req, res) {
-    try {
-      const { binId } = req.params;
-      const displayCoordinates = await gpsBackupService.getDisplayCoordinates(binId);
-      
-      if (displayCoordinates) {
-        res.json({
-          success: true,
-          binId: binId,
-          coordinates: displayCoordinates
-        });
-      } else {
-        res.status(404).json({
-          success: false,
-          error: `No coordinates found for bin ${binId}`
-        });
-      }
-    } catch (error) {
-      console.error('[GPS BACKUP API] Error getting display coordinates:', error);
-      res.status(500).json({
-        success: false,
-        error: error.message
-      });
-    }
-  }
 
   // Manually trigger backup for a specific bin
   static async triggerBackup(req, res) {
