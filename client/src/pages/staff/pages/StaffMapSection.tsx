@@ -243,8 +243,8 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
   const mapRef = useRef<any>(null);
 
   // Refs for our custom tile layers
-  const baseLayerRef = useRef<any>(null);
-  const satLayerRef = useRef<any>(null);
+  // Removed separate layer refs; we will mount only one active layer for performance
+  const [useSatellite, setUseSatellite] = useState(false);
 
   // Enhanced tile layer configuration for high zoom levels (16-21)
   const OSM_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -258,9 +258,9 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
   const tileLayerOptions = useMemo(() => ({
     base: {
       url: OSM_URL,
-      maxZoom: 22,
+      maxZoom: 25, // allow deeper zoom, upscaled beyond native 19
       minZoom: 1,
-      detectRetina: false, // Disable retina for faster loading
+      detectRetina: false,
       attribution: "&copy; OpenStreetMap contributors",
       subdomains: ['a', 'b', 'c'],
       tileSize: 256,
@@ -270,11 +270,9 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
     satellite: {
       url: ESRI_SAT_URL,
       maxNativeZoom: 22,
-      maxZoom: 22,
+      maxZoom: 25,
       minZoom: 1,
-      opacity: 0, // Start with satellite hidden
-      zIndex: 15,
-      detectRetina: false, // Disable retina for faster loading
+      detectRetina: false,
       attribution: "Tiles &copy; Esri",
       subdomains: ['server'],
       tileSize: 256,
@@ -335,31 +333,57 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
     if (!mapLoaded || !mapRef.current) return;
     const map = mapRef.current;
 
-    const updateLayers = () => {
+    const updateMode = () => {
       const z = map.getZoom();
-      const useSat = z >= SAT_TRANSITION_ZOOM;
-
-      try {
-        // Simple layer switching
-        if (satLayerRef.current) {
-          satLayerRef.current.setOpacity(useSat ? 1 : 0);
-        }
-        if (baseLayerRef.current) {
-          baseLayerRef.current.setOpacity(useSat ? 0 : 1);
-        }
-      } catch (e) {
-        console.warn("Layer toggle warning:", e);
-      }
+      setUseSatellite(z >= SAT_TRANSITION_ZOOM);
     };
 
-    // Only listen to zoom end events for better performance
-    map.on("zoomend", updateLayers);
+    map.on("zoomend", updateMode);
+    updateMode();
+    return () => {
+      map.off("zoomend", updateMode);
+    };
+  }, [mapLoaded]);
+
+  // Fix: ensure the map resizes correctly when tab opens or container changes
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current) return;
+    const map = mapRef.current;
+    setTimeout(() => map.invalidateSize(true), 50);
+    const onResize = () => map.invalidateSize(true);
+    window.addEventListener('resize', onResize);
     
-    // Initial state
-    updateLayers();
+    // Also observe the container for size/visibility changes (tab switches)
+    let resizeObserver: ResizeObserver | null = null;
+    let intersectionObserver: IntersectionObserver | null = null;
+    if (mapContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize(true);
+      });
+      resizeObserver.observe(mapContainerRef.current);
+
+      intersectionObserver = new IntersectionObserver((entries) => {
+        if (entries[0]?.isIntersecting) {
+          setTimeout(() => {
+            map.invalidateSize(true);
+            // Re-center to avoid partial tile after reveal
+            try { map.setView(map.getCenter(), map.getZoom(), { animate: false }); } catch {}
+          }, 60);
+        }
+      }, { threshold: 0.1 });
+      intersectionObserver.observe(mapContainerRef.current);
+    }
+
+    const onVisibility = () => setTimeout(() => map.invalidateSize(true), 60);
+    window.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onVisibility);
 
     return () => {
-      map.off("zoomend", updateLayers);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onVisibility);
+      if (resizeObserver && mapContainerRef.current) resizeObserver.disconnect();
+      if (intersectionObserver && mapContainerRef.current) intersectionObserver.disconnect();
     };
   }, [mapLoaded]);
 
@@ -378,7 +402,7 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
       {/* Clean Map Section - Mobile Style */}
       <div
         ref={mapContainerRef}
-        className="h-[500px] bg-white dark:bg-gray-900 rounded-xl shadow-lg relative mb-4 overflow-hidden"
+        className="h-[580px] bg-white dark:bg-gray-900 rounded-xl shadow-lg relative mb-4 overflow-hidden"
       >
         {/* Minimal Header */}
         <div className="absolute top-0 left-0 right-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
@@ -411,15 +435,15 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
               center={mapCenter}
               zoom={getSafeZoomLevel(12)}
               minZoom={1}
-              maxZoom={22}
+              maxZoom={25}
               className="h-full w-full z-0"
               zoomControl={true}
               attributionControl={true}
               whenReady={() => setMapLoaded(true)}
               preferCanvas={true}
-              zoomSnap={1}
-              zoomDelta={1}
-              wheelPxPerZoomLevel={120}
+              zoomSnap={0.25}
+              zoomDelta={0.5}
+              wheelPxPerZoomLevel={80}
             >
               <MapInitializer
                 setMapRef={(map) => {
@@ -429,39 +453,36 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
                 }}
               />
 
-              {/* Primary base tile layer - optimized for speed */}
-              <TileLayer
-                url={tileLayerOptions.base.url}
-                ref={(layer) => (baseLayerRef.current = layer)}
-                maxZoom={tileLayerOptions.base.maxZoom}
-                minZoom={tileLayerOptions.base.minZoom}
-                detectRetina={tileLayerOptions.base.detectRetina}
-                attribution={tileLayerOptions.base.attribution}
-                subdomains={tileLayerOptions.base.subdomains}
-                tileSize={tileLayerOptions.base.tileSize}
-                zoomOffset={tileLayerOptions.base.zoomOffset}
-                updateWhenZooming={true}
-                keepBuffer={2}
-                maxNativeZoom={tileLayerOptions.base.maxNativeZoom}
-              />
-
-              {/* Satellite tile layer - only loads when needed */}
-              <TileLayer
-                url={tileLayerOptions.satellite.url}
-                ref={(layer) => (satLayerRef.current = layer)}
-                maxNativeZoom={tileLayerOptions.satellite.maxNativeZoom}
-                maxZoom={tileLayerOptions.satellite.maxZoom}
-                minZoom={tileLayerOptions.satellite.minZoom}
-                opacity={tileLayerOptions.satellite.opacity}
-                zIndex={tileLayerOptions.satellite.zIndex}
-                detectRetina={tileLayerOptions.satellite.detectRetina}
-                attribution={tileLayerOptions.satellite.attribution}
-                subdomains={tileLayerOptions.satellite.subdomains}
-                tileSize={tileLayerOptions.satellite.tileSize}
-                zoomOffset={tileLayerOptions.satellite.zoomOffset}
-                updateWhenZooming={true}
-                keepBuffer={2}
-              />
+              {/* Render only the active layer for faster initial load */}
+              {useSatellite ? (
+                <TileLayer
+                  url={tileLayerOptions.satellite.url}
+                  maxNativeZoom={tileLayerOptions.satellite.maxNativeZoom}
+                  maxZoom={tileLayerOptions.satellite.maxZoom}
+                  minZoom={tileLayerOptions.satellite.minZoom}
+                  detectRetina={tileLayerOptions.satellite.detectRetina}
+                  attribution={tileLayerOptions.satellite.attribution}
+                  subdomains={tileLayerOptions.satellite.subdomains}
+                  tileSize={tileLayerOptions.satellite.tileSize}
+                  zoomOffset={tileLayerOptions.satellite.zoomOffset}
+                  updateWhenZooming={true}
+                  keepBuffer={1}
+                />
+              ) : (
+                <TileLayer
+                  url={tileLayerOptions.base.url}
+                  maxZoom={tileLayerOptions.base.maxZoom}
+                  minZoom={tileLayerOptions.base.minZoom}
+                  detectRetina={tileLayerOptions.base.detectRetina}
+                  attribution={tileLayerOptions.base.attribution}
+                  subdomains={tileLayerOptions.base.subdomains}
+                  tileSize={tileLayerOptions.base.tileSize}
+                  zoomOffset={tileLayerOptions.base.zoomOffset}
+                  updateWhenZooming={true}
+                  keepBuffer={1}
+                  maxNativeZoom={tileLayerOptions.base.maxNativeZoom}
+                />
+              )}
 
 
               {/* Map Type Indicator */}
@@ -546,9 +567,9 @@ export function StaffMapSection({ onBinClick, showRightPanel, isPanelOpen, right
 
           {/* Removed heavy Mapillary components for better performance */}
 
-          {/* Right Panel - Positioned within the map */}
+          {/* Right Panel - Positioned within the map content (below header) */}
           {showRightPanel && rightPanel && (
-            <div className="absolute top-0 right-0 h-full z-[1000] transform transition-transform duration-300 ease-out translate-x-0">
+            <div className="absolute right-0 top-[60px] h-[calc(100%-60px)] z-[1000] transform transition-transform duration-300 ease-out translate-x-0">
               {rightPanel}
             </div>
           )}

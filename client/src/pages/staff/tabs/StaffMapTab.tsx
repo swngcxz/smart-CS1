@@ -219,18 +219,27 @@ export function MapTab() {
                         />
                       </div>
 
-                      {/* <div className="space-y-2">
-          <Label htmlFor="assignedJanitor" className="text-sm font-medium text-white">
-            Assigned Janitor
-          </Label>
-          <Input
-            id="assignedJanitor"
-            type="text"
-            value={binForm.assignedJanitor || "Unassigned"}
-            readOnly
-            className="w-full bg-white/10 border-white/30 text-white placeholder:text-white/70 cursor-not-allowed"
-          />
-        </div> */}
+                      {/* Waste Type */}
+                      <div className="space-y-2">
+                        <Label htmlFor="wasteType" className="text-sm font-medium text-white">
+                          Waste Type
+                        </Label>
+                        <Select
+                          value={binForm.binType}
+                          onValueChange={(value) => handleInputChange("binType", value)}
+                        >
+                          <SelectTrigger className="bg-white/10 border-white/30 text-white focus:border-blue-400 transition-colors duration-200">
+                            <SelectValue placeholder="Select waste type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">General</SelectItem>
+                            <SelectItem value="recyclable">Recyclable</SelectItem>
+                            <SelectItem value="biodegradable">Biodegradable</SelectItem>
+                            <SelectItem value="non-biodegradable">Non-biodegradable</SelectItem>
+                            <SelectItem value="hazardous">Hazardous</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
                       {/* Main Location */}
                       <div className="space-y-2">

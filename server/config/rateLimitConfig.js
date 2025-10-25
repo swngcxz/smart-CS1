@@ -7,7 +7,7 @@ module.exports = {
   // Daily upload limits
   limits: {
     // Maximum bin history uploads per day per bin
-    maxBinHistoryUploads: 5,
+    maxBinHistoryUploads: 3,
     
     // Maximum notification uploads per day per user
     maxNotificationUploads: 100,

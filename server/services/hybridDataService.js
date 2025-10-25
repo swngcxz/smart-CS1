@@ -37,7 +37,12 @@ class HybridDataService {
         'LOW_SATELLITES',
         'HIGH_BIN_LEVEL',
         'WEIGHT_ANOMALY'
-      ]
+      ],
+      
+      // Duplicate error detection
+      DUPLICATE_ERROR_WINDOW: 60 * 60 * 1000, // 1 hour in milliseconds
+      MAX_DUPLICATE_ERRORS_PER_DAY: 1, // Max 1 duplicate error per day per bin (generic)
+      MAX_OFFLINE_ERRORS_PER_DAY: 2 // Allow up to 2 offline records per day per bin
     };
     
     // In-memory buffers for different data types
@@ -46,6 +51,9 @@ class HybridDataService {
       warning: new Map(),     // binId -> latest data
       critical: new Map()     // binId -> latest data
     };
+    
+    // Duplicate error tracking
+    this.duplicateErrorTracker = new Map(); // binId -> { errorType, lastSeen, count }
     
     // Timers for batch processing
     this.timers = {
@@ -114,13 +122,26 @@ class HybridDataService {
         };
       }
 
-      // Step 2: Classify data importance
+      // Step 2: Check for duplicate errors
+      const duplicateCheck = this.checkDuplicateError(data);
+      if (duplicateCheck.isDuplicate) {
+        this.stats.totalFiltered++;
+        console.log(`[HYBRID SERVICE] Duplicate error detected for bin ${data.binId}: ${duplicateCheck.errorType}`);
+        return {
+          success: false,
+          reason: 'duplicate_error',
+          errorType: duplicateCheck.errorType,
+          action: 'filtered'
+        };
+      }
+
+      // Step 3: Classify data importance
       const classification = this.classifyData(data, validation);
       
-      // Step 3: Process based on classification
+      // Step 4: Process based on classification
       const result = await this.processByClassification(data, classification);
       
-      // Step 4: Update statistics
+      // Step 5: Update statistics
       try {
         this.updateStats(result);
       } catch (statsError) {
@@ -137,6 +158,80 @@ class HybridDataService {
         error: error.message
       };
     }
+  }
+
+  /**
+   * Check for duplicate errors to avoid recording the same error multiple times
+   * @param {Object} data - Raw data
+   * @returns {Object} Duplicate check result
+   */
+  checkDuplicateError(data) {
+    const binId = data.binId;
+    const now = new Date();
+
+    // Determine error type: from message or inferred GPS issue
+    let errorType = null;
+    if (data.errorMessage) {
+      errorType = this.detectErrorType(data.errorMessage);
+    } else {
+      const satellites = parseInt(data?.satellites || 0, 10) || 0;
+      const hasInvalidCoords = data?.gps && (parseFloat(data.gps.lat) === 0 && parseFloat(data.gps.lng) === 0);
+      const gpsValidFlag = (data?.gpsValid === true || data?.gps_valid === true);
+      if (!gpsValidFlag || satellites < this.config.MIN_SATELLITES || hasInvalidCoords) {
+        errorType = 'GPS_INVALID';
+      }
+    }
+
+    if (!errorType) {
+      return { isDuplicate: false };
+    }
+    const trackerKey = `${binId}_${errorType}`;
+    
+    // Get existing tracker data
+    const existingTracker = this.duplicateErrorTracker.get(trackerKey);
+    
+    if (existingTracker) {
+      const timeSinceLastSeen = now.getTime() - existingTracker.lastSeen.getTime();
+      
+      // If the same error occurred within the duplicate window, it's a duplicate
+      if (timeSinceLastSeen < this.config.DUPLICATE_ERROR_WINDOW) {
+        return {
+          isDuplicate: true,
+          errorType,
+          timeSinceLastSeen,
+          duplicateCount: existingTracker.count
+        };
+      }
+      
+      // If we've exceeded the max duplicate errors per day, filter it out
+      const isOffline = errorType === 'MALFUNCTION' || errorType === 'COMMUNICATION_LOST' || errorType === 'POWER_FAILURE' || errorType === 'UNKNOWN_ERROR' || errorType === 'GPS_INVALID' ? false : false;
+      const maxPerDay = errorType === 'CONNECTION_ERROR' || errorType === 'COMMUNICATION_LOST' ? this.config.MAX_OFFLINE_ERRORS_PER_DAY : this.config.MAX_DUPLICATE_ERRORS_PER_DAY;
+      if (existingTracker.dailyCount >= maxPerDay) {
+        const today = new Date().toDateString();
+        if (existingTracker.lastDay === today) {
+          return {
+            isDuplicate: true,
+            errorType,
+            reason: 'daily_limit_exceeded',
+            dailyCount: existingTracker.dailyCount
+          };
+        }
+      }
+    }
+    
+    // Update or create tracker
+    const today = new Date().toDateString();
+    const isNewDay = !existingTracker || existingTracker.lastDay !== today;
+    
+    this.duplicateErrorTracker.set(trackerKey, {
+      errorType,
+      lastSeen: now,
+      count: existingTracker ? existingTracker.count + 1 : 1,
+      dailyCount: isNewDay ? 1 : (existingTracker ? existingTracker.dailyCount + 1 : 1),
+      lastDay: today
+    });
+    
+    return { isDuplicate: false };
   }
 
   /**
@@ -441,6 +536,8 @@ class HybridDataService {
       gpsValid: Boolean(data.gpsValid),
       satellites: parseInt(data.satellites) || 0,
       status: this.determineStatus(data, priority),
+      // include normalized error type for downstream logic/export
+      errorType: data.errorMessage ? this.detectErrorType(data.errorMessage) : (Boolean(data.gpsValid) ? null : 'GPS_INVALID'),
       errorMessage: data.errorMessage || null,
       priority,
       timestamp: new Date(),
@@ -610,6 +707,14 @@ class HybridDataService {
         if (data.bufferedAt < cutoffTime) {
           buffer.delete(binId);
         }
+      }
+    }
+
+    // Clean up old duplicate error tracking data (older than 24 hours)
+    const today = new Date().toDateString();
+    for (const [trackerKey, trackerData] of this.duplicateErrorTracker.entries()) {
+      if (trackerData.lastDay !== today) {
+        this.duplicateErrorTracker.delete(trackerKey);
       }
     }
 

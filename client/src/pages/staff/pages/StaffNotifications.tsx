@@ -58,6 +58,8 @@ const StaffNotifications = () => {
         return "border-orange-200 bg-orange-50 dark:border-orange-700 dark:bg-orange-900";
       case "bin_maintenance_urgent":
         return "border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900";
+      case "bin_offline":
+        return "border-red-200 bg-red-50 dark:border-red-700 dark:bg-red-900";
       default:
         return "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900";
     }
@@ -73,8 +75,27 @@ const StaffNotifications = () => {
         return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
       case "bin_maintenance_urgent":
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case "bin_offline":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  };
+
+  const getTypeLabel = (type?: string) => {
+    switch (type) {
+      case "task_accepted":
+        return "Task Accepted";
+      case "activity_completed":
+        return "Activity Completed";
+      case "bin_maintenance":
+        return "Bin Maintenance";
+      case "bin_maintenance_urgent":
+        return "Maintenance (Urgent)";
+      case "bin_offline":
+        return "Bin Offline";
+      default:
+        return "Notification";
     }
   };
 
@@ -144,6 +165,9 @@ const StaffNotifications = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-gray-900 dark:text-white">{notification.title}</h3>
+                        <Badge className={`${getTypeBadge(notification.type || "info")} capitalize`}>
+                          {getTypeLabel(notification.type)}
+                        </Badge>
                         {!notification.read && (
                           <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                             New

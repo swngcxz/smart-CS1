@@ -29,6 +29,7 @@ const ratingRoutes = require('./routers/ratingRoutes');
 const feedbackRoutes = require('./routers/feedbackRoutes');
 const performanceRoutes = require('./routers/performanceRoutes');
 const binHealthRoutes = require('./routers/binHealthRoutes');
+const binConnectionRoutes = require('./routers/binConnectionRoutes');
 const gpsBackupRoutes = require('./routers/gpsBackupRoutes');
 const backupRoutes = require('./routers/backupRouter');
 const userInfoRoutes = require('./routers/userInfoRoutes');
@@ -40,6 +41,7 @@ const BinHistoryProcessor = require('./utils/binHistoryProcessor');
 const binNotificationController = require('./controllers/binNotificationController');
 const automaticTaskService = require('./services/automaticTaskService');
 const binHealthMonitor = require('./services/binHealthMonitor');
+const binConnectionMonitor = require('./services/binConnectionMonitor');
 const gpsBackupService = require('./services/gpsBackupService');
 const smsNotificationService = require('./services/smsNotificationService');
 const gsmService = require('./services/gsmService');
@@ -289,6 +291,7 @@ app.use('/api/ratings', ratingRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/bin-health', binHealthRoutes);
+app.use('/api/bin-connections', binConnectionRoutes);
 app.use('/api/gps-backup', gpsBackupRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api', userInfoRoutes);
@@ -1151,6 +1154,10 @@ app.listen(PORT, '0.0.0.0', async () => {
   // Start bin health monitoring system
   console.log('[SERVER] Starting bin health monitoring system...');
   binHealthMonitor.start();
+  
+  // Start bin connection monitoring system
+  console.log('[SERVER] Starting bin connection monitoring system...');
+  binConnectionMonitor.startMonitoring();
   
   // Initialize GPS backup service
   await gpsBackupService.initialize();

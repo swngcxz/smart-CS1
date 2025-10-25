@@ -35,6 +35,7 @@ interface BinHistoryRecord {
   satellites: number;
   status: string;
   errorMessage?: string;
+  errorType?: string;
   createdAt: string | object;
 }
 
@@ -225,6 +226,31 @@ export function BinHistory() {
       });
     }
 
+    // De-duplicate offline/connection errors per bin per day
+    const isConnectionIssue = (rec: BinHistoryRecord) => {
+      const statusUpper = (rec.status || "").toUpperCase();
+      const msgLower = (rec.errorMessage || "").toLowerCase();
+      return (
+        statusUpper.includes("CONNECTION") ||
+        msgLower.includes("offline") ||
+        msgLower.includes("timeout") ||
+        msgLower.includes("connection") ||
+        msgLower.includes("signal")
+      );
+    };
+
+    const seenOfflinePerDay = new Map<string, number>();
+    filtered = filtered.filter((rec) => {
+      if (!isConnectionIssue(rec)) return true;
+      const d = parseTimestamp(rec.timestamp);
+      const dayKey = d ? d.toISOString().slice(0, 10) : "unknown";
+      const key = `${rec.binId}_${dayKey}`;
+      const count = seenOfflinePerDay.get(key) || 0;
+      if (count >= 2) return false;
+      seenOfflinePerDay.set(key, count + 1);
+      return true;
+    });
+
     console.log("Filtered history:", filtered.length, "records");
     setFilteredHistory(filtered);
     setCurrentPage(1);
@@ -371,7 +397,19 @@ export function BinHistory() {
   };
 
   // Location display component with async loading
-  const LocationDisplay = ({ gps, gpsValid }: { gps: { lat: number; lng: number }; gpsValid: boolean }) => {
+  const LocationDisplay = ({
+    gps,
+    gpsValid,
+    status,
+    errorMessage,
+    errorType,
+  }: {
+    gps: { lat: number; lng: number };
+    gpsValid: boolean;
+    status?: string;
+    errorMessage?: string;
+    errorType?: string;
+  }) => {
     const [locationName, setLocationName] = useState<string>("");
     const [isLoading, setIsLoading] = useState(true);
     const cacheKey = `${gps.lat.toFixed(4)},${gps.lng.toFixed(4)}`;
@@ -395,6 +433,26 @@ export function BinHistory() {
 
       fetchLocation();
     }, [gps.lat, gps.lng, gpsValid, getLocationName]);
+
+    // Detect connection/offline cases and show clearer label
+    const statusUpper = (status || '').toUpperCase();
+    const errLower = (errorMessage || '').toLowerCase();
+    const isConnectionIssue =
+      statusUpper.includes('CONNECTION') ||
+      (errorType || '').toUpperCase() === 'CONNECTION_ERROR' ||
+      errLower.includes('connection') ||
+      errLower.includes('offline') ||
+      errLower.includes('timeout') ||
+      errLower.includes('signal');
+
+    if (isConnectionIssue) {
+      return (
+        <div className="flex items-center gap-1 text-red-500">
+          <AlertTriangle className="w-3 h-3" />
+          <span className="text-xs">Offline / No signal</span>
+        </div>
+      );
+    }
 
     if (!gpsValid) {
       return (
@@ -424,7 +482,7 @@ export function BinHistory() {
   };
 
   const exportToCSV = () => {
-    const headers = ["Bin ID", "Timestamp", "Bin Level (%)", "Location", "Status", "Error Message"];
+    const headers = ["Bin ID", "Timestamp", "Bin Level (%)", "Type", "Status", "Error Message"];
     const csvData = filteredHistory.map((record) => {
       const cacheKey = `${record.gps.lat.toFixed(4)},${record.gps.lng.toFixed(4)}`;
       const locationName =
@@ -710,7 +768,7 @@ export function BinHistory() {
                     <TableHead>Bin ID</TableHead>
                     <TableHead>Timestamp</TableHead>
                     <TableHead>Bin Level (%)</TableHead>
-                    <TableHead>Location</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -755,7 +813,13 @@ export function BinHistory() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <LocationDisplay gps={record.gps} gpsValid={record.gpsValid} />
+                          <LocationDisplay
+                            gps={record.gps}
+                            gpsValid={record.gpsValid}
+                            status={record.status}
+                            errorMessage={record.errorMessage}
+                            errorType={record.errorType}
+                          />
                         </TableCell>
                         <TableCell>{getStatusBadge(record.status)}</TableCell>
                       </TableRow>
